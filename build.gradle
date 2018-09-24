@@ -47,7 +47,7 @@ dependencies {
 
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
 def isMasterBranch = gitBranch == "remotes/origin/master"
-def canUploadArchives = true //isMasterBranch
+def canUploadArchives = isMasterBranch
 
 uploadArchives {
     repositories.mavenDeployer {
