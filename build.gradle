@@ -15,6 +15,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
+apply plugin: 'maven'
 
 group = 'com.iexec.worker'
 version = '0.0.1-SNAPSHOT'
@@ -32,10 +33,28 @@ repositories {
     }
 }
 
+configurations {
+    deployerJars
+}
 
 dependencies {
     compile "com.iexec.common:iexec-common-new:$iexecCommonVersion"
-
 	compile "org.springframework.boot:spring-boot-starter"
+
 	testCompile "org.springframework.boot:spring-boot-starter-test"
+    deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"
 }
+
+def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
+def isMasterBranch = gitBranch == "remotes/origin/master"
+def canUploadArchives = true //isMasterBranch
+
+uploadArchives {
+    repositories.mavenDeployer {
+        configuration = configurations.deployerJars
+        repository(url: "packagecloud+https://packagecloud.io/iexec/worker-new") {
+            authentication(password: packageCloudPassword)
+        }
+    }
+}
+uploadArchives.enabled = canUploadArchives
