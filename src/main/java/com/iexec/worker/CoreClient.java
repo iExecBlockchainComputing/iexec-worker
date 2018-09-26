@@ -11,4 +11,6 @@ public interface CoreClient {
     @RequestMapping(method = RequestMethod.GET, path = "/hello")
     String hello(@RequestParam(name="name") String name);
 
+    @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
+    void ping(@RequestParam(name="workerName") String workerName);
 }
