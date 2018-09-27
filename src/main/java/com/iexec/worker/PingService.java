@@ -12,7 +12,7 @@ public class PingService {
         this.coreClient = coreClient;
     }
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
         System.out.println("try to ping scheduler");
         coreClient.ping("customWorker");

@@ -1,30 +1,22 @@
 package com.iexec.worker;
 
-
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
-@RestController
-public class Controller {
+@Service
+public class TaskService {
 
     @Value("${worker.name}")
     private String workerName;
+
     private CoreClient coreClient;
 
-    public Controller(CoreClient coreClient) {
+    public TaskService(CoreClient coreClient) {
         this.coreClient = coreClient;
     }
 
-    @GetMapping("/michel")
-    public String hello(@RequestParam(name="name", required=false, defaultValue="Stranger") String name) {
-        return coreClient.hello(name);
-    }
-
-    @GetMapping("/getTask")
+    @Scheduled(fixedRate = 30000)
     public String getTask() {
         Replicate replicate = coreClient.getReplicate(workerName);
         if (replicate.getTaskId() == null){
@@ -42,4 +34,5 @@ public class Controller {
         coreClient.updateReplicateStatus(replicate.getTaskId(), ReplicateStatus.COMPLETED, workerName);
         return ReplicateStatus.COMPLETED.toString();
     }
+
 }

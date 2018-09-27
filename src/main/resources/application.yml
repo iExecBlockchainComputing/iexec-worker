@@ -3,3 +3,6 @@ server:
 
 core:
   address: ${IEXEC_CORE_ADDRESS:http://localhost:18090}
+
+worker:
+  name: ${IEXEC_WORKER_NAME:customWorker}
