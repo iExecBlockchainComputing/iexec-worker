@@ -1,7 +1,7 @@
 package com.iexec.worker.feign;
 
-import com.iexec.worker.task.Replicate;
-import com.iexec.worker.task.ReplicateStatus;
+import com.iexec.common.replicate.Replicate;
+import com.iexec.common.replicate.ReplicateStatus;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
