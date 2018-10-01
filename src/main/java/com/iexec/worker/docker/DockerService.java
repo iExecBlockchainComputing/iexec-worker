@@ -1,4 +1,4 @@
-package com.iexec.worker;
+package com.iexec.worker.docker;
 
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
@@ -40,7 +40,13 @@ public class DockerService {
             String id = creation.id();
             docker.startContainer(id);
             String execOutput = docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
-            containerResult = new ContainerResult(image, tag, cmd, id, execOutput);
+            containerResult = ContainerResult.builder()
+                    .image(image)
+                    .tag(tag)
+                    .cmd(cmd)
+                    .containerId(id)
+                    .stdout(execOutput)
+                    .build();
             docker.killContainer(id);
             docker.removeContainer(id);
         } catch (DockerException | InterruptedException e) {

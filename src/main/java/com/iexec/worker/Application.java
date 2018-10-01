@@ -1,5 +1,6 @@
 package com.iexec.worker;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableFeignClients
 @EnableScheduling
+@Slf4j
 public class Application implements CommandLineRunner {
 
 	@Value("${core.address}")
@@ -21,6 +23,6 @@ public class Application implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		System.out.println("Address of the core: " + coreAddress);
+		log.info("Address of the core [address:{}]", coreAddress);
 	}
 }

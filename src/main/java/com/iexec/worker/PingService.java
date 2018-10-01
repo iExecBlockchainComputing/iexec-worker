@@ -1,8 +1,11 @@
 package com.iexec.worker;
 
+import com.iexec.worker.feign.CoreClient;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class PingService {
 
@@ -14,7 +17,7 @@ public class PingService {
 
     @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
-        System.out.println("try to ping scheduler");
+        log.info("try to ping scheduler");
         coreClient.ping("customWorker");
     }
 }

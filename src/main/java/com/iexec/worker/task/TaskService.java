@@ -1,5 +1,6 @@
-package com.iexec.worker;
+package com.iexec.worker.task;
 
+import com.iexec.worker.feign.CoreClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class TaskService {
     @Scheduled(fixedRate = 30000)
     public String getTask() {
         Replicate replicate = coreClient.getReplicate(workerName);
-        if (replicate.getTaskId() == null){
+        if (replicate == null || replicate.getTaskId() == null){
             return "NO TASK AVAILABLE";
         }
 
