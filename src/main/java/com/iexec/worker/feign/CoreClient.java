@@ -13,6 +13,10 @@ public interface CoreClient {
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
     void ping(@RequestParam(name = "workerName") String workerName);
 
+    @RequestMapping(method = RequestMethod.POST, path = "/workers/register")
+    void registerWorker(@RequestParam(name = "workerName") String workerName);
+
+
     @RequestMapping(method = RequestMethod.GET, path = "/tasks/available")
     Replicate getReplicate(@RequestParam(name = "workerName") String workerName);
 
