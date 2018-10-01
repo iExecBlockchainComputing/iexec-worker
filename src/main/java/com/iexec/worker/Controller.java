@@ -3,6 +3,9 @@ package com.iexec.worker;
 
 import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.feign.CoreClient;
+import com.iexec.worker.task.Replicate;
+import com.iexec.worker.task.ReplicateStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,11 +24,6 @@ public class Controller {
     public Controller(CoreClient coreClient, DockerService dockerService) {
         this.coreClient = coreClient;
         this.dockerService = dockerService;
-    }
-
-    @GetMapping("/michel")
-    public String hello(@RequestParam(name = "name", required = false, defaultValue = "Stranger") String name) {
-        return coreClient.hello(name);
     }
 
     @GetMapping("/getTask")

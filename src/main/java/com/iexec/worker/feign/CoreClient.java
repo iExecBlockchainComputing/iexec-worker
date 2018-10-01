@@ -1,5 +1,7 @@
-package com.iexec.worker;
+package com.iexec.worker.feign;
 
+import com.iexec.worker.task.Replicate;
+import com.iexec.worker.task.ReplicateStatus;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -7,9 +9,6 @@ import java.util.Optional;
 
 @FeignClient(name = "CoreClient", url = "${core.address}")
 public interface CoreClient {
-
-    @RequestMapping(method = RequestMethod.GET, path = "/hello")
-    String hello(@RequestParam(name = "name") String name);
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
     void ping(@RequestParam(name = "workerName") String workerName);

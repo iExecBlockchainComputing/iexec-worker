@@ -1,4 +1,4 @@
-package com.iexec.worker;
+package com.iexec.worker.task;
 
 public enum ReplicateStatus {
 
