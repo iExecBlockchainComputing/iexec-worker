@@ -10,10 +10,13 @@ import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.ContainerInfo;
 import com.spotify.docker.client.messages.ExecCreation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.io.UnsupportedEncodingException;
 
 @RestController
 public class Controller {
@@ -21,9 +24,12 @@ public class Controller {
     @Value("${worker.name}")
     private String workerName;
     private CoreClient coreClient;
+    private DockerService dockerService;
 
-    public Controller(CoreClient coreClient) {
+    @Autowired
+    public Controller(CoreClient coreClient, DockerService dockerService) {
         this.coreClient = coreClient;
+        this.dockerService = dockerService;
     }
 
     @GetMapping("/michel")
@@ -50,41 +56,11 @@ public class Controller {
         return ReplicateStatus.COMPLETED.toString();
     }
 
+    //http://localhost:18091/docker/run?image=ubuntu&tag=latest&cmd=ls
     @GetMapping("/docker/run")
     public ContainerResult dockerRun(@RequestParam(name = "image", required = false, defaultValue = "ubuntu") String image,
                             @RequestParam(name = "tag", required = false, defaultValue = "latest") String tag,
-                            @RequestParam(name = "cmd", required = false, defaultValue = "ls") String cmd) {
-        DockerClient docker = null;
-        try {
-            docker = DefaultDockerClient.fromEnv().build();
-        } catch (DockerCertificateException e) {
-            e.printStackTrace();
-        }
-        if (docker == null) {
-            return null;
-        }
-
-        String imageWithTag = image.concat(":").concat(tag);
-        final ContainerConfig containerConfig = ContainerConfig.builder()
-                .image(imageWithTag)
-                .cmd(cmd)
-                .build();
-
-        ContainerResult containerResult = null;
-        try {
-            docker.pull(imageWithTag);
-            ContainerCreation creation = docker.createContainer(containerConfig);
-            String id = creation.id();
-            docker.startContainer(id);
-            String execOutput = docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
-            containerResult = new ContainerResult(image, tag, cmd, id, execOutput);
-            docker.killContainer(id);
-            docker.removeContainer(id);
-        } catch (DockerException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        docker.close();
-
-        return containerResult;
+                            @RequestParam(name = "cmd", required = false, defaultValue = "") String cmd) {
+        return dockerService.dockerRun(image, tag, cmd);
     }
 }
