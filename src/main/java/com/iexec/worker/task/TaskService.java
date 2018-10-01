@@ -1,5 +1,7 @@
 package com.iexec.worker.task;
 
+import com.iexec.common.replicate.Replicate;
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.feign.CoreClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;

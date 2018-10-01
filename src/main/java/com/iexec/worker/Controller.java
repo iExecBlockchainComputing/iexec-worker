@@ -1,11 +1,11 @@
 package com.iexec.worker;
 
 
+import com.iexec.common.replicate.Replicate;
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CoreClient;
-import com.iexec.worker.task.Replicate;
-import com.iexec.worker.task.ReplicateStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
