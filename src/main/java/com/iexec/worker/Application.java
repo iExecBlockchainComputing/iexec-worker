@@ -45,6 +45,8 @@ public class Application implements CommandLineRunner {
 
         log.info("Address of the core [address:{}]", coreAddress);
         log.info("Version of the core [version:{}]", coreClient.getCoreVersion());
+        log.info("Get configuration of the core [config:{}]", coreClient.getPublicConfiguration());
+
         log.info("Registering the worker to the core [worker:{}]", model);
         coreClient.registerWorker(model);
     }

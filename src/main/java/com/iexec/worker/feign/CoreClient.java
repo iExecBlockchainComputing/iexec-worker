@@ -1,6 +1,7 @@
 package com.iexec.worker.feign;
 
 
+import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
@@ -14,6 +15,9 @@ public interface CoreClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/version")
     String getCoreVersion();
+
+    @RequestMapping(method = RequestMethod.GET, path = "/workers/config")
+    PublicConfiguration getPublicConfiguration();
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
     void ping(@RequestParam(name = "workerName") String workerName);
