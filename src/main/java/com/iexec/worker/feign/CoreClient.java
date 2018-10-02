@@ -1,6 +1,7 @@
 package com.iexec.worker.feign;
 
 
+import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -18,7 +19,7 @@ public interface CoreClient {
     void ping(@RequestParam(name = "workerName") String workerName);
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/register")
-    void registerWorker(@RequestParam(name = "workerName") String workerName);
+    void registerWorker(@RequestBody WorkerConfigurationModel model);
 
     @RequestMapping(method = RequestMethod.GET, path = "/tasks/available")
     ReplicateModel getReplicate(@RequestParam(name = "workerName") String workerName);
