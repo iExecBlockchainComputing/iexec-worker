@@ -6,8 +6,8 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CoreClient;
+import com.iexec.worker.utils.WorkerConfigurationService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,19 +15,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class Controller {
 
-    @Value("${worker.name}")
-    private String workerName;
     private CoreClient coreClient;
     private DockerService dockerService;
+    private WorkerConfigurationService workerConfigurationService;
 
     @Autowired
-    public Controller(CoreClient coreClient, DockerService dockerService) {
+    public Controller(CoreClient coreClient,
+                      DockerService dockerService,
+                      WorkerConfigurationService workerConfigurationService) {
         this.coreClient = coreClient;
         this.dockerService = dockerService;
+        this.workerConfigurationService = workerConfigurationService;
     }
 
     @GetMapping("/getTask")
     public String getTask() {
+        String workerName = workerConfigurationService.getWorkerName();
         Replicate replicate = coreClient.getReplicate(workerName);
         if (replicate.getTaskId() == null) {
             return "NO TASK AVAILABLE";
