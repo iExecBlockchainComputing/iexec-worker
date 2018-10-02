@@ -33,10 +33,10 @@ public class TaskService {
     public String getTask() {
         String workerName = workerConfigService.getWorkerName();
         ReplicateModel replicateModel = coreClient.getReplicate(workerName);
-        log.info("Getting task [taskId:{}]", replicateModel.getTaskId());
         if (replicateModel == null || replicateModel.getTaskId() == null) {
             return "NO TASK AVAILABLE";
         }
+        log.info("Getting task [taskId:{}]", replicateModel.getTaskId());
 
         coreClient.updateReplicateStatus(replicateModel.getTaskId(), ReplicateStatus.RUNNING, workerName);
 

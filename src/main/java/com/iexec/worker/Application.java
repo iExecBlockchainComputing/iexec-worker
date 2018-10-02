@@ -21,9 +21,6 @@ public class Application implements CommandLineRunner {
 	@Value("${core.address}")
 	private String coreAddress;
 
-    @Value("${worker.name}")
-    private String workerName;
-
 	@Autowired
 	private CoreClient coreClient;
 
@@ -48,7 +45,7 @@ public class Application implements CommandLineRunner {
 
         log.info("Address of the core [address:{}]", coreAddress);
         log.info("Version of the core [version:{}]", coreClient.getCoreVersion());
-        log.info("Registering the worker to the core [workerName:{}]", workerName);
-        coreClient.registerWorker(workerName);
+        log.info("Registering the worker to the core [worker:{}]", model);
+        coreClient.registerWorker(model);
     }
 }
