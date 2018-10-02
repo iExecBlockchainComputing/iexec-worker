@@ -29,9 +29,11 @@ public class Application implements CommandLineRunner {
 		SpringApplication.run(Application.class, args);
 	}
 
-	@Override
-	public void run(String... args) throws Exception {
-	    log.info("Address of the core [address:{}]", coreAddress);
-	    coreClient.registerWorker(workerName);
-	}
+    @Override
+    public void run(String... args) throws Exception {
+        log.info("Address of the core [address:{}]", coreAddress);
+        log.info("Version of the core [version:{}]", coreClient.getCoreVersion());
+        log.info("Registering the worker to the core [workerName:{}]", workerName);
+        coreClient.registerWorker(workerName);
+    }
 }
