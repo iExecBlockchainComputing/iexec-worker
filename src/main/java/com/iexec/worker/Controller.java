@@ -45,11 +45,10 @@ public class Controller {
         return ReplicateStatus.COMPLETED.toString();
     }
 
-    //http://localhost:18091/docker/run?image=ubuntu&tag=latest&cmd=ls
+    //http://localhost:18091/docker/run?image=iexechub/vanityeth:latest&cmd=a
     @GetMapping("/docker/run")
-    public ContainerResult dockerRun(@RequestParam(name = "image", required = false, defaultValue = "ubuntu") String image,
-                                     @RequestParam(name = "tag", required = false, defaultValue = "latest") String tag,
+    public ContainerResult dockerRun(@RequestParam(name = "image", required = false, defaultValue = "iexechub/vanityeth:latest") String image,
                                      @RequestParam(name = "cmd", required = false, defaultValue = "") String cmd) {
-        return dockerService.dockerRun(image, tag, cmd);
+        return dockerService.dockerRun(image, cmd);
     }
 }
