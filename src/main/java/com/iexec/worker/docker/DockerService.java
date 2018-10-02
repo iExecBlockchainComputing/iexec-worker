@@ -70,6 +70,7 @@ public class DockerService {
                 .driver("local")
                 .build();
         try {
+            docker.removeVolume(volumeName);
             return docker.createVolume(toCreate);
         } catch (DockerException | InterruptedException e) {
             e.printStackTrace();
