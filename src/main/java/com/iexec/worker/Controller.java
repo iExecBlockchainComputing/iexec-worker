@@ -1,7 +1,7 @@
 package com.iexec.worker;
 
 
-import com.iexec.common.replicate.Replicate;
+import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
@@ -28,12 +28,14 @@ public class Controller {
 
     @GetMapping("/getTask")
     public String getTask() {
-        Replicate replicate = coreClient.getReplicate(workerName);
+        ReplicateModel replicate = coreClient.getReplicate(workerName);
         if (replicate.getTaskId() == null) {
             return "NO TASK AVAILABLE";
         }
 
         coreClient.updateReplicateStatus(replicate.getTaskId(), ReplicateStatus.RUNNING, workerName);
+
+
 
         // simulate some work on the task
         try {
