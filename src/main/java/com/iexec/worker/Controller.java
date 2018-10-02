@@ -5,9 +5,10 @@ import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.feign.CoreClient;
+import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,15 +16,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class Controller {
 
-    private CoreClient coreClient;
+
+    @Value("${worker.name}")
+    private String workerName;
+    private CoreTaskClient coreTaskClient;
+
     private DockerService dockerService;
     private WorkerConfigurationService workerConfigurationService;
 
     @Autowired
-    public Controller(CoreClient coreClient,
+    public Controller(CoreTaskClient coreTaskClient,
                       DockerService dockerService,
                       WorkerConfigurationService workerConfigurationService) {
-        this.coreClient = coreClient;
+        this.coreTaskClient = coreTaskClient;
         this.dockerService = dockerService;
         this.workerConfigurationService = workerConfigurationService;
     }
@@ -31,12 +36,12 @@ public class Controller {
     @GetMapping("/getTask")
     public String getTask() {
         String workerName = workerConfigurationService.getWorkerName();
-        ReplicateModel replicate = coreClient.getReplicate(workerName);
+        ReplicateModel replicate = coreTaskClient.getReplicate(workerName).getBody();
         if (replicate.getTaskId() == null) {
             return "NO TASK AVAILABLE";
         }
 
-        coreClient.updateReplicateStatus(replicate.getTaskId(), ReplicateStatus.RUNNING, workerName);
+        coreTaskClient.updateReplicateStatus(replicate.getTaskId(), ReplicateStatus.RUNNING, workerName);
 
         // simulate some work on the task
         try {
@@ -44,7 +49,7 @@ public class Controller {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        coreClient.updateReplicateStatus(replicate.getTaskId(), ReplicateStatus.COMPLETED, workerName);
+        coreTaskClient.updateReplicateStatus(replicate.getTaskId(), ReplicateStatus.COMPLETED, workerName);
         return ReplicateStatus.COMPLETED.toString();
     }
 
@@ -54,4 +59,5 @@ public class Controller {
                                      @RequestParam(name = "cmd", required = false, defaultValue = "") String cmd) {
         return dockerService.dockerRun(image, cmd);
     }
+
 }

@@ -1,7 +1,8 @@
 package com.iexec.worker;
 
+
 import com.iexec.common.config.WorkerConfigurationModel;
-import com.iexec.worker.feign.CoreClient;
+import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,23 +19,23 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Slf4j
 public class Application implements CommandLineRunner {
 
-	@Value("${core.address}")
-	private String coreAddress;
+    @Value("${core.address}")
+    private String coreAddress;
 
-	@Autowired
-	private CoreClient coreClient;
+    @Autowired
+    private CoreWorkerClient coreWorkerClient;
 
-	@Autowired
+    @Autowired
     private WorkerConfigurationService workerConfig;
 
-	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
 
     @Override
     public void run(String... args) throws Exception {
 
-	    WorkerConfigurationModel model = WorkerConfigurationModel.builder()
+        WorkerConfigurationModel model = WorkerConfigurationModel.builder()
                 .name(workerConfig.getWorkerName())
                 .os(workerConfig.getOS())
                 .cpu(workerConfig.getCPU())
@@ -44,10 +45,11 @@ public class Application implements CommandLineRunner {
         log.info("Configuration of the worker [configuration:{}]", model);
 
         log.info("Address of the core [address:{}]", coreAddress);
-        log.info("Version of the core [version:{}]", coreClient.getCoreVersion());
-        log.info("Get configuration of the core [config:{}]", coreClient.getPublicConfiguration());
+        log.info("Version of the core [version:{}]", coreWorkerClient.getCoreVersion());
+        log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
 
         log.info("Registering the worker to the core [worker:{}]", model);
-        coreClient.registerWorker(model);
+        coreWorkerClient.registerWorker(model);
+
     }
 }
