@@ -6,14 +6,12 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.ResultModel;
 import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
-
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
-
 import com.iexec.worker.feign.CoreTaskClient;
+import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -40,8 +38,6 @@ public class TaskService {
     public String getTask() {
         String workerName = workerConfigService.getWorkerName();
         ReplicateModel replicateModel = coreTaskClient.getReplicate(workerName).getBody();
-        log.info("Getting task [taskId:{}]", replicateModel.getTaskId());
-
         if (replicateModel == null || replicateModel.getTaskId() == null) {
             return "NO TASK AVAILABLE";
         }
