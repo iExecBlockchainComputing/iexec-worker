@@ -16,9 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class Controller {
 
-
-    @Value("${worker.name}")
-    private String workerName;
     private CoreTaskClient coreTaskClient;
 
     private DockerService dockerService;
