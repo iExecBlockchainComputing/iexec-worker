@@ -3,7 +3,11 @@ package com.iexec.worker.task;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.result.ResultModel;
+import com.iexec.worker.docker.ContainerResult;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.feign.ResultRepoClient;
+import com.iexec.worker.utils.WorkerConfigurationService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -19,12 +23,15 @@ public class TaskService {
     private CoreTaskClient coreTaskClient;
     private DockerService dockerService;
     private WorkerConfigurationService workerConfigService;
+    private ResultRepoClient resultRepoClient;
 
     @Autowired
-    public TaskService(CoreTaskClient coreTaskClient, DockerService dockerService,  WorkerConfigurationService workerConfigService) {
+    public TaskService(CoreTaskClient coreTaskClient, DockerService dockerService,
+                       WorkerConfigurationService workerConfigService, ResultRepoClient resultRepoClient) {
         this.coreTaskClient = coreTaskClient;
         this.dockerService = dockerService;
         this.workerConfigService = workerConfigService;
+        this.resultRepoClient = resultRepoClient;
     }
 
     @Scheduled(fixedRate = 30000)
@@ -41,7 +48,15 @@ public class TaskService {
         coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), ReplicateStatus.RUNNING, workerName);
 
         if (replicateModel.getDappType().equals(DappType.DOCKER)) {
-            dockerService.dockerRun(replicateModel.getDappName(), replicateModel.getCmd());
+            ContainerResult containerResult = dockerService.dockerRun(replicateModel.getDappName(), replicateModel.getCmd());
+            ResultModel resultModel = ResultModel.builder()
+                    .taskId(replicateModel.getTaskId())
+                    .image(containerResult.getImage())
+                    .cmd(containerResult.getCmd())
+                    .stdout(containerResult.getStdout())
+                    .payload(null).build();
+            resultRepoClient.addResult(resultModel);
+
         } else {
             // simulate some work on the task
             try {
