@@ -19,9 +19,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class TaskService {
 
-    @Value("${worker.name}")
-    private String workerName;
-
     private CoreTaskClient coreTaskClient;
     private DockerService dockerService;
     private WorkerConfigurationService workerConfigService;
