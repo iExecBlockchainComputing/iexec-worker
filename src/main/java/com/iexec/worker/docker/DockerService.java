@@ -47,7 +47,7 @@ public class DockerService {
     public MetadataResult dockerRun(String taskId, String image, String cmd) {
         //TODO: check image equals image:tag
         final Volume volume = createVolume(LOCAL_BASE_VOLUME + "-" + taskId);
-        final HostConfig hostConfig = createHostConfig(LOCAL_BASE_VOLUME+ "-" + taskId, REMOTE_PATH);
+        final HostConfig hostConfig = createHostConfig(LOCAL_BASE_VOLUME + "-" + taskId, REMOTE_PATH);
         final ContainerConfig containerConfig = createContainerConfig(image, cmd, hostConfig);
 
         MetadataResult metadataResult = null;
@@ -175,17 +175,16 @@ public class DockerService {
 
     public ResultModel getResultModelWithPayload(String taskId) {
         MetadataResult metadataResult = metadataResultMap.get(taskId);
-        byte[] payload = getZipResultAsBinary(taskId);
-
+        byte[] zipResultAsBytes = getZipResultAsBytes(taskId);
         return ResultModel.builder()
                 .taskId(taskId)
                 .image(metadataResult.getImage())
                 .cmd(metadataResult.getCmd())
                 .stdout(metadataResult.getStdout())
-                .payload(payload).build();
+                .zip(zipResultAsBytes).build();
     }
 
-    private byte[] getZipResultAsBinary(String taskId) {
+    private byte[] getZipResultAsBytes(String taskId) {
         byte[] resultByte = null;
         try {
             File resultZip = new File(LOCAL_PATH + "/" + taskId + ".zip");
@@ -195,7 +194,6 @@ public class DockerService {
         }
         return resultByte;
     }
-
 
     @PreDestroy
     public void onPreDestroy() {
