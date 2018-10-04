@@ -47,12 +47,4 @@ public class Controller {
         return ReplicateStatus.COMPLETED.toString();
     }
 
-    /*
-    //http://localhost:18091/docker/run?image=iexechub/vanityeth:latest&cmd=a
-    @GetMapping("/docker/run")
-    public MetadataResult dockerRun(@RequestParam(name = "image", required = false, defaultValue = "iexechub/vanityeth:latest") String image,
-                                @RequestParam(name = "cmd", required = false, defaultValue = "") String cmd) {
-        return dockerService.dockerRun(replicateModel.getTaskId(), image, cmd);
-    }*/
-
 }
