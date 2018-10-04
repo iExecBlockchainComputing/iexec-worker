@@ -7,4 +7,3 @@ core:
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
   volumeName: ${IEXEC_WORKER_VOLUME_NAME:iexec-worker-volume}
-  localPath: ${IEXEC_WORKER_LOCAL_PATH:/home/james/iexec2}
