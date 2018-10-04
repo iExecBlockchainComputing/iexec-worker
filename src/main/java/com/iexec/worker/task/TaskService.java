@@ -49,16 +49,8 @@ public class TaskService {
         if (replicateModel.getDappType().equals(DappType.DOCKER)) {
             MetadataResult metadataResult = dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
 
-            ResultModel resultModelWithPayload = dockerService.getResultModelWithPayload(replicateModel.getTaskId());
-
-
-            //byte[] payload = dockerService.getZipResultAsBinary(replicateModel.getTaskId());
-
-            //MetadataResult fullResult = dockerService.getResultModelWithPayload(replicateModel.getTaskId());
-
-            //resultModel.setPayload(payload);
-
-            resultRepoClient.addResult(resultModelWithPayload);
+            //TODO: Upload result when core is asking for
+            resultRepoClient.addResult(dockerService.getResultModelWithPayload(replicateModel.getTaskId()));
 
         } else {
             // simulate some work on the task
