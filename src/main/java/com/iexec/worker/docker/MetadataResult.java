@@ -9,11 +9,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ContainerResult {
+public class MetadataResult {
 
     private String image;
     private String tag;
     private String cmd;
     private String containerId;
     private String stdout;
+
 }

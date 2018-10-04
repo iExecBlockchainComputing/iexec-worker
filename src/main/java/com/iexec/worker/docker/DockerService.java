@@ -1,5 +1,7 @@
 package com.iexec.worker.docker;
 
+import com.iexec.common.result.ResultModel;
+import com.iexec.worker.utils.WorkerConfigurationService;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
@@ -12,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -19,49 +22,59 @@ import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Slf4j
 @Service
 public class DockerService {
 
     private final String REMOTE_PATH = "/iexec";
-    private final String LOCAL_PATH = "/home/james/iexec2";
-    private final String LOCAL_BASE_VOLUME = "iexec-worker-volume";
 
     private DefaultDockerClient docker;
+    private Map<String, MetadataResult> metadataResultMap = new HashMap<>();
+    private WorkerConfigurationService workerConfigurationService;
+
+    public DockerService(WorkerConfigurationService workerConfigurationService) {
+        this.workerConfigurationService = workerConfigurationService;
+    }
 
     @PostConstruct
     public void onPostConstruct() throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
     }
 
-    public ContainerResult dockerRun(String image, String cmd) {
+    public MetadataResult dockerRun(String taskId, String image, String cmd) {
         //TODO: check image equals image:tag
-
-        final Volume volume = createVolume(LOCAL_BASE_VOLUME);
-        final HostConfig hostConfig = createHostConfig(LOCAL_BASE_VOLUME, REMOTE_PATH);
+        final Volume volume = createVolume(workerConfigurationService.getWorkerVolumeName() + "-" + taskId);
+        final HostConfig hostConfig = createHostConfig(workerConfigurationService.getWorkerVolumeName() + "-" + taskId, REMOTE_PATH);
         final ContainerConfig containerConfig = createContainerConfig(image, cmd, hostConfig);
 
-        ContainerResult containerResult = null;
+        MetadataResult metadataResult = null;
         try {
             pullImage(image);
             String id = startContainer(containerConfig);
             waitContainerForExitStatus(id);
 
-            containerResult = ContainerResult.builder()
+            metadataResult = MetadataResult.builder()
                     .image(image)
                     .cmd(cmd)
                     .containerId(id)
                     .stdout(getDockerLogs(id))
                     .build();
 
-            copyFolderFromContainerToHost(id, REMOTE_PATH, LOCAL_PATH);
-
+            metadataResultMap.put(taskId, metadataResult);//save metadataResult (without zip payload) in memory
+            copyFolderFromContainerToHost(id, REMOTE_PATH, workerConfigurationService.getLocalPath() + "/" + taskId);
+            zipTaskResult(taskId);
             docker.removeContainer(id);
         } catch (DockerException | InterruptedException | IOException e) {
             e.printStackTrace();
         }
-        return containerResult;
+        return metadataResult;
     }
 
     private Volume createVolume(String volumeName) {
@@ -70,7 +83,7 @@ public class DockerService {
                 .driver("local")
                 .build();
         try {
-            docker.removeVolume(volumeName);
+            //docker.removeVolume(volumeName);
             return docker.createVolume(toCreate);
         } catch (DockerException | InterruptedException e) {
             e.printStackTrace();
@@ -125,6 +138,7 @@ public class DockerService {
 
     private void copyFolderFromContainerToHost(String id, String remotePath, String localPath) throws DockerException, InterruptedException, IOException {
         final TarArchiveInputStream tarStream = new TarArchiveInputStream(docker.archiveContainer(id, remotePath));
+
         TarArchiveEntry entry;
         while ((entry = tarStream.getNextTarEntry()) != null) {
             log.info(entry.getName());
@@ -138,6 +152,51 @@ public class DockerService {
             }
             IOUtils.copy(tarStream, new FileOutputStream(curfile));
         }
+    }
+
+    private void zipTaskResult(String taskId) {
+        String folderToZip = workerConfigurationService.getLocalPath() + "/" + taskId;
+        String zipName = folderToZip + ".zip";
+        try {
+            zipFolder(Paths.get(folderToZip), Paths.get(zipName));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
+        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
+        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
+                Files.copy(file, zos);
+                zos.closeEntry();
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        zos.close();
+    }
+
+    public ResultModel getResultModelWithPayload(String taskId) {
+        MetadataResult metadataResult = metadataResultMap.get(taskId);
+        byte[] zipResultAsBytes = getZipResultAsBytes(taskId);
+        return ResultModel.builder()
+                .taskId(taskId)
+                .image(metadataResult.getImage())
+                .cmd(metadataResult.getCmd())
+                .stdout(metadataResult.getStdout())
+                .zip(zipResultAsBytes).build();
+    }
+
+    private byte[] getZipResultAsBytes(String taskId) {
+        byte[] resultByte = null;
+        try {
+            File resultZip = new File(workerConfigurationService.getLocalPath() + "/" + taskId + ".zip");
+            resultByte = FileUtils.readFileToByteArray(resultZip);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return resultByte;
     }
 
     @PreDestroy
