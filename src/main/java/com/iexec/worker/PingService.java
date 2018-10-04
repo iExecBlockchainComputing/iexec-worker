@@ -1,6 +1,5 @@
 package com.iexec.worker;
 
-import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +19,9 @@ public class PingService {
         this.workerConfService = workerConfService;
     }
 
-
     @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
-        log.info("try to ping scheduler");
+        log.debug("Send ping to scheduler");
         coreWorkerClient.ping(workerConfService.getWorkerName());
     }
 }

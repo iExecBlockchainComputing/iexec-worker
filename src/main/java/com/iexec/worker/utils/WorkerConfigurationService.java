@@ -9,19 +9,26 @@ public class WorkerConfigurationService {
     @Value("${worker.name}")
     private String workerName;
 
-    public String getWorkerName(){
+    @Value("${worker.VolumeName}")
+    private String workerVolumeName;
+
+    public String getWorkerName() {
         return workerName;
     }
 
-    public String getOS(){
+    public String getWorkerVolumeName() {
+        return workerVolumeName;
+    }
+
+    public String getOS() {
         return System.getProperty("os.name").trim();
     }
 
-    public String getCPU(){
+    public String getCPU() {
         return System.getProperty("os.arch");
     }
 
-    public int getNbCPU(){
+    public int getNbCPU() {
         return Runtime.getRuntime().availableProcessors();
     }
 }

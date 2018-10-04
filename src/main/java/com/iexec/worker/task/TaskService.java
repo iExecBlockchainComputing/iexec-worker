@@ -3,12 +3,11 @@ package com.iexec.worker.task;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.result.ResultModel;
-import com.iexec.worker.docker.MetadataResult;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.docker.MetadataResult;
+import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
-import com.iexec.worker.feign.CoreTaskClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,15 +35,14 @@ public class TaskService {
     @Scheduled(fixedRate = 30000)
     public String getTask() {
         String workerName = workerConfigService.getWorkerName();
-        ReplicateModel replicateModel = coreTaskClient.getReplicate(workerName).getBody();
+        ReplicateModel replicateModel = coreTaskClient.getReplicate(workerName);
         if (replicateModel == null || replicateModel.getTaskId() == null) {
             return "NO TASK AVAILABLE";
         }
         log.info("Getting task [taskId:{}]", replicateModel.getTaskId());
 
-
-        log.info(replicateModel.getTaskId());
-        coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), ReplicateStatus.RUNNING, workerName);
+        log.info("Update replicate status to RUNNING [taskId:{}, workerName:{}]", replicateModel.getTaskId(), workerName);
+        coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), workerName, ReplicateStatus.RUNNING);
 
         if (replicateModel.getDappType().equals(DappType.DOCKER)) {
             MetadataResult metadataResult = dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
@@ -61,8 +59,8 @@ public class TaskService {
             }
         }
 
-
-        coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), ReplicateStatus.COMPLETED, workerName);
+        log.info("Update replicate status to COMPLETED[taskId:{}, workerName:{}]", replicateModel.getTaskId(), workerName);
+        coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), workerName, ReplicateStatus.COMPLETED);
 
         return ReplicateStatus.COMPLETED.toString();
     }

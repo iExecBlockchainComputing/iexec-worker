@@ -1,6 +1,7 @@
 package com.iexec.worker.docker;
 
 import com.iexec.common.result.ResultModel;
+import com.iexec.worker.utils.WorkerConfigurationService;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
@@ -34,10 +35,14 @@ public class DockerService {
 
     private final String REMOTE_PATH = "/iexec";
     private final String LOCAL_PATH = "/home/james/iexec2";
-    private final String LOCAL_BASE_VOLUME = "iexec-worker-volume";
 
     private DefaultDockerClient docker;
     private Map<String, MetadataResult> metadataResultMap = new HashMap<>();
+    private WorkerConfigurationService workerConfigurationService;
+
+    public DockerService(WorkerConfigurationService workerConfigurationService) {
+        this.workerConfigurationService = workerConfigurationService;
+    }
 
     @PostConstruct
     public void onPostConstruct() throws DockerCertificateException {
@@ -46,8 +51,8 @@ public class DockerService {
 
     public MetadataResult dockerRun(String taskId, String image, String cmd) {
         //TODO: check image equals image:tag
-        final Volume volume = createVolume(LOCAL_BASE_VOLUME + "-" + taskId);
-        final HostConfig hostConfig = createHostConfig(LOCAL_BASE_VOLUME + "-" + taskId, REMOTE_PATH);
+        final Volume volume = createVolume(workerConfigurationService.getWorkerVolumeName() + "-" + taskId);
+        final HostConfig hostConfig = createHostConfig(workerConfigurationService.getWorkerVolumeName() + "-" + taskId, REMOTE_PATH);
         final ContainerConfig containerConfig = createContainerConfig(image, cmd, hostConfig);
 
         MetadataResult metadataResult = null;
