@@ -9,7 +9,7 @@ public class WorkerConfigurationService {
     @Value("${worker.name}")
     private String workerName;
 
-    @Value("${worker.VolumeName}")
+    @Value("${worker.volumeName}")
     private String workerVolumeName;
 
     public String getWorkerName() {
