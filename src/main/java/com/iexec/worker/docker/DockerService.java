@@ -34,7 +34,6 @@ import java.util.zip.ZipOutputStream;
 public class DockerService {
 
     private final String REMOTE_PATH = "/iexec";
-    private final String LOCAL_PATH = "/home/james/iexec2";
 
     private DefaultDockerClient docker;
     private Map<String, MetadataResult> metadataResultMap = new HashMap<>();
@@ -69,7 +68,7 @@ public class DockerService {
                     .build();
 
             metadataResultMap.put(taskId, metadataResult);//save metadataResult (without zip payload) in memory
-            copyFolderFromContainerToHost(id, REMOTE_PATH, LOCAL_PATH + "/" + taskId);
+            copyFolderFromContainerToHost(id, REMOTE_PATH, workerConfigurationService.getLocalPath() + "/" + taskId);
             zipTaskResult(taskId);
             docker.removeContainer(id);
         } catch (DockerException | InterruptedException | IOException e) {
@@ -156,7 +155,7 @@ public class DockerService {
     }
 
     private void zipTaskResult(String taskId) {
-        String folderToZip = LOCAL_PATH + "/" + taskId;
+        String folderToZip = workerConfigurationService.getLocalPath() + "/" + taskId;
         String zipName = folderToZip + ".zip";
         try {
             zipFolder(Paths.get(folderToZip), Paths.get(zipName));
@@ -192,7 +191,7 @@ public class DockerService {
     private byte[] getZipResultAsBytes(String taskId) {
         byte[] resultByte = null;
         try {
-            File resultZip = new File(LOCAL_PATH + "/" + taskId + ".zip");
+            File resultZip = new File(workerConfigurationService.getLocalPath() + "/" + taskId + ".zip");
             resultByte = FileUtils.readFileToByteArray(resultZip);
         } catch (IOException e) {
             e.printStackTrace();

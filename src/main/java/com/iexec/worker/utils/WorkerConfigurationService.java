@@ -12,12 +12,19 @@ public class WorkerConfigurationService {
     @Value("${worker.volumeName}")
     private String workerVolumeName;
 
+    @Value("${worker.localPath}")
+    private String localPath;
+
     public String getWorkerName() {
         return workerName;
     }
 
     public String getWorkerVolumeName() {
         return workerVolumeName;
+    }
+
+    public String getLocalPath() {
+        return localPath;
     }
 
     public String getOS() {
