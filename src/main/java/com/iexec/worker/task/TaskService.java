@@ -4,12 +4,11 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.ResultModel;
-import com.iexec.worker.docker.ContainerResult;
+import com.iexec.worker.docker.MetadataResult;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import com.iexec.worker.feign.CoreTaskClient;
-import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -48,14 +47,18 @@ public class TaskService {
         coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), ReplicateStatus.RUNNING, workerName);
 
         if (replicateModel.getDappType().equals(DappType.DOCKER)) {
-            ContainerResult containerResult = dockerService.dockerRun(replicateModel.getDappName(), replicateModel.getCmd());
-            ResultModel resultModel = ResultModel.builder()
-                    .taskId(replicateModel.getTaskId())
-                    .image(containerResult.getImage())
-                    .cmd(containerResult.getCmd())
-                    .stdout(containerResult.getStdout())
-                    .payload(null).build();
-            resultRepoClient.addResult(resultModel);
+            MetadataResult metadataResult = dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
+
+            ResultModel resultModelWithPayload = dockerService.getResultModelWithPayload(replicateModel.getTaskId());
+
+
+            //byte[] payload = dockerService.getZipResultAsBinary(replicateModel.getTaskId());
+
+            //MetadataResult fullResult = dockerService.getResultModelWithPayload(replicateModel.getTaskId());
+
+            //resultModel.setPayload(payload);
+
+            resultRepoClient.addResult(resultModelWithPayload);
 
         } else {
             // simulate some work on the task
