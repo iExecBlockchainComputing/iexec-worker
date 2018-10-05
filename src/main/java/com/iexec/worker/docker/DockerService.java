@@ -11,17 +11,12 @@ import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.HostConfig;
 import com.spotify.docker.client.messages.Volume;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
@@ -60,18 +55,19 @@ public class DockerService {
             String id = startContainer(containerConfig);
             waitContainerForExitStatus(id);
 
+
+
             metadataResult = MetadataResult.builder()
                     .image(image)
                     .cmd(cmd)
                     .containerId(id)
-                    .stdout(getDockerLogs(id))
                     .volumeName(volume.name())
                     .volumeMountPoint(volume.mountpoint())
                     .build();
 
             metadataResultMap.put(taskId, metadataResult);//save metadataResult (without zip payload) in memory
 
-            docker.removeContainer(id);
+            //docker.removeContainer(id);
         } catch (DockerException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -137,12 +133,13 @@ public class DockerService {
         return docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
     }
 
-    public ResultModel getResultModelWithPayload(String taskId) {
+    public ResultModel getResultModelWithZip(String taskId) {
         MetadataResult metadataResult = metadataResultMap.get(taskId);
 
-        byte[] zipResultAsBytes = getZipResultAsBytes(metadataResult.getVolumeMountPoint());
+        byte[] zipResultAsBytes = getResultZipAsBytes(metadataResult);
 
         try {
+            docker.removeContainer(metadataResult.getContainerId());
             docker.removeVolume(metadataResult.getVolumeName());
         } catch (DockerException | InterruptedException e) {
             e.printStackTrace();
@@ -152,28 +149,54 @@ public class DockerService {
                 .taskId(taskId)
                 .image(metadataResult.getImage())
                 .cmd(metadataResult.getCmd())
-                .stdout(metadataResult.getStdout())
                 .zip(zipResultAsBytes).build();
     }
 
-    private byte[] getZipResultAsBytes(String pathToZip) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    private byte[] getResultZipAsBytes(MetadataResult metadataResult) {
+        byte[] zipResultAsBytes = new byte[0];
         try {
+            String folderPathToZip = metadataResult.getVolumeMountPoint();
+            String dockerLogs = getDockerLogs(metadataResult.getContainerId());
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ZipOutputStream zos = new ZipOutputStream(baos);
-            Path sourceFolderPath = Paths.get(pathToZip);
-            Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
-                    Files.copy(file, zos);
-                    zos.closeEntry();
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-            zos.close();
-        } catch (IOException e) {
+            try {
+                addResultFilesToZipOutputStream(folderPathToZip, zos);
+                addStdoutFileToZipOutputStream(dockerLogs, zos);
+                zos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            zipResultAsBytes = baos.toByteArray();
+        } catch (DockerException | InterruptedException e) {
             e.printStackTrace();
         }
-        return baos.toByteArray();
+        return zipResultAsBytes;
+    }
+
+    private void addResultFilesToZipOutputStream(String pathToZip, ZipOutputStream zos) throws IOException {
+        Path sourceFolderPath = Paths.get(pathToZip);
+        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
+                Files.copy(file, zos);
+                zos.closeEntry();
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    private void addStdoutFileToZipOutputStream(String stdout, ZipOutputStream zos) throws IOException {
+        byte[] buffer = new byte[1024];
+        zos.putNextEntry(new ZipEntry("stdout.txt"));
+        InputStream fis = new ByteArrayInputStream(stdout.getBytes(StandardCharsets.UTF_8));
+        int length;
+        while((length = fis.read(buffer)) > 0)
+        {
+            zos.write(buffer, 0, length);
+        }
+        zos.closeEntry();
+        fis.close();
     }
 
     @PreDestroy

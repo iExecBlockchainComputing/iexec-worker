@@ -48,7 +48,7 @@ public class TaskService {
             MetadataResult metadataResult = dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
 
             //TODO: Upload result when core is asking for
-            resultRepoClient.addResult(dockerService.getResultModelWithPayload(replicateModel.getTaskId()));
+            resultRepoClient.addResult(dockerService.getResultModelWithZip(replicateModel.getTaskId()));
 
         } else {
             // simulate some work on the task

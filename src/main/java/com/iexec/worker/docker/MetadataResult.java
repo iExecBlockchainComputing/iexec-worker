@@ -15,7 +15,6 @@ public class MetadataResult {
     private String tag;
     private String cmd;
     private String containerId;
-    private String stdout;
     private String volumeName;
     private String volumeMountPoint;
 
