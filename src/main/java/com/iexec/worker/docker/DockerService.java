@@ -247,12 +247,21 @@ public class DockerService {
         if (pathToZip != null) {
             Path sourceFolderPath = Paths.get(pathToZip);
             Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFileFailed(Path path, IOException e) throws IOException {
+                    log.info("Skipped visit {}", path.getFileName());
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+
+                @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    log.info("Visited {}", file.getFileName());
                     zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
                     Files.copy(file, zos);
                     zos.closeEntry();
                     return FileVisitResult.CONTINUE;
                 }
+
             });
         }
     }
