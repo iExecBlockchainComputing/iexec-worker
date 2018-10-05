@@ -68,7 +68,7 @@ public class DockerService {
                 metadataResult.setContainerId(containerId);
                 boolean isExecutionDone = waitContainerForExitStatus(taskId, containerId);
                 if (!isExecutionDone) {
-                    metadataResult.setMessage("Container execution failed");
+                    metadataResult.setMessage("Computation failed");
                 }
             } else {
                 metadataResult.setMessage("Unable to start container");
@@ -82,9 +82,13 @@ public class DockerService {
 
     private boolean pullImage(String taskId, String image) {
         try {
+            log.info("Image pull started [taskId:{}, image:{}]",
+                    taskId, image);
             docker.pull(image);
+            log.info("Image pull completed [taskId:{}, image:{}]",
+                    taskId, image);
         } catch (DockerException | InterruptedException e) {
-            log.info("Unable to pull image [taskId:{}, image:{}]", taskId, image);
+            log.error("Image pull failed [taskId:{}, image:{}]", taskId, image);
             return false;
         }
         return true;
@@ -137,9 +141,11 @@ public class DockerService {
             id = creation.id();
             if (id != null) {
                 docker.startContainer(id);
+                log.error("Computation start completed [taskId:{}, image:{}, cmd:{}]",
+                        taskId, containerConfig.image(), containerConfig.cmd());
             }
         } catch (DockerException | InterruptedException e) {
-            log.info("Unable to start container [taskId:{}, image:{}, cmd:{}]",
+            log.error("Computation start failed [taskId:{}, image:{}, cmd:{}]",
                     taskId, containerConfig.image(), containerConfig.cmd());
             removeContainer(id);
             id = null;
@@ -153,12 +159,14 @@ public class DockerService {
         try {
             while (!docker.inspectContainer(containerId).state().status().equals("exited")) {
                 Thread.sleep(1000);
-                log.info("Container execution done [taskId:{}, containerId:{}, status:{}]",
+                log.info("Computation running [taskId:{}, containerId:{}, status:{}]",
                         taskId, containerId, docker.inspectContainer(containerId).state().status());
-                isExecutionDone = true;
             }
+            log.info("Computation completed [taskId:{}, containerId:{}]",
+                    taskId, containerId);
+            isExecutionDone = true;
         } catch (DockerException | InterruptedException e) {
-            log.info("Container execution failed [taskId:{}, containerId:{}]",
+            log.error("Computation failed [taskId:{}, containerId:{}]",
                     taskId, containerId);
         }
         return isExecutionDone;
@@ -229,7 +237,7 @@ public class DockerService {
             try {
                 logs = docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
             } catch (DockerException | InterruptedException e) {
-                log.info("Unable to get logs from container [containerId:{}]", id);
+                log.error("Failed to get logs of computation [containerId:{}]", id);
             }
         }
         return logs;
