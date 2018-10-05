@@ -17,5 +17,6 @@ public class MetadataResult {
     private String containerId;
     private String volumeName;
     private String volumeMountPoint;
+    private String message;
 
 }
