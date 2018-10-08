@@ -43,7 +43,7 @@ public class Application implements CommandLineRunner {
                 .build();
 
         log.info("Configuration of the worker [configuration:{}]", model);
-
+        log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Address of the core [address:{}]", coreAddress);
         log.info("Version of the core [version:{}]", coreWorkerClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
