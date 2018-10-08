@@ -11,15 +11,17 @@ import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.HostConfig;
 import com.spotify.docker.client.messages.Volume;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
@@ -32,18 +34,90 @@ import java.util.zip.ZipOutputStream;
 public class DockerService {
 
     private final String REMOTE_PATH = "/iexec";
+    private final String STDOUT_FILENAME = "stdout.txt";
+    private final String DOCKER_BASE_VOLUME_NAME = "iexec-worker-";
 
     private DefaultDockerClient docker;
     private Map<String, MetadataResult> metadataResultMap = new HashMap<>();
-    private WorkerConfigurationService workerConfigurationService;
+    private WorkerConfigurationService configurationService;
 
-    public DockerService(WorkerConfigurationService workerConfigurationService) {
-        this.workerConfigurationService = workerConfigurationService;
+    public DockerService(WorkerConfigurationService configurationService) {
+        this.configurationService = configurationService;
+    }
+
+    private static boolean createFileWithContent(String directoryPath, String filename, String data) {
+        boolean fileCreated = false;
+        if (createDirectories(directoryPath)) {
+            Path path = Paths.get(directoryPath + "/" + filename);
+            byte[] strToBytes = data.getBytes();
+            try {
+                Files.write(path, strToBytes);
+                log.debug("File created [directoryPath:{}, filename:{}]", directoryPath, filename);
+                fileCreated = true;
+            } catch (IOException e) {
+                log.error("Failed to create file [directoryPath:{}, filename:{}]", directoryPath, filename);
+            }
+        } else {
+            log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
+        }
+        return fileCreated;
+    }
+
+    private static boolean createDirectories(String directoryPath) {
+        File baseDirectory = new File(directoryPath);
+        boolean dirCreated;
+        if (!baseDirectory.exists()) {
+            dirCreated = baseDirectory.mkdirs();
+        } else {
+            dirCreated = true;
+        }
+        return dirCreated;
+    }
+
+    private static HostConfig createHostConfig(Volume from, String to) {
+        return HostConfig.builder()
+                .appendBinds(HostConfig.Bind.from(from)
+                        .to(to)
+                        .readOnly(false)
+                        .build())
+                .build();
+    }
+
+    private static ContainerConfig createContainerConfig(String imageWithTag, String cmd, HostConfig hostConfig) {
+        ContainerConfig.Builder builder = ContainerConfig.builder()
+                .image(imageWithTag)
+                .hostConfig(hostConfig);
+        ContainerConfig containerConfig;
+        if (cmd == null || cmd.isEmpty()) {
+            containerConfig = builder.build();
+        } else {
+            containerConfig = builder.cmd(cmd).build();
+        }
+        return containerConfig;
+    }
+
+    private static void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
+        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
+        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                log.debug(file.toAbsolutePath().toString());
+                zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
+                Files.copy(file, zos);
+                zos.closeEntry();
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        zos.close();
     }
 
     @PostConstruct
     public void onPostConstruct() throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
+    }
+
+    @PreDestroy
+    public void onPreDestroy() {
+        docker.close();
     }
 
     public MetadataResult dockerRun(String taskId, String image, String cmd) {
@@ -56,26 +130,36 @@ public class DockerService {
         boolean isImagePulled = pullImage(taskId, image);
 
         if (isImagePulled) {
-            final Volume volume = createVolume(workerConfigurationService.getWorkerVolumeName() + "-" + taskId);
-            metadataResult.setVolumeName(volume.name());
-            metadataResult.setVolumeMountPoint(volume.mountpoint());
-
-            final HostConfig hostConfig = createHostConfig(workerConfigurationService.getWorkerVolumeName() + "-" + taskId, REMOTE_PATH);
+            final Volume volume = createVolume(taskId);
+            final HostConfig hostConfig = createHostConfig(volume, REMOTE_PATH);
             final ContainerConfig containerConfig = createContainerConfig(image, cmd, hostConfig);
 
             String containerId = startContainer(taskId, containerConfig);
             if (containerId != null) {
                 metadataResult.setContainerId(containerId);
-                boolean isExecutionDone = waitContainerForExitStatus(taskId, containerId);
-                if (!isExecutionDone) {
-                    metadataResult.setMessage("Computation failed");
+                boolean executionDone = waitContainerForExitStatus(taskId, containerId);
+
+                if (executionDone) {
+                    String dockerLogs = getDockerLogs(metadataResult.getContainerId());
+                    createStdoutFile(taskId, dockerLogs);
+                } else {
+                    createStdoutFile(taskId, "Computation failed");
                 }
+
+                InputStream containerResult = getContainerResultArchive(containerId);
+                copyResultToDisk(containerResult, taskId);
+
+                removeContainer(containerId);
+                removeVolume(taskId);
             } else {
-                metadataResult.setMessage("Unable to start container");
+                createStdoutFile(taskId, "Failed to start container");
             }
         } else {
-            metadataResult.setMessage("Unable to pull image");
+            createStdoutFile(taskId, "Failed to pull image");
         }
+
+        zipTaskResult(configurationService.getResultBaseDir(), taskId);
+
         metadataResultMap.put(taskId, metadataResult);//save metadataResult (without zip payload) in memory
         return metadataResult;
     }
@@ -94,10 +178,11 @@ public class DockerService {
         return true;
     }
 
-    private Volume createVolume(String volumeName) {
+    private Volume createVolume(String taskId) {
         Volume toCreate = null;
+        String volumeName = DOCKER_BASE_VOLUME_NAME + taskId;
 
-        if (volumeName != null) {
+        if (taskId != null) {
             toCreate = Volume.builder()
                     .name(volumeName)
                     .driver("local")
@@ -105,33 +190,11 @@ public class DockerService {
             try {
                 return docker.createVolume(toCreate);
             } catch (DockerException | InterruptedException e) {
-                e.printStackTrace();
+                log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }
         }
 
         return toCreate;
-    }
-
-    private HostConfig createHostConfig(String from, String to) {
-        return HostConfig.builder()
-                .appendBinds(HostConfig.Bind.from(from)
-                        .to(to)
-                        .readOnly(false)
-                        .build())
-                .build();
-    }
-
-    private ContainerConfig createContainerConfig(String imageWithTag, String cmd, HostConfig hostConfig) {
-        ContainerConfig.Builder builder = ContainerConfig.builder()
-                .image(imageWithTag)
-                .hostConfig(hostConfig);
-        ContainerConfig containerConfig;
-        if (cmd == null || cmd.isEmpty()) {
-            containerConfig = builder.build();
-        } else {
-            containerConfig = builder.cmd(cmd).build();
-        }
-        return containerConfig;
     }
 
     private String startContainer(String taskId, ContainerConfig containerConfig) {
@@ -141,11 +204,11 @@ public class DockerService {
             id = creation.id();
             if (id != null) {
                 docker.startContainer(id);
-                log.error("Computation start completed [taskId:{}, image:{}, cmd:{}]",
+                log.info("Computation started [taskId:{}, image:{}, cmd:{}]",
                         taskId, containerConfig.image(), containerConfig.cmd());
             }
         } catch (DockerException | InterruptedException e) {
-            log.error("Computation start failed [taskId:{}, image:{}, cmd:{}]",
+            log.error("Computation failed to start[taskId:{}, image:{}, cmd:{}]",
                     taskId, containerConfig.image(), containerConfig.cmd());
             removeContainer(id);
             id = null;
@@ -172,12 +235,77 @@ public class DockerService {
         return isExecutionDone;
     }
 
+    private String getDockerLogs(String id) {
+        String logs = null;
+        if (id != null) {
+            try {
+                logs = docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
+            } catch (DockerException | InterruptedException e) {
+                log.error("Failed to get logs of computation [containerId:{}]", id);
+                logs = "Failed to get logs of computation";
+            }
+        }
+        return logs;
+    }
+
+    private boolean createStdoutFile(String taskId, String stdoutContent) {
+        log.info("Stdout file added to result folder [taskId:{}]", taskId);
+        return createFileWithContent(configurationService.getResultBaseDir() + "/" + taskId, STDOUT_FILENAME, stdoutContent);
+    }
+
+    private InputStream getContainerResultArchive(String containerId) {
+        InputStream containerResultArchive = null;
+        try {
+            containerResultArchive = docker.archiveContainer(containerId, REMOTE_PATH);
+        } catch (DockerException | InterruptedException e) {
+            log.error("Failed to get container archive [containerId:{}]", containerId);
+        }
+        return containerResultArchive;
+    }
+
+    private void copyResultToDisk(InputStream containerResultArchive, String taskId) {
+        try {
+            final TarArchiveInputStream tarStream = new TarArchiveInputStream(containerResultArchive);
+
+            TarArchiveEntry entry;
+            while ((entry = tarStream.getNextTarEntry()) != null) {
+                log.debug(entry.getName());
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                File curfile = new File(configurationService.getResultBaseDir() + "/" + taskId, entry.getName());
+                File parent = curfile.getParentFile();
+                if (!parent.exists()) {
+                    parent.mkdirs();
+                }
+                IOUtils.copy(tarStream, new FileOutputStream(curfile));
+            }
+            log.info("Results from remote added to result folder [taskId:{}]", taskId);
+        } catch (IOException e) {
+            log.error("Failed to copy container results to disk [taskId:{}]", taskId);
+        }
+    }
+
+    private void zipTaskResult(String localPath, String taskId) {
+        String folderToZip = localPath + "/" + taskId;
+        String zipName = folderToZip + ".zip";
+        try {
+            zipFolder(Paths.get(folderToZip), Paths.get(zipName));
+            log.info("Result folder zip completed [taskId:{}]", taskId);
+        } catch (Exception e) {
+            log.error("Failed to zip task result [taskId:{}]", taskId);
+        }
+    }
+
     public ResultModel getResultModelWithZip(String taskId) {
         MetadataResult metadataResult = metadataResultMap.get(taskId);
-        byte[] zipResultAsBytes = getResultZipAsBytes(metadataResult);
-
-        removeContainer(metadataResult.getContainerId());
-        removeVolume(metadataResult.getVolumeName());
+        byte[] zipResultAsBytes = new byte[0];
+        String zipLocation = configurationService.getResultBaseDir() + "/" + taskId + ".zip";
+        try {
+            zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
+        } catch (IOException e) {
+            log.error("Failed to get zip result [taskId:{}, zipLocation:{}]", taskId, zipLocation);
+        }
 
         return ResultModel.builder()
                 .taskId(taskId)
@@ -191,96 +319,20 @@ public class DockerService {
             try {
                 docker.removeContainer(containerId);
             } catch (DockerException | InterruptedException e) {
-                e.printStackTrace();
+                log.error("Failed to remove container [containerId:{}]", containerId);
             }
         }
     }
 
-    private void removeVolume(String volumeName) {
-        if (volumeName != null) {
+    private void removeVolume(String taskId) {
+        String volumeName = DOCKER_BASE_VOLUME_NAME + taskId;
+        if (taskId != null) {
             try {
                 docker.removeVolume(volumeName);
             } catch (DockerException | InterruptedException e) {
-                e.printStackTrace();
+                log.error("Failed to remove volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }
         }
-    }
-
-    private byte[] getResultZipAsBytes(MetadataResult metadataResult) {
-        byte[] zipResultAsBytes;
-        String folderPathToZip = metadataResult.getVolumeMountPoint();
-        String dockerLogs;
-        if (metadataResult.getMessage() != null) {
-            dockerLogs = metadataResult.getMessage();
-        } else if (metadataResult.getContainerId() != null) {
-            dockerLogs = getDockerLogs(metadataResult.getContainerId());
-        } else {
-            dockerLogs = "Unknown error";
-        }
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ZipOutputStream zos = new ZipOutputStream(baos);
-        try {
-            addResultFilesToZipOutputStream(folderPathToZip, zos);
-            addStdoutFileToZipOutputStream(dockerLogs, zos);
-            zos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        zipResultAsBytes = baos.toByteArray();
-        return zipResultAsBytes;
-    }
-
-    private String getDockerLogs(String id) {
-        String logs = null;
-        if (id != null) {
-            try {
-                logs = docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
-            } catch (DockerException | InterruptedException e) {
-                log.error("Failed to get logs of computation [containerId:{}]", id);
-            }
-        }
-        return logs;
-    }
-
-    private void addResultFilesToZipOutputStream(String pathToZip, ZipOutputStream zos) throws IOException {
-        if (pathToZip != null) {
-            Path sourceFolderPath = Paths.get(pathToZip);
-            Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFileFailed(Path path, IOException e) throws IOException {
-                    log.info("Skipped visit {}", path.getFileName());
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    log.info("Visited {}", file.getFileName());
-                    zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
-                    Files.copy(file, zos);
-                    zos.closeEntry();
-                    return FileVisitResult.CONTINUE;
-                }
-
-            });
-        }
-    }
-
-    private void addStdoutFileToZipOutputStream(String stdout, ZipOutputStream zos) throws IOException {
-        byte[] buffer = new byte[1024];
-        zos.putNextEntry(new ZipEntry("stdout.txt"));
-        InputStream fis = new ByteArrayInputStream(stdout.getBytes(StandardCharsets.UTF_8));
-        int length;
-        while ((length = fis.read(buffer)) > 0) {
-            zos.write(buffer, 0, length);
-        }
-        zos.closeEntry();
-        fis.close();
-    }
-
-    @PreDestroy
-    public void onPreDestroy() {
-        docker.close();
     }
 
 }

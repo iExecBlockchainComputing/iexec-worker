@@ -45,10 +45,12 @@ public class TaskService {
         coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), workerName, ReplicateStatus.RUNNING);
 
         if (replicateModel.getDappType().equals(DappType.DOCKER)) {
-            MetadataResult metadataResult = dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
+            dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
 
             //TODO: Upload result when core is asking for
             resultRepoClient.addResult(dockerService.getResultModelWithZip(replicateModel.getTaskId()));
+            log.info("Result sent to core [taskId:{}]", replicateModel.getTaskId());
+
 
         } else {
             // simulate some work on the task
