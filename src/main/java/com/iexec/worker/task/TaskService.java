@@ -28,7 +28,7 @@ public class TaskService {
         this.executorService = executorService;
     }
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 1000)
     public String getTask() {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
@@ -41,7 +41,7 @@ public class TaskService {
             log.info("Received task [taskId:{}]", replicateModel.getTaskId());
 
             executorService.addReplicate(replicateModel);
-            return ReplicateStatus.COMPLETED.toString();
+            return ReplicateStatus.COMPUTED.toString();
         }
         log.info("The worker is already full, it can't accept more tasks");
         return "Worker cannot accept more task";
