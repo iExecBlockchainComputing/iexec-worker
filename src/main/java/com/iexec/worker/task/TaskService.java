@@ -4,6 +4,7 @@ import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CoreTaskClient;
+import com.iexec.worker.pubsub.SubscribeService;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,14 +19,16 @@ public class TaskService {
     private CoreTaskClient coreTaskClient;
     private WorkerConfigurationService workerConfigService;
     private TaskExecutorService executorService;
+    private SubscribeService subscribeService;
 
     @Autowired
     public TaskService(CoreTaskClient coreTaskClient,
                        WorkerConfigurationService workerConfigService,
-                       TaskExecutorService executorService) {
+                       TaskExecutorService executorService, SubscribeService subscribeService) {
         this.coreTaskClient = coreTaskClient;
         this.workerConfigService = workerConfigService;
         this.executorService = executorService;
+        this.subscribeService = subscribeService;
     }
 
     @Scheduled(fixedRate = 1000)
@@ -39,7 +42,7 @@ public class TaskService {
                 return "NO TASK AVAILABLE";
             }
             log.info("Received task [taskId:{}]", replicateModel.getTaskId());
-
+            subscribeService.subscribeToTaskNotifications(replicateModel.getTaskId());
             executorService.addReplicate(replicateModel);
             return ReplicateStatus.COMPUTED.toString();
         }

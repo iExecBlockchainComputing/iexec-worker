@@ -1,7 +1,8 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.result.UploadResultMessage;
+import com.iexec.common.result.TaskNotification;
+import com.iexec.common.result.TaskNotificationType;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
@@ -9,6 +10,7 @@ import com.iexec.worker.utils.CoreConfigurationService;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
@@ -20,6 +22,8 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -31,6 +35,7 @@ public class SubscribeService extends StompSessionHandlerAdapter {
     private ResultRepoClient resultRepoClient;
     private DockerService dockerService;
     private StompSession session;
+    private Map<String, StompSession.Subscription> taskIdToSubscription;
 
     public SubscribeService(CoreConfigurationService coreConfigurationService,
                             WorkerConfigurationService workerConfigurationService,
@@ -42,6 +47,7 @@ public class SubscribeService extends StompSessionHandlerAdapter {
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
         this.dockerService = dockerService;
+        taskIdToSubscription = new HashMap<>();
     }
 
     @PostConstruct
@@ -63,30 +69,57 @@ public class SubscribeService extends StompSessionHandlerAdapter {
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
         log.info("SubscribeService set up [session: {}]", session.getSessionId());
         this.session = session;
-        session.subscribe("/topic/uploadResult", this);
     }
 
-    @Override
-    public Type getPayloadType(StompHeaders headers) {
-        return UploadResultMessage.class;
-    }
-
-    @Override
-    public void handleFrame(StompHeaders headers, Object payload) {
-        UploadResultMessage uploadResultMessage = (UploadResultMessage) payload;
-        if (uploadResultMessage.getWorkerAddress().equals(workerConfigurationService.getWorkerName())){
-            log.info("Received uploadResult message {}", uploadResultMessage);
-            log.info("Update replicate status {}", ReplicateStatus.UPLOADING);
-            coreTaskClient.updateReplicateStatus(uploadResultMessage.getTaskId(),
-                    workerConfigurationService.getWorkerName(),
-                    ReplicateStatus.UPLOADING);
-            //Upload result cause core is asking for
-            resultRepoClient.addResult(dockerService.getResultModelWithZip(uploadResultMessage.getTaskId()));
-            log.info("Update replicate status {}", ReplicateStatus.UPLOADED);
-            coreTaskClient.updateReplicateStatus(uploadResultMessage.getTaskId(),
-                    workerConfigurationService.getWorkerName(),
-                    ReplicateStatus.UPLOADED);
+    public void subscribeToTaskNotifications(String taskId) {
+        if (taskIdToSubscription.containsKey(taskId)) {
+            log.info("Already subscribed to TaskNotification [taskId:{}]", taskId);
+            return;
         }
+        String topic = "/topic/task/" + taskId;
+        StompSession.Subscription subscription = session.subscribe(topic, new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return TaskNotification.class;
+            }
 
+            @Override
+            public void handleFrame(StompHeaders headers, Object payload) {
+                TaskNotification taskNotification = (TaskNotification) payload;
+                if (taskNotification.getWorkerAddress().equals(workerConfigurationService.getWorkerName())) {
+                    log.info("Received [{}]", taskNotification);
+
+                    if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
+                        log.info("Update replicate status {}", ReplicateStatus.UPLOADING);
+                        coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
+                                workerConfigurationService.getWorkerName(),
+                                ReplicateStatus.UPLOADING);
+                        //Upload result cause core is asking for
+                        resultRepoClient.addResult(dockerService.getResultModelWithZip(taskNotification.getTaskId()));
+                        log.info("Update replicate status {}", ReplicateStatus.UPLOADED);
+                        coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
+                                workerConfigurationService.getWorkerName(),
+                                ReplicateStatus.UPLOADED);
+                    } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {
+                        //TODO : iexec-core side, notify COMPLETED task on topic
+                        unsubscribeFromTaskNotifications(taskId);
+                    }
+                }
+
+            }
+        });
+        taskIdToSubscription.put(taskId, subscription);
+        log.info("Subscribed to {}", topic);
+    }
+
+    public void unsubscribeFromTaskNotifications(String taskId) {
+        if (!taskIdToSubscription.containsKey(taskId)) {
+            log.info("Already unsubscribed to TaskNotification [taskId:{}]", taskId);
+            return;
+        }
+        taskIdToSubscription.get(taskId).unsubscribe();
+        taskIdToSubscription.remove(taskId);
+        String topic = "/topic/task/" + taskId;
+        log.info("Unsubscribed from {}", topic);
     }
 }
