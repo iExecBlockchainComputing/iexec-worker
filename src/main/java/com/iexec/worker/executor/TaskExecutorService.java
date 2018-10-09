@@ -50,8 +50,7 @@ public class TaskExecutorService {
                     if (model.getDappType().equals(DappType.DOCKER)) {
                         MetadataResult metadataResult = dockerService.dockerRun(taskId, model.getDappName(), model.getCmd());
 
-                        //TODO: Upload result when core is asking for
-                        //resultRepoClient.addResult(dockerService.getResultModelWithZip(taskId));
+
                     }
                     return Thread.currentThread().getName();
                 }

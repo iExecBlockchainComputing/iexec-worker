@@ -1,7 +1,12 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.UploadResultMessage;
+import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.feign.CoreTaskClient;
+import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.utils.CoreConfigurationService;
+import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -21,10 +26,22 @@ import java.lang.reflect.Type;
 public class SubscribeService extends StompSessionHandlerAdapter {
 
     private CoreConfigurationService coreConfigurationService;
+    private WorkerConfigurationService workerConfigurationService;
+    private CoreTaskClient coreTaskClient;
+    private ResultRepoClient resultRepoClient;
+    private DockerService dockerService;
     private StompSession session;
 
-    public SubscribeService(CoreConfigurationService coreConfigurationService) {
+    public SubscribeService(CoreConfigurationService coreConfigurationService,
+                            WorkerConfigurationService workerConfigurationService,
+                            CoreTaskClient coreTaskClient,
+                            ResultRepoClient resultRepoClient,
+                            DockerService dockerService) {
         this.coreConfigurationService = coreConfigurationService;
+        this.workerConfigurationService = workerConfigurationService;
+        this.coreTaskClient = coreTaskClient;
+        this.resultRepoClient = resultRepoClient;
+        this.dockerService = dockerService;
     }
 
     @PostConstruct
@@ -57,7 +74,19 @@ public class SubscribeService extends StompSessionHandlerAdapter {
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
         UploadResultMessage uploadResultMessage = (UploadResultMessage) payload;
-        log.info("Received uploadResult message {}", uploadResultMessage);
+        if (uploadResultMessage.getWorkerAddress().equals(workerConfigurationService.getWorkerName())){
+            log.info("Received uploadResult message {}", uploadResultMessage);
+            log.info("Update replicate status {}", ReplicateStatus.UPLOADING);
+            coreTaskClient.updateReplicateStatus(uploadResultMessage.getTaskId(),
+                    workerConfigurationService.getWorkerName(),
+                    ReplicateStatus.UPLOADING);
+            //Upload result cause core is asking for
+            resultRepoClient.addResult(dockerService.getResultModelWithZip(uploadResultMessage.getTaskId()));
+            log.info("Update replicate status {}", ReplicateStatus.UPLOADED);
+            coreTaskClient.updateReplicateStatus(uploadResultMessage.getTaskId(),
+                    workerConfigurationService.getWorkerName(),
+                    ReplicateStatus.UPLOADED);
+        }
 
     }
 }
