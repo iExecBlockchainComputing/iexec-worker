@@ -229,8 +229,8 @@ public class DockerService {
     }
 
     private String getDockerLogs(String id) {
-        String logs = null;
-        if (id != null) {
+        String logs = "";
+        if (!id.isEmpty()) {
             try {
                 logs = docker.logs(id, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.stderr()).readFully();
             } catch (DockerException | InterruptedException e) {
