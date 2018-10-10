@@ -1,12 +1,9 @@
 package com.iexec.worker.task;
 
-import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.docker.MetadataResult;
+import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CoreTaskClient;
-import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,53 +16,34 @@ import org.springframework.stereotype.Service;
 public class TaskService {
 
     private CoreTaskClient coreTaskClient;
-    private DockerService dockerService;
     private WorkerConfigurationService workerConfigService;
-    private ResultRepoClient resultRepoClient;
+    private TaskExecutorService executorService;
 
     @Autowired
-    public TaskService(CoreTaskClient coreTaskClient, DockerService dockerService,
-                       WorkerConfigurationService workerConfigService, ResultRepoClient resultRepoClient) {
+    public TaskService(CoreTaskClient coreTaskClient,
+                       WorkerConfigurationService workerConfigService,
+                       TaskExecutorService executorService) {
         this.coreTaskClient = coreTaskClient;
-        this.dockerService = dockerService;
         this.workerConfigService = workerConfigService;
-        this.resultRepoClient = resultRepoClient;
+        this.executorService = executorService;
     }
 
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 10000)
     public String getTask() {
-        String workerName = workerConfigService.getWorkerName();
-        ReplicateModel replicateModel = coreTaskClient.getReplicate(workerName);
-        if (replicateModel == null || replicateModel.getTaskId() == null) {
-            return "NO TASK AVAILABLE";
-        }
-        log.info("Getting task [taskId:{}]", replicateModel.getTaskId());
+        // choose if the worker can run a task or not
+        if (executorService.canAcceptMoreReplicate()) {
+            String workerName = workerConfigService.getWorkerName();
+            ReplicateModel replicateModel = coreTaskClient.getReplicate(workerName);
+            if (replicateModel == null || replicateModel.getTaskId() == null) {
 
-        log.info("Update replicate status to RUNNING [taskId:{}, workerName:{}]", replicateModel.getTaskId(), workerName);
-        coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), workerName, ReplicateStatus.RUNNING);
-
-        if (replicateModel.getDappType().equals(DappType.DOCKER)) {
-            dockerService.dockerRun(replicateModel.getTaskId(), replicateModel.getDappName(), replicateModel.getCmd());
-
-            //TODO: Upload result when core is asking for
-            resultRepoClient.addResult(dockerService.getResultModelWithZip(replicateModel.getTaskId()));
-            log.info("Result sent to core [taskId:{}]", replicateModel.getTaskId());
-
-
-        } else {
-            // simulate some work on the task
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                return "NO TASK AVAILABLE";
             }
+            log.info("Received task [taskId:{}]", replicateModel.getTaskId());
+
+            executorService.addReplicate(replicateModel);
+            return ReplicateStatus.COMPLETED.toString();
         }
-
-        log.info("Update replicate status to COMPLETED[taskId:{}, workerName:{}]", replicateModel.getTaskId(), workerName);
-        coreTaskClient.updateReplicateStatus(replicateModel.getTaskId(), workerName, ReplicateStatus.COMPLETED);
-
-        return ReplicateStatus.COMPLETED.toString();
+        log.info("The worker is already full, it can't accept more tasks");
+        return "Worker cannot accept more task";
     }
-
-
 }
