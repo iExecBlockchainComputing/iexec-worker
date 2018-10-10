@@ -22,12 +22,12 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
-public class SubscribeService extends StompSessionHandlerAdapter {
+public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private CoreConfigurationService coreConfigurationService;
     private WorkerConfigurationService workerConfigurationService;
@@ -37,17 +37,17 @@ public class SubscribeService extends StompSessionHandlerAdapter {
     private StompSession session;
     private Map<String, StompSession.Subscription> taskIdToSubscription;
 
-    public SubscribeService(CoreConfigurationService coreConfigurationService,
-                            WorkerConfigurationService workerConfigurationService,
-                            CoreTaskClient coreTaskClient,
-                            ResultRepoClient resultRepoClient,
-                            DockerService dockerService) {
+    public SubscriptionService(CoreConfigurationService coreConfigurationService,
+                               WorkerConfigurationService workerConfigurationService,
+                               CoreTaskClient coreTaskClient,
+                               ResultRepoClient resultRepoClient,
+                               DockerService dockerService) {
         this.coreConfigurationService = coreConfigurationService;
         this.workerConfigurationService = workerConfigurationService;
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
         this.dockerService = dockerService;
-        taskIdToSubscription = new HashMap<>();
+        taskIdToSubscription = new ConcurrentHashMap<>();
     }
 
     @PostConstruct
@@ -67,7 +67,7 @@ public class SubscribeService extends StompSessionHandlerAdapter {
 
     @Override
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-        log.info("SubscribeService set up [session: {}]", session.getSessionId());
+        log.info("SubscriptionService set up [session: {}]", session.getSessionId());
         this.session = session;
     }
 
@@ -76,8 +76,7 @@ public class SubscribeService extends StompSessionHandlerAdapter {
             log.info("Already subscribed to TaskNotification [taskId:{}]", taskId);
             return;
         }
-        String topic = "/topic/task/" + taskId;
-        StompSession.Subscription subscription = session.subscribe(topic, new StompFrameHandler() {
+        StompSession.Subscription subscription = session.subscribe(getTaskTopicName(taskId), new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
                 return TaskNotification.class;
@@ -109,7 +108,7 @@ public class SubscribeService extends StompSessionHandlerAdapter {
             }
         });
         taskIdToSubscription.put(taskId, subscription);
-        log.info("Subscribed to {}", topic);
+        log.info("Subscribed to {}", getTaskTopicName(taskId));
     }
 
     public void unsubscribeFromTaskNotifications(String taskId) {
@@ -119,7 +118,10 @@ public class SubscribeService extends StompSessionHandlerAdapter {
         }
         taskIdToSubscription.get(taskId).unsubscribe();
         taskIdToSubscription.remove(taskId);
-        String topic = "/topic/task/" + taskId;
-        log.info("Unsubscribed from {}", topic);
+        log.info("Unsubscribed from {}", getTaskTopicName(taskId));
+    }
+
+    private String getTaskTopicName(String taskId) {
+        return "/topic/task/" + taskId;
     }
 }
