@@ -147,7 +147,8 @@ public class DockerService {
                 copyResultToDisk(containerResult, taskId);
 
                 removeContainer(containerId);
-                removeVolume(taskId);
+                //TODO change base volume if N workers on the same machine
+                //removeVolume(taskId);
             } else {
                 createStdoutFile(taskId, "Failed to start container");
             }
