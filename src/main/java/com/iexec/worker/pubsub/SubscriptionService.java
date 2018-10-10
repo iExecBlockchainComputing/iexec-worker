@@ -3,7 +3,8 @@ package com.iexec.worker.pubsub;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
-import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.docker.DockerComputationService;
+import com.iexec.worker.result.ResultService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.utils.CoreConfigurationService;
@@ -33,7 +34,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private WorkerConfigurationService workerConfigurationService;
     private CoreTaskClient coreTaskClient;
     private ResultRepoClient resultRepoClient;
-    private DockerService dockerService;
+    private DockerComputationService dockerComputationService;
+    private ResultService resultService;
     private StompSession session;
     private Map<String, StompSession.Subscription> taskIdToSubscription;
 
@@ -41,12 +43,14 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                WorkerConfigurationService workerConfigurationService,
                                CoreTaskClient coreTaskClient,
                                ResultRepoClient resultRepoClient,
-                               DockerService dockerService) {
+                               DockerComputationService dockerComputationService,
+                               ResultService resultService) {
         this.coreConfigurationService = coreConfigurationService;
         this.workerConfigurationService = workerConfigurationService;
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
-        this.dockerService = dockerService;
+        this.dockerComputationService = dockerComputationService;
+        this.resultService = resultService;
         taskIdToSubscription = new ConcurrentHashMap<>();
     }
 
@@ -94,7 +98,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                 workerConfigurationService.getWorkerName(),
                                 ReplicateStatus.UPLOADING_RESULT);
                         //Upload result cause core is asking for
-                        resultRepoClient.addResult(dockerService.getResultModelWithZip(taskNotification.getTaskId()));
+                        resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getTaskId()));
                         log.info("Update replicate status {}", ReplicateStatus.RESULT_UPLOADED);
                         coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
                                 workerConfigurationService.getWorkerName(),
