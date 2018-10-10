@@ -90,16 +90,16 @@ public class SubscribeService extends StompSessionHandlerAdapter {
                     log.info("Received [{}]", taskNotification);
 
                     if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
-                        log.info("Update replicate status {}", ReplicateStatus.UPLOADING);
+                        log.info("Update replicate status {}", ReplicateStatus.UPLOADING_RESULT);
                         coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
                                 workerConfigurationService.getWorkerName(),
-                                ReplicateStatus.UPLOADING);
+                                ReplicateStatus.UPLOADING_RESULT);
                         //Upload result cause core is asking for
                         resultRepoClient.addResult(dockerService.getResultModelWithZip(taskNotification.getTaskId()));
-                        log.info("Update replicate status {}", ReplicateStatus.UPLOADED);
+                        log.info("Update replicate status {}", ReplicateStatus.RESULT_UPLOADED);
                         coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
                                 workerConfigurationService.getWorkerName(),
-                                ReplicateStatus.UPLOADED);
+                                ReplicateStatus.RESULT_UPLOADED);
                     } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {
                         //TODO : iexec-core side, notify COMPLETED task on topic
                         unsubscribeFromTaskNotifications(taskId);

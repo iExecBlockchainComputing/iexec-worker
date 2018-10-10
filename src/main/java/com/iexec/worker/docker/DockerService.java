@@ -177,7 +177,8 @@ public class DockerService {
         byte[] zipResultAsBytes = getResultZipAsBytes(metadataResult);
 
         removeContainer(metadataResult.getContainerId());
-        removeVolume(metadataResult.getVolumeName());
+        //TODO change base volume if N workers on the same machine
+        //removeVolume(metadataResult.getVolumeName());
 
         return ResultModel.builder()
                 .taskId(taskId)
