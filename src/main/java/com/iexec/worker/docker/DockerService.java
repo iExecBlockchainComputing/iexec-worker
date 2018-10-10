@@ -35,7 +35,7 @@ public class DockerService {
 
     private final String REMOTE_PATH = "/iexec";
     private final String STDOUT_FILENAME = "stdout.txt";
-    private final String DOCKER_BASE_VOLUME_NAME = "iexec-worker-";
+    private final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
 
     private DefaultDockerClient docker;
     private Map<String, MetadataResult> metadataResultMap = new HashMap<>();
@@ -147,8 +147,7 @@ public class DockerService {
                 copyResultToDisk(containerResult, taskId);
 
                 removeContainer(containerId);
-                //TODO change base volume if N workers on the same machine
-                //removeVolume(taskId);
+                removeVolume(taskId);
             } else {
                 createStdoutFile(taskId, "Failed to start container");
             }
@@ -330,7 +329,7 @@ public class DockerService {
     }
 
     private String getTaskVolumeName(String taskId) {
-        return DOCKER_BASE_VOLUME_NAME + taskId;
+        return DOCKER_BASE_VOLUME_NAME + "-" + configurationService.getWorkerName() + "-" + taskId;
     }
 
 }

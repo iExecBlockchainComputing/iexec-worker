@@ -17,7 +17,7 @@ public class WorkerConfigurationService {
     }
 
     public String getResultBaseDir() {
-        return resultBaseDir;
+        return resultBaseDir + "/" + workerName;
     }
 
     public String getOS() {

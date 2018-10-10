@@ -6,4 +6,4 @@ core:
 
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
-  resultBaseDir: ${IEXEC_WORKER_RESULT_BASE_DIR:/tmp/iexec-worker-result}
+  resultBaseDir: ${IEXEC_WORKER_RESULT_BASE_DIR:/tmp/iexec-worker/}
