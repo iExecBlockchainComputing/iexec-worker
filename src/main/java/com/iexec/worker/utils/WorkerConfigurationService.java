@@ -9,15 +9,15 @@ public class WorkerConfigurationService {
     @Value("${worker.name}")
     private String workerName;
 
-    @Value("${worker.volumeName}")
-    private String workerVolumeName;
+    @Value("${worker.resultBaseDir}")
+    private String resultBaseDir;
 
     public String getWorkerName() {
         return workerName;
     }
 
-    public String getWorkerVolumeName() {
-        return workerVolumeName;
+    public String getResultBaseDir() {
+        return resultBaseDir;
     }
 
     public String getOS() {
