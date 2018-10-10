@@ -46,32 +46,29 @@ public class DockerService {
     }
 
     private static boolean createFileWithContent(String directoryPath, String filename, String data) {
-        boolean fileCreated = false;
         if (createDirectories(directoryPath)) {
             Path path = Paths.get(directoryPath + "/" + filename);
             byte[] strToBytes = data.getBytes();
             try {
                 Files.write(path, strToBytes);
                 log.debug("File created [directoryPath:{}, filename:{}]", directoryPath, filename);
-                fileCreated = true;
+                return true;
             } catch (IOException e) {
                 log.error("Failed to create file [directoryPath:{}, filename:{}]", directoryPath, filename);
             }
         } else {
             log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
         }
-        return fileCreated;
+        return false;
     }
 
     private static boolean createDirectories(String directoryPath) {
         File baseDirectory = new File(directoryPath);
-        boolean dirCreated;
         if (!baseDirectory.exists()) {
-            dirCreated = baseDirectory.mkdirs();
+            return baseDirectory.mkdirs();
         } else {
-            dirCreated = true;
+            return true;
         }
-        return dirCreated;
     }
 
     private static HostConfig createHostConfig(Volume from, String to) {
@@ -135,7 +132,7 @@ public class DockerService {
             final ContainerConfig containerConfig = createContainerConfig(image, cmd, hostConfig);
 
             String containerId = startContainer(taskId, containerConfig);
-            if (containerId != null) {
+            if (!containerId.isEmpty()) {
                 metadataResult.setContainerId(containerId);
                 boolean executionDone = waitContainerForExitStatus(taskId, containerId);
 
@@ -179,26 +176,22 @@ public class DockerService {
     }
 
     private Volume createVolume(String taskId) {
-        Volume toCreate = null;
-        String volumeName = DOCKER_BASE_VOLUME_NAME + taskId;
-
-        if (taskId != null) {
-            toCreate = Volume.builder()
-                    .name(volumeName)
-                    .driver("local")
-                    .build();
-            try {
-                return docker.createVolume(toCreate);
-            } catch (DockerException | InterruptedException e) {
-                log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
-            }
+        String volumeName = getTaskVolumeName(taskId);
+        Volume toCreate;
+        toCreate = Volume.builder()
+                .name(volumeName)
+                .driver("local")
+                .build();
+        try {
+            return docker.createVolume(toCreate);
+        } catch (DockerException | InterruptedException e) {
+            log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
         }
-
         return toCreate;
     }
 
     private String startContainer(String taskId, ContainerConfig containerConfig) {
-        String id = null;
+        String id = "";
         try {
             ContainerCreation creation = docker.createContainer(containerConfig);
             id = creation.id();
@@ -211,7 +204,7 @@ public class DockerService {
             log.error("Computation failed to start[taskId:{}, image:{}, cmd:{}]",
                     taskId, containerConfig.image(), containerConfig.cmd());
             removeContainer(id);
-            id = null;
+            id = "";
         }
         return id;
     }
@@ -315,7 +308,7 @@ public class DockerService {
     }
 
     private void removeContainer(String containerId) {
-        if (containerId != null) {
+        if (!containerId.isEmpty()) {
             try {
                 docker.removeContainer(containerId);
             } catch (DockerException | InterruptedException e) {
@@ -325,7 +318,7 @@ public class DockerService {
     }
 
     private void removeVolume(String taskId) {
-        String volumeName = DOCKER_BASE_VOLUME_NAME + taskId;
+        String volumeName = getTaskVolumeName(taskId);
         if (taskId != null) {
             try {
                 docker.removeVolume(volumeName);
@@ -333,6 +326,10 @@ public class DockerService {
                 log.error("Failed to remove volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }
         }
+    }
+
+    private String getTaskVolumeName(String taskId) {
+        return DOCKER_BASE_VOLUME_NAME + taskId;
     }
 
 }
