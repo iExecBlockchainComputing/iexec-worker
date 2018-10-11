@@ -1,6 +1,6 @@
 package com.iexec.worker;
 
-import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.task.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class Controller {
 
     private TaskService taskService;
-    private DockerService dockerService;
+    private DockerComputationService dockerComputationService;
 
     @Autowired
-    public Controller(DockerService dockerService,
+    public Controller(DockerComputationService dockerComputationService,
                       TaskService taskService) {
-        this.dockerService = dockerService;
+        this.dockerComputationService = dockerComputationService;
         this.taskService = taskService;
 
     }

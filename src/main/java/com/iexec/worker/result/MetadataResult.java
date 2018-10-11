@@ -1,4 +1,4 @@
-package com.iexec.worker.docker;
+package com.iexec.worker.result;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,6 +14,6 @@ public class MetadataResult {
     private String image;
     private String tag;
     private String cmd;
-    private String containerId;
+    private String containerId;//should be called processId
 
 }
