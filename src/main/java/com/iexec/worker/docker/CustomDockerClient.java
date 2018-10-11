@@ -23,9 +23,9 @@ public class CustomDockerClient {
 
     private static final String REMOTE_PATH = "/iexec";
     private static final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
+    public static final String EXITED = "exited";
 
     private DefaultDockerClient docker;
-    private Map<String, MetadataResult> metadataResultMap = new HashMap<>();
     private WorkerConfigurationService configurationService;
 
     public CustomDockerClient(WorkerConfigurationService configurationService) throws DockerCertificateException {
@@ -89,7 +89,7 @@ public class CustomDockerClient {
         try {
             ContainerCreation creation = docker.createContainer(containerConfig);
             id = creation.id();
-            if (id != null) {
+            if (id != null && !id.isEmpty()) {
                 docker.startContainer(id);
                 log.info("Computation started [taskId:{}, image:{}, cmd:{}]",
                         taskId, containerConfig.image(), containerConfig.cmd());
@@ -107,7 +107,7 @@ public class CustomDockerClient {
         //TODO: add category timeout
         boolean isExecutionDone = false;
         try {
-            while (!docker.inspectContainer(containerId).state().status().equals("exited")) {
+            while (!docker.inspectContainer(containerId).state().status().equals(EXITED)) {
                 Thread.sleep(1000);
                 log.info("Computation running [taskId:{}, containerId:{}, status:{}]",
                         taskId, containerId, docker.inspectContainer(containerId).state().status());
@@ -149,6 +149,7 @@ public class CustomDockerClient {
         if (!containerId.isEmpty()) {
             try {
                 docker.removeContainer(containerId);
+                log.debug("Removed container [containerId:{}]", containerId);
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove container [containerId:{}]", containerId);
             }
@@ -160,6 +161,7 @@ public class CustomDockerClient {
         if (taskId != null) {
             try {
                 docker.removeVolume(volumeName);
+                log.debug("Removed volume [volumeName:{}]", volumeName);
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }

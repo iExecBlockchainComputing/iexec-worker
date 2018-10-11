@@ -8,6 +8,7 @@ import com.spotify.docker.client.messages.Volume;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.InputStream;
 
 import static com.iexec.worker.docker.CustomDockerClient.createContainerConfig;
@@ -82,7 +83,7 @@ public class DockerComputationService {
         copyResultToTaskFolder(containerResult, configurationService.getResultBaseDir(), taskId);
     }
 
-    private boolean createStdoutFile(String taskId, String stdoutContent) {
+    private File createStdoutFile(String taskId, String stdoutContent) {
         log.info("Stdout file added to result folder [taskId:{}]", taskId);
         return createFileWithContent(configurationService.getResultBaseDir() + "/" + taskId, STDOUT_FILENAME, stdoutContent);
     }

@@ -19,21 +19,21 @@ public class FileHelper {
 
     private static final Logger log = LoggerFactory.getLogger(FileHelper.class);
 
-    public static boolean createFileWithContent(String directoryPath, String filename, String data) {
+    public static File createFileWithContent(String directoryPath, String filename, String data) {
         if (createDirectories(directoryPath)) {
             Path path = Paths.get(directoryPath + "/" + filename);
             byte[] strToBytes = data.getBytes();
             try {
                 Files.write(path, strToBytes);
                 log.debug("File created [directoryPath:{}, filename:{}]", directoryPath, filename);
-                return true;
+                return new File(directoryPath + "/" + filename);
             } catch (IOException e) {
                 log.error("Failed to create file [directoryPath:{}, filename:{}]", directoryPath, filename);
             }
         } else {
             log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
         }
-        return false;
+        return null;
     }
 
     public static boolean createDirectories(String directoryPath) {
@@ -45,22 +45,24 @@ public class FileHelper {
         }
     }
 
-    public static void zipTaskResult(String localPath, String taskId) {
+    public static File zipTaskResult(String localPath, String taskId) {
         String folderToZip = localPath + "/" + taskId;
         String zipName = folderToZip + ".zip";
         try {
             zipFolder(Paths.get(folderToZip), Paths.get(zipName));
             log.info("Result folder zip completed [taskId:{}]", taskId);
+            return new File(zipName);
         } catch (Exception e) {
             log.error("Failed to zip task result [taskId:{}]", taskId);
         }
+        return null;
     }
 
-    public static void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
+    private static void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
         ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
         Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                log.debug(file.toAbsolutePath().toString());
+                log.debug("Adding file to zip [file:{}, zip:{}]", file.toAbsolutePath().toString(), zipPath);
                 zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
                 Files.copy(file, zos);
                 zos.closeEntry();
