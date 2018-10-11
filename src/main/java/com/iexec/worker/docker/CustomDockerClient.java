@@ -184,6 +184,7 @@ public class CustomDockerClient {
                 docker.removeContainer(containerId);
                 log.debug("Removed container [taskId:{}, containerId:{}]",
                         taskId, containerId);
+                taskToContainerId.remove(taskId);
                 return true;
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove container [taskId:{}, containerId:{}]",
