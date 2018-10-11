@@ -6,7 +6,6 @@ import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.HostConfig;
 import com.spotify.docker.client.messages.Volume;
 import org.junit.After;
 import org.junit.Before;
@@ -40,7 +39,6 @@ public class CustomDockerClientTests {
     @After
     public void after() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        customDockerClient.removeVolume("taskId");
     }
 
     @Test
@@ -70,45 +68,46 @@ public class CustomDockerClientTests {
     @Test
     public void shouldCreateVolumeName() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        String taskVolumeName = customDockerClient.getTaskVolumeName("taskId");
+        String taskVolumeName = customDockerClient.getVolumeName("taskId");
         assertThat(taskVolumeName).isEqualTo("iexec-worker-worker1-taskId");
     }
 
     @Test
     public void shouldNotCreateVolumeName() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        String taskVolumeName = customDockerClient.getTaskVolumeName("");
+        String taskVolumeName = customDockerClient.getVolumeName("");
         assertThat(taskVolumeName).isEmpty();
     }
 
     @Test
     public void shouldNotCreateVolumeNameWithoutWorkerAddress() {
         when(configurationService.getWorkerName()).thenReturn("");
-        String taskVolumeName = customDockerClient.getTaskVolumeName("taskId");
+        String taskVolumeName = customDockerClient.getVolumeName("taskId");
         assertThat(taskVolumeName).isEmpty();
     }
 
     @Test
     public void shouldCreateVolume() throws DockerException, InterruptedException {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
+        String volumeName = customDockerClient.createVolume("taskId");
         Volume inspectedVolume = baseDockerClient.inspectVolume("iexec-worker-worker1-taskId");
-        assertThat(volume.name()).isEqualTo(inspectedVolume.name());
+        assertThat(volumeName).isEqualTo(inspectedVolume.name());
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
     public void shouldNotCreateVolume() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("");
-        assertThat(volume).isNull();
+        String volumeName = customDockerClient.createVolume("");
+        assertThat(volumeName).isEmpty();
     }
 
     @Test
     public void shouldRemoveVolume() throws DockerException, InterruptedException {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
+        String volumeName = customDockerClient.createVolume("taskId");
         Volume inspectedVolume = baseDockerClient.inspectVolume("iexec-worker-worker1-taskId");
-        assertThat(volume.name()).isEqualTo(inspectedVolume.name());
+        assertThat(volumeName).isEqualTo(inspectedVolume.name());
 
         boolean isVolumeRemoved = customDockerClient.removeVolume("taskId");
         assertThat(isVolumeRemoved).isTrue();
@@ -122,88 +121,69 @@ public class CustomDockerClientTests {
     }
 
     @Test
-    public void shouldCreateHostConfig() {
-        when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
-        assertThat(hostConfig).isNotNull();
-    }
-
-    @Test
-    public void shouldNotCreateHostConfig() {
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(null);
-        assertThat(hostConfig).isNull();
-    }
-
-    @Test
     public void shouldCreateContainerConfig() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
 
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("image:tag", "cmd", hostConfig);
+                .getContainerConfig("image:tag", "cmd", volumeName);
         assertThat(containerConfig.image()).isEqualTo("image:tag");
         assertThat(containerConfig.cmd().get(0)).isEqualTo("cmd");
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
     public void shouldNotCreateContainerConfigWithoutImage() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
 
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("", "cmd", hostConfig);
+                .getContainerConfig("", "cmd", volumeName);
         assertThat(containerConfig).isNull();
     }
 
     @Test
     public void shouldNotCreateContainerConfigWithoutHostConfig() {
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("", "cmd", null);
+                .getContainerConfig("", "cmd", null);
         assertThat(containerConfig).isNull();
     }
 
     @Test
     public void shouldStartContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("iexechub/vanityeth:latest", "a", hostConfig);
+                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isNotNull();
         assertThat(containerId).isNotEmpty();
-        customDockerClient.waitContainerForExitStatus("taskId", containerId);
-        customDockerClient.removeContainer(containerId);
+        customDockerClient.waitContainer("taskId");
+        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
     public void shouldNotStartContainerWithoutImage() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("", "a", hostConfig);
+                .getContainerConfig("", "a", volumeName);
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isEmpty();
-        customDockerClient.waitContainerForExitStatus("taskId", containerId);
-        customDockerClient.removeContainer(containerId);
     }
 
     @Test
     public void shouldWaitForContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        HostConfig hostConfig = HostConfig.builder().build();
+        String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("hello-world:latest", "", hostConfig);
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
-        boolean executionDone = customDockerClient.waitContainerForExitStatus("taskId", containerId);
+                .getContainerConfig("hello-world:latest", "", volumeName);
+        customDockerClient.startContainer("taskId", containerConfig);
+        boolean executionDone = customDockerClient.waitContainer("taskId");
         assertThat(executionDone).isTrue();
-        customDockerClient.waitContainerForExitStatus("taskId", containerId);
-        customDockerClient.removeContainer(containerId);
+        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
@@ -215,56 +195,55 @@ public class CustomDockerClientTests {
     public void shouldGetContainerArchive() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("iexechub/vanityeth:latest", "a", hostConfig);
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
-        boolean executionDone = customDockerClient.waitContainerForExitStatus("taskId", containerId);
-        InputStream containerResultArchive = customDockerClient.getContainerResultArchive(containerId);
+                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
+        customDockerClient.startContainer("taskId", containerConfig);
+        InputStream containerResultArchive = customDockerClient.getContainerResultArchive("taskId");
         assertThat(containerResultArchive).isNotNull();
-        customDockerClient.waitContainerForExitStatus("taskId", containerId);
-        customDockerClient.removeContainer(containerId);
+        customDockerClient.waitContainer("taskId");
+        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
     public void shouldRemoveStoppedContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("hello-world:latest", "", hostConfig);
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
-        customDockerClient.waitContainerForExitStatus("taskId", containerId);
+                .getContainerConfig("hello-world:latest", "", volumeName);
+        customDockerClient.startContainer("taskId", containerConfig);
+        customDockerClient.waitContainer("taskId");
 
-        boolean containerRemoved = customDockerClient.removeContainer(containerId);
+        boolean containerRemoved = customDockerClient.removeContainer("taskId");
         assertThat(containerRemoved).isTrue();
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
     public void shouldNotRemoveRunningContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        Volume volume = customDockerClient.createVolume("taskId");
-        HostConfig hostConfig = CustomDockerClient.createHostConfig(volume);
+        String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .createContainerConfig("iexechub/vanityeth:latest", "a", hostConfig);
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
+                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
+        customDockerClient.startContainer("taskId", containerConfig);
 
-        boolean containerRemoved = customDockerClient.removeContainer(containerId);
+        boolean containerRemoved = customDockerClient.removeContainer("taskId");
         assertThat(containerRemoved).isFalse();
-        customDockerClient.waitContainerForExitStatus("taskId", containerId);
-        customDockerClient.removeContainer(containerId);
+        customDockerClient.waitContainer("taskId");
+        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
-    public void shouldNotGetDockerLogsOfEmptyContainerId() {
-        String dockerLogs = customDockerClient.getDockerLogs("");
-        assertThat(dockerLogs).isEmpty();
+    public void shouldNotGetLogsOfEmptyTaskId() {
+        String dockerLogs = customDockerClient.getContainerLogs("");
+        assertThat(dockerLogs).isEqualTo("Failed to get logs of computation");
     }
 
     @Test
-    public void shouldGetFailedDockerLogs() {
-        String dockerLogs = customDockerClient.getDockerLogs("removedContainerId");
+    public void shouldGetLogsOfBadTaskId() {
+        String dockerLogs = customDockerClient.getContainerLogs("taskId");
         assertThat(dockerLogs).isEqualTo("Failed to get logs of computation");
     }
 

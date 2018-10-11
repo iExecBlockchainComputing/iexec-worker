@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -24,12 +26,15 @@ public class CustomDockerClient {
     private DefaultDockerClient docker;
     private WorkerConfigurationService configurationService;
 
+    private Map<String, String> taskToContainerId;
+
     public CustomDockerClient(WorkerConfigurationService configurationService) throws DockerCertificateException {
         this.configurationService = configurationService;
         docker = DefaultDockerClient.fromEnv().build();
+        taskToContainerId = new ConcurrentHashMap<>();
     }
 
-    static HostConfig createHostConfig(Volume from) {
+    private static HostConfig getHostConfig(String from) {
         if (from != null) {
             return HostConfig.builder()
                     .appendBinds(HostConfig.Bind.from(from)
@@ -41,7 +46,9 @@ public class CustomDockerClient {
         return null;
     }
 
-    static ContainerConfig createContainerConfig(String imageWithTag, String cmd, HostConfig hostConfig) {
+    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName) {
+        HostConfig hostConfig = getHostConfig(volumeName);
+
         if (imageWithTag.isEmpty() || hostConfig == null) {
             return null;
         }
@@ -62,60 +69,70 @@ public class CustomDockerClient {
             docker.pull(image);
             log.info("Image pull completed [taskId:{}, image:{}]",
                     taskId, image);
+            return true;
         } catch (DockerException | InterruptedException e) {
             log.error("Image pull failed [taskId:{}, image:{}]", taskId, image);
-            return false;
         }
-        return true;
+        return false;
     }
 
-    Volume createVolume(String taskId) {
-        String volumeName = getTaskVolumeName(taskId);
-        Volume toCreate = null;
+    String createVolume(String taskId) {
+        String volumeName = getVolumeName(taskId);
         if (!volumeName.isEmpty()) {
-            toCreate = Volume.builder()
+            Volume toCreate = Volume.builder()
                     .name(volumeName)
                     .driver("local")
                     .build();
             try {
-                return docker.createVolume(toCreate);
+                Volume createdVolume = docker.createVolume(toCreate);
+                log.debug("Created volume [taskId:{}, volumeName:{}]", taskId, volumeName);
+                return createdVolume.name();
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }
         }
-        return toCreate;
+        return "";
     }
 
-    String getTaskVolumeName(String taskId) {
+    String getVolumeName(String taskId) {
         if (!taskId.isEmpty() && !configurationService.getWorkerName().isEmpty()) {
             return DOCKER_BASE_VOLUME_NAME + "-" + configurationService.getWorkerName() + "-" + taskId;
         }
         return "";
     }
 
-    String startContainer(String taskId, ContainerConfig containerConfig) {
-        if (containerConfig==null){
-            return "";
+    String getContainerId(String taskId) {
+        if (taskToContainerId.containsKey(taskId)) {
+            return taskToContainerId.get(taskId);
         }
-        String id = "";
+        return "";
+    }
+
+    String startContainer(String taskId, ContainerConfig containerConfig) {
+        String containerId = "";
+        if (containerConfig == null) {
+            return containerId;
+        }
         try {
             ContainerCreation creation = docker.createContainer(containerConfig);
-            id = creation.id();
-            if (id != null && !id.isEmpty()) {
-                docker.startContainer(id);
+            containerId = creation.id();
+            if (containerId != null && !containerId.isEmpty()) {
+                taskToContainerId.put(taskId, containerId);
+                docker.startContainer(containerId);
                 log.info("Computation started [taskId:{}, image:{}, cmd:{}]",
                         taskId, containerConfig.image(), containerConfig.cmd());
             }
         } catch (DockerException | InterruptedException e) {
             log.error("Computation failed to start[taskId:{}, image:{}, cmd:{}]",
                     taskId, containerConfig.image(), containerConfig.cmd());
-            removeContainer(id);
-            id = "";
+            removeContainer(taskId);
+            containerId = "";
         }
-        return id;
+        return containerId;
     }
 
-    boolean waitContainerForExitStatus(String taskId, String containerId) {
+    boolean waitContainer(String taskId) {
+        String containerId = getContainerId(taskId);
         //TODO: add category timeout
         boolean isExecutionDone = false;
         try {
@@ -134,48 +151,54 @@ public class CustomDockerClient {
         return isExecutionDone;
     }
 
-    String getDockerLogs(String id) {
-        String logs = "";
-        if (!id.isEmpty()) {
+
+    String getContainerLogs(String taskId) {
+        String containerId = getContainerId(taskId);
+        if (!containerId.isEmpty()) {
             try {
-                logs = docker.logs(id, com.spotify.docker.client.DockerClient.LogsParam.stdout(), com.spotify.docker.client.DockerClient.LogsParam.stderr()).readFully();
+                return docker.logs(containerId, com.spotify.docker.client.DockerClient.LogsParam.stdout(), com.spotify.docker.client.DockerClient.LogsParam.stderr()).readFully();
             } catch (DockerException | InterruptedException e) {
-                log.error("Failed to get logs of computation [containerId:{}]", id);
-                logs = "Failed to get logs of computation";
+                log.error("Failed to get logs of computation [taskId:{}, containerId:{}]",
+                        taskId, containerId);
             }
         }
-        return logs;
+        return "Failed to get logs of computation";
     }
 
-    InputStream getContainerResultArchive(String containerId) {
+    InputStream getContainerResultArchive(String taskId) {
+        String containerId = getContainerId(taskId);
         InputStream containerResultArchive = null;
         try {
             containerResultArchive = docker.archiveContainer(containerId, REMOTE_PATH);
         } catch (DockerException | InterruptedException e) {
-            log.error("Failed to get container archive [containerId:{}]", containerId);
+            log.error("Failed to get container archive [taskId:{}, containerId:{}]",
+                    taskId, containerId);
         }
         return containerResultArchive;
     }
 
-    boolean removeContainer(String containerId) {
+    boolean removeContainer(String taskId) {
+        String containerId = getContainerId(taskId);
         if (!containerId.isEmpty()) {
             try {
                 docker.removeContainer(containerId);
-                log.debug("Removed container [containerId:{}]", containerId);
+                log.debug("Removed container [taskId:{}, containerId:{}]",
+                        taskId, containerId);
                 return true;
             } catch (DockerException | InterruptedException e) {
-                log.error("Failed to remove container [containerId:{}]", containerId);
+                log.error("Failed to remove container [taskId:{}, containerId:{}]",
+                        taskId, containerId);
             }
         }
         return false;
     }
 
     boolean removeVolume(String taskId) {
-        String volumeName = getTaskVolumeName(taskId);
+        String volumeName = getVolumeName(taskId);
         if (!taskId.isEmpty()) {
             try {
                 docker.removeVolume(volumeName);
-                log.debug("Removed volume [volumeName:{}]", volumeName);
+                log.debug("Removed volume [taskId:{}, volumeName:{}]", taskId, volumeName);
                 return true;
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove volume [taskId:{}, volumeName:{}]", taskId, volumeName);
