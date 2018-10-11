@@ -1,4 +1,4 @@
-package com.iexec.worker;
+package com.iexec.worker.docker;
 
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.utils.WorkerConfigurationService;

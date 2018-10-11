@@ -36,7 +36,7 @@ public class FileHelper {
         return null;
     }
 
-    public static boolean createDirectories(String directoryPath) {
+    private static boolean createDirectories(String directoryPath) {
         File baseDirectory = new File(directoryPath);
         if (!baseDirectory.exists()) {
             return baseDirectory.mkdirs();

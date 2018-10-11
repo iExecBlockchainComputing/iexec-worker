@@ -1,6 +1,5 @@
 package com.iexec.worker.docker;
 
-import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
@@ -14,17 +13,14 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Service
 public class CustomDockerClient {
 
-    private static final String REMOTE_PATH = "/iexec";
-    private static final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
     public static final String EXITED = "exited";
-
+    protected static final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
+    private static final String REMOTE_PATH = "/iexec";
     private DefaultDockerClient docker;
     private WorkerConfigurationService configurationService;
 
@@ -34,25 +30,29 @@ public class CustomDockerClient {
     }
 
     static HostConfig createHostConfig(Volume from) {
-        return HostConfig.builder()
-                .appendBinds(HostConfig.Bind.from(from)
-                        .to(REMOTE_PATH)
-                        .readOnly(false)
-                        .build())
-                .build();
+        if (from != null) {
+            return HostConfig.builder()
+                    .appendBinds(HostConfig.Bind.from(from)
+                            .to(REMOTE_PATH)
+                            .readOnly(false)
+                            .build())
+                    .build();
+        }
+        return null;
     }
 
     static ContainerConfig createContainerConfig(String imageWithTag, String cmd, HostConfig hostConfig) {
+        if (imageWithTag.isEmpty() || hostConfig == null) {
+            return null;
+        }
         ContainerConfig.Builder builder = ContainerConfig.builder()
                 .image(imageWithTag)
                 .hostConfig(hostConfig);
-        ContainerConfig containerConfig;
         if (cmd == null || cmd.isEmpty()) {
-            containerConfig = builder.build();
+            return builder.build();
         } else {
-            containerConfig = builder.cmd(cmd).build();
+            return builder.cmd(cmd).build();
         }
-        return containerConfig;
     }
 
     boolean pullImage(String taskId, String image) {
@@ -71,20 +71,32 @@ public class CustomDockerClient {
 
     Volume createVolume(String taskId) {
         String volumeName = getTaskVolumeName(taskId);
-        Volume toCreate;
-        toCreate = Volume.builder()
-                .name(volumeName)
-                .driver("local")
-                .build();
-        try {
-            return docker.createVolume(toCreate);
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
+        Volume toCreate = null;
+        if (!volumeName.isEmpty()) {
+            toCreate = Volume.builder()
+                    .name(volumeName)
+                    .driver("local")
+                    .build();
+            try {
+                return docker.createVolume(toCreate);
+            } catch (DockerException | InterruptedException e) {
+                log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
+            }
         }
         return toCreate;
     }
 
+    String getTaskVolumeName(String taskId) {
+        if (!taskId.isEmpty() && !configurationService.getWorkerName().isEmpty()) {
+            return DOCKER_BASE_VOLUME_NAME + "-" + configurationService.getWorkerName() + "-" + taskId;
+        }
+        return "";
+    }
+
     String startContainer(String taskId, ContainerConfig containerConfig) {
+        if (containerConfig==null){
+            return "";
+        }
         String id = "";
         try {
             ContainerCreation creation = docker.createContainer(containerConfig);
@@ -145,31 +157,31 @@ public class CustomDockerClient {
         return containerResultArchive;
     }
 
-    void removeContainer(String containerId) {
+    boolean removeContainer(String containerId) {
         if (!containerId.isEmpty()) {
             try {
                 docker.removeContainer(containerId);
                 log.debug("Removed container [containerId:{}]", containerId);
+                return true;
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove container [containerId:{}]", containerId);
             }
         }
+        return false;
     }
 
-    void removeVolume(String taskId) {
+    boolean removeVolume(String taskId) {
         String volumeName = getTaskVolumeName(taskId);
-        if (taskId != null) {
+        if (!taskId.isEmpty()) {
             try {
                 docker.removeVolume(volumeName);
                 log.debug("Removed volume [volumeName:{}]", volumeName);
+                return true;
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }
         }
-    }
-
-    String getTaskVolumeName(String taskId) {
-        return DOCKER_BASE_VOLUME_NAME + "-" + configurationService.getWorkerName() + "-" + taskId;
+        return false;
     }
 
     @PreDestroy

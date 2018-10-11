@@ -1,4 +1,4 @@
-package com.iexec.worker;
+package com.iexec.worker.utils;
 
 import com.iexec.worker.utils.FileHelper;
 import org.apache.commons.io.FileUtils;
