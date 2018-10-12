@@ -38,6 +38,7 @@ configurations {
 }
 
 
+
 ext {
     springCloudVersion = 'Finchley.RELEASE'
 }
