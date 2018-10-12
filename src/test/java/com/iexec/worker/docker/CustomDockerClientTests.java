@@ -36,11 +36,6 @@ public class CustomDockerClientTests {
         baseDockerClient = DefaultDockerClient.fromEnv().build();
     }
 
-    @After
-    public void after() {
-        when(configurationService.getWorkerName()).thenReturn("worker1");
-    }
-
     @Test
     public void shouldPullImage() {
         boolean imagePulled = customDockerClient.pullImage("taskId", "iexechub/vanityeth:latest");
@@ -140,6 +135,7 @@ public class CustomDockerClientTests {
         ContainerConfig containerConfig = CustomDockerClient
                 .getContainerConfig("", "cmd", volumeName);
         assertThat(containerConfig).isNull();
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
@@ -171,6 +167,7 @@ public class CustomDockerClientTests {
                 .getContainerConfig("", "a", volumeName);
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isEmpty();
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
@@ -193,7 +190,6 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldGetContainerArchive() {
-        when(configurationService.getWorkerName()).thenReturn("worker1");
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
@@ -225,7 +221,7 @@ public class CustomDockerClientTests {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
+                .getContainerConfig("iexechub/vanityeth:latest", "ac", volumeName);
         customDockerClient.startContainer("taskId", containerConfig);
 
         boolean containerRemoved = customDockerClient.removeContainer("taskId");

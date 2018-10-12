@@ -117,7 +117,6 @@ public class CustomDockerClient {
             ContainerCreation creation = docker.createContainer(containerConfig);
             containerId = creation.id();
             if (containerId != null && !containerId.isEmpty()) {
-                taskToContainerId.put(taskId, containerId);
                 docker.startContainer(containerId);
                 log.info("Computation started [taskId:{}, image:{}, cmd:{}]",
                         taskId, containerConfig.image(), containerConfig.cmd());
@@ -128,6 +127,7 @@ public class CustomDockerClient {
             removeContainer(taskId);
             containerId = "";
         }
+        taskToContainerId.put(taskId, containerId);
         return containerId;
     }
 
