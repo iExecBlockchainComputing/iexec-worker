@@ -37,9 +37,6 @@ configurations {
     deployerJars
 }
 
-test {
-    testLogging.showStandardStreams = true
-}
 
 
 ext {

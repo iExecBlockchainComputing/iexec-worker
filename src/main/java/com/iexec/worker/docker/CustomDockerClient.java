@@ -117,6 +117,7 @@ public class CustomDockerClient {
             ContainerCreation creation = docker.createContainer(containerConfig);
             containerId = creation.id();
             if (containerId != null && !containerId.isEmpty()) {
+                //TODO check image his here
                 docker.startContainer(containerId);
                 log.info("Computation started [taskId:{}, image:{}, cmd:{}]",
                         taskId, containerConfig.image(), containerConfig.cmd());
