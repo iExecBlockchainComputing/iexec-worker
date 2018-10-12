@@ -9,6 +9,7 @@ import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.Volume;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -31,14 +32,10 @@ public class CustomDockerClientTests {
     private DockerClient baseDockerClient;
 
     @Before
-    public void init() throws DockerCertificateException {
+    public void beforeEach() throws DockerCertificateException, DockerException, InterruptedException {
         MockitoAnnotations.initMocks(this);
         baseDockerClient = DefaultDockerClient.fromEnv().build();
-    }
-
-    @After
-    public void after() {
-        when(configurationService.getWorkerName()).thenReturn("worker1");
+        baseDockerClient.pull("iexechub/vanityeth:latest");
     }
 
     @Test
@@ -140,6 +137,7 @@ public class CustomDockerClientTests {
         ContainerConfig containerConfig = CustomDockerClient
                 .getContainerConfig("", "cmd", volumeName);
         assertThat(containerConfig).isNull();
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
@@ -171,6 +169,7 @@ public class CustomDockerClientTests {
                 .getContainerConfig("", "a", volumeName);
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isEmpty();
+        customDockerClient.removeVolume("taskId");
     }
 
     @Test
@@ -178,7 +177,7 @@ public class CustomDockerClientTests {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("hello-world:latest", "", volumeName);
+                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
         customDockerClient.startContainer("taskId", containerConfig);
         boolean executionDone = customDockerClient.waitContainer("taskId");
         assertThat(executionDone).isTrue();
@@ -193,7 +192,6 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldGetContainerArchive() {
-        when(configurationService.getWorkerName()).thenReturn("worker1");
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
@@ -211,7 +209,7 @@ public class CustomDockerClientTests {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("hello-world:latest", "", volumeName);
+                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
         customDockerClient.startContainer("taskId", containerConfig);
         customDockerClient.waitContainer("taskId");
 
@@ -225,7 +223,7 @@ public class CustomDockerClientTests {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
+                .getContainerConfig("iexechub/vanityeth:latest", "ac", volumeName);
         customDockerClient.startContainer("taskId", containerConfig);
 
         boolean containerRemoved = customDockerClient.removeContainer("taskId");
