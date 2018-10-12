@@ -3,16 +3,13 @@ package com.iexec.worker.docker;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.HostConfig;
-import com.spotify.docker.client.messages.Volume;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.InputStream;
 
-import static com.iexec.worker.docker.CustomDockerClient.createContainerConfig;
-import static com.iexec.worker.docker.CustomDockerClient.createHostConfig;
+import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
 import static com.iexec.worker.utils.FileHelper.*;
 
 @Slf4j
@@ -35,13 +32,9 @@ public class DockerComputationService {
                 .cmd(cmd)
                 .build();
 
-        boolean isImagePulled = dockerClient.pullImage(taskId, image);
-
-        if (isImagePulled) {
-            final Volume volume = dockerClient.createVolume(taskId);
-            final HostConfig hostConfig = createHostConfig(volume);
-            final ContainerConfig containerConfig = createContainerConfig(image, cmd, hostConfig);
-
+        if (dockerClient.pullImage(taskId, image)) {
+            String volumeName = dockerClient.createVolume(taskId);
+            ContainerConfig containerConfig = getContainerConfig(image, cmd, volumeName);
             startComputation(taskId, metadataResult, containerConfig);
         } else {
             createStdoutFile(taskId, "Failed to pull image");
@@ -57,29 +50,29 @@ public class DockerComputationService {
         if (!containerId.isEmpty()) {
             metadataResult.setContainerId(containerId);
 
-            waitForComputation(taskId, metadataResult, containerId);
-            copyComputationResults(taskId, containerId);
+            waitForComputation(taskId);
+            copyComputationResults(taskId);
 
-            dockerClient.removeContainer(containerId);
+            dockerClient.removeContainer(taskId);
             dockerClient.removeVolume(taskId);
         } else {
             createStdoutFile(taskId, "Failed to start container");
         }
     }
 
-    private void waitForComputation(String taskId, MetadataResult metadataResult, String containerId) {
-        boolean executionDone = dockerClient.waitContainerForExitStatus(taskId, containerId);
+    private void waitForComputation(String taskId) {
+        boolean executionDone = dockerClient.waitContainer(taskId);
 
         if (executionDone) {
-            String dockerLogs = dockerClient.getDockerLogs(metadataResult.getContainerId());
+            String dockerLogs = dockerClient.getContainerLogs(taskId);
             createStdoutFile(taskId, dockerLogs);
         } else {
             createStdoutFile(taskId, "Computation failed");
         }
     }
 
-    private void copyComputationResults(String taskId, String containerId) {
-        InputStream containerResult = dockerClient.getContainerResultArchive(containerId);
+    private void copyComputationResults(String taskId) {
+        InputStream containerResult = dockerClient.getContainerResultArchive(taskId);
         copyResultToTaskFolder(containerResult, configurationService.getResultBaseDir(), taskId);
     }
 
