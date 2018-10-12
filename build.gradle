@@ -37,6 +37,10 @@ configurations {
     deployerJars
 }
 
+test {
+    testLogging.showStandardStreams = true
+}
+
 
 ext {
     springCloudVersion = 'Finchley.RELEASE'
