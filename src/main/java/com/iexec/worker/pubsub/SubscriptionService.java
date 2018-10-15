@@ -1,13 +1,12 @@
 package com.iexec.worker.pubsub;
 
-import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
 import com.iexec.worker.docker.DockerComputationService;
-import com.iexec.worker.result.ResultService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
+import com.iexec.worker.result.ResultService;
 import com.iexec.worker.utils.CoreConfigurationService;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -90,32 +89,36 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
                 TaskNotification taskNotification = (TaskNotification) payload;
-                if (taskNotification.getWorkerAddress().equals(workerConfigurationService.getWorkerName())) {
-                    log.info("Received [{}]", taskNotification);
-
-                    if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
-
-                        log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
-                        coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
-                                workerConfigurationService.getWorkerName(),
-                                ReplicateStatus.UPLOADING_RESULT);
-
-                        //Upload result cause core is asking for
-                        resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getTaskId()));
-                        log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
-                        coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
-                                workerConfigurationService.getWorkerName(),
-                                ReplicateStatus.RESULT_UPLOADED);
-                    } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {
-                        //TODO : iexec-core side, notify COMPLETED task on topic
-                        unsubscribeFromTaskNotifications(taskId);
-                    }
-                }
+                handleTaskNotification(taskNotification, taskId);
 
             }
         });
         taskIdToSubscription.put(taskId, subscription);
         log.info("Subscribed to {}", getTaskTopicName(taskId));
+    }
+
+    private void handleTaskNotification(TaskNotification taskNotification, String taskId) {
+        if (taskNotification.getWorkerAddress().equals(workerConfigurationService.getWorkerName())
+                || taskNotification.getWorkerAddress().isEmpty()) {
+            log.info("Received [{}]", taskNotification);
+
+            if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
+
+                log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
+                coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
+                        workerConfigurationService.getWorkerName(),
+                        ReplicateStatus.UPLOADING_RESULT);
+
+                //Upload result cause core is asking for
+                resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getTaskId()));
+                log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
+                coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
+                        workerConfigurationService.getWorkerName(),
+                        ReplicateStatus.RESULT_UPLOADED);
+            } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {
+                unsubscribeFromTaskNotifications(taskId);
+            }
+        }
     }
 
     public void unsubscribeFromTaskNotifications(String taskId) {
