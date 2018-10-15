@@ -1,5 +1,6 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
@@ -93,13 +94,15 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     log.info("Received [{}]", taskNotification);
 
                     if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
-                        log.info("Update replicate status {}", ReplicateStatus.UPLOADING_RESULT);
+
+                        log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
                         coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
                                 workerConfigurationService.getWorkerName(),
                                 ReplicateStatus.UPLOADING_RESULT);
+
                         //Upload result cause core is asking for
                         resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getTaskId()));
-                        log.info("Update replicate status {}", ReplicateStatus.RESULT_UPLOADED);
+                        log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
                         coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
                                 workerConfigurationService.getWorkerName(),
                                 ReplicateStatus.RESULT_UPLOADED);
