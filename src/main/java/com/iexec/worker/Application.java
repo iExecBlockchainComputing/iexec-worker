@@ -19,8 +19,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Slf4j
 public class Application implements CommandLineRunner {
 
-    @Value("${core.address}")
-    private String coreAddress;
+    @Value("${core.host}")
+    private String coreHost;
+
+    @Value("${core.port}")
+    private String corePort;
 
     @Autowired
     private CoreWorkerClient coreWorkerClient;
@@ -44,7 +47,7 @@ public class Application implements CommandLineRunner {
 
         log.info("Configuration of the worker [configuration:{}]", model);
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
-        log.info("Address of the core [address:{}]", coreAddress);
+        log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", coreWorkerClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
 

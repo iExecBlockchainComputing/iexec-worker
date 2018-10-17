@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "CoreWorkerClient", url = "${core.address}")
+@FeignClient(name = "CoreWorkerClient", url = "http://${core.host}:${core.port}")
 public interface CoreWorkerClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/version")

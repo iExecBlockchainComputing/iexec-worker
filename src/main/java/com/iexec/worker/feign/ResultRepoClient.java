@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "ResultRepoClient", url = "${core.address}")
+@FeignClient(name = "ResultRepoClient", url = "http://${core.host}:${core.port}")
 public interface ResultRepoClient {
 
     @PostMapping("/results")
