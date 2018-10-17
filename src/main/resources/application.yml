@@ -2,7 +2,8 @@ server:
   port: ${IEXEC_WORKER_PORT:18091}
 
 core:
-  address: ${IEXEC_CORE_ADDRESS:http://localhost:18090}
+  host: ${IEXEC_CORE_HOST:localhost}
+  port: ${IEXEC_CORE_PORT:18090}
 
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}

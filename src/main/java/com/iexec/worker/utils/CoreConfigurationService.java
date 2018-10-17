@@ -10,14 +10,17 @@ import java.net.URL;
 @Service
 public class CoreConfigurationService {
 
-    @Value("${core.address}")
-    private String coreAddress;
+    @Value("${core.host}")
+    private String coreHost;
+
+    @Value("${core.port}")
+    private String corePort;
 
     private URL url;
 
     @PostConstruct
     public void run() throws MalformedURLException {
-        url = new URL(coreAddress);
+        url = new URL("http://" + coreHost + ":" + corePort);
     }
 
     public String getHost() {
