@@ -100,3 +100,8 @@ test {
         exclude '**/docker/**'
     }
 }
+
+task buildImage(type: Exec) {
+    description 'Build a docker image for the worker'
+    commandLine("sh", "-c", "docker image build -f src/main/resources/Dockerfile -t iexechub/worker-new:${version} .")
+}
