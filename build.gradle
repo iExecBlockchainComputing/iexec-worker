@@ -1,3 +1,5 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
 buildscript {
 	ext {
 		springBootVersion = '2.0.5.RELEASE'
@@ -84,6 +86,8 @@ build.dependsOn jacocoTestReport
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
 def isMasterBranch = gitBranch == "remotes/origin/master"
 def canUploadArchives = isMasterBranch
+def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
+def isSnapshotVersion = project.version.contains("SNAPSHOT")
 
 uploadArchives {
     repositories.mavenDeployer {
@@ -101,7 +105,40 @@ test {
     }
 }
 
-task buildImage(type: Exec) {
-    description 'Build a docker image for the worker'
-    commandLine("sh", "-c", "docker image build -f src/main/resources/Dockerfile -t iexechub/worker-new:${version} .")
+project.ext.getDockerImageName = {
+    def imageName = "iexechub/iexec-worker:${version}"
+    if (isSnapshotVersion) {
+        return imageName + "-" + gitShortCommit
+    } else {
+        return imageName
+    }
 }
+
+task prepareDockerFile(type: Copy) {
+    delete 'build/main/resources/'
+    from 'src/main/resources/Dockerfile'
+    into 'build/main/resources/'
+    filter(ReplaceTokens, tokens: [projectversion: "${version}".toString()])
+}
+
+
+task buildImage(type: Exec) {
+    description 'Build a docker image for the core'
+    commandLine("sh", "-c", "docker image build -f build/main/resources/Dockerfile -t " + getDockerImageName() + " .")
+}
+
+buildImage.dependsOn prepareDockerFile
+buildImage.enabled = isMasterBranch || project.hasProperty("forceDockerBuild")
+
+task pushImage(type: Exec) {
+    if (project.hasProperty("dockerHubUser") && project.hasProperty("dockerHubPassword")) {
+        commandLine("sh", "-c", "docker login -u " + project.dockerHubUser + " -p " + project.dockerHubPassword + " && " +
+                "docker push " + getDockerImageName() + " && " +
+                "docker logout")
+    } else {
+        println "Credentials for DockerHub are missing, the images cannot be pushed"
+    }
+}
+
+pushImage.dependsOn buildImage
+pushImage.enabled = isMasterBranch && project.hasProperty("dockerHubUser") && project.hasProperty("dockerHubPassword")
