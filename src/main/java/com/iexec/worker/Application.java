@@ -2,6 +2,7 @@ package com.iexec.worker;
 
 
 import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.web3j.crypto.Credentials;
 
 @SpringBootApplication
 @EnableFeignClients
@@ -30,6 +32,9 @@ public class Application implements CommandLineRunner {
 
     @Autowired
     private WorkerConfigurationService workerConfig;
+
+    @Autowired
+    private CredentialsService credentialsService;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -53,6 +58,8 @@ public class Application implements CommandLineRunner {
 
         log.info("Registering the worker to the core [worker:{}]", model);
         coreWorkerClient.registerWorker(model);
+
+        Credentials credentials = credentialsService.getCredentials();
 
     }
 }
