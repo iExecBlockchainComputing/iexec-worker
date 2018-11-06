@@ -14,12 +14,13 @@ public class CredentialsService {
 
     private Credentials credentials;
 
-    public CredentialsService(WalletDetails walletDetails) {
+    public CredentialsService(WalletDetails walletDetails) throws IOException, CipherException {
         try {
             credentials = WalletUtils.loadCredentials(walletDetails.getPassword(), walletDetails.getPath());
             log.info("Load wallet credentials [address:{}] ", credentials.getAddress());
         } catch (IOException | CipherException e) {
             log.error("Credentials cannot be loaded [exception:{}] ", e);
+            throw e;
         }
     }
 

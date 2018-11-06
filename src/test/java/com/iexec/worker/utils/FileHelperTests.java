@@ -1,6 +1,5 @@
 package com.iexec.worker.utils;
 
-import com.iexec.worker.utils.FileHelper;
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
