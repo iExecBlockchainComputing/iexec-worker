@@ -8,3 +8,7 @@ core:
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
   resultBaseDir: ${IEXEC_WORKER_RESULT_BASE_DIR:/tmp/iexec-worker/}
+
+wallet:
+  encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
+  password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
