@@ -1,9 +1,9 @@
 package com.iexec.worker.feign;
 
 
+import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -16,7 +16,7 @@ public interface CoreWorkerClient {
     String getCoreVersion();
 
     @RequestMapping(method = RequestMethod.GET, path = "/workers/config")
-    ResponseEntity getPublicConfiguration();
+    PublicConfiguration getPublicConfiguration();
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
     void ping (@RequestParam(name = "workerName") String workerName);
