@@ -3,6 +3,7 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.worker.feign.CoreWorkerClient;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +22,10 @@ import java.math.BigInteger;
 import java.util.List;
 
 
+@Slf4j
 @Service
 public class IexecHubService {
 
-    private static final Logger log = LoggerFactory.getLogger(IexecHubService.class);
     private final IexecHubABILegacy iexecHub;
 
     @Autowired
@@ -40,32 +41,11 @@ public class IexecHubService {
 
     private IexecHubABILegacy loadHubContract(Credentials credentials, Web3j web3j, String iexecHubAddress) {
         ExceptionInInitializerError exceptionInInitializerError = new ExceptionInInitializerError("Failed to load IexecHub contract from address " + iexecHubAddress);
-        IexecHubABILegacy iexecHub;
 
         if (iexecHubAddress != null && !iexecHubAddress.isEmpty()) {
             try {
-                iexecHub = IexecHubABILegacy.load(
-                        iexecHubAddress, web3j, credentials, new ContractGasProvider() {
-                            @Override
-                            public BigInteger getGasPrice(String s) {
-                                return DefaultGasProvider.GAS_PRICE;
-                            }
-
-                            @Override
-                            public BigInteger getGasPrice() {
-                                return DefaultGasProvider.GAS_PRICE;
-                            }
-
-                            @Override
-                            public BigInteger getGasLimit(String s) {
-                                return DefaultGasProvider.GAS_LIMIT;
-                            }
-
-                            @Override
-                            public BigInteger getGasLimit() {
-                                return DefaultGasProvider.GAS_LIMIT;
-                            }
-                        });
+                IexecHubABILegacy iexecHub = IexecHubABILegacy.load(
+                        iexecHubAddress, web3j, credentials, new DefaultGasProvider());
                 //if (!iexecHub.isValid()){ throw exceptionInInitializerError;}
 
                 log.info("Loaded contract IexecHub [address:{}] ", iexecHubAddress);
@@ -82,7 +62,7 @@ public class IexecHubService {
         Web3j web3j = Web3j.build(new HttpService(chainNodeAddress));
         ExceptionInInitializerError exceptionInInitializerError = new ExceptionInInitializerError("Failed to connect to ethereum node " + chainNodeAddress);
         try {
-            log.info(web3j.web3ClientVersion().send().getWeb3ClientVersion());
+            log.info("Connected to Ethereum node [node:{}]", web3j.web3ClientVersion().send().getWeb3ClientVersion());
             if (web3j.web3ClientVersion().send().getWeb3ClientVersion() == null) {
                 throw exceptionInInitializerError;
             }
