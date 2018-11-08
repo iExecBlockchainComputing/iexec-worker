@@ -4,8 +4,6 @@ package com.iexec.worker.chain;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Credentials;
@@ -14,11 +12,9 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.http.HttpService;
-import org.web3j.tx.gas.ContractGasProvider;
 import org.web3j.tx.gas.DefaultGasProvider;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.List;
 
 
@@ -36,7 +32,19 @@ public class IexecHubService {
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
 
         startWatchers();
-        subscribeToPool(coreWorkerClient.getPublicConfiguration().getWorkerPoolAddress());
+
+        String oldPool = getWorkerAffectation(credentialsService.getCredentials().getAddress());
+        String newPool = coreWorkerClient.getPublicConfiguration().getWorkerPoolAddress();
+
+        if (oldPool.isEmpty()){
+            subscribeToPool(newPool);
+        } else if (oldPool.equals(newPool)) {
+            log.info("Already registered to pool [pool:{}]", newPool);
+        } else {
+            //TODO: unsubscribe from last and subscribe to current
+        }
+
+
     }
 
     private IexecHubABILegacy loadHubContract(Credentials credentials, Web3j web3j, String iexecHubAddress) {
@@ -91,6 +99,21 @@ public class IexecHubService {
             log.info("Failed to subscribed to pool [pool:{}]", poolAddress);
 
         }
+    }
+
+    private String getWorkerAffectation(String worker) {
+        String workerAffectation = "";
+        try {
+            workerAffectation = iexecHub.viewAffectation(worker).send();
+        } catch (Exception e) {
+            log.info("Failed to get worker affectation [worker:{}]", worker);
+        }
+
+        if (workerAffectation.equals("0x0000000000000000000000000000000000000000")) {
+            workerAffectation = "";
+        }
+        log.info("Got worker pool affectation [pool:{}, worker:{}]", workerAffectation, worker);
+        return workerAffectation;
     }
 
 }
