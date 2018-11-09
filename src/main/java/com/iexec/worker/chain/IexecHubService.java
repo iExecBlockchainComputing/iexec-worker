@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.tuples.generated.Tuple10;
 
+import java.math.BigInteger;
 import java.util.List;
 
 
@@ -78,4 +80,16 @@ public class IexecHubService {
         return workerAffectation;
     }
 
+    public boolean isTaskInitialized(byte[] chainTaskId){
+        try {
+            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> res = iexecHub.viewTaskABILegacy(chainTaskId).send();
+            if (res != null && res.getSize() > 0) {
+                log.info("Task has been initialized [chainTaskId:{}]", chainTaskId);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
