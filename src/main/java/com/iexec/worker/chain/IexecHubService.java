@@ -83,7 +83,7 @@ public class IexecHubService {
     public boolean isTaskInitialized(byte[] chainTaskId){
         try {
             Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> res = iexecHub.viewTaskABILegacy(chainTaskId).send();
-            if (res != null && res.getSize() > 0) {
+           if (res != null && !res.isEmpty()) {
                 log.info("Task has been initialized [chainTaskId:{}]", chainTaskId);
                 return true;
             }
