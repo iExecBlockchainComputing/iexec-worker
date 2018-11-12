@@ -3,13 +3,16 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.ChainUtils;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.tuples.generated.Tuple10;
 
+import java.math.BigInteger;
 import java.util.List;
 
 
@@ -78,4 +81,17 @@ public class IexecHubService {
         return workerAffectation;
     }
 
+    public boolean isTaskInitialized(String chainTaskId){
+        try {
+            byte[] bytesChainTaskId = BytesUtils.stringToBytes(chainTaskId);
+            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(bytesChainTaskId).send();
+           if (receipt != null && receipt.getSize() > 0) {
+                log.info("Task has been initialized [chainTaskId:{}]", chainTaskId);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
