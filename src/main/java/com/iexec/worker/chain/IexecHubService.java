@@ -3,6 +3,7 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.ChainUtils;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.utils.Utils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,8 +84,8 @@ public class IexecHubService {
     public boolean isTaskInitialized(byte[] chainTaskId){
         try {
             Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> res = iexecHub.viewTaskABILegacy(chainTaskId).send();
-           if (res != null && !res.isEmpty()) {
-                log.info("Task has been initialized [chainTaskId:{}]", chainTaskId);
+           if (res != null && res.getSize() > 0) {
+                log.info("Task has been initialized [chainTaskId:{}]", Utils.bytesToString(chainTaskId));
                 return true;
             }
         } catch (Exception e) {
