@@ -49,7 +49,7 @@ public class TaskExecutorService {
     public void addReplicate(ReplicateModel model) {
         String taskId = model.getTaskId();
         String workerName = model.getWorkerAddress();
-        byte[] chainTaskId = model.getChainTaskId();
+        String chainTaskId = model.getChainTaskId();
 
         CompletableFuture.supplyAsync(() -> {
 

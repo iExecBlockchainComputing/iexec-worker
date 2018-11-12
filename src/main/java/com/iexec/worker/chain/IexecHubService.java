@@ -3,7 +3,7 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.ChainUtils;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
-import com.iexec.common.utils.Utils;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,11 +81,12 @@ public class IexecHubService {
         return workerAffectation;
     }
 
-    public boolean isTaskInitialized(byte[] chainTaskId){
+    public boolean isTaskInitialized(String chainTaskId){
         try {
-            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> res = iexecHub.viewTaskABILegacy(chainTaskId).send();
+            byte[] bytesChainTaskId = BytesUtils.stringToBytes(chainTaskId);
+            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> res = iexecHub.viewTaskABILegacy(bytesChainTaskId).send();
            if (res != null && res.getSize() > 0) {
-                log.info("Task has been initialized [chainTaskId:{}]", Utils.bytesToString(chainTaskId));
+                log.info("Task has been initialized [chainTaskId:{}]", chainTaskId);
                 return true;
             }
         } catch (Exception e) {
