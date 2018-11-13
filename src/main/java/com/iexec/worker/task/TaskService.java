@@ -35,8 +35,8 @@ public class TaskService {
     public String getTask() {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
-            String workerName = workerConfigService.getWorkerName();
-            ReplicateModel replicateModel = coreTaskClient.getReplicate(workerName);
+            String workerWalletAddress = workerConfigService.getWorkerWalletAddress();
+            ReplicateModel replicateModel = coreTaskClient.getReplicate(workerWalletAddress);
             if (replicateModel == null || replicateModel.getTaskId() == null) {
 
                 return "NO TASK AVAILABLE";

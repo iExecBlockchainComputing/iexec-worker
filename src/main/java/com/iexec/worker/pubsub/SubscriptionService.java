@@ -98,7 +98,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     private void handleTaskNotification(TaskNotification taskNotification, String taskId) {
-        if (taskNotification.getWorkerAddress().equals(workerConfigurationService.getWorkerName())
+        if (taskNotification.getWorkerAddress().equals(workerConfigurationService.getWorkerWalletAddress())
                 || taskNotification.getWorkerAddress().isEmpty()) {
             log.info("Received [{}]", taskNotification);
 
@@ -106,14 +106,14 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
                 log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
                 coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
-                        workerConfigurationService.getWorkerName(),
+                        workerConfigurationService.getWorkerWalletAddress(),
                         ReplicateStatus.UPLOADING_RESULT);
 
                 //Upload result cause core is asking for
                 resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getTaskId()));
                 log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
                 coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
-                        workerConfigurationService.getWorkerName(),
+                        workerConfigurationService.getWorkerWalletAddress(),
                         ReplicateStatus.RESULT_UPLOADED);
             } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {
                 unsubscribeFromTaskNotifications(taskId);
