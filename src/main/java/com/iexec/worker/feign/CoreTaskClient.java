@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface CoreTaskClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/tasks/available")
-    ReplicateModel getReplicate(@RequestParam(name = "workerName") String workerName);
+    ReplicateModel getReplicate(@RequestParam(name = "walletAddress") String walletAddress);
 
     @RequestMapping(method = RequestMethod.POST, path = "/tasks/{taskId}/replicates/updateStatus")
     ReplicateModel updateReplicateStatus(@PathVariable(name = "taskId") String taskId,
-                                         @RequestParam(name = "workerName") String workerName,
+                                         @RequestParam(name = "walletAddress") String walletAddress,
                                          @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus);
 
 }

@@ -13,7 +13,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.web3j.crypto.Credentials;
 
 @SpringBootApplication
 @EnableFeignClients
@@ -45,12 +44,13 @@ public class Application implements CommandLineRunner {
 
         WorkerConfigurationModel model = WorkerConfigurationModel.builder()
                 .name(workerConfig.getWorkerName())
+                .walletAddress(credentialsService.getCredentials().getAddress())
                 .os(workerConfig.getOS())
                 .cpu(workerConfig.getCPU())
                 .cpuNb(workerConfig.getNbCPU())
                 .build();
 
-        log.info("Configuration of the worker [configuration:{}]", model);
+
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", coreWorkerClient.getCoreVersion());
@@ -59,7 +59,7 @@ public class Application implements CommandLineRunner {
         log.info("Registering the worker to the core [worker:{}]", model);
         coreWorkerClient.registerWorker(model);
 
-        Credentials credentials = credentialsService.getCredentials();
+
 
     }
 }

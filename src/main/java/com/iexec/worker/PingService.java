@@ -22,6 +22,6 @@ public class PingService {
     @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
         log.debug("Send ping to scheduler");
-        coreWorkerClient.ping(workerConfService.getWorkerName());
+        coreWorkerClient.ping(workerConfService.getWorkerWalletAddress());
     }
 }

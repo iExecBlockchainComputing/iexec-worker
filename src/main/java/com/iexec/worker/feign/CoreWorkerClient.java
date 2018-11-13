@@ -19,7 +19,7 @@ public interface CoreWorkerClient {
     PublicConfiguration getPublicConfiguration();
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
-    void ping (@RequestParam(name = "workerName") String workerName);
+    void ping (@RequestParam(name = "walletAddress") String walletAddress);
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/register")
     void registerWorker(@RequestBody WorkerConfigurationModel model);
