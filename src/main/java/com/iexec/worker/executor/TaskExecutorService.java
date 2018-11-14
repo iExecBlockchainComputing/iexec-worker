@@ -1,14 +1,14 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.ReplicateModel;
+import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.docker.DockerComputationService;
-import com.iexec.worker.result.MetadataResult;
-import com.iexec.worker.result.ResultService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
+import com.iexec.worker.result.MetadataResult;
+import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -46,7 +46,7 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public void addReplicate(ReplicateModel model) {
+    public void addReplicate(AvailableReplicateModel model) {
         String taskId = model.getTaskId();
         String walletAddress = model.getWorkerAddress();
         String chainTaskId = model.getChainTaskId();

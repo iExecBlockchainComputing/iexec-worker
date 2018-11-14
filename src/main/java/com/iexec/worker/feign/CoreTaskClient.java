@@ -1,6 +1,7 @@
 package com.iexec.worker.feign;
 
 
+import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface CoreTaskClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/tasks/available")
-    ReplicateModel getReplicate(@RequestParam(name = "walletAddress") String walletAddress);
+    AvailableReplicateModel getAvailableReplicate(@RequestParam(name = "workerWalletAddress") String workerWalletAddress,
+                                                  @RequestParam(name = "workerEnclaveAddress") String workerEnclaveAddress);
 
     @RequestMapping(method = RequestMethod.POST, path = "/tasks/{taskId}/replicates/updateStatus")
     ReplicateModel updateReplicateStatus(@PathVariable(name = "taskId") String taskId,

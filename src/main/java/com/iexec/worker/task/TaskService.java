@@ -1,6 +1,6 @@
 package com.iexec.worker.task;
 
-import com.iexec.common.replicate.ReplicateModel;
+import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CoreTaskClient;
@@ -21,6 +21,7 @@ public class TaskService {
     private TaskExecutorService executorService;
     private SubscriptionService subscriptionService;
 
+
     @Autowired
     public TaskService(CoreTaskClient coreTaskClient,
                        WorkerConfigurationService workerConfigService,
@@ -35,12 +36,14 @@ public class TaskService {
     public String getTask() {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
-            String workerWalletAddress = workerConfigService.getWorkerWalletAddress();
-            ReplicateModel replicateModel = coreTaskClient.getReplicate(workerWalletAddress);
-            if (replicateModel == null || replicateModel.getTaskId() == null) {
 
+            AvailableReplicateModel replicateModel = coreTaskClient.getAvailableReplicate(
+                    workerConfigService.getWorkerWalletAddress(),
+                    workerConfigService.getWorkerEnclaveAdress());
+            if (replicateModel == null || replicateModel.getTaskId() == null) {
                 return "NO TASK AVAILABLE";
             }
+
             log.info("Received task [taskId:{}]", replicateModel.getTaskId());
             subscriptionService.subscribeToTaskNotifications(replicateModel.getTaskId());
             executorService.addReplicate(replicateModel);
