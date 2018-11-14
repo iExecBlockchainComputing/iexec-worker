@@ -60,8 +60,9 @@ public class TaskExecutorService {
                             MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                             resultService.addMetaDataResult(chainTaskId, metadataResult);//save metadataResult (without zip payload) in memory
                         }
+                    } else {
+                        log.warn("The task has been initialized on chain [chainTaskId:{}]", chainTaskId);
                     }
-
                     return Thread.currentThread().getName();
                 }
                 , executor).thenAccept(s -> {

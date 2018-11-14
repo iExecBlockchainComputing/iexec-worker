@@ -86,7 +86,6 @@ public class IexecHubService {
             byte[] bytesChainTaskId = BytesUtils.stringToBytes(chainTaskId);
             Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(bytesChainTaskId).send();
            if (receipt != null && receipt.getSize() > 0) {
-                log.info("Task has been initialized [chainTaskId:{}]", chainTaskId);
                 return true;
             }
         } catch (Exception e) {
