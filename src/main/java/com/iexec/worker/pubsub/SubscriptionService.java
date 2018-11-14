@@ -105,14 +105,14 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
 
                 log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
-                coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
+                coreTaskClient.updateReplicateStatus(taskNotification.getChainTaskId(),
                         workerConfigurationService.getWorkerWalletAddress(),
                         ReplicateStatus.UPLOADING_RESULT);
 
                 //Upload result cause core is asking for
-                resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getTaskId()));
+                resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getChainTaskId()));
                 log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
-                coreTaskClient.updateReplicateStatus(taskNotification.getTaskId(),
+                coreTaskClient.updateReplicateStatus(taskNotification.getChainTaskId(),
                         workerConfigurationService.getWorkerWalletAddress(),
                         ReplicateStatus.RESULT_UPLOADED);
             } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {

@@ -21,7 +21,7 @@ public class ResultService {
 
     public ResultService(WorkerConfigurationService configurationService) {
         this.configurationService = configurationService;
-        metadataResultMap = new ConcurrentHashMap<>();
+        this.metadataResultMap = new ConcurrentHashMap<>();
     }
 
     public ResultModel getResultModelWithZip(String taskId) {
