@@ -40,12 +40,12 @@ public class TaskService {
             AvailableReplicateModel replicateModel = coreTaskClient.getAvailableReplicate(
                     workerConfigService.getWorkerWalletAddress(),
                     workerConfigService.getWorkerEnclaveAdress());
-            if (replicateModel == null || replicateModel.getTaskId() == null) {
+            if (replicateModel == null || replicateModel.getChainTaskId() == null) {
                 return "NO TASK AVAILABLE";
             }
 
-            log.info("Received task [taskId:{}]", replicateModel.getTaskId());
-            subscriptionService.subscribeToTaskNotifications(replicateModel.getTaskId());
+            log.info("Received task [chainTaskId:{}]", replicateModel.getChainTaskId());
+            subscriptionService.subscribeToTaskNotifications(replicateModel.getChainTaskId());
             executorService.addReplicate(replicateModel);
             return ReplicateStatus.COMPUTED.toString();
         }

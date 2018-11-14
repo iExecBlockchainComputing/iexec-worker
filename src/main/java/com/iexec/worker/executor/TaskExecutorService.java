@@ -47,7 +47,6 @@ public class TaskExecutorService {
     }
 
     public void addReplicate(AvailableReplicateModel model) {
-        String taskId = model.getTaskId();
         String walletAddress = model.getWorkerAddress();
         String chainTaskId = model.getChainTaskId();
 
@@ -55,11 +54,11 @@ public class TaskExecutorService {
 
                     if (iexecHubService.isTaskInitialized(chainTaskId)){
                         // TODO: this part should be refactored
-                        log.info("Update replicate status to RUNNING [taskId:{}, walletAddress:{}]", taskId, walletAddress);
-                        coreTaskClient.updateReplicateStatus(taskId, walletAddress, ReplicateStatus.RUNNING);
+                        log.info("Update replicate status to RUNNING [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
+                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.RUNNING);
                         if (model.getDappType().equals(DappType.DOCKER)) {
-                            MetadataResult metadataResult = dockerComputationService.dockerRun(taskId, model.getDappName(), model.getCmd());
-                            resultService.addMetaDataResult(taskId, metadataResult);//save metadataResult (without zip payload) in memory
+                            MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
+                            resultService.addMetaDataResult(chainTaskId, metadataResult);//save metadataResult (without zip payload) in memory
                         }
                     }
 
@@ -67,8 +66,8 @@ public class TaskExecutorService {
                 }
                 , executor).thenAccept(s -> {
 
-            log.info("Update replicate status to COMPUTED [taskId:{}, walletAddress:{}]", taskId, walletAddress);
-            coreTaskClient.updateReplicateStatus(taskId, walletAddress, ReplicateStatus.COMPUTED);
+            log.info("Update replicate status to COMPUTED [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
+            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTED);
         });
     }
 }
