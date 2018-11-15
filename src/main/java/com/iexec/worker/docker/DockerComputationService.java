@@ -1,13 +1,17 @@
 package com.iexec.worker.docker;
 
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.utils.WorkerConfigurationService;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Hash;
 
-import java.io.File;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
 import static com.iexec.worker.utils.FileHelper.*;
@@ -42,7 +46,22 @@ public class DockerComputationService {
 
         zipTaskResult(configurationService.getResultBaseDir(), taskId);
 
+        String consensusHash = computeConsensusHash(taskId);
+        metadataResult.setConsensusHash(consensusHash);
+
         return metadataResult;
+    }
+
+    private String computeConsensusHash(String taskId) {
+        String consensusFilePath = configurationService.getResultBaseDir() + "/" + taskId + "/iexec/consensus.iexec";
+        try {
+            byte[] content = Files.readAllBytes(Paths.get(consensusFilePath));
+            return BytesUtils.bytesToString(Hash.sha3(content));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // TODO: throw proper exception
+        return "";
     }
 
     private void startComputation(String taskId, MetadataResult metadataResult, ContainerConfig containerConfig) {
