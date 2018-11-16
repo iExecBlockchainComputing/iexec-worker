@@ -92,7 +92,9 @@ public class TaskExecutorService {
                     MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
-                    log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, metadataResult.getDeterministHash());
+                    log.info("Computation finished, update replicate status to COMPUTED [chainTaskId:{}, walletAddress:{}]",
+                            chainTaskId, walletAddress);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTED);
 
                     return metadataResult;
                 } catch (IOException e) {
