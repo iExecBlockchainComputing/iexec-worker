@@ -39,7 +39,7 @@ public class ResultService {
                 .image(metadataResult.getImage())
                 .cmd(metadataResult.getCmd())
                 .zip(zipResultAsBytes)
-                .consensusHash(metadataResult.getConsensusHash())
+                .deterministHash(metadataResult.getDeterministHash())
                 .build();
     }
 

@@ -15,6 +15,6 @@ public class MetadataResult {
     private String tag;
     private String cmd;
     private String containerId;//should be called processId
-    private String consensusHash;
+    private String deterministHash;
 
 }

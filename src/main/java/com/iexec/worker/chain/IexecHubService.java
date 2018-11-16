@@ -102,16 +102,16 @@ public class IexecHubService {
         return false;
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String consensusHash) throws Exception {
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) throws Exception {
 
-        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), consensusHash);
-        log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, consensusHash:{}, seal:{}]",
-                contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), consensusHash, seal);
+        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
+        log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
+                contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
 
         // For now no SGX used!
         TransactionReceipt receipt = iexecHub.contributeABILegacy(
                 BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
-                BytesUtils.stringToBytes(consensusHash),
+                BytesUtils.stringToBytes(deterministHash),
                 BytesUtils.stringToBytes(seal),
                 EMPTY_ENCLAVE_CHALLENGE,
                 BigInteger.valueOf(0),
@@ -124,12 +124,12 @@ public class IexecHubService {
         return receipt != null && receipt.isStatusOK();
     }
 
-    private String computeSeal(String walletAddress, String chainTaskId, String consensusHash) {
+    private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
         // concatenate 3 byte[] fields
         byte[] res = Arrays.concatenate(
                 BytesUtils.stringToBytes(walletAddress),
                 BytesUtils.stringToBytes(chainTaskId),
-                BytesUtils.stringToBytes(consensusHash));
+                BytesUtils.stringToBytes(deterministHash));
 
         // Hash the result and convert to String
         return Numeric.toHexString(Hash.sha3(res));

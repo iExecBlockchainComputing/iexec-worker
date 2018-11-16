@@ -58,22 +58,22 @@ public class TaskExecutorService {
         String chainTaskId = contribAuth.getChainTaskId();
 
         try {
-            log.info("Worker trying to contribute [chainTaskId:{}, walletAddress:{}, consensusHash:{}]",
-                    chainTaskId, walletAddress, metadataResult.getConsensusHash());
+            log.info("Worker trying to contribute [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
+                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
 
-            if (iexecHubService.contribute(contribAuth, metadataResult.getConsensusHash())){
+            if (iexecHubService.contribute(contribAuth, metadataResult.getDeterministHash())){
                 log.info("The worker has contributed successfully, update replicate status to CONTRIBUTED [chainTaskId:{}, " +
-                                "walletAddress:{}, consensusHash:{}]",
-                        chainTaskId, walletAddress, metadataResult.getConsensusHash());
+                                "walletAddress:{}, deterministHash:{}]",
+                        chainTaskId, walletAddress, metadataResult.getDeterministHash());
                 coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTED);
             } else {
-                log.warn("The worker couldn't contribute, update replicate status to ERROR [chainTaskId:{}, walletAddress:{}, consensusHash:{}]",
-                        chainTaskId, walletAddress, metadataResult.getConsensusHash());
+                log.warn("The worker couldn't contribute, update replicate status to ERROR [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
+                        chainTaskId, walletAddress, metadataResult.getDeterministHash());
                 coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
             }
         } catch (Exception e) {
-            log.error("Contribution of the worker has failed, update replicate status to ERROR [chainTaskId:{}, walletAddress:{}, consensusHash:{}, exception:{}]",
-                    chainTaskId, walletAddress, metadataResult.getConsensusHash(), e.getMessage());
+            log.error("Contribution of the worker has failed, update replicate status to ERROR [chainTaskId:{}, walletAddress:{}, deterministHash:{}, exception:{}]",
+                    chainTaskId, walletAddress, metadataResult.getDeterministHash(), e.getMessage());
             coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
         }
     }
@@ -90,7 +90,7 @@ public class TaskExecutorService {
                 MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                 //save metadataResult (without zip payload) in memory
                 resultService.addMetaDataResult(chainTaskId, metadataResult);
-                log.info("Consensus Hash has been computed [chainTaskId:{}, consensusHash:{}]", chainTaskId, metadataResult.getConsensusHash());
+                log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, metadataResult.getDeterministHash());
 
                 return metadataResult;
             }

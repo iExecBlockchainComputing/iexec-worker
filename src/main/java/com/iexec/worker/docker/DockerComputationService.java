@@ -21,7 +21,10 @@ import static com.iexec.worker.utils.FileHelper.*;
 @Service
 public class DockerComputationService {
 
+    private static final String DETERMINIST_FILE_NAME = "consensus.iexec";
+
     private static final String STDOUT_FILENAME = "stdout.txt";
+
     private final CustomDockerClient dockerClient;
     private WorkerConfigurationService configurationService;
 
@@ -47,19 +50,19 @@ public class DockerComputationService {
 
         zipTaskResult(configurationService.getResultBaseDir(), taskId);
 
-        String hash = computeConsensusHash(taskId);
-        metadataResult.setConsensusHash(hash);
+        String hash = computeDeterministHash(taskId);
+        metadataResult.setDeterministHash(hash);
 
         return metadataResult;
     }
 
-    private String computeConsensusHash(String taskId) {
-        String consensusFilePath = configurationService.getResultBaseDir() + "/" + taskId + "/iexec/consensus.iexec";
+    private String computeDeterministHash(String taskId) {
+        String deterministFilePath = configurationService.getResultBaseDir() + "/" + taskId + "/iexec/" + DETERMINIST_FILE_NAME;
         try {
-            byte[] content = Files.readAllBytes(Paths.get(consensusFilePath));
+            byte[] content = Files.readAllBytes(Paths.get(deterministFilePath));
             return BytesUtils.bytesToString(Hash.sha3(content));
         } catch (IOException e) {
-            log.error("The consensus hash couldn't be computed [taskId:{}, exception:{}]", taskId, e.getMessage());
+            log.error("The determinist hash couldn't be computed [taskId:{}, exception:{}]", taskId, e.getMessage());
         }
         return "";
     }
