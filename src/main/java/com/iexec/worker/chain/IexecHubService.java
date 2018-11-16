@@ -2,15 +2,19 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.ChainUtils;
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Hash;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tuples.generated.Tuple10;
+import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -19,6 +23,10 @@ import java.util.List;
 @Slf4j
 @Service
 public class IexecHubService {
+
+    // NULL variables since no SGX usage for now
+    private static final String EMPTY_ENCLAVE_CHALLENGE = "0x0000000000000000000000000000000000000000";
+    private static final String EMPTY_HEXASTRING_64 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     private final IexecHubABILegacy iexecHub;
 
@@ -34,7 +42,7 @@ public class IexecHubService {
         String oldPool = getWorkerAffectation(credentialsService.getCredentials().getAddress());
         String newPool = coreWorkerClient.getPublicConfiguration().getWorkerPoolAddress();
 
-        if (oldPool.isEmpty()){
+        if (oldPool.isEmpty()) {
             subscribeToPool(newPool);
         } else if (oldPool.equals(newPool)) {
             log.info("Already registered to pool [pool:{}]", newPool);
@@ -81,16 +89,49 @@ public class IexecHubService {
         return workerAffectation;
     }
 
-    public boolean isTaskInitialized(String chainTaskId){
+    public boolean isTaskInitialized(String chainTaskId) {
         try {
-            byte[] bytesChainTaskId = BytesUtils.stringToBytes(chainTaskId);
-            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(bytesChainTaskId).send();
-           if (receipt != null && receipt.getSize() > 0) {
+            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger,
+                    BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send();
+            if (receipt != null && receipt.getSize() > 0) {
                 return true;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) throws Exception {
+
+        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
+        log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
+                contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
+
+        // For now no SGX used!
+        TransactionReceipt receipt = iexecHub.contributeABILegacy(
+                BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
+                BytesUtils.stringToBytes(deterministHash),
+                BytesUtils.stringToBytes(seal),
+                EMPTY_ENCLAVE_CHALLENGE,
+                BigInteger.valueOf(0),
+                BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                BigInteger.valueOf(contribAuth.getSignV()),
+                contribAuth.getSignR(),
+                contribAuth.getSignS()).send();
+
+        return receipt != null && receipt.isStatusOK();
+    }
+
+    private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
+        // concatenate 3 byte[] fields
+        byte[] res = Arrays.concatenate(
+                BytesUtils.stringToBytes(walletAddress),
+                BytesUtils.stringToBytes(chainTaskId),
+                BytesUtils.stringToBytes(deterministHash));
+
+        // Hash the result and convert to String
+        return Numeric.toHexString(Hash.sha3(res));
     }
 }

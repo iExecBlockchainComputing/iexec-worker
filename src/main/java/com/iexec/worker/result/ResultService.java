@@ -24,29 +24,31 @@ public class ResultService {
         this.metadataResultMap = new ConcurrentHashMap<>();
     }
 
-    public ResultModel getResultModelWithZip(String taskId) {
-        MetadataResult metadataResult = getMetaDataResult(taskId);
+    public ResultModel getResultModelWithZip(String chainTaskId) {
+        MetadataResult metadataResult = getMetaDataResult(chainTaskId);
         byte[] zipResultAsBytes = new byte[0];
-        String zipLocation = configurationService.getResultBaseDir() + "/" + taskId + ".zip";
+        String zipLocation = configurationService.getResultBaseDir() + "/" + chainTaskId + ".zip";
         try {
             zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
         } catch (IOException e) {
-            log.error("Failed to get zip result [taskId:{}, zipLocation:{}]", taskId, zipLocation);
+            log.error("Failed to get zip result [chainTaskId:{}, zipLocation:{}]", chainTaskId, zipLocation);
         }
 
         return ResultModel.builder()
-                .taskId(taskId)
+                .chainTaskId(chainTaskId)
                 .image(metadataResult.getImage())
                 .cmd(metadataResult.getCmd())
-                .zip(zipResultAsBytes).build();
+                .zip(zipResultAsBytes)
+                .deterministHash(metadataResult.getDeterministHash())
+                .build();
     }
 
-    public void addMetaDataResult(String taskId, MetadataResult metadataResult) {
-        metadataResultMap.put(taskId, metadataResult);
+    public void addMetaDataResult(String chainTaskId, MetadataResult metadataResult) {
+        metadataResultMap.put(chainTaskId, metadataResult);
     }
 
-    public MetadataResult getMetaDataResult(String taskId) {
-        return metadataResultMap.get(taskId);
+    private MetadataResult getMetaDataResult(String chainTaskId) {
+        return metadataResultMap.get(chainTaskId);
     }
 
 }
