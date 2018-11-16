@@ -94,7 +94,7 @@ public class TaskExecutorService {
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
                     log.info("Computation finished, update replicate status to COMPUTED [chainTaskId:{}, walletAddress:{}]",
                             chainTaskId, walletAddress);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTED);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTED);
 
                     return metadataResult;
                 } catch (IOException e) {
