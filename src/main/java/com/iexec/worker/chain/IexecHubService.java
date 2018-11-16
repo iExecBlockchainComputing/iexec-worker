@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 import org.web3j.protocol.core.DefaultBlockParameterName;
-import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tuples.generated.Tuple10;
 import org.web3j.utils.Numeric;
@@ -24,6 +23,10 @@ import java.util.List;
 @Slf4j
 @Service
 public class IexecHubService {
+
+    // NULL variables since no SGX usage for now
+    private static final String EMPTY_ENCLAVE_CHALLENGE = "0x0000000000000000000000000000000000000000";
+    private static final String EMPTY_HEXASTRING_64 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     private final IexecHubABILegacy iexecHub;
 
@@ -88,8 +91,8 @@ public class IexecHubService {
 
     public boolean isTaskInitialized(String chainTaskId) {
         try {
-            byte[] bytesChainTaskId = BytesUtils.stringToBytes(chainTaskId);
-            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(bytesChainTaskId).send();
+            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger,
+                    BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send();
             if (receipt != null && receipt.getSize() > 0) {
                 return true;
             }
@@ -99,11 +102,26 @@ public class IexecHubService {
         return false;
     }
 
-    public String computeHash(String chainTaskId, String consensusHash) {
-        byte[] res = Arrays.concatenate(
-                BytesUtils.stringToBytes(chainTaskId),
-                BytesUtils.stringToBytes(consensusHash));
-        return Numeric.toHexString(Hash.sha3(res));
+    public boolean contribute(ContributionAuthorization contribAuth, String consensusHash) throws Exception {
+
+        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), consensusHash);
+        log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, consensusHash:{}, seal:{}]",
+                contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), consensusHash, seal);
+
+        // For now no SGX used!
+        TransactionReceipt receipt = iexecHub.contributeABILegacy(
+                BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
+                BytesUtils.stringToBytes(consensusHash),
+                BytesUtils.stringToBytes(seal),
+                EMPTY_ENCLAVE_CHALLENGE,
+                BigInteger.valueOf(0),
+                BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                BigInteger.valueOf(contribAuth.getSignV()),
+                contribAuth.getSignR(),
+                contribAuth.getSignS()).send();
+
+        return receipt != null && receipt.isStatusOK();
     }
 
     private String computeSeal(String walletAddress, String chainTaskId, String consensusHash) {
@@ -115,42 +133,5 @@ public class IexecHubService {
 
         // Hash the result and convert to String
         return Numeric.toHexString(Hash.sha3(res));
-    }
-
-    public boolean contribute(ContributionAuthorization contribAuth, String consensusHash) throws Exception {
-
-        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), consensusHash);
-
-        // public RemoteCall<TransactionReceipt> contributeABILegacy(
-        // byte[] _taskid,
-        // byte[] _resultHash,
-        // byte[] _resultSeal,
-        // String _enclaveChallenge,
-        // BigInteger _enclaveSign_v,
-        // byte[] _enclaveSign_r,
-        // byte[] _enclaveSign_s,
-        // BigInteger _poolSign_v,
-        // byte[] _poolSign_r,
-        // byte[] _poolSign_s) {
-
-        // Transaction sent in synchron mode for now
-        log.info("*** chainTaskId: " + contribAuth.getChainTaskId());
-        log.info("*** consensusHash: " + consensusHash);
-        log.info("*** seal: " + seal);
-
-        TransactionReceipt receipt = iexecHub.contributeABILegacy(
-                BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
-                BytesUtils.stringToBytes(consensusHash),
-                BytesUtils.stringToBytes(seal),
-                "0x0000000000000000000000000000000000000000",
-                BigInteger.valueOf(0),
-                BytesUtils.stringToBytes("0x0000000000000000000000000000000000000000000000000000000000000000"),
-                BytesUtils.stringToBytes("0x0000000000000000000000000000000000000000000000000000000000000000"),
-                BigInteger.valueOf(contribAuth.getSignV()),
-                contribAuth.getSignR(),
-                contribAuth.getSignS()).send();
-
-
-        return receipt != null && receipt.isStatusOK();
     }
 }

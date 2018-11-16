@@ -8,8 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -20,7 +21,7 @@ import static com.iexec.worker.utils.FileHelper.*;
 @Service
 public class DockerComputationService {
 
-    private final String STDOUT_FILENAME = "stdout.txt";
+    private static final String STDOUT_FILENAME = "stdout.txt";
     private final CustomDockerClient dockerClient;
     private WorkerConfigurationService configurationService;
 
@@ -46,8 +47,8 @@ public class DockerComputationService {
 
         zipTaskResult(configurationService.getResultBaseDir(), taskId);
 
-        String consensusHash = computeConsensusHash(taskId);
-        metadataResult.setConsensusHash(consensusHash);
+        String hash = computeConsensusHash(taskId);
+        metadataResult.setConsensusHash(hash);
 
         return metadataResult;
     }
@@ -58,9 +59,8 @@ public class DockerComputationService {
             byte[] content = Files.readAllBytes(Paths.get(consensusFilePath));
             return BytesUtils.bytesToString(Hash.sha3(content));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("The consensus hash couldn't be computed [taskId:{}, exception:{}]", taskId, e.getMessage());
         }
-        // TODO: throw proper exception
         return "";
     }
 
