@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
@@ -33,7 +34,7 @@ public class DockerComputationService {
         this.configurationService = configurationService;
     }
 
-    public MetadataResult dockerRun(String taskId, String image, String cmd) {
+    public MetadataResult dockerRun(String taskId, String image, String cmd) throws IOException {
         //TODO: check image equals image:tag
         MetadataResult metadataResult = MetadataResult.builder()
                 .image(image)
@@ -56,15 +57,24 @@ public class DockerComputationService {
         return metadataResult;
     }
 
-    private String computeDeterministHash(String taskId) {
-        String deterministFilePath = configurationService.getResultBaseDir() + "/" + taskId + "/iexec/" + DETERMINIST_FILE_NAME;
-        try {
-            byte[] content = Files.readAllBytes(Paths.get(deterministFilePath));
-            return BytesUtils.bytesToString(Hash.sha3(content));
-        } catch (IOException e) {
-            log.error("The determinist hash couldn't be computed [taskId:{}, exception:{}]", taskId, e.getMessage());
+    private String computeDeterministHash(String taskId) throws IOException {
+        String deterministFilePathName = configurationService.getResultBaseDir() + "/" + taskId + "/iexec/" + DETERMINIST_FILE_NAME;
+        Path deterministFilePath = Paths.get(deterministFilePathName);
+
+        if (deterministFilePath.toFile().exists()){
+            byte[] content = Files.readAllBytes(deterministFilePath);
+            String hash = BytesUtils.bytesToString(Hash.sha3(content));
+            log.info("The determinist file exists and its hash has been computed [taskId:{}, hash:{}]", taskId, hash);
+            return hash;
+        } else {
+            log.info("No determinist file exists [taskId:{}]", taskId);
         }
-        return "";
+
+        String resultFilePathName = configurationService.getResultBaseDir() + "/" + taskId + ".zip";
+        byte[] content = Files.readAllBytes(Paths.get(resultFilePathName));
+        String hash = BytesUtils.bytesToString(Hash.sha3(content));
+        log.info("The hash of the result file will be used instead [taskId:{}, hash:{}]", taskId, hash);
+        return hash;
     }
 
     private void startComputation(String taskId, MetadataResult metadataResult, ContainerConfig containerConfig) {

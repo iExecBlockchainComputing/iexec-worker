@@ -12,6 +12,7 @@ import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -87,12 +88,16 @@ public class TaskExecutorService {
             coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.RUNNING);
 
             if (model.getDappType().equals(DappType.DOCKER)) {
-                MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
-                //save metadataResult (without zip payload) in memory
-                resultService.addMetaDataResult(chainTaskId, metadataResult);
-                log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, metadataResult.getDeterministHash());
+                try {
+                    MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
+                    //save metadataResult (without zip payload) in memory
+                    resultService.addMetaDataResult(chainTaskId, metadataResult);
+                    log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, metadataResult.getDeterministHash());
 
-                return metadataResult;
+                    return metadataResult;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         } else {
             log.warn("The task has NOT been initialized on chain [chainTaskId:{}]", chainTaskId);
