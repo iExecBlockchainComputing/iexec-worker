@@ -21,11 +21,11 @@ public class TaskService {
     private TaskExecutorService executorService;
     private SubscriptionService subscriptionService;
 
-
     @Autowired
     public TaskService(CoreTaskClient coreTaskClient,
                        WorkerConfigurationService workerConfigService,
-                       TaskExecutorService executorService, SubscriptionService subscriptionService) {
+                       TaskExecutorService executorService,
+                       SubscriptionService subscriptionService) {
         this.coreTaskClient = coreTaskClient;
         this.workerConfigService = workerConfigService;
         this.executorService = executorService;
@@ -33,20 +33,21 @@ public class TaskService {
     }
 
     @Scheduled(fixedRate = 1000)
-    public String getTask() {
+    public String askForReplicate() {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
 
-            AvailableReplicateModel replicateModel = coreTaskClient.getAvailableReplicate(
+            AvailableReplicateModel model = coreTaskClient.getAvailableReplicate(
                     workerConfigService.getWorkerWalletAddress(),
                     workerConfigService.getWorkerEnclaveAdress());
-            if (replicateModel == null || replicateModel.getChainTaskId() == null) {
+
+            if (model == null) {
                 return "NO TASK AVAILABLE";
             }
-
-            log.info("Received task [chainTaskId:{}]", replicateModel.getChainTaskId());
-            subscriptionService.subscribeToTaskNotifications(replicateModel.getChainTaskId());
-            executorService.addReplicate(replicateModel);
+            String chainTaskId = model.getContributionAuthorization().getChainTaskId();
+            log.info("Received task [chainTaskId:{}]", chainTaskId);
+            subscriptionService.subscribeToTaskNotifications(chainTaskId);
+            executorService.addReplicate(model);
             return ReplicateStatus.COMPUTED.toString();
         }
         log.info("The worker is already full, it can't accept more tasks");

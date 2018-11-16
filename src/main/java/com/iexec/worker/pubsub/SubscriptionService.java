@@ -3,7 +3,6 @@ package com.iexec.worker.pubsub;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
-import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
@@ -34,7 +33,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private WorkerConfigurationService workerConfigurationService;
     private CoreTaskClient coreTaskClient;
     private ResultRepoClient resultRepoClient;
-    private DockerComputationService dockerComputationService;
     private ResultService resultService;
     private StompSession session;
     private Map<String, StompSession.Subscription> taskIdToSubscription;
@@ -43,13 +41,11 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                WorkerConfigurationService workerConfigurationService,
                                CoreTaskClient coreTaskClient,
                                ResultRepoClient resultRepoClient,
-                               DockerComputationService dockerComputationService,
                                ResultService resultService) {
         this.coreConfigurationService = coreConfigurationService;
         this.workerConfigurationService = workerConfigurationService;
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
-        this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         taskIdToSubscription = new ConcurrentHashMap<>();
     }

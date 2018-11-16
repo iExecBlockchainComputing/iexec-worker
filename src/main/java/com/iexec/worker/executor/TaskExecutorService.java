@@ -80,8 +80,8 @@ public class TaskExecutorService {
     }
 
     private MetadataResult executeTask(AvailableReplicateModel model) {
-        String walletAddress = model.getWorkerAddress();
-        String chainTaskId = model.getChainTaskId();
+        String walletAddress = model.getContributionAuthorization().getWorkerWallet();
+        String chainTaskId = model.getContributionAuthorization().getChainTaskId();
 
         if (iexecHubService.isTaskInitialized(chainTaskId)) {
             log.info("Task, initialized, update replicate status to RUNNING [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
