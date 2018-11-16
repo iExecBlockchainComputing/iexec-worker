@@ -80,8 +80,8 @@ public class TaskExecutorService {
     }
 
     private MetadataResult executeTask(AvailableReplicateModel model) {
-        String walletAddress = model.getWorkerAddress();
-        String chainTaskId = model.getChainTaskId();
+        String walletAddress = model.getContributionAuthorization().getWorkerWallet();
+        String chainTaskId = model.getContributionAuthorization().getChainTaskId();
 
         if (iexecHubService.isTaskInitialized(chainTaskId)) {
             log.info("Task, initialized, update replicate status to RUNNING [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
@@ -92,7 +92,9 @@ public class TaskExecutorService {
                     MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
-                    log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, metadataResult.getDeterministHash());
+                    log.info("Computation finished, update replicate status to COMPUTED [chainTaskId:{}, walletAddress:{}]",
+                            chainTaskId, walletAddress);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTED);
 
                     return metadataResult;
                 } catch (IOException e) {

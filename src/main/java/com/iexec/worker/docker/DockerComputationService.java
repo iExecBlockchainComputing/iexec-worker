@@ -52,6 +52,7 @@ public class DockerComputationService {
         zipTaskResult(configurationService.getResultBaseDir(), taskId);
 
         String hash = computeDeterministHash(taskId);
+        log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", taskId, hash);
         metadataResult.setDeterministHash(hash);
 
         return metadataResult;
