@@ -14,9 +14,11 @@ import org.web3j.crypto.Hash;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tuples.generated.Tuple10;
+import org.web3j.tuples.generated.Tuple6;
 import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
+import java.util.Date;
 import java.util.List;
 
 
@@ -29,10 +31,13 @@ public class IexecHubService {
     private static final String EMPTY_HEXASTRING_64 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     private final IexecHubABILegacy iexecHub;
+    private final CredentialsService credentialsService;
 
     @Autowired
-    public IexecHubService(CredentialsService credentialsService, CoreWorkerClient coreWorkerClient) {
-        iexecHub = ChainUtils.loadHubContract(
+    public IexecHubService(CredentialsService credentialsService,
+                           CoreWorkerClient coreWorkerClient) {
+        this.credentialsService = credentialsService;
+        this.iexecHub = ChainUtils.loadHubContract(
                 credentialsService.getCredentials(),
                 ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
@@ -49,8 +54,6 @@ public class IexecHubService {
         } else {
             //TODO: unsubscribe from last and subscribe to current
         }
-
-
     }
 
     private void startWatchers() {
@@ -87,6 +90,26 @@ public class IexecHubService {
         }
         log.info("Got worker pool affectation [pool:{}, worker:{}]", workerAffectation, worker);
         return workerAffectation;
+    }
+
+    public boolean isCheckValid(String chainTaskId){
+
+        try {
+            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> receipt =
+                    iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send();
+            boolean isTaskActive = receipt.getValue1().equals(BigInteger.valueOf(1)); // ACTIVE = 1
+            boolean consensusDeadlineReached = new Date(receipt.getValue4().longValue() * 1000L).before(new Date());
+
+            Tuple6<BigInteger, byte[], byte[], String, BigInteger, BigInteger> contributionLegacy =
+                    iexecHub.viewContributionABILegacy(BytesUtils.stringToBytes(chainTaskId), credentialsService.getCredentials().getAddress()).send();
+            boolean isContributionUnset = contributionLegacy.getValue1().intValue() == 0; // UNSET = 0
+
+            return isTaskActive && !consensusDeadlineReached && isContributionUnset;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public boolean isTaskInitialized(String chainTaskId) {

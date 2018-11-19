@@ -54,15 +54,22 @@ public class TaskExecutorService {
                 .thenAccept(metadataResult -> tryToContribute(contribAuth, metadataResult));
     }
 
-    private void tryToContribute(ContributionAuthorization contribAuth, MetadataResult metadataResult){
+    private void tryToContribute(ContributionAuthorization contribAuth, MetadataResult metadataResult) {
         String walletAddress = contribAuth.getWorkerWallet();
         String chainTaskId = contribAuth.getChainTaskId();
 
         try {
-            log.info("Worker trying to contribute [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
-                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
 
-            if (iexecHubService.contribute(contribAuth, metadataResult.getDeterministHash())){
+            if (!iexecHubService.isCheckValid(chainTaskId)) {
+                log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
+                        "walletAddress:{}", chainTaskId, walletAddress);
+                coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
+                return;
+            }
+
+            log.info("The worker is allowed and is trying to contribute [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
+                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
+            if (iexecHubService.contribute(contribAuth, metadataResult.getDeterministHash())) {
                 log.info("The worker has contributed successfully, update replicate status to CONTRIBUTED [chainTaskId:{}, " +
                                 "walletAddress:{}, deterministHash:{}]",
                         chainTaskId, walletAddress, metadataResult.getDeterministHash());
