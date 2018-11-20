@@ -92,7 +92,7 @@ public class IexecHubService {
     Optional<ChainTask> getChainTask(String chainTaskId) {
         try {
             ChainTask chainTask = ChainTask.tuple2ChainTask(iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send());
-            if (chainTask != null && chainTask.getIdx() != 0) {
+            if (chainTask != null) {
                 return Optional.of(chainTask);
             }
         } catch (Exception e) {
