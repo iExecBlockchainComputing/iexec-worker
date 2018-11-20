@@ -33,15 +33,17 @@ import static com.iexec.common.result.TaskNotificationType.*;
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
     // external services
-    private CoreConfigurationService coreConfigurationService;
-    private WorkerConfigurationService workerConfigurationService;
     private CoreTaskClient coreTaskClient;
     private ResultRepoClient resultRepoClient;
     private ResultService resultService;
     private RevealService revealService;
 
+    // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> taskIdToSubscription;
+    private final String coreHost;
+    private final int corePort;
+    private final String workerWalletAddress;
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
@@ -49,13 +51,14 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                ResultRepoClient resultRepoClient,
                                ResultService resultService,
                                RevealService revealService) {
-        this.coreConfigurationService = coreConfigurationService;
-        this.workerConfigurationService = workerConfigurationService;
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
         this.resultService = resultService;
         this.revealService = revealService;
 
+        this.coreHost = coreConfigurationService.getHost();
+        this.corePort = coreConfigurationService.getPort();
+        this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         taskIdToSubscription = new ConcurrentHashMap<>();
     }
 
@@ -66,11 +69,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
 
-        String url = "ws://"
-                + coreConfigurationService.getHost()
-                + ":"
-                + coreConfigurationService.getPort()
-                + "/connect";
+        String url = "ws://" + coreHost + ":" + corePort + "/connect";
         stompClient.connect(url, this);
     }
 
@@ -102,7 +101,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     private void handleTaskNotification(TaskNotification notif) {
-        if (notif.getWorkerAddress().equals(workerConfigurationService.getWorkerWalletAddress())
+        if (notif.getWorkerAddress().equals(workerWalletAddress)
                 || notif.getWorkerAddress().isEmpty()) {
             log.info("Received notification [notification:{}]", notif);
 
@@ -128,23 +127,22 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         try {
             revealService.reveal(chainTaskId);
             log.info("The worker has revealed [chainTaskId:{}]", chainTaskId);
+            log.info("Update replicate status [status:{}]", ReplicateStatus.REVEALED);
+            coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.REVEALED);
         } catch (Exception e) {
-            log.error("An error has occured while revealing [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
+            log.error("An error has occurred while revealing [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
         }
     }
 
     private void uploadResult(TaskNotification notif) {
+        String chainTaskId = notif.getChainTaskId();
         log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
-        coreTaskClient.updateReplicateStatus(notif.getChainTaskId(),
-                workerConfigurationService.getWorkerWalletAddress(),
-                ReplicateStatus.UPLOADING_RESULT);
+        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.UPLOADING_RESULT);
 
-        //Upload result cause core is asking for
-        resultRepoClient.addResult(resultService.getResultModelWithZip(notif.getChainTaskId()));
+        resultRepoClient.addResult(resultService.getResultModelWithZip(chainTaskId));
+
         log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
-        coreTaskClient.updateReplicateStatus(notif.getChainTaskId(),
-                workerConfigurationService.getWorkerWalletAddress(),
-                ReplicateStatus.RESULT_UPLOADED);
+        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.RESULT_UPLOADED);
     }
 
     private void unsubscribeFromTaskNotifications(TaskNotification notif) {
