@@ -4,7 +4,7 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.result.MetadataResult;
@@ -25,7 +25,7 @@ public class TaskExecutorService {
     private CoreTaskClient coreTaskClient;
     private DockerComputationService dockerComputationService;
     private ResultService resultService;
-    private IexecHubService iexecHubService;
+    private ContributionService contributionService;
 
     // internal variables
     private int maxNbExecutions;
@@ -33,13 +33,13 @@ public class TaskExecutorService {
 
     public TaskExecutorService(CoreTaskClient coreTaskClient,
                                DockerComputationService dockerComputationService,
-                               ResultService resultService,
-                               IexecHubService iexecHubService) {
+                               ContributionService contributionService,
+                               ResultService resultService) {
         this.coreTaskClient = coreTaskClient;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
-        this.iexecHubService = iexecHubService;
-        
+        this.contributionService = contributionService;
+
         maxNbExecutions = Runtime.getRuntime().availableProcessors() / 2;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
     }
@@ -61,7 +61,7 @@ public class TaskExecutorService {
 
         try {
 
-            if (!iexecHubService.isCheckValid(chainTaskId)) {
+            if (!contributionService.canContribute(chainTaskId)) {
                 log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
                         "walletAddress:{}", chainTaskId, walletAddress);
                 coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
@@ -70,7 +70,7 @@ public class TaskExecutorService {
 
             log.info("The worker is allowed and is trying to contribute [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
                     chainTaskId, walletAddress, metadataResult.getDeterministHash());
-            if (iexecHubService.contribute(contribAuth, metadataResult.getDeterministHash())) {
+            if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
                 log.info("The worker has contributed successfully, update replicate status to CONTRIBUTED [chainTaskId:{}, " +
                                 "walletAddress:{}, deterministHash:{}]",
                         chainTaskId, walletAddress, metadataResult.getDeterministHash());
@@ -91,7 +91,7 @@ public class TaskExecutorService {
         String walletAddress = model.getContributionAuthorization().getWorkerWallet();
         String chainTaskId = model.getContributionAuthorization().getChainTaskId();
 
-        if (iexecHubService.isTaskInitialized(chainTaskId)) {
+        if (contributionService.isChainTaskInitialized(chainTaskId)) {
             log.info("Task, initialized, update replicate status to RUNNING [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
             coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.RUNNING);
 

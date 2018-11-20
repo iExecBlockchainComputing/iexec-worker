@@ -1,21 +1,22 @@
 package com.iexec.worker.chain;
 
 
-import com.iexec.common.chain.*;
+import com.iexec.common.chain.ChainContribution;
+import com.iexec.common.chain.ChainTask;
+import com.iexec.common.chain.ChainUtils;
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
-import org.web3j.tuples.generated.Tuple10;
 
 import java.math.BigInteger;
-import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 
 @Slf4j
@@ -88,47 +89,38 @@ public class IexecHubService {
         return workerAffectation;
     }
 
-    public boolean isCheckValid(String chainTaskId){
-
+    Optional<ChainTask> getChainTask(String chainTaskId) {
         try {
             ChainTask chainTask = ChainTask.tuple2ChainTask(iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send());
-            boolean isTaskActive = chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
-            boolean consensusDeadlineReached = chainTask.getConsensusDeadline() < new Date().getTime();
-
-            String workerAddress = credentialsService.getCredentials().getAddress();
-            ChainContribution chainContribution = ChainContribution.tuple2Contribution(
-                    iexecHub.viewContributionABILegacy(BytesUtils.stringToBytes(chainTaskId), workerAddress).send());
-            boolean isContributionUnset = chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
-
-            return isTaskActive && !consensusDeadlineReached && isContributionUnset;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public boolean isTaskInitialized(String chainTaskId) {
-        try {
-            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger,
-                    BigInteger, BigInteger, List<String>, byte[]> receipt = iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send();
-            if (receipt != null && receipt.getSize() > 0) {
-                return true;
+            if (chainTask != null && chainTask.getIdx() != 0) {
+                return Optional.of(chainTask);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("The chainTask could't be retrieved from the chain [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
         }
-        return false;
+
+        return Optional.empty();
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) throws Exception {
+    Optional<ChainContribution> getChainContribution(String chainTaskId) {
+        String workerAddress = credentialsService.getCredentials().getAddress();
 
-        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
-        log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
-                contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
+        try {
+            ChainContribution chainContribution = ChainContribution.tuple2Contribution(
+                    iexecHub.viewContributionABILegacy(BytesUtils.stringToBytes(chainTaskId), workerAddress).send());
+            if (chainContribution != null) {
+                return Optional.of(chainContribution);
+            }
+        } catch (Exception e) {
+            log.error("The chainContribution couldn't be retrieved from the chain [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
+        }
 
-        // For now no SGX used!
-        TransactionReceipt receipt = iexecHub.contributeABILegacy(
+        return Optional.empty();
+    }
+
+    TransactionReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, String seal) throws Exception {
+        // No SGX used for now
+        return iexecHub.contributeABILegacy(
                 BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
                 BytesUtils.stringToBytes(deterministHash),
                 BytesUtils.stringToBytes(seal),
@@ -139,11 +131,5 @@ public class IexecHubService {
                 BigInteger.valueOf(contribAuth.getSignV()),
                 contribAuth.getSignR(),
                 contribAuth.getSignS()).send();
-
-        return receipt != null && receipt.isStatusOK();
-    }
-
-    private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
-        return HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
     }
 }

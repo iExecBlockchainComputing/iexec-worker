@@ -2,11 +2,11 @@ package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import com.iexec.worker.utils.ContributionValidator;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +22,7 @@ public class ReplicateDemandService {
     private WorkerConfigurationService workerConfigService;
     private TaskExecutorService executorService;
     private SubscriptionService subscriptionService;
+    private ContributionService contributionService;
 
     private String corePublicAddress;
 
@@ -30,11 +31,13 @@ public class ReplicateDemandService {
                                   WorkerConfigurationService workerConfigService,
                                   TaskExecutorService executorService,
                                   SubscriptionService subscriptionService,
-                                  CoreWorkerClient coreWorkerClient) {
+                                  CoreWorkerClient coreWorkerClient,
+                                  ContributionService contributionService) {
         this.coreTaskClient = coreTaskClient;
         this.workerConfigService = workerConfigService;
         this.executorService = executorService;
         this.subscriptionService = subscriptionService;
+        this.contributionService = contributionService;
 
         corePublicAddress = coreWorkerClient.getPublicConfiguration().getSchedulerPublicAddress();
     }
@@ -57,7 +60,7 @@ public class ReplicateDemandService {
 
             // verify that the signature is valid
             ContributionAuthorization contribAuth = model.getContributionAuthorization();
-            if( !ContributionValidator.isValid(contribAuth, corePublicAddress)){
+            if( !contributionService.isContributionAuthorizationValid(contribAuth, corePublicAddress)){
                 log.warn("The contribution authorization is NOT valid, the task will not be performed [chainTaskId:{}, contribAuth:{}]",
                         chainTaskId, contribAuth);
                 return "Bad signature in received replicate";
