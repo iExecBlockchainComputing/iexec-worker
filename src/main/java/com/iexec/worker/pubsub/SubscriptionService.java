@@ -26,8 +26,6 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.iexec.common.result.TaskNotificationType.*;
-
 @Slf4j
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
@@ -40,7 +38,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     // internal components
     private StompSession session;
-    private Map<String, StompSession.Subscription> taskIdToSubscription;
+    private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
     private final String coreHost;
     private final int corePort;
     private final String workerWalletAddress;
@@ -59,7 +57,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
-        taskIdToSubscription = new ConcurrentHashMap<>();
+
+        chainTaskIdToSubscription = new ConcurrentHashMap<>();
     }
 
     @PostConstruct
@@ -80,7 +79,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     public void subscribeToTaskNotifications(String chainTaskId) {
-        if (taskIdToSubscription.containsKey(chainTaskId)) {
+        if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
             log.info("Already subscribed to TaskNotification [chainTaskId:{}]", chainTaskId);
             return;
         }
@@ -96,7 +95,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                 handleTaskNotification(taskNotification);
             }
         });
-        taskIdToSubscription.put(chainTaskId, subscription);
+        chainTaskIdToSubscription.put(chainTaskId, subscription);
         log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
     }
 
@@ -106,19 +105,28 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             log.info("Received notification [notification:{}]", notif);
 
             TaskNotificationType type = notif.getTaskNotificationType();
+            String chainTaskId = notif.getChainTaskId();
 
-            if (type.equals(PLEASE_REVEAL)) {
-                reveal(notif);
-            } else if (type.equals(UPLOAD)) {
-                uploadResult(notif);
-            } else if (type.equals(COMPLETED)) {
-                unsubscribeFromTaskNotifications(notif);
+            switch (type) {
+                case PLEASE_REVEAL:
+                    reveal(chainTaskId);
+                    break;
+
+                case UPLOAD:
+                    uploadResult(chainTaskId);
+                    break;
+
+                case COMPLETED:
+                    unsubscribeFromTaskNotifications(chainTaskId);
+                    break;
+
+                default:
+                    break;
             }
         }
     }
 
-    private void reveal(TaskNotification notif) {
-        String chainTaskId = notif.getChainTaskId();
+    private void reveal(String chainTaskId) {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
         if (!revealService.canReveal(chainTaskId)) {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
@@ -134,8 +142,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
-    private void uploadResult(TaskNotification notif) {
-        String chainTaskId = notif.getChainTaskId();
+    private void uploadResult(String chainTaskId) {
         log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
         coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.UPLOADING_RESULT);
 
@@ -145,14 +152,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.RESULT_UPLOADED);
     }
 
-    private void unsubscribeFromTaskNotifications(TaskNotification notif) {
-        String chainTaskId = notif.getChainTaskId();
-        if (!taskIdToSubscription.containsKey(chainTaskId)) {
+    private void unsubscribeFromTaskNotifications(String chainTaskId) {
+        if (!chainTaskIdToSubscription.containsKey(chainTaskId)) {
             log.info("Already unsubscribed from TaskNotification [chainTaskId:{}]", chainTaskId);
             return;
         }
-        taskIdToSubscription.get(chainTaskId).unsubscribe();
-        taskIdToSubscription.remove(chainTaskId);
+        chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
+        chainTaskIdToSubscription.remove(chainTaskId);
         log.info("Unsubscribed from taskNotification [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
     }
 
