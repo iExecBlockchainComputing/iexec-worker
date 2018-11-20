@@ -1,7 +1,7 @@
 package com.iexec.worker.result;
 
 import com.iexec.common.result.ResultModel;
-import com.iexec.worker.utils.WorkerConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

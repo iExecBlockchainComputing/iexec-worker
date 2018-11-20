@@ -2,7 +2,7 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.result.MetadataResult;
-import com.iexec.worker.utils.WorkerConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

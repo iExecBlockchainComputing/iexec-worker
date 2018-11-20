@@ -39,6 +39,7 @@ public class TaskExecutorService {
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.iexecHubService = iexecHubService;
+        
         maxNbExecutions = Runtime.getRuntime().availableProcessors() / 2;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
     }

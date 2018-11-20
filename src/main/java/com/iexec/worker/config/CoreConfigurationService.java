@@ -1,4 +1,4 @@
-package com.iexec.worker.utils;
+package com.iexec.worker.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

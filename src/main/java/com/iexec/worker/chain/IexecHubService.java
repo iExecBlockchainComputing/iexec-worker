@@ -1,21 +1,17 @@
 package com.iexec.worker.chain;
 
 
-import com.iexec.common.chain.ChainUtils;
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Hash;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tuples.generated.Tuple10;
-import org.web3j.tuples.generated.Tuple6;
-import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
 import java.util.Date;
@@ -95,14 +91,14 @@ public class IexecHubService {
     public boolean isCheckValid(String chainTaskId){
 
         try {
-            Tuple10<BigInteger, byte[], BigInteger, BigInteger, byte[], BigInteger, BigInteger, BigInteger, List<String>, byte[]> receipt =
-                    iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send();
-            boolean isTaskActive = receipt.getValue1().equals(BigInteger.valueOf(1)); // ACTIVE = 1
-            boolean consensusDeadlineReached = new Date(receipt.getValue4().longValue() * 1000L).before(new Date());
+            ChainTask chainTask = ChainTask.tuple2ChainTask(iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send());
+            boolean isTaskActive = chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
+            boolean consensusDeadlineReached = chainTask.getConsensusDeadline() < new Date().getTime();
 
-            Tuple6<BigInteger, byte[], byte[], String, BigInteger, BigInteger> contributionLegacy =
-                    iexecHub.viewContributionABILegacy(BytesUtils.stringToBytes(chainTaskId), credentialsService.getCredentials().getAddress()).send();
-            boolean isContributionUnset = contributionLegacy.getValue1().intValue() == 0; // UNSET = 0
+            String workerAddress = credentialsService.getCredentials().getAddress();
+            ChainContribution chainContribution = ChainContribution.tuple2Contribution(
+                    iexecHub.viewContributionABILegacy(BytesUtils.stringToBytes(chainTaskId), workerAddress).send());
+            boolean isContributionUnset = chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
 
             return isTaskActive && !consensusDeadlineReached && isContributionUnset;
 
@@ -148,13 +144,6 @@ public class IexecHubService {
     }
 
     private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
-        // concatenate 3 byte[] fields
-        byte[] res = Arrays.concatenate(
-                BytesUtils.stringToBytes(walletAddress),
-                BytesUtils.stringToBytes(chainTaskId),
-                BytesUtils.stringToBytes(deterministHash));
-
-        // Hash the result and convert to String
-        return Numeric.toHexString(Hash.sha3(res));
+        return HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
     }
 }

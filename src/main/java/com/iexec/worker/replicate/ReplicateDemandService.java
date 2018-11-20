@@ -1,4 +1,4 @@
-package com.iexec.worker.task;
+package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.AvailableReplicateModel;
@@ -7,7 +7,7 @@ import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.utils.ContributionValidator;
-import com.iexec.worker.utils.WorkerConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-public class TaskService {
+public class ReplicateDemandService {
 
     private CoreTaskClient coreTaskClient;
     private WorkerConfigurationService workerConfigService;
@@ -26,11 +26,11 @@ public class TaskService {
     private String corePublicAddress;
 
     @Autowired
-    public TaskService(CoreTaskClient coreTaskClient,
-                       WorkerConfigurationService workerConfigService,
-                       TaskExecutorService executorService,
-                       SubscriptionService subscriptionService,
-                       CoreWorkerClient coreWorkerClient) {
+    public ReplicateDemandService(CoreTaskClient coreTaskClient,
+                                  WorkerConfigurationService workerConfigService,
+                                  TaskExecutorService executorService,
+                                  SubscriptionService subscriptionService,
+                                  CoreWorkerClient coreWorkerClient) {
         this.coreTaskClient = coreTaskClient;
         this.workerConfigService = workerConfigService;
         this.executorService = executorService;

@@ -1,7 +1,7 @@
 package com.iexec.worker;
 
 import com.iexec.worker.feign.CoreWorkerClient;
-import com.iexec.worker.utils.WorkerConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
