@@ -130,6 +130,14 @@ public class IexecHubService {
                 BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
                 BigInteger.valueOf(contribAuth.getSignV()),
                 contribAuth.getSignR(),
-                contribAuth.getSignS()).send();
+                contribAuth.getSignS())
+                .send();
+    }
+
+    TransactionReceipt reveal(String taskId, String resultDigest) throws Exception {
+        return iexecHub.reveal(
+                BytesUtils.stringToBytes(taskId),
+                BytesUtils.stringToBytes(resultDigest))
+                .send();
     }
 }

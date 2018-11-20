@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class ResultService {
 
-
     private Map<String, MetadataResult> metadataResultMap;
     private WorkerConfigurationService configurationService;
 
@@ -47,7 +46,7 @@ public class ResultService {
         metadataResultMap.put(chainTaskId, metadataResult);
     }
 
-    private MetadataResult getMetaDataResult(String chainTaskId) {
+    public MetadataResult getMetaDataResult(String chainTaskId) {
         return metadataResultMap.get(chainTaskId);
     }
 
