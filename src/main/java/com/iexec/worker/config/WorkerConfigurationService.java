@@ -1,4 +1,4 @@
-package com.iexec.worker.utils;
+package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
 import org.springframework.beans.factory.annotation.Value;

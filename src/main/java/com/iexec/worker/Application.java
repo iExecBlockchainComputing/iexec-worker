@@ -4,7 +4,7 @@ package com.iexec.worker;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.CoreWorkerClient;
-import com.iexec.worker.utils.WorkerConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

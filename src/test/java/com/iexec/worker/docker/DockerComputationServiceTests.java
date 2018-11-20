@@ -1,15 +1,12 @@
 package com.iexec.worker.docker;
 
-import com.iexec.worker.docker.DockerComputationService;
-import com.iexec.worker.utils.WorkerConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class DockerComputationServiceTests {
 
