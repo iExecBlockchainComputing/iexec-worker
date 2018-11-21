@@ -117,7 +117,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     break;
 
                 case COMPLETED:
-                    unsubscribeFromTaskNotifications(chainTaskId);
+                    closeTask(chainTaskId);
                     break;
 
                 default:
@@ -150,6 +150,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
         log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
         coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.RESULT_UPLOADED);
+    }
+
+    private void closeTask(String chainTaskId) {
+        // unsubscribe from the topic and remove the associated result from the machine
+        unsubscribeFromTaskNotifications(chainTaskId);
+        resultService.removeResult(chainTaskId);
     }
 
     private void unsubscribeFromTaskNotifications(String chainTaskId) {

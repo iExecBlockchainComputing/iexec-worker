@@ -45,6 +45,18 @@ public class FileHelper {
         }
     }
 
+    public static boolean deleteResultFileZip(String localPath, String taskId){
+        String path = localPath + "/" + taskId + ".zip";
+        try {
+            Files.delete(Paths.get(path));
+            log.info("Result file has been deleted [path:{}]", taskId);
+            return true;
+        } catch (IOException e) {
+            log.error("Problem when trying to delete the result zip file [path:{}]", path);
+        }
+        return false;
+    }
+
     public static File zipTaskResult(String localPath, String taskId) {
         String folderToZip = localPath + "/" + taskId;
         String zipName = folderToZip + ".zip";

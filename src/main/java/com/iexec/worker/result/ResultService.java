@@ -2,6 +2,7 @@ package com.iexec.worker.result;
 
 import com.iexec.common.result.ResultModel;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -50,4 +51,18 @@ public class ResultService {
         return metadataResultMap.get(chainTaskId);
     }
 
+    public boolean removeResult(String chainTaskId) {
+        boolean deletedInMap = metadataResultMap.remove(chainTaskId) != null;
+        boolean deletedOnTheDisk = FileHelper.deleteResultFileZip(configurationService.getResultBaseDir(), chainTaskId);
+
+        boolean ret = deletedInMap && deletedOnTheDisk;
+        if (ret) {
+            log.info("The result of the chainTaskId have been deleted [chainTaskId:{}]", chainTaskId);
+        } else {
+            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, deletedOnTheDisk:{}]",
+                    chainTaskId, deletedInMap, deletedOnTheDisk);
+        }
+
+        return ret;
+    }
 }
