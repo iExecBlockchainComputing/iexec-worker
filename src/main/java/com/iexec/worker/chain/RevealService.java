@@ -63,9 +63,23 @@ public class RevealService {
             );
         }
 
-        return isChainTaskStatusRevealing && !isConsensusDeadlineReached && !isRevealDeadlineReached &&
+        boolean ret = isChainTaskStatusRevealing && !isConsensusDeadlineReached && !isRevealDeadlineReached &&
                 isChainContributionStatusContributed && isContributionResultHashConsensusValue &&
                 isContributionResultHashCorrect && isContributionResultSealCorrect;
+
+        if (ret) {
+            log.info("All the conditions are valid for the reveal to happen [chainTaskId:{}]", chainTaskId);
+        } else {
+            log.warn("One or more conditions are not met for the reveal to happen [chainTaskId:{}, " +
+                    "isChainTaskStatusRevealing:{}, isConsensusDeadlineReached:{}, isRevealDeadlineReached:{}, " +
+                    "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
+                    "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
+                    isChainTaskStatusRevealing, isConsensusDeadlineReached, isRevealDeadlineReached,
+                    isChainContributionStatusContributed, isContributionResultHashConsensusValue,
+                    isContributionResultHashCorrect, isContributionResultSealCorrect);
+        }
+
+        return ret;
     }
 
     public boolean reveal(String chainTaskId) throws Exception {
