@@ -118,11 +118,11 @@ public class IexecHubService {
         return Optional.empty();
     }
 
-    TransactionReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, String seal) throws Exception {
+    TransactionReceipt contribute(ContributionAuthorization contribAuth, String contributionHash, String seal) throws Exception {
         // No SGX used for now
         return iexecHub.contributeABILegacy(
                 BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
-                BytesUtils.stringToBytes(deterministHash),
+                BytesUtils.stringToBytes(contributionHash),
                 BytesUtils.stringToBytes(seal),
                 EMPTY_ENCLAVE_CHALLENGE,
                 BigInteger.valueOf(0),
