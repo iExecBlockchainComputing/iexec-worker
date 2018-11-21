@@ -338,4 +338,68 @@ public class RevealServiceTests {
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
+
+    @Test
+    public void shouldNotRevealSinceMetadataResultIsEmpty() {
+        String deterministHash = Hash.sha3("Hello");
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+        String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
+        Credentials credentials = Credentials.create(privateKey);
+        String walletAddress = credentials.getAddress();
+        String contributionValue = HashUtils.concatenateAndHash(chainTaskId, deterministHash);
+        String contributionSeal = HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
+
+        Optional<ChainTask> optionalChainTask = Optional.of(
+                ChainTask.builder()
+                        .status(ChainTaskStatus.REVEALING)
+                        .consensusDeadline(DateUtils.addDays(new Date(), 1).getTime())
+                        .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
+                        .consensusValue(contributionValue)
+                        .build());
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
+
+        Optional<ChainContribution> optionalChainContribution = Optional.of(
+                ChainContribution.builder()
+                        .status(ChainContributionStatus.CONTRIBUTED)
+                        .resultHash(contributionValue)
+                        .resultSeal(contributionSeal)
+                        .build());
+        when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
+        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(new MetadataResult());
+        when(credentialsService.getCredentials()).thenReturn(credentials);
+
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
+    }
+
+    @Test
+    public void shouldNotRevealSinceMetadataResultIsNull() {
+        String deterministHash = Hash.sha3("Hello");
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+        String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
+        Credentials credentials = Credentials.create(privateKey);
+        String walletAddress = credentials.getAddress();
+        String contributionValue = HashUtils.concatenateAndHash(chainTaskId, deterministHash);
+        String contributionSeal = HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
+
+        Optional<ChainTask> optionalChainTask = Optional.of(
+                ChainTask.builder()
+                        .status(ChainTaskStatus.REVEALING)
+                        .consensusDeadline(DateUtils.addDays(new Date(), 1).getTime())
+                        .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
+                        .consensusValue(contributionValue)
+                        .build());
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
+
+        Optional<ChainContribution> optionalChainContribution = Optional.of(
+                ChainContribution.builder()
+                        .status(ChainContributionStatus.CONTRIBUTED)
+                        .resultHash(contributionValue)
+                        .resultSeal(contributionSeal)
+                        .build());
+        when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
+        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(null);
+        when(credentialsService.getCredentials()).thenReturn(credentials);
+
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
+    }
 }
