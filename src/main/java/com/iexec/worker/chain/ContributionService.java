@@ -57,7 +57,8 @@ public class ContributionService {
                 contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
 
         // For now no SGX used!
-        TransactionReceipt receipt = iexecHubService.contribute(contribAuth, deterministHash, seal);
+        String contributionValue = HashUtils.concatenateAndHash(contribAuth.getChainTaskId(), deterministHash);
+        TransactionReceipt receipt = iexecHubService.contribute(contribAuth, contributionValue, seal);
 
         return receipt != null && receipt.isStatusOK();
     }
