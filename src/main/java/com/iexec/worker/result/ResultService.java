@@ -52,15 +52,18 @@ public class ResultService {
     }
 
     public boolean removeResult(String chainTaskId) {
+        String resultBaseDir = configurationService.getResultBaseDir();
         boolean deletedInMap = metadataResultMap.remove(chainTaskId) != null;
-        boolean deletedOnTheDisk = FileHelper.deleteResultFileZip(configurationService.getResultBaseDir(), chainTaskId);
+        boolean deletedZipFile = FileHelper.deleteResultFileZip(resultBaseDir, chainTaskId);
+        boolean deletedResultFolder = FileHelper.deleteResultFolder(resultBaseDir, chainTaskId);
 
-        boolean ret = deletedInMap && deletedOnTheDisk;
+        boolean ret = deletedInMap && deletedZipFile && deletedResultFolder;
         if (ret) {
-            log.info("The result of the chainTaskId have been deleted [chainTaskId:{}]", chainTaskId);
+            log.info("The result of the chainTaskId has been deleted [chainTaskId:{}]", chainTaskId);
         } else {
-            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, deletedOnTheDisk:{}]",
-                    chainTaskId, deletedInMap, deletedOnTheDisk);
+            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, " +
+                            "deletedZipFile:{}, deletedResultFolder:{}]",
+                    chainTaskId, deletedInMap, deletedZipFile, deletedResultFolder);
         }
 
         return ret;
