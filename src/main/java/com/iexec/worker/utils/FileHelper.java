@@ -1,5 +1,6 @@
 package com.iexec.worker.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
@@ -16,9 +17,12 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+@Slf4j
 public class FileHelper {
 
-    private static final Logger log = LoggerFactory.getLogger(FileHelper.class);
+    private FileHelper() {
+        throw new UnsupportedOperationException();
+    }
 
     public static File createFileWithContent(String directoryPath, String filename, String data) {
         if (createDirectories(directoryPath)) {
@@ -46,40 +50,37 @@ public class FileHelper {
         }
     }
 
-    public static boolean deleteResultFileZip(String localPath, String taskId){
-        String path = localPath + "/" + taskId + ".zip";
+    public static boolean deleteFile(String filePath) {
         try {
-            Files.delete(Paths.get(path));
-            log.info("Result file has been deleted [path:{}]", path);
+            Files.delete(Paths.get(filePath));
+            log.info("File has been deleted [path:{}]", filePath);
             return true;
         } catch (IOException e) {
-            log.error("Problem when trying to delete the result zip file [path:{}]", path);
+            log.error("Problem when trying to delete the file [path:{}]", filePath);
         }
         return false;
     }
 
-    public static boolean deleteResultFolder(String localPath, String taskId){
-        String path = localPath + "/" + taskId;
-        File folder = new File(path);
+    public static boolean deleteFolder(String folderPath) {
+        File folder = new File(folderPath);
         try {
             FileUtils.deleteDirectory(folder);
-            log.info("Result repository has been deleted [path:{}]", path);
+            log.info("Folder has been deleted [path:{}]", folderPath);
             return true;
         } catch (IOException e) {
-            log.error("Problem when trying to delete the result folder [path:{}]", path);
+            log.error("Problem when trying to delete the folder [path:{}]", folderPath);
         }
         return false;
     }
 
-    public static File zipTaskResult(String localPath, String taskId) {
-        String folderToZip = localPath + "/" + taskId;
-        String zipName = folderToZip + ".zip";
+    public static File zipTaskResult(String folderPath) {
+        String zipFilePath = folderPath + ".zip";
         try {
-            zipFolder(Paths.get(folderToZip), Paths.get(zipName));
-            log.info("Result folder zip completed [taskId:{}]", taskId);
-            return new File(zipName);
+            zipFolder(Paths.get(folderPath), Paths.get(zipFilePath));
+            log.info("Result folder zip completed [path:{}]", zipFilePath);
+            return new File(zipFilePath);
         } catch (Exception e) {
-            log.error("Failed to zip task result [taskId:{}]", taskId);
+            log.error("Failed to zip task result [path:{}]", zipFilePath);
         }
         return null;
     }

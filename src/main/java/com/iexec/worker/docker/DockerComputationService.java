@@ -1,8 +1,8 @@
 package com.iexec.worker.docker;
 
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.result.MetadataResult;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,13 +23,13 @@ import static com.iexec.worker.utils.FileHelper.*;
 public class DockerComputationService {
 
     private static final String DETERMINIST_FILE_NAME = "consensus.iexec";
-
     private static final String STDOUT_FILENAME = "stdout.txt";
 
     private final CustomDockerClient dockerClient;
-    private WorkerConfigurationService configurationService;
+    private final WorkerConfigurationService configurationService;
 
-    public DockerComputationService(CustomDockerClient dockerClient, WorkerConfigurationService configurationService) {
+    public DockerComputationService(CustomDockerClient dockerClient,
+                                    WorkerConfigurationService configurationService) {
         this.dockerClient = dockerClient;
         this.configurationService = configurationService;
     }
@@ -49,7 +49,8 @@ public class DockerComputationService {
             createStdoutFile(taskId, "Failed to pull image");
         }
 
-        zipTaskResult(configurationService.getResultBaseDir(), taskId);
+        String folderToZip = configurationService.getResultBaseDir() + "/" + taskId;
+        zipTaskResult(folderToZip);
 
         String hash = computeDeterministHash(taskId);
         log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", taskId, hash);
@@ -62,7 +63,7 @@ public class DockerComputationService {
         String deterministFilePathName = configurationService.getResultBaseDir() + "/" + taskId + "/iexec/" + DETERMINIST_FILE_NAME;
         Path deterministFilePath = Paths.get(deterministFilePathName);
 
-        if (deterministFilePath.toFile().exists()){
+        if (deterministFilePath.toFile().exists()) {
             byte[] content = Files.readAllBytes(deterministFilePath);
             String hash = BytesUtils.bytesToString(Hash.sha3(content));
             log.info("The determinist file exists and its hash has been computed [taskId:{}, hash:{}]", taskId, hash);
@@ -111,7 +112,8 @@ public class DockerComputationService {
 
     private File createStdoutFile(String taskId, String stdoutContent) {
         log.info("Stdout file added to result folder [taskId:{}]", taskId);
-        return createFileWithContent(configurationService.getResultBaseDir() + "/" + taskId, STDOUT_FILENAME, stdoutContent);
+        String folderPath = configurationService.getResultBaseDir() + "/" + taskId;
+        return createFileWithContent(folderPath, STDOUT_FILENAME, stdoutContent);
     }
 
 }

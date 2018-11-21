@@ -31,11 +31,9 @@ public class FileHelperTests {
 
     @Test
     public void shouldZipFolder() throws IOException {
-        File resultFile = FileHelper.createFileWithContent("/tmp/iexec-test/taskId", "test.txt", "a test");
-        File zipFile = FileHelper.zipTaskResult("/tmp/iexec-test", "taskId");
+        FileHelper.createFileWithContent("/tmp/iexec-test/taskId", "test.txt", "a test");
+        File zipFile = FileHelper.zipTaskResult("/tmp/iexec-test/taskId");
         assertThat(zipFile.exists()).isTrue();
         assertThat(zipFile.getAbsolutePath().equals("/tmp/iexec-test/taskId.zip")).isTrue();
     }
-
-
 }

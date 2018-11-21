@@ -52,10 +52,9 @@ public class ResultService {
     }
 
     public boolean removeResult(String chainTaskId) {
-        String resultBaseDir = configurationService.getResultBaseDir();
         boolean deletedInMap = metadataResultMap.remove(chainTaskId) != null;
-        boolean deletedZipFile = FileHelper.deleteResultFileZip(resultBaseDir, chainTaskId);
-        boolean deletedResultFolder = FileHelper.deleteResultFolder(resultBaseDir, chainTaskId);
+        boolean deletedZipFile = FileHelper.deleteFile(getResultZipFilePath(chainTaskId));
+        boolean deletedResultFolder = FileHelper.deleteFolder(getResultFolderPath(chainTaskId));
 
         boolean ret = deletedInMap && deletedZipFile && deletedResultFolder;
         if (ret) {
@@ -67,5 +66,13 @@ public class ResultService {
         }
 
         return ret;
+    }
+
+    private String getResultFolderPath(String chainTaskId){
+        return configurationService.getResultBaseDir() + "/" + chainTaskId;
+    }
+
+    private String getResultZipFilePath(String chainTaskId){
+        return configurationService.getResultBaseDir() + "/" + chainTaskId + ".zip";
     }
 }
