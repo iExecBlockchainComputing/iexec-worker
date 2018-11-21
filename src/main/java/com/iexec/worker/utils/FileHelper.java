@@ -5,8 +5,6 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,16 +22,19 @@ public class FileHelper {
         throw new UnsupportedOperationException();
     }
 
-    public static File createFileWithContent(String directoryPath, String filename, String data) {
+    public static File createFileWithContent(String filePath, String data) {
+        File file = new File(filePath);
+        String directoryPath = file.getParent();
+
         if (createDirectories(directoryPath)) {
-            Path path = Paths.get(directoryPath + "/" + filename);
+            Path path = Paths.get(filePath);
             byte[] strToBytes = data.getBytes();
             try {
                 Files.write(path, strToBytes);
-                log.debug("File created [directoryPath:{}, filename:{}]", directoryPath, filename);
-                return new File(directoryPath + "/" + filename);
+                log.debug("File created [filePath:{}]", filePath);
+                return new File(filePath);
             } catch (IOException e) {
-                log.error("Failed to create file [directoryPath:{}, filename:{}]", directoryPath, filename);
+                log.error("Failed to create file [filePath:{}]", filePath);
             }
         } else {
             log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
@@ -73,30 +74,28 @@ public class FileHelper {
         return false;
     }
 
-    public static File zipTaskResult(String folderPath) {
+    public static File zipFolder(String folderPath) {
         String zipFilePath = folderPath + ".zip";
-        try {
-            zipFolder(Paths.get(folderPath), Paths.get(zipFilePath));
-            log.info("Result folder zip completed [path:{}]", zipFilePath);
+        Path sourceFolderPath = Paths.get(folderPath);
+
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(new File(zipFilePath)))) {
+            Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    log.debug("Adding file to zip [file:{}, zip:{}]", file.toAbsolutePath().toString(), zipFilePath);
+                    zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
+                    Files.copy(file, zos);
+                    zos.closeEntry();
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            log.info("Folder zipped [path:{}]", zipFilePath);
             return new File(zipFilePath);
+
         } catch (Exception e) {
-            log.error("Failed to zip task result [path:{}]", zipFilePath);
+            log.error("Failed to zip folder [path:{}]", zipFilePath);
         }
         return null;
-    }
-
-    private static void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
-        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
-        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                log.debug("Adding file to zip [file:{}, zip:{}]", file.toAbsolutePath().toString(), zipPath);
-                zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
-                Files.copy(file, zos);
-                zos.closeEntry();
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        zos.close();
     }
 
     public static void copyResultToTaskFolder(InputStream containerResultArchive, String resultBaseDirectory, String taskId) {

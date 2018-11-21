@@ -53,7 +53,7 @@ public class DockerComputationService {
             createStdoutFile(taskId, "Failed to pull image");
         }
 
-        zipTaskResult(resultService.getResultFolderPath(taskId));
+        zipFolder(resultService.getResultFolderPath(taskId));
 
         String hash = computeDeterministHash(taskId);
         log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", taskId, hash);
@@ -115,8 +115,8 @@ public class DockerComputationService {
 
     private File createStdoutFile(String chainTaskId, String stdoutContent) {
         log.info("Stdout file added to result folder [chainTaskId:{}]", chainTaskId);
-        String folderPath = resultService.getResultFolderPath(chainTaskId);
-        return createFileWithContent(folderPath, STDOUT_FILENAME, stdoutContent);
+        String filePath = resultService.getResultFolderPath(chainTaskId) + "/" + STDOUT_FILENAME;
+        return createFileWithContent(filePath, stdoutContent);
     }
 
 }
