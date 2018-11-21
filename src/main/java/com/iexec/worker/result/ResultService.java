@@ -68,11 +68,11 @@ public class ResultService {
         return ret;
     }
 
-    private String getResultFolderPath(String chainTaskId){
+    public String getResultFolderPath(String chainTaskId){
         return configurationService.getResultBaseDir() + "/" + chainTaskId;
     }
 
-    private String getResultZipFilePath(String chainTaskId){
+    public String getResultZipFilePath(String chainTaskId){
         return configurationService.getResultBaseDir() + "/" + chainTaskId + ".zip";
     }
 }
