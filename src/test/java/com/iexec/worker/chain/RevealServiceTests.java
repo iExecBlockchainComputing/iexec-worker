@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
+import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.Date;
 import java.util.Optional;
@@ -43,7 +44,7 @@ public class RevealServiceTests {
 
     // main test that should be valid, all other tests are failing cases of this one
     @Test
-    public void shouldRevealAllValid() {
+    public void canRevealAllValid() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -77,7 +78,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceChainTaskStatusWrong() {
+    public void cannotRevealSinceChainTaskStatusWrong() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -111,7 +112,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceConsensusDeadlineReached() {
+    public void cannotRevealSinceConsensusDeadlineReached() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -145,7 +146,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceRevealDeadlineReached() {
+    public void cannotRevealSinceRevealDeadlineReached() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -179,7 +180,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceChainContributionStatusWrong() {
+    public void cannotRevealSinceChainContributionStatusWrong() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -213,7 +214,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceHashDoesntMatchConsensus(){
+    public void cannotRevealSinceHashDoesntMatchConsensus(){
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -247,7 +248,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceContributionResultHashWrong() {
+    public void cannotRevealSinceContributionResultHashWrong() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -281,7 +282,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceContributionResultSealWrong() {
+    public void cannotRevealSinceContributionResultSealWrong() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -313,7 +314,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceCannotFindChainTask() {
+    public void cannotRevealSinceCannotFindChainTask() {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
@@ -321,7 +322,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceCannotFindChainContribution() {
+    public void cannotRevealSinceCannotFindChainContribution() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String contributionValue = HashUtils.concatenateAndHash(chainTaskId, deterministHash);
@@ -340,7 +341,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceMetadataResultIsEmpty() {
+    public void cannotRevealSinceMetadataResultIsEmpty() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -372,7 +373,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void shouldNotRevealSinceMetadataResultIsNull() {
+    public void cannotRevealSinceMetadataResultIsNull() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -401,5 +402,45 @@ public class RevealServiceTests {
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
+    }
+
+    @Test
+    public void shouldNotRevealWithEmptyMetaDataResult() throws Exception {
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(new MetadataResult());
+        assertThat(revealService.reveal(chainTaskId)).isFalse();
+    }
+
+    @Test
+    public void shouldNotRevealWithNullMetaDataResult() throws Exception {
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(null);
+        assertThat(revealService.reveal(chainTaskId)).isFalse();
+    }
+
+    @Test
+    public void shouldTriggerExceptionIfTransactionFails() throws Exception {
+        String deterministHash = Hash.sha3("Hello");
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+
+        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+                .deterministHash(deterministHash)
+                .build());
+        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(
+                new TransactionReceipt());
+
+        assertThat(revealService.reveal(chainTaskId)).isTrue();
+    }
+
+    @Test(expected = Exception.class)
+    public void shouldRevealIfTransactionSucceeds() throws Exception {
+        String deterministHash = Hash.sha3("Hello");
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+
+        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+                .deterministHash(deterministHash)
+                .build());
+        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new Exception());
+        revealService.reveal(chainTaskId);
     }
 }
