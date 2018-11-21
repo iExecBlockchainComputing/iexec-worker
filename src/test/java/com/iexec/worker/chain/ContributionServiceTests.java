@@ -2,12 +2,6 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.CustomDockerClient;
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.exceptions.DockerCertificateException;
-import com.spotify.docker.client.exceptions.DockerException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
