@@ -3,11 +3,12 @@ package com.iexec.worker.pubsub;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
+import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.config.CoreConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
@@ -29,25 +30,35 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
-    private CoreConfigurationService coreConfigurationService;
-    private WorkerConfigurationService workerConfigurationService;
+    // external services
     private CoreTaskClient coreTaskClient;
     private ResultRepoClient resultRepoClient;
     private ResultService resultService;
+    private RevealService revealService;
+
+    // internal components
     private StompSession session;
-    private Map<String, StompSession.Subscription> taskIdToSubscription;
+    private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
+    private final String coreHost;
+    private final int corePort;
+    private final String workerWalletAddress;
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
                                CoreTaskClient coreTaskClient,
                                ResultRepoClient resultRepoClient,
-                               ResultService resultService) {
-        this.coreConfigurationService = coreConfigurationService;
-        this.workerConfigurationService = workerConfigurationService;
+                               ResultService resultService,
+                               RevealService revealService) {
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
         this.resultService = resultService;
-        taskIdToSubscription = new ConcurrentHashMap<>();
+        this.revealService = revealService;
+
+        this.coreHost = coreConfigurationService.getHost();
+        this.corePort = coreConfigurationService.getPort();
+        this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
+
+        chainTaskIdToSubscription = new ConcurrentHashMap<>();
     }
 
     @PostConstruct
@@ -57,11 +68,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
 
-        String url = "ws://"
-                + coreConfigurationService.getHost()
-                + ":"
-                + coreConfigurationService.getPort()
-                + "/connect";
+        String url = "ws://" + coreHost + ":" + corePort + "/connect";
         stompClient.connect(url, this);
     }
 
@@ -71,12 +78,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         this.session = session;
     }
 
-    public void subscribeToTaskNotifications(String taskId) {
-        if (taskIdToSubscription.containsKey(taskId)) {
-            log.info("Already subscribed to TaskNotification [taskId:{}]", taskId);
+    public void subscribeToTaskNotifications(String chainTaskId) {
+        if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
+            log.info("Already subscribed to TaskNotification [chainTaskId:{}]", chainTaskId);
             return;
         }
-        StompSession.Subscription subscription = session.subscribe(getTaskTopicName(taskId), new StompFrameHandler() {
+        StompSession.Subscription subscription = session.subscribe(getTaskTopicName(chainTaskId), new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
                 return TaskNotification.class;
@@ -85,46 +92,74 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
                 TaskNotification taskNotification = (TaskNotification) payload;
-                handleTaskNotification(taskNotification, taskId);
-
+                handleTaskNotification(taskNotification);
             }
         });
-        taskIdToSubscription.put(taskId, subscription);
-        log.info("Subscribed to {}", getTaskTopicName(taskId));
+        chainTaskIdToSubscription.put(chainTaskId, subscription);
+        log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
     }
 
-    private void handleTaskNotification(TaskNotification taskNotification, String taskId) {
-        if (taskNotification.getWorkerAddress().equals(workerConfigurationService.getWorkerWalletAddress())
-                || taskNotification.getWorkerAddress().isEmpty()) {
-            log.info("Received [{}]", taskNotification);
+    private void handleTaskNotification(TaskNotification notif) {
+        if (notif.getWorkerAddress().equals(workerWalletAddress)
+                || notif.getWorkerAddress().isEmpty()) {
+            log.info("Received notification [notification:{}]", notif);
 
-            if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.UPLOAD)) {
+            TaskNotificationType type = notif.getTaskNotificationType();
+            String chainTaskId = notif.getChainTaskId();
 
-                log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
-                coreTaskClient.updateReplicateStatus(taskNotification.getChainTaskId(),
-                        workerConfigurationService.getWorkerWalletAddress(),
-                        ReplicateStatus.UPLOADING_RESULT);
+            switch (type) {
+                case PLEASE_REVEAL:
+                    reveal(chainTaskId);
+                    break;
 
-                //Upload result cause core is asking for
-                resultRepoClient.addResult(resultService.getResultModelWithZip(taskNotification.getChainTaskId()));
-                log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
-                coreTaskClient.updateReplicateStatus(taskNotification.getChainTaskId(),
-                        workerConfigurationService.getWorkerWalletAddress(),
-                        ReplicateStatus.RESULT_UPLOADED);
-            } else if (taskNotification.getTaskNotificationType().equals(TaskNotificationType.COMPLETED)) {
-                unsubscribeFromTaskNotifications(taskId);
+                case UPLOAD:
+                    uploadResult(chainTaskId);
+                    break;
+
+                case COMPLETED:
+                    unsubscribeFromTaskNotifications(chainTaskId);
+                    break;
+
+                default:
+                    break;
             }
         }
     }
 
-    public void unsubscribeFromTaskNotifications(String taskId) {
-        if (!taskIdToSubscription.containsKey(taskId)) {
-            log.info("Already unsubscribed to TaskNotification [taskId:{}]", taskId);
+    private void reveal(String chainTaskId) {
+        log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
+        if (!revealService.canReveal(chainTaskId)) {
+            log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
+        }
+
+        try {
+            revealService.reveal(chainTaskId);
+            log.info("The worker has revealed [chainTaskId:{}]", chainTaskId);
+            log.info("Update replicate status [status:{}]", ReplicateStatus.REVEALED);
+            coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.REVEALED);
+        } catch (Exception e) {
+            log.error("An error has occurred while revealing [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
+        }
+    }
+
+    private void uploadResult(String chainTaskId) {
+        log.info("Update replicate status [status:{}]", ReplicateStatus.UPLOADING_RESULT);
+        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.UPLOADING_RESULT);
+
+        resultRepoClient.addResult(resultService.getResultModelWithZip(chainTaskId));
+
+        log.info("Update replicate status [status:{}]", ReplicateStatus.RESULT_UPLOADED);
+        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.RESULT_UPLOADED);
+    }
+
+    private void unsubscribeFromTaskNotifications(String chainTaskId) {
+        if (!chainTaskIdToSubscription.containsKey(chainTaskId)) {
+            log.info("Already unsubscribed from TaskNotification [chainTaskId:{}]", chainTaskId);
             return;
         }
-        taskIdToSubscription.get(taskId).unsubscribe();
-        taskIdToSubscription.remove(taskId);
-        log.info("Unsubscribed from {}", getTaskTopicName(taskId));
+        chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
+        chainTaskIdToSubscription.remove(chainTaskId);
+        log.info("Unsubscribed from taskNotification [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
     }
 
     private String getTaskTopicName(String taskId) {
