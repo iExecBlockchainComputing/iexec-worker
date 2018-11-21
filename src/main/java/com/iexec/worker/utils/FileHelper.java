@@ -3,6 +3,7 @@ package com.iexec.worker.utils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +44,31 @@ public class FileHelper {
         } else {
             return true;
         }
+    }
+
+    public static boolean deleteResultFileZip(String localPath, String taskId){
+        String path = localPath + "/" + taskId + ".zip";
+        try {
+            Files.delete(Paths.get(path));
+            log.info("Result file has been deleted [path:{}]", path);
+            return true;
+        } catch (IOException e) {
+            log.error("Problem when trying to delete the result zip file [path:{}]", path);
+        }
+        return false;
+    }
+
+    public static boolean deleteResultFolder(String localPath, String taskId){
+        String path = localPath + "/" + taskId;
+        File folder = new File(path);
+        try {
+            FileUtils.deleteDirectory(folder);
+            log.info("Result repository has been deleted [path:{}]", path);
+            return true;
+        } catch (IOException e) {
+            log.error("Problem when trying to delete the result folder [path:{}]", path);
+        }
+        return false;
     }
 
     public static File zipTaskResult(String localPath, String taskId) {

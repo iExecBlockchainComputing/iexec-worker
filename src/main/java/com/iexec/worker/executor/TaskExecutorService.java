@@ -55,6 +55,34 @@ public class TaskExecutorService {
                 .thenAccept(metadataResult -> tryToContribute(contribAuth, metadataResult));
     }
 
+    private MetadataResult executeTask(AvailableReplicateModel model) {
+        String walletAddress = model.getContributionAuthorization().getWorkerWallet();
+        String chainTaskId = model.getContributionAuthorization().getChainTaskId();
+
+        if (contributionService.isChainTaskInitialized(chainTaskId)) {
+            log.info("Task, initialized, update replicate status to RUNNING [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
+            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.RUNNING);
+
+            if (model.getDappType().equals(DappType.DOCKER)) {
+                try {
+                    MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
+                    //save metadataResult (without zip payload) in memory
+                    resultService.addMetaDataResult(chainTaskId, metadataResult);
+                    log.info("Computation finished, update replicate status to COMPUTED [chainTaskId:{}, walletAddress:{}]",
+                            chainTaskId, walletAddress);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTED);
+
+                    return metadataResult;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } else {
+            log.warn("The task has NOT been initialized on chain [chainTaskId:{}]", chainTaskId);
+        }
+        return new MetadataResult();
+    }
+
     private void tryToContribute(ContributionAuthorization contribAuth, MetadataResult metadataResult) {
         String walletAddress = contribAuth.getWorkerWallet();
         String chainTaskId = contribAuth.getChainTaskId();
@@ -85,33 +113,5 @@ public class TaskExecutorService {
                     chainTaskId, walletAddress, metadataResult.getDeterministHash(), e.getMessage());
             coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
         }
-    }
-
-    private MetadataResult executeTask(AvailableReplicateModel model) {
-        String walletAddress = model.getContributionAuthorization().getWorkerWallet();
-        String chainTaskId = model.getContributionAuthorization().getChainTaskId();
-
-        if (contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.info("Task, initialized, update replicate status to RUNNING [chainTaskId:{}, walletAddress:{}]", chainTaskId, walletAddress);
-            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.RUNNING);
-
-            if (model.getDappType().equals(DappType.DOCKER)) {
-                try {
-                    MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
-                    //save metadataResult (without zip payload) in memory
-                    resultService.addMetaDataResult(chainTaskId, metadataResult);
-                    log.info("Computation finished, update replicate status to COMPUTED [chainTaskId:{}, walletAddress:{}]",
-                            chainTaskId, walletAddress);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTED);
-
-                    return metadataResult;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        } else {
-            log.warn("The task has NOT been initialized on chain [chainTaskId:{}]", chainTaskId);
-        }
-        return new MetadataResult();
     }
 }
