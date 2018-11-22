@@ -1,35 +1,33 @@
 package com.iexec.worker.utils;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.utils.IOUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+@Slf4j
 public class FileHelper {
 
-    private static final Logger log = LoggerFactory.getLogger(FileHelper.class);
+    private FileHelper() {
+        throw new UnsupportedOperationException();
+    }
 
-    public static File createFileWithContent(String directoryPath, String filename, String data) {
-        if (createDirectories(directoryPath)) {
-            Path path = Paths.get(directoryPath + "/" + filename);
-            byte[] strToBytes = data.getBytes();
+    public static File createFileWithContent(String filePath, String data) {
+        String directoryPath = new File(filePath).getParent();
+
+        if (createFolder(directoryPath)) {
             try {
-                Files.write(path, strToBytes);
-                log.debug("File created [directoryPath:{}, filename:{}]", directoryPath, filename);
-                return new File(directoryPath + "/" + filename);
+                Files.write(Paths.get(filePath), data.getBytes());
+                log.debug("File created [filePath:{}]", filePath);
+                return new File(filePath);
             } catch (IOException e) {
-                log.error("Failed to create file [directoryPath:{}, filename:{}]", directoryPath, filename);
+                log.error("Failed to create file [filePath:{}]", filePath);
             }
         } else {
             log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
@@ -37,8 +35,8 @@ public class FileHelper {
         return null;
     }
 
-    private static boolean createDirectories(String directoryPath) {
-        File baseDirectory = new File(directoryPath);
+    public static boolean createFolder(String folderPath) {
+        File baseDirectory = new File(folderPath);
         if (!baseDirectory.exists()) {
             return baseDirectory.mkdirs();
         } else {
@@ -46,79 +44,55 @@ public class FileHelper {
         }
     }
 
-    public static boolean deleteResultFileZip(String localPath, String taskId){
-        String path = localPath + "/" + taskId + ".zip";
+    public static boolean deleteFile(String filePath) {
         try {
-            Files.delete(Paths.get(path));
-            log.info("Result file has been deleted [path:{}]", path);
+            Files.delete(Paths.get(filePath));
+            log.info("File has been deleted [path:{}]", filePath);
             return true;
         } catch (IOException e) {
-            log.error("Problem when trying to delete the result zip file [path:{}]", path);
+            log.error("Problem when trying to delete the file [path:{}]", filePath);
         }
         return false;
     }
 
-    public static boolean deleteResultFolder(String localPath, String taskId){
-        String path = localPath + "/" + taskId;
-        File folder = new File(path);
+    public static boolean deleteFolder(String folderPath) {
+        File folder = new File(folderPath);
+        if(!folder.exists()) {
+            log.info("Folder doesn't exist so can't be deleted [path:{}]", folderPath);
+            return false;
+        }
+
         try {
             FileUtils.deleteDirectory(folder);
-            log.info("Result repository has been deleted [path:{}]", path);
+            log.info("Folder has been deleted [path:{}]", folderPath);
             return true;
         } catch (IOException e) {
-            log.error("Problem when trying to delete the result folder [path:{}]", path);
+            log.error("Problem when trying to delete the folder [path:{}]", folderPath);
         }
         return false;
     }
 
-    public static File zipTaskResult(String localPath, String taskId) {
-        String folderToZip = localPath + "/" + taskId;
-        String zipName = folderToZip + ".zip";
-        try {
-            zipFolder(Paths.get(folderToZip), Paths.get(zipName));
-            log.info("Result folder zip completed [taskId:{}]", taskId);
-            return new File(zipName);
+    public static File zipFolder(String folderPath) {
+        String zipFilePath = folderPath + ".zip";
+        Path sourceFolderPath = Paths.get(folderPath);
+
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(new File(zipFilePath)))) {
+            Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    log.debug("Adding file to zip [file:{}, zip:{}]", file.toAbsolutePath().toString(), zipFilePath);
+                    zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
+                    Files.copy(file, zos);
+                    zos.closeEntry();
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            log.info("Folder zipped [path:{}]", zipFilePath);
+            return new File(zipFilePath);
+
         } catch (Exception e) {
-            log.error("Failed to zip task result [taskId:{}]", taskId);
+            log.error("Failed to zip folder [path:{}]", zipFilePath);
         }
         return null;
     }
-
-    private static void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
-        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
-        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                log.debug("Adding file to zip [file:{}, zip:{}]", file.toAbsolutePath().toString(), zipPath);
-                zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
-                Files.copy(file, zos);
-                zos.closeEntry();
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        zos.close();
-    }
-
-    public static void copyResultToTaskFolder(InputStream containerResultArchive, String resultBaseDirectory, String taskId) {
-        try {
-            final TarArchiveInputStream tarStream = new TarArchiveInputStream(containerResultArchive);
-
-            TarArchiveEntry entry;
-            while ((entry = tarStream.getNextTarEntry()) != null) {
-                log.debug(entry.getName());
-                if (entry.isDirectory()) {
-                    continue;
-                }
-                File curfile = new File(resultBaseDirectory + "/" + taskId, entry.getName());
-                File parent = curfile.getParentFile();
-                if (!parent.exists()) {
-                    parent.mkdirs();
-                }
-                IOUtils.copy(tarStream, new FileOutputStream(curfile));
-            }
-            log.info("Results from remote added to result folder [taskId:{}]", taskId);
-        } catch (IOException e) {
-            log.error("Failed to copy container results to disk [taskId:{}]", taskId);
-        }
-    }
-
 }

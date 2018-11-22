@@ -6,6 +6,7 @@ import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -27,7 +28,7 @@ public class ResultService {
     public ResultModel getResultModelWithZip(String chainTaskId) {
         MetadataResult metadataResult = getMetaDataResult(chainTaskId);
         byte[] zipResultAsBytes = new byte[0];
-        String zipLocation = configurationService.getResultBaseDir() + "/" + chainTaskId + ".zip";
+        String zipLocation = getResultZipFilePath(chainTaskId);
         try {
             zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
         } catch (IOException e) {
@@ -52,10 +53,9 @@ public class ResultService {
     }
 
     public boolean removeResult(String chainTaskId) {
-        String resultBaseDir = configurationService.getResultBaseDir();
         boolean deletedInMap = metadataResultMap.remove(chainTaskId) != null;
-        boolean deletedZipFile = FileHelper.deleteResultFileZip(resultBaseDir, chainTaskId);
-        boolean deletedResultFolder = FileHelper.deleteResultFolder(resultBaseDir, chainTaskId);
+        boolean deletedZipFile = FileHelper.deleteFile(getResultZipFilePath(chainTaskId));
+        boolean deletedResultFolder = FileHelper.deleteFolder(getResultFolderPath(chainTaskId));
 
         boolean ret = deletedInMap && deletedZipFile && deletedResultFolder;
         if (ret) {
@@ -67,5 +67,13 @@ public class ResultService {
         }
 
         return ret;
+    }
+
+    public String getResultFolderPath(String chainTaskId){
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId;
+    }
+
+    public String getResultZipFilePath(String chainTaskId){
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId + ".zip";
     }
 }
