@@ -23,14 +23,11 @@ public class FileHelper {
     }
 
     public static File createFileWithContent(String filePath, String data) {
-        File file = new File(filePath);
-        String directoryPath = file.getParent();
+        String directoryPath = new File(filePath).getParent();
 
         if (createFolder(directoryPath)) {
-            Path path = Paths.get(filePath);
-            byte[] strToBytes = data.getBytes();
             try {
-                Files.write(path, strToBytes);
+                Files.write(Paths.get(filePath), data.getBytes());
                 log.debug("File created [filePath:{}]", filePath);
                 return new File(filePath);
             } catch (IOException e) {

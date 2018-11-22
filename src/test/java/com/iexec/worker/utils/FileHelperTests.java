@@ -9,6 +9,8 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -31,6 +33,15 @@ public class FileHelperTests {
         FileUtils.deleteDirectory(new File(TEST_FOLDER));
     }
 
+    @Test(expected = Exception.class)
+    public void shouldThrowExceptionWhenInvokingConstructor() throws Exception {
+        Constructor<FileHelper> clazz = FileHelper.class.getDeclaredConstructor();
+        clazz.setAccessible(true);
+        // calling the private constructor
+        FileHelper u = clazz.newInstance();
+    }
+
+
     @Test
     public void shouldCreateFileWithContent() throws IOException {
         String data = "a test";
@@ -45,6 +56,25 @@ public class FileHelperTests {
     @Test
     public void shouldCreateFolder() {
         String folderPath = TEST_FOLDER + "/folder";
+        boolean created = FileHelper.createFolder(folderPath);
+        File newFolder = new File(folderPath);
+        assertThat(created).isTrue();
+        assertThat(newFolder).isNotNull();
+        assertThat(newFolder).exists();
+        assertThat(newFolder).isDirectory();
+
+        // it should not change anything if the folder is already created
+        boolean createdAgain = FileHelper.createFolder(folderPath);
+        File existingFolder = new File(folderPath);
+        assertThat(createdAgain).isTrue();
+        assertThat(existingFolder).isNotNull();
+        assertThat(existingFolder).exists();
+        assertThat(existingFolder).isDirectory();
+    }
+
+    @Test
+    public void shouldCreateFolderRecursively() {
+        String folderPath = TEST_FOLDER + "/folder1/folder2/folder3";
         boolean created = FileHelper.createFolder(folderPath);
         File newFolder = new File(folderPath);
         assertThat(created).isTrue();
@@ -102,6 +132,22 @@ public class FileHelperTests {
     }
 
     @Test
+    public void shouldDeleteFoldersRecursively() {
+        String folderPath = TEST_FOLDER + "/folder1/folder2/folder3";
+        boolean created = FileHelper.createFolder(folderPath);
+        File newFolder = new File(folderPath);
+        assertThat(created).isTrue();
+        assertThat(newFolder).isNotNull();
+        assertThat(newFolder).exists();
+        assertThat(newFolder).isDirectory();
+
+        boolean isDeleted = FileHelper.deleteFolder(folderPath);
+        File deletedFolder = new File(folderPath);
+        assertThat(isDeleted).isTrue();
+        assertThat(deletedFolder).doesNotExist();
+    }
+
+    @Test
     public void shouldNotDeleteNonExistingFolder() {
         String folderPath = TEST_FOLDER + "/folder";
         boolean isDeleted = FileHelper.deleteFolder(folderPath);
@@ -109,7 +155,6 @@ public class FileHelperTests {
         assertThat(isDeleted).isFalse();
         assertThat(deletedFolder).doesNotExist();
     }
-
 
     @Test
     public void shouldZipFolder() {
