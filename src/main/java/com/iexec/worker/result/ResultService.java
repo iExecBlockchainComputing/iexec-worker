@@ -6,6 +6,7 @@ import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -27,7 +28,7 @@ public class ResultService {
     public ResultModel getResultModelWithZip(String chainTaskId) {
         MetadataResult metadataResult = getMetaDataResult(chainTaskId);
         byte[] zipResultAsBytes = new byte[0];
-        String zipLocation = configurationService.getResultBaseDir() + "/" + chainTaskId + ".zip";
+        String zipLocation = getResultZipFilePath(chainTaskId);
         try {
             zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
         } catch (IOException e) {
@@ -69,10 +70,10 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId){
-        return configurationService.getResultBaseDir() + "/" + chainTaskId;
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId;
     }
 
     public String getResultZipFilePath(String chainTaskId){
-        return configurationService.getResultBaseDir() + "/" + chainTaskId + ".zip";
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId + ".zip";
     }
 }

@@ -1,15 +1,11 @@
 package com.iexec.worker.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.zip.ZipEntry;
@@ -99,28 +95,4 @@ public class FileHelper {
         }
         return null;
     }
-
-    public static void copyResultToTaskFolder(InputStream containerResultArchive, String resultBaseDirectory, String taskId) {
-        try {
-            final TarArchiveInputStream tarStream = new TarArchiveInputStream(containerResultArchive);
-
-            TarArchiveEntry entry;
-            while ((entry = tarStream.getNextTarEntry()) != null) {
-                log.debug(entry.getName());
-                if (entry.isDirectory()) {
-                    continue;
-                }
-                File curfile = new File(resultBaseDirectory + "/" + taskId, entry.getName());
-                File parent = curfile.getParentFile();
-                if (!parent.exists()) {
-                    parent.mkdirs();
-                }
-                IOUtils.copy(tarStream, new FileOutputStream(curfile));
-            }
-            log.info("Results from remote added to result folder [taskId:{}]", taskId);
-        } catch (IOException e) {
-            log.error("Failed to copy container results to disk [taskId:{}]", taskId);
-        }
-    }
-
 }

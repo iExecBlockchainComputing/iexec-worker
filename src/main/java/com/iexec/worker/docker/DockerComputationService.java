@@ -4,12 +4,17 @@ import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -17,7 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
-import static com.iexec.worker.utils.FileHelper.*;
+import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
 @Service
@@ -38,28 +43,44 @@ public class DockerComputationService {
         this.resultService = resultService;
     }
 
-    public MetadataResult dockerRun(String taskId, String image, String cmd) throws IOException {
+    public MetadataResult dockerRun(String chainTaskId, String image, String cmd) throws IOException {
         //TODO: check image equals image:tag
-        MetadataResult metadataResult = MetadataResult.builder()
-                .image(image)
-                .cmd(cmd)
-                .build();
-
-        if (dockerClient.pullImage(taskId, image)) {
-            String volumeName = dockerClient.createVolume(taskId);
+        String containerId = "";
+        if (dockerClient.pullImage(chainTaskId, image)) {
+            String volumeName = dockerClient.createVolume(chainTaskId);
             ContainerConfig containerConfig = getContainerConfig(image, cmd, volumeName);
-            startComputation(taskId, metadataResult, containerConfig);
+            containerId = startComputation(chainTaskId, containerConfig);
         } else {
-            createStdoutFile(taskId, "Failed to pull image");
+            createStdoutFile(chainTaskId, "Failed to pull image");
         }
 
-        zipFolder(resultService.getResultFolderPath(taskId));
+        File zipFile = FileHelper.zipFolder(resultService.getResultFolderPath(chainTaskId));
+        log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
 
-        String hash = computeDeterministHash(taskId);
-        log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", taskId, hash);
-        metadataResult.setDeterministHash(hash);
+        String hash = computeDeterministHash(chainTaskId);
+        log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, hash);
 
-        return metadataResult;
+        return MetadataResult.builder()
+                .image(image)
+                .cmd(cmd)
+                .deterministHash(hash)
+                .containerId(containerId)
+                .build();
+    }
+
+    private String startComputation(String chainTaskId, ContainerConfig containerConfig) {
+        String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
+        if (!containerId.isEmpty()) {
+
+            waitForComputation(chainTaskId);
+            copyComputationResults(chainTaskId);
+
+            dockerClient.removeContainer(chainTaskId);
+            dockerClient.removeVolume(chainTaskId);
+        } else {
+            createStdoutFile(chainTaskId, "Failed to start container");
+        }
+        return containerId;
     }
 
     private String computeDeterministHash(String chainTaskId) throws IOException {
@@ -82,20 +103,6 @@ public class DockerComputationService {
         return hash;
     }
 
-    private void startComputation(String chainTaskId, MetadataResult metadataResult, ContainerConfig containerConfig) {
-        String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
-        if (!containerId.isEmpty()) {
-            metadataResult.setContainerId(containerId);
-
-            waitForComputation(chainTaskId);
-            copyComputationResults(chainTaskId);
-
-            dockerClient.removeContainer(chainTaskId);
-            dockerClient.removeVolume(chainTaskId);
-        } else {
-            createStdoutFile(chainTaskId, "Failed to start container");
-        }
-    }
 
     private void waitForComputation(String chainTaskId) {
         boolean executionDone = dockerClient.waitContainer(chainTaskId);
@@ -109,14 +116,34 @@ public class DockerComputationService {
     }
 
     private void copyComputationResults(String chainTaskId) {
-        InputStream containerResult = dockerClient.getContainerResultArchive(chainTaskId);
-        copyResultToTaskFolder(containerResult, configurationService.getResultBaseDir(), chainTaskId);
+        InputStream containerResultArchive = dockerClient.getContainerResultArchive(chainTaskId);
+        String resultBaseDirectory = configurationService.getResultBaseDir();
+
+        try {
+            final TarArchiveInputStream tarStream = new TarArchiveInputStream(containerResultArchive);
+
+            TarArchiveEntry entry;
+            while ((entry = tarStream.getNextTarEntry()) != null) {
+                log.debug(entry.getName());
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                File curfile = new File(resultBaseDirectory + File.separator + chainTaskId, entry.getName());
+                File parent = curfile.getParentFile();
+                if (!parent.exists()) {
+                    parent.mkdirs();
+                }
+                IOUtils.copy(tarStream, new FileOutputStream(curfile));
+            }
+            log.info("Results from remote added to result folder [chainTaskId:{}]", chainTaskId);
+        } catch (IOException e) {
+            log.error("Failed to copy container results to disk [chainTaskId:{}]", chainTaskId);
+        }
     }
 
     private File createStdoutFile(String chainTaskId, String stdoutContent) {
         log.info("Stdout file added to result folder [chainTaskId:{}]", chainTaskId);
-        String filePath = resultService.getResultFolderPath(chainTaskId) + "/" + STDOUT_FILENAME;
+        String filePath = resultService.getResultFolderPath(chainTaskId) + File.separator + STDOUT_FILENAME;
         return createFileWithContent(filePath, stdoutContent);
     }
-
 }
