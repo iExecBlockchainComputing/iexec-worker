@@ -1,6 +1,7 @@
 package com.iexec.worker.utils;
 
 import org.apache.commons.io.FileUtils;
+import org.hibernate.validator.constraints.br.TituloEleitoral;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +41,75 @@ public class FileHelperTests {
         String content = new String(Files.readAllBytes(Paths.get(file.getAbsolutePath())), StandardCharsets.UTF_8);
         assertThat(content).isEqualTo(data);
     }
+
+    @Test
+    public void shouldCreateFolder() {
+        String folderPath = TEST_FOLDER + "/folder";
+        boolean created = FileHelper.createFolder(folderPath);
+        File newFolder = new File(folderPath);
+        assertThat(created).isTrue();
+        assertThat(newFolder).isNotNull();
+        assertThat(newFolder).exists();
+        assertThat(newFolder).isDirectory();
+
+        // it should not change anything if the folder is already created
+        boolean createdAgain = FileHelper.createFolder(folderPath);
+        File existingFolder = new File(folderPath);
+        assertThat(createdAgain).isTrue();
+        assertThat(existingFolder).isNotNull();
+        assertThat(existingFolder).exists();
+        assertThat(existingFolder).isDirectory();
+    }
+
+    @Test
+    public void shouldDeleteFile() {
+        String filePath = TEST_FOLDER + "/test.txt";
+        File file = FileHelper.createFileWithContent(filePath, "Hello world");
+        assertThat(file).isNotNull();
+        assertThat(file).exists();
+        assertThat(file).isFile();
+
+        boolean isDeleted = FileHelper.deleteFile(filePath);
+        File deletedFile = new File(filePath);
+        assertThat(isDeleted).isTrue();
+        assertThat(deletedFile).doesNotExist();
+    }
+
+    @Test
+    public void shouldNotDeleteNonExistingFile() {
+        String filePath = TEST_FOLDER + "/test.txt";
+
+        boolean isDeleted = FileHelper.deleteFile(filePath);
+        File deletedFile = new File(filePath);
+        assertThat(isDeleted).isFalse();
+        assertThat(deletedFile).doesNotExist();
+    }
+
+    @Test
+    public void shouldDeleteFolder() {
+        String folderPath = TEST_FOLDER + "/folder";
+        boolean created = FileHelper.createFolder(folderPath);
+        File newFolder = new File(folderPath);
+        assertThat(created).isTrue();
+        assertThat(newFolder).isNotNull();
+        assertThat(newFolder).exists();
+        assertThat(newFolder).isDirectory();
+
+        boolean isDeleted = FileHelper.deleteFolder(folderPath);
+        File deletedFolder = new File(folderPath);
+        assertThat(isDeleted).isTrue();
+        assertThat(deletedFolder).doesNotExist();
+    }
+
+    @Test
+    public void shouldNotDeleteNonExistingFolder() {
+        String folderPath = TEST_FOLDER + "/folder";
+        boolean isDeleted = FileHelper.deleteFolder(folderPath);
+        File deletedFolder = new File(folderPath);
+        assertThat(isDeleted).isFalse();
+        assertThat(deletedFolder).doesNotExist();
+    }
+
 
     @Test
     public void shouldZipFolder() {

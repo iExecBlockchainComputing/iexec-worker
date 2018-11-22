@@ -26,7 +26,7 @@ public class FileHelper {
         File file = new File(filePath);
         String directoryPath = file.getParent();
 
-        if (createDirectories(directoryPath)) {
+        if (createFolder(directoryPath)) {
             Path path = Paths.get(filePath);
             byte[] strToBytes = data.getBytes();
             try {
@@ -42,8 +42,8 @@ public class FileHelper {
         return null;
     }
 
-    private static boolean createDirectories(String directoryPath) {
-        File baseDirectory = new File(directoryPath);
+    public static boolean createFolder(String folderPath) {
+        File baseDirectory = new File(folderPath);
         if (!baseDirectory.exists()) {
             return baseDirectory.mkdirs();
         } else {
@@ -64,6 +64,11 @@ public class FileHelper {
 
     public static boolean deleteFolder(String folderPath) {
         File folder = new File(folderPath);
+        if(!folder.exists()) {
+            log.info("Folder doesn't exist so can't be deleted [path:{}]", folderPath);
+            return false;
+        }
+
         try {
             FileUtils.deleteDirectory(folder);
             log.info("Folder has been deleted [path:{}]", folderPath);
