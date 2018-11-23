@@ -47,7 +47,16 @@ public class ContributionService {
         ChainContribution chainContribution = optionalContribution.get();
         boolean isContributionUnset = chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
 
-        return isTaskActive && !consensusDeadlineReached && isContributionUnset;
+        boolean ret = isTaskActive && !consensusDeadlineReached && isContributionUnset;
+        if (ret) {
+            log.info("All the conditions are valid for the contribution to happen [chainTaskId:{}]", chainTaskId);
+        } else {
+            log.warn("One or more conditions are not met for the contribution to happen [chainTaskId:{}, " +
+                            "isTaskActive:{}, consensusDeadlineReached:{}, isContributionUnset:{}]", chainTaskId,
+                    isTaskActive, consensusDeadlineReached, isContributionUnset);
+        }
+
+        return ret;
     }
 
     public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) throws Exception {
