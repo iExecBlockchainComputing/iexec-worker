@@ -26,24 +26,21 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.iexec.common.replicate.ReplicateStatus.COMPLETED;
-
 @Slf4j
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
+    private final String coreHost;
+    private final int corePort;
+    private final String workerWalletAddress;
     // external services
     private CoreTaskClient coreTaskClient;
     private ResultRepoClient resultRepoClient;
     private ResultService resultService;
     private RevealService revealService;
-
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
-    private final String coreHost;
-    private final int corePort;
-    private final String workerWalletAddress;
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
@@ -158,8 +155,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         // unsubscribe from the topic and remove the associated result from the machine
         unsubscribeFromTaskNotifications(chainTaskId);
         resultService.removeResult(chainTaskId);
-        log.info("Update replicate status [status:{}]", ReplicateStatus.COMPLETED);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, COMPLETED);
+        //log.info("Update replicate status [status:{}]", ReplicateStatus.COMPLETED);
+        //coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, COMPLETED);
     }
 
     private void unsubscribeFromTaskNotifications(String chainTaskId) {
