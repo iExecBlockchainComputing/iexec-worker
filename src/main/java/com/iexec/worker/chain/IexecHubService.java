@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.tuples.generated.Tuple4;
+import org.web3j.tuples.generated.Tuple6;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -56,7 +58,7 @@ public class IexecHubService {
     private void startWatchers() {
         iexecHub.workerSubscriptionEventObservable(DefaultBlockParameterName.EARLIEST, DefaultBlockParameterName.LATEST)
                 .subscribe(workerSubscriptionEventResponse ->
-                        log.info("(watcher) Subscribed to pool [pool:{}, worker:{}]", workerSubscriptionEventResponse.pool, workerSubscriptionEventResponse.worker)
+                        log.info("(watcher) Subscribed to pool [pool:{}, worker:{}]", workerSubscriptionEventResponse.workerpool, workerSubscriptionEventResponse.worker)
                 );
     }
 
@@ -66,7 +68,7 @@ public class IexecHubService {
             TransactionReceipt subscribeReceipt = iexecHub.subscribe(poolAddress).send();
             List<IexecHubABILegacy.WorkerSubscriptionEventResponse> workerSubscriptionEvents = iexecHub.getWorkerSubscriptionEvents(subscribeReceipt);
             if (workerSubscriptionEvents != null && !workerSubscriptionEvents.isEmpty()) {
-                log.info("Subscribed to pool [pool:{}, worker:{}]", workerSubscriptionEvents.get(0).pool, workerSubscriptionEvents.get(0).worker);
+                log.info("Subscribed to pool [pool:{}, worker:{}]", workerSubscriptionEvents.get(0).workerpool, workerSubscriptionEvents.get(0).worker);
             }
         } catch (Exception e) {
             log.info("Failed to subscribed to pool [pool:{}]", poolAddress);
@@ -112,7 +114,8 @@ public class IexecHubService {
                 return Optional.of(chainContribution);
             }
         } catch (Exception e) {
-            log.error("The chainContribution couldn't be retrieved from the chain [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
+            log.error("The chainContribution couldn't be retrieved from the chain [chainTaskId:{}, error:{}]", chainTaskId, e.getLocalizedMessage());
+            e.printStackTrace();
         }
 
         return Optional.empty();
