@@ -30,18 +30,17 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
+    private final String coreHost;
+    private final int corePort;
+    private final String workerWalletAddress;
     // external services
     private CoreTaskClient coreTaskClient;
     private ResultRepoClient resultRepoClient;
     private ResultService resultService;
     private RevealService revealService;
-
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
-    private final String coreHost;
-    private final int corePort;
-    private final String workerWalletAddress;
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
@@ -117,7 +116,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     break;
 
                 case COMPLETED:
-                    closeTask(chainTaskId);
+                    completeTask(chainTaskId);
                     break;
 
                 default:
@@ -152,10 +151,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ReplicateStatus.RESULT_UPLOADED);
     }
 
-    private void closeTask(String chainTaskId) {
+    private void completeTask(String chainTaskId) {
         // unsubscribe from the topic and remove the associated result from the machine
         unsubscribeFromTaskNotifications(chainTaskId);
         resultService.removeResult(chainTaskId);
+        //log.info("Update replicate status [status:{}]", ReplicateStatus.COMPLETED);
+        //coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, COMPLETED);
     }
 
     private void unsubscribeFromTaskNotifications(String chainTaskId) {

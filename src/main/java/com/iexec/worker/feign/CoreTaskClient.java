@@ -17,7 +17,9 @@ public interface CoreTaskClient {
     AvailableReplicateModel getAvailableReplicate(@RequestParam(name = "workerWalletAddress") String workerWalletAddress,
                                                   @RequestParam(name = "workerEnclaveAddress") String workerEnclaveAddress);
 
-    @RequestMapping(method = RequestMethod.POST, path = "/tasks/{chainTaskId}/replicates/updateStatus")
+    // TODO: this class should be split in two
+
+    @RequestMapping(method = RequestMethod.POST, path = "/replicates/{chainTaskId}/updateStatus")
     ReplicateModel updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,
                                          @RequestParam(name = "walletAddress") String walletAddress,
                                          @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus);
