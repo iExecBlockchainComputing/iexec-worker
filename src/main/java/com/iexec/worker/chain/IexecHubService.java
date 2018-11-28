@@ -13,8 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
-import org.web3j.tuples.generated.Tuple4;
-import org.web3j.tuples.generated.Tuple6;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -121,26 +119,42 @@ public class IexecHubService {
         return Optional.empty();
     }
 
-    TransactionReceipt contribute(ContributionAuthorization contribAuth, String contributionHash, String seal) throws Exception {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal){
         // No SGX used for now
-        return iexecHub.contributeABILegacy(
-                BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
-                BytesUtils.stringToBytes(contributionHash),
-                BytesUtils.stringToBytes(seal),
-                EMPTY_ENCLAVE_CHALLENGE,
-                BigInteger.valueOf(0),
-                BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
-                BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
-                BigInteger.valueOf(contribAuth.getSignV()),
-                contribAuth.getSignR(),
-                contribAuth.getSignS())
-                .send();
+        try {
+            TransactionReceipt contributeReceipt = iexecHub.contributeABILegacy(
+                    BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
+                    BytesUtils.stringToBytes(contributionHash),
+                    BytesUtils.stringToBytes(seal),
+                    EMPTY_ENCLAVE_CHALLENGE,
+                    BigInteger.valueOf(0),
+                    BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                    BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                    BigInteger.valueOf(contribAuth.getSignV()),
+                    contribAuth.getSignR(),
+                    contribAuth.getSignS())
+                    .send();
+            if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()){
+                return iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
-    TransactionReceipt reveal(String taskId, String resultDigest) throws Exception {
-        return iexecHub.reveal(
-                BytesUtils.stringToBytes(taskId),
-                BytesUtils.stringToBytes(resultDigest))
-                .send();
+    IexecHubABILegacy.TaskRevealEventResponse reveal(String taskId, String resultDigest){
+        try {
+            TransactionReceipt revealReceipt = iexecHub.reveal(
+                    BytesUtils.stringToBytes(taskId),
+                    BytesUtils.stringToBytes(resultDigest))
+                    .send();
+            if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()){
+                return iexecHub.getTaskRevealEvents(revealReceipt).get(0);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

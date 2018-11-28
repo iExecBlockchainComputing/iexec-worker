@@ -82,12 +82,11 @@ public class RevealService {
         return ret;
     }
 
-    public boolean reveal(String chainTaskId) throws Exception {
+    public boolean reveal(String chainTaskId){
         MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
         if (metadataResult != null && metadataResult.getDeterministHash() != null) {
             String deterministHash = metadataResult.getDeterministHash();
-            TransactionReceipt receipt = iexecHubService.reveal(chainTaskId, deterministHash);
-            return receipt != null && receipt.isStatusOK();
+            return iexecHubService.reveal(chainTaskId, deterministHash) != null;
         }
 
         return false;

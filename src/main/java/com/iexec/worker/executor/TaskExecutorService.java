@@ -87,31 +87,26 @@ public class TaskExecutorService {
         String walletAddress = contribAuth.getWorkerWallet();
         String chainTaskId = contribAuth.getChainTaskId();
 
-        try {
-
-            if (!contributionService.canContribute(chainTaskId)) {
-                log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
-                        "walletAddress:{}", chainTaskId, walletAddress);
-                coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
-                return;
-            }
-
-            log.info("The worker is allowed and is trying to contribute [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
-                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
-            if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
-                log.info("The worker has contributed successfully, update replicate status to CONTRIBUTED [chainTaskId:{}, " +
-                                "walletAddress:{}, deterministHash:{}]",
-                        chainTaskId, walletAddress, metadataResult.getDeterministHash());
-                coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTED);
-            } else {
-                log.warn("The worker couldn't contribute, update replicate status to ERROR [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
-                        chainTaskId, walletAddress, metadataResult.getDeterministHash());
-                coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
-            }
-        } catch (Exception e) {
-            log.error("Contribution of the worker has failed, update replicate status to ERROR [chainTaskId:{}, walletAddress:{}, deterministHash:{}, exception:{}]",
-                    chainTaskId, walletAddress, metadataResult.getDeterministHash(), e.getMessage());
+        if (!contributionService.canContribute(chainTaskId)) {
+            log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
+                    "walletAddress:{}", chainTaskId, walletAddress);
             coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
+            return;
         }
+
+        log.info("The worker is CONTRIBUTING [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
+                chainTaskId, walletAddress, metadataResult.getDeterministHash());
+        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTING);
+        if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
+            log.info("The worker has contributed successfully, update replicate status to CONTRIBUTED [chainTaskId:{}, " +
+                            "walletAddress:{}, deterministHash:{}]",
+                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
+            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTED);
+        } else {
+            log.warn("The worker couldn't contribute, update replicate status to CONTRIBUTE_FAILED [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
+                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
+            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTE_FAILED);
+        }
+
     }
 }
