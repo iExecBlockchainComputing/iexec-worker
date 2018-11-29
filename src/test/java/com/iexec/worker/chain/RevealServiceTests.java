@@ -4,6 +4,7 @@ import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.result.ResultService;
@@ -427,7 +428,7 @@ public class RevealServiceTests {
                 .deterministHash(deterministHash)
                 .build());
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(
-                new TransactionReceipt());
+                new IexecHubABILegacy.TaskRevealEventResponse());
 
         assertThat(revealService.reveal(chainTaskId)).isTrue();
     }

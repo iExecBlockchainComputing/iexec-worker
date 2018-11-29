@@ -59,17 +59,14 @@ public class ContributionService {
         return ret;
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) throws Exception {
-
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash){
         String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
                 contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
 
         // For now no SGX used!
         String contributionValue = HashUtils.concatenateAndHash(contribAuth.getChainTaskId(), deterministHash);
-        TransactionReceipt receipt = iexecHubService.contribute(contribAuth, contributionValue, seal);
-
-        return receipt != null && receipt.isStatusOK();
+        return iexecHubService.contribute(contribAuth, contributionValue, seal) != null;
     }
 
     private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
