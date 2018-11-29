@@ -75,6 +75,8 @@ public class TaskExecutorService {
                         coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.APP_DOWNLOAD_FAILED);
                     }
 
+                    log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.COMPUTING);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTING);
                     MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
