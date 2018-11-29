@@ -76,6 +76,15 @@ public class CustomDockerClient {
         return false;
     }
 
+    boolean isImagePulled(String image) {
+        try {
+            return !docker.inspectImage(image).id().isEmpty();
+        } catch (DockerException | InterruptedException e) {
+            log.error("isImagePulled failed [image:{}]", image);
+        }
+        return false;
+    }
+
     String createVolume(String taskId) {
         String volumeName = getVolumeName(taskId);
         if (!volumeName.isEmpty()) {

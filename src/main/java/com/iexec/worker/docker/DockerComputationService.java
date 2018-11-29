@@ -46,7 +46,7 @@ public class DockerComputationService {
     public MetadataResult dockerRun(String chainTaskId, String image, String cmd) throws IOException {
         //TODO: check image equals image:tag
         String containerId = "";
-        if (dockerClient.pullImage(chainTaskId, image)) {
+        if (dockerClient.isImagePulled(image)) {
             String volumeName = dockerClient.createVolume(chainTaskId);
             ContainerConfig containerConfig = getContainerConfig(image, cmd, volumeName);
             containerId = startComputation(chainTaskId, containerConfig);
@@ -66,6 +66,10 @@ public class DockerComputationService {
                 .deterministHash(hash)
                 .containerId(containerId)
                 .build();
+    }
+
+    public boolean dockerPull(String chainTaskId, String image) {
+        return dockerClient.pullImage(chainTaskId, image);
     }
 
     private String startComputation(String chainTaskId, ContainerConfig containerConfig) {
