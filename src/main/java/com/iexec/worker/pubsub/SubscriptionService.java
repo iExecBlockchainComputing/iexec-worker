@@ -113,7 +113,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     reveal(chainTaskId);
                     break;
 
-                case UPLOAD:
+                case PLEASE_UPLOAD:
                     uploadResult(chainTaskId);
                     break;
 
