@@ -17,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static com.iexec.common.replicate.ReplicateStatus.*;
+
 @Slf4j
 @Service
 public class TaskExecutorService {
@@ -60,28 +62,29 @@ public class TaskExecutorService {
         String chainTaskId = model.getContributionAuthorization().getChainTaskId();
 
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.RUNNING);            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.RUNNING);
+            log.info("RUNNING [chainTaskId:{}]", chainTaskId);
+            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, RUNNING);
 
             if (model.getDappType().equals(DappType.DOCKER)) {
                 try {
-                    log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.APP_DOWNLOADING);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.APP_DOWNLOADING);
+                    log.info("APP_DOWNLOADING [chainTaskId:{}]", chainTaskId);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, APP_DOWNLOADING);
                     boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, model.getDappName());
                     if (isImagePulled){
-                        log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.APP_DOWNLOADED);
-                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.APP_DOWNLOADED);
+                        log.info("APP_DOWNLOADED [chainTaskId:{}]", chainTaskId);
+                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, APP_DOWNLOADED);
                     } else {
-                        log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.APP_DOWNLOAD_FAILED);
-                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.APP_DOWNLOAD_FAILED);
+                        log.info("APP_DOWNLOAD_FAILED [chainTaskId:{}]", chainTaskId);
+                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, APP_DOWNLOAD_FAILED);
                     }
 
-                    log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.COMPUTING);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTING);
+                    log.info("COMPUTING [chainTaskId:{}]", chainTaskId);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, COMPUTING);
                     MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
-                    log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, ReplicateStatus.COMPUTED);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.COMPUTED);
+                    log.info("COMPUTED [chainTaskId:{}]", chainTaskId);
+                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, COMPUTED);
 
                     return metadataResult;
                 } catch (IOException e) {
@@ -89,7 +92,7 @@ public class TaskExecutorService {
                 }
             }
         } else {
-            log.warn("The task has NOT been initialized on chain [chainTaskId:{}]", chainTaskId);
+            log.warn("Task NOT initialized on chain [chainTaskId:{}]", chainTaskId);
         }
         return new MetadataResult();
     }
