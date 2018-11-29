@@ -101,8 +101,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     private void handleTaskNotification(TaskNotification notif) {
-        if (notif.getWorkerAddress().equals(workerWalletAddress)
-                || notif.getWorkerAddress().isEmpty()) {
+        if (notif.getWorkersAddress().contains(workerWalletAddress)
+                || notif.getWorkersAddress().isEmpty()) {
             log.info("Received notification [notification:{}]", notif);
 
             TaskNotificationType type = notif.getTaskNotificationType();
