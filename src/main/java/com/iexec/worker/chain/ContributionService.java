@@ -38,6 +38,10 @@ public class ContributionService {
         ChainTask chainTask = optionalChain.get();
 
         boolean isTaskActive = chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
+        boolean willNeverBeAbleToContribute = chainTask.getStatus().equals(ChainTaskStatus.REVEALING)
+                || chainTask.getStatus().equals(ChainTaskStatus.COMPLETED)
+                || chainTask.getStatus().equals(ChainTaskStatus.FAILLED);
+
         boolean consensusDeadlineReached = chainTask.getConsensusDeadline() < new Date().getTime();
 
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
@@ -47,16 +51,17 @@ public class ContributionService {
         ChainContribution chainContribution = optionalContribution.get();
         boolean isContributionUnset = chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
 
-        boolean ret = isTaskActive && !consensusDeadlineReached && isContributionUnset;
-        if (ret) {
-            log.info("All the conditions are valid for the contribution to happen [chainTaskId:{}]", chainTaskId);
+        if (isTaskActive && !consensusDeadlineReached && isContributionUnset && !willNeverBeAbleToContribute) {
+            log.info("Can contribute [chainTaskId:{}]", chainTaskId);
+            return true;
         } else {
-            log.warn("One or more conditions are not met for the contribution to happen [chainTaskId:{}, " +
-                            "isTaskActive:{}, consensusDeadlineReached:{}, isContributionUnset:{}]", chainTaskId,
-                    isTaskActive, consensusDeadlineReached, isContributionUnset);
+            log.warn("Can't contribute [chainTaskId:{}, isTaskActive:{}, consensusDeadlineReached:{}, " +
+                            "isContributionUnset:{}, chainTaskStatus:{}], willNeverBeAbleToContribute:{}",
+                    chainTaskId, isTaskActive, consensusDeadlineReached, isContributionUnset, chainTask.getStatus(),
+                    willNeverBeAbleToContribute);
+            return false;
         }
 
-        return ret;
     }
 
     public boolean contribute(ContributionAuthorization contribAuth, String deterministHash){

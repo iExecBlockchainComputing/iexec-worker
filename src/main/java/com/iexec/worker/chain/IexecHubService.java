@@ -39,8 +39,6 @@ public class IexecHubService {
                 ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
 
-        startWatchers();
-
         String oldPool = getWorkerAffectation(credentialsService.getCredentials().getAddress());
         String newPool = coreWorkerClient.getPublicConfiguration().getWorkerPoolAddress();
 
@@ -51,13 +49,6 @@ public class IexecHubService {
         } else {
             //TODO: unsubscribe from last and subscribe to current
         }
-    }
-
-    private void startWatchers() {
-        iexecHub.workerSubscriptionEventObservable(DefaultBlockParameterName.EARLIEST, DefaultBlockParameterName.LATEST)
-                .subscribe(workerSubscriptionEventResponse ->
-                        log.info("(watcher) Subscribed to pool [pool:{}, worker:{}]", workerSubscriptionEventResponse.workerpool, workerSubscriptionEventResponse.worker)
-                );
     }
 
     private void subscribeToPool(String poolAddress) {
@@ -138,22 +129,22 @@ public class IexecHubService {
                 return iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Contribute Failed [chainTaskId:{}]", contribAuth.getChainTaskId());
         }
         return null;
     }
 
-    IexecHubABILegacy.TaskRevealEventResponse reveal(String taskId, String resultDigest){
+    IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest){
         try {
             TransactionReceipt revealReceipt = iexecHub.reveal(
-                    BytesUtils.stringToBytes(taskId),
+                    BytesUtils.stringToBytes(chainTaskId),
                     BytesUtils.stringToBytes(resultDigest))
                     .send();
             if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()){
                 return iexecHub.getTaskRevealEvents(revealReceipt).get(0);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Reveal Failed [chainTaskId:{}]", chainTaskId);
         }
         return null;
     }
