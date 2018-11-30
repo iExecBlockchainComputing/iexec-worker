@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECDSASignature;
 import org.web3j.crypto.Keys;
 import org.web3j.crypto.Sign;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.math.BigInteger;
 import java.util.Date;
@@ -30,12 +29,24 @@ public class ContributionService {
     }
 
     public boolean canContribute(String chainTaskId) {
-
-        Optional<ChainTask> optionalChain = iexecHubService.getChainTask(chainTaskId);
-        if (!optionalChain.isPresent()) {
+        Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
+        if (!optionalChainTask.isPresent()) {
             return false;
         }
-        ChainTask chainTask = optionalChain.get();
+        ChainTask chainTask = optionalChainTask.get();
+
+        Optional<ChainAccount> optionalChainAccount = iexecHubService.getChainAccount();
+        Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
+        if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()){
+            return false;
+        }
+        if (optionalChainAccount.get().getDeposit() < optionalChainDeal.get().getWorkerStake().longValue()){
+            log.error("Stake to low to contribute [chainTaskId:{}, current:{}, required:{}]",
+                    chainTaskId, optionalChainAccount.get().getDeposit(),
+                    optionalChainDeal.get().getWorkerStake().longValue());
+            return false;
+        }
+
 
         boolean isTaskActive = chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
         boolean willNeverBeAbleToContribute = chainTask.getStatus().equals(ChainTaskStatus.REVEALING)

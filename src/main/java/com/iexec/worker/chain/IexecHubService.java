@@ -1,17 +1,14 @@
 package com.iexec.worker.chain;
 
 
-import com.iexec.common.chain.ChainContribution;
-import com.iexec.common.chain.ChainTask;
-import com.iexec.common.chain.ChainUtils;
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.*;
+import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.math.BigInteger;
@@ -29,6 +26,7 @@ public class IexecHubService {
 
     private final IexecHubABILegacy iexecHub;
     private final CredentialsService credentialsService;
+    private final IexecClerkABILegacy iexecClerk;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
@@ -36,6 +34,9 @@ public class IexecHubService {
         this.credentialsService = credentialsService;
         this.iexecHub = ChainUtils.loadHubContract(
                 credentialsService.getCredentials(),
+                ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
+                coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
+        this.iexecClerk = ChainUtils.loadClerkContract(credentialsService.getCredentials(),
                 ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
 
@@ -81,16 +82,7 @@ public class IexecHubService {
     }
 
     Optional<ChainTask> getChainTask(String chainTaskId) {
-        try {
-            ChainTask chainTask = ChainTask.tuple2ChainTask(iexecHub.viewTaskABILegacy(BytesUtils.stringToBytes(chainTaskId)).send());
-            if (chainTask != null) {
-                return Optional.of(chainTask);
-            }
-        } catch (Exception e) {
-            log.error("The chainTask could't be retrieved from the chain [chainTaskId:{}, error:{}]", chainTaskId, e.getMessage());
-        }
-
-        return Optional.empty();
+        return ChainUtils.getChainTask(iexecHub, chainTaskId);
     }
 
     Optional<ChainContribution> getChainContribution(String chainTaskId) {
@@ -110,7 +102,7 @@ public class IexecHubService {
         return Optional.empty();
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal){
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal) {
         // No SGX used for now
         try {
             TransactionReceipt contributeReceipt = iexecHub.contributeABILegacy(
@@ -125,7 +117,7 @@ public class IexecHubService {
                     contribAuth.getSignR(),
                     contribAuth.getSignS())
                     .send();
-            if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()){
+            if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()) {
                 return iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
@@ -134,13 +126,13 @@ public class IexecHubService {
         return null;
     }
 
-    IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest){
+    IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
             TransactionReceipt revealReceipt = iexecHub.reveal(
                     BytesUtils.stringToBytes(chainTaskId),
                     BytesUtils.stringToBytes(resultDigest))
                     .send();
-            if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()){
+            if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()) {
                 return iexecHub.getTaskRevealEvents(revealReceipt).get(0);
             }
         } catch (Exception e) {
@@ -148,4 +140,14 @@ public class IexecHubService {
         }
         return null;
     }
+
+    Optional<ChainAccount> getChainAccount() {
+        return ChainUtils.getChainAccount(iexecClerk, credentialsService.getCredentials().getAddress());
+    }
+
+    Optional<ChainDeal> getChainDeal(String chainDealId) {
+        return ChainUtils.getChainDeal(iexecClerk, chainDealId);
+    }
+
+
 }
