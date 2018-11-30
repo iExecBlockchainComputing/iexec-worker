@@ -1,5 +1,6 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
 import com.iexec.worker.chain.RevealService;
@@ -136,42 +137,28 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
         }
 
-        log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, REVEALING);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, REVEALING);
+        updateReplicateStatus(chainTaskId, REVEALING);
         if (revealService.reveal(chainTaskId)) {
-            log.info("Reveal Completed [chainTaskId:{}]", chainTaskId);
-            log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, REVEALED);
-            coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, REVEALED);
+            updateReplicateStatus(chainTaskId, REVEALED);
         } else {
-            log.info("Reveal Failed [chainTaskId:{}]", chainTaskId);
-            log.info("UpdateReplicateStatus [chainTaskId:{}, status:{}]", chainTaskId, REVEAL_FAILED);
-            coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, REVEAL_FAILED);
+            updateReplicateStatus(chainTaskId, REVEAL_FAILED);
         }
-
     }
 
     private void abortConsensusReached(String chainTaskId) {
         cleanReplicate(chainTaskId);
-
-        log.info("UpdateReplicateStatus [status:{}]", ABORT_CONSENSUS_REACHED);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, ABORT_CONSENSUS_REACHED);
+        updateReplicateStatus(chainTaskId, ABORT_CONSENSUS_REACHED);
     }
 
     private void uploadResult(String chainTaskId) {
-        log.info("Update replicate status [status:{}]", RESULT_UPLOADING);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, RESULT_UPLOADING);
-
+        updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
         resultRepoClient.addResult(resultService.getResultModelWithZip(chainTaskId));
-
-        log.info("Update replicate status [status:{}]", RESULT_UPLOADED);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, RESULT_UPLOADED);
+        updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
     }
 
     private void completeTask(String chainTaskId) {
         cleanReplicate(chainTaskId);
-
-        log.info("UpdateReplicateStatus [status:{}]", COMPLETED);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, COMPLETED);
+        updateReplicateStatus(chainTaskId, COMPLETED);
     }
 
     private void unsubscribeFromTaskNotifications(String chainTaskId) {
@@ -181,7 +168,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
         chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
         chainTaskIdToSubscription.remove(chainTaskId);
-        log.info("Unsubscribed from taskNotification [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
+        log.info("Unsubscribed from taskNotification [chainTaskId:{}]", chainTaskId);
     }
 
     private void cleanReplicate(String chainTaskId) {
@@ -192,5 +179,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private String getTaskTopicName(String chainTaskId) {
         return "/topic/task/" + chainTaskId;
+    }
+
+    private void updateReplicateStatus(String chainTaskId, ReplicateStatus status){
+
+        log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
+        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, status);
+
     }
 }
