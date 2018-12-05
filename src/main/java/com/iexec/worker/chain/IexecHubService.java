@@ -177,20 +177,7 @@ public class IexecHubService {
     }
 
     Optional<ChainContribution> getChainContribution(String chainTaskId) {
-        String workerAddress = credentialsService.getCredentials().getAddress();
-
-        try {
-            ChainContribution chainContribution = ChainContribution.tuple2Contribution(
-                    iexecHub.viewContributionABILegacy(BytesUtils.stringToBytes(chainTaskId), workerAddress).send());
-            if (chainContribution != null) {
-                return Optional.of(chainContribution);
-            }
-        } catch (Exception e) {
-            log.error("The chainContribution couldn't be retrieved from the chain [chainTaskId:{}, error:{}]", chainTaskId, e.getLocalizedMessage());
-            e.printStackTrace();
-        }
-
-        return Optional.empty();
+        return ChainUtils.getChainContribution(iexecHub, chainTaskId, credentialsService.getCredentials().getAddress());
     }
 
 
