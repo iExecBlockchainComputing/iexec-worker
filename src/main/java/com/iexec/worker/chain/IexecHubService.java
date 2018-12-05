@@ -45,7 +45,7 @@ public class IexecHubService {
         this.iexecClerk = ChainUtils.loadClerkContract(credentialsService.getCredentials(),
                 ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
-        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
 
 
         String oldPool = getWorkerAffectation(credentialsService.getCredentials().getAddress());
