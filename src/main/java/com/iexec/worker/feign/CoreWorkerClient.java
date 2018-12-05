@@ -3,6 +3,7 @@ package com.iexec.worker.feign;
 
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.common.security.Authorization;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,8 +20,12 @@ public interface CoreWorkerClient {
     PublicConfiguration getPublicConfiguration();
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
-    void ping (@RequestParam(name = "walletAddress") String walletAddress);
+    void ping(@RequestParam(name = "walletAddress") String walletAddress);
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/register")
     void registerWorker(@RequestBody WorkerConfigurationModel model);
+
+    @RequestMapping(method = RequestMethod.POST, path = "/workers/login")
+    String login(@RequestParam(name = "walletAddress") String walletAddress,
+                 @RequestBody Authorization authorization);
 }
