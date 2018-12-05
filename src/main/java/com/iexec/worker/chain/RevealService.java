@@ -13,6 +13,7 @@ import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Service
@@ -86,7 +87,11 @@ public class RevealService {
         MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
         if (metadataResult != null && metadataResult.getDeterministHash() != null) {
             String deterministHash = metadataResult.getDeterministHash();
-            return iexecHubService.reveal(chainTaskId, deterministHash) != null;
+            try {
+                return iexecHubService.reveal(chainTaskId, deterministHash) != null;
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         return false;

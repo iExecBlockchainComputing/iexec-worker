@@ -13,6 +13,7 @@ import org.web3j.crypto.Sign;
 import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Service
@@ -82,7 +83,12 @@ public class ContributionService {
 
         // For now no SGX used!
         String contributionValue = HashUtils.concatenateAndHash(contribAuth.getChainTaskId(), deterministHash);
-        return iexecHubService.contribute(contribAuth, contributionValue, seal) != null;
+        try {
+            return iexecHubService.contribute(contribAuth, contributionValue, seal) != null;
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
