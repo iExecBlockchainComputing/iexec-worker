@@ -1,6 +1,6 @@
-package com.iexec.worker.utils;
+package com.iexec.worker.security;
 
-import com.iexec.common.security.Authorization;
+import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
 import org.springframework.stereotype.Service;
@@ -17,14 +17,14 @@ public class SignatureService {
         this.credentialsService = credentialsService;
     }
 
-    public Authorization createAuthorization(String workerWallet) {
-        byte[] message = Hash.sha3(BytesUtils.stringToBytes(workerWallet));
+    public Signature createSignature(String stringToSign) {
+        byte[] message = Hash.sha3(BytesUtils.stringToBytes(stringToSign));
 
         ECKeyPair keyPair = credentialsService.getCredentials().getEcKeyPair();
         Sign.SignatureData sign = Sign.signMessage(message, keyPair, false);
 
-        return Authorization.builder()
-                .workerWallet(workerWallet)
+        return Signature.builder()
+                .workerWallet(credentialsService.getCredentials().getAddress())
                 .signR(sign.getR())
                 .signS(sign.getS())
                 .signV(sign.getV())

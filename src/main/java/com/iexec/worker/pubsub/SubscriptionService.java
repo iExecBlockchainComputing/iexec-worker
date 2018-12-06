@@ -9,6 +9,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.security.TokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
@@ -40,6 +41,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private ResultRepoClient resultRepoClient;
     private ResultService resultService;
     private RevealService revealService;
+    private TokenService tokenService;
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
@@ -49,11 +51,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                CoreTaskClient coreTaskClient,
                                ResultRepoClient resultRepoClient,
                                ResultService resultService,
-                               RevealService revealService) {
+                               RevealService revealService,
+                               TokenService tokenService) {
         this.coreTaskClient = coreTaskClient;
         this.resultRepoClient = resultRepoClient;
         this.resultService = resultService;
         this.revealService = revealService;
+        this.tokenService = tokenService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
@@ -182,9 +186,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     private void updateReplicateStatus(String chainTaskId, ReplicateStatus status){
-
+        String token = tokenService.getToken();
         log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, status);
+        coreTaskClient.updateReplicateStatus(chainTaskId, workerWalletAddress, status, token);
 
     }
 }

@@ -5,7 +5,7 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CoreWorkerClient;
-import com.iexec.worker.utils.SignatureService;
+import com.iexec.worker.security.TokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +37,7 @@ public class Application implements CommandLineRunner {
     private CredentialsService credentialsService;
 
     @Autowired
-    private SignatureService signatureService;
+    private TokenService tokenService;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -62,13 +62,12 @@ public class Application implements CommandLineRunner {
         log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
 
         log.info("Get the token from the server");
-        String token = coreWorkerClient.login(workerAddress, signatureService.createAuthorization(workerAddress));
+        String token = tokenService.getToken();
         log.info("Token from the server: " + token);
 
 
         log.info("Registering the worker to the core [worker:{}]", model);
         coreWorkerClient.registerWorker(model);
-
 
 
     }
