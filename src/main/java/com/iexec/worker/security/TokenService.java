@@ -12,6 +12,8 @@ public class TokenService {
 
     private String currentToken;
 
+    private static final String TOKEN_PREFIX = "Bearer ";
+
     public TokenService(CoreWorkerClient coreWorkerClient,
                         CredentialsService credentialsService,
                         SignatureService signatureService) {
@@ -25,12 +27,17 @@ public class TokenService {
         if (currentToken.isEmpty()){
             String workerAddress = credentialsService.getCredentials().getAddress();
             String challenge = coreWorkerClient.getChallenge(workerAddress);
-            currentToken = "Bearer wrong " + coreWorkerClient.login(workerAddress, signatureService.createSignature(challenge));
+            currentToken = TOKEN_PREFIX + coreWorkerClient.login(workerAddress, signatureService.createSignature(challenge));
         }
         return currentToken;
     }
 
-    public void expireToken(){
+    private void expireToken(){
         currentToken = "";
+    }
+
+    public String generateNewToken() {
+        expireToken();
+        return getToken();
     }
 }
