@@ -2,6 +2,7 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.*;
+import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
@@ -9,6 +10,7 @@ import com.iexec.worker.feign.CoreWorkerClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
@@ -32,6 +34,7 @@ public class IexecHubService {
     private final CredentialsService credentialsService;
     private final IexecClerkABILegacy iexecClerk;
     private final ThreadPoolExecutor executor;
+    private final Web3j web3j;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
@@ -45,6 +48,7 @@ public class IexecHubService {
                 ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
+        this.web3j = ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL());
     }
 
 
@@ -112,11 +116,11 @@ public class IexecHubService {
         return executor.getTaskCount() - 1 - executor.getCompletedTaskCount();
     }
 
-    Optional<ChainDeal> getChainDeal(String chainDealId) {
+    public Optional<ChainDeal> getChainDeal(String chainDealId) {
         return ChainUtils.getChainDeal(iexecClerk, chainDealId);
     }
 
-    Optional<ChainTask> getChainTask(String chainTaskId) {
+    public Optional<ChainTask> getChainTask(String chainTaskId) {
         return ChainUtils.getChainTask(iexecHub, chainTaskId);
     }
 
@@ -127,6 +131,15 @@ public class IexecHubService {
 
     Optional<ChainContribution> getChainContribution(String chainTaskId) {
         return ChainUtils.getChainContribution(iexecHub, chainTaskId, credentialsService.getCredentials().getAddress());
+    }
+
+    public Optional<ChainCategory> getChainCategory(long id) {
+        return ChainUtils.getChainCategory(iexecHub, id);
+    }
+
+    public Optional<ChainApp> getChainApp(String address) {
+        App app = ChainUtils.loadDappContract(credentialsService.getCredentials(), web3j, address);
+        return ChainUtils.getChainApp(app);
     }
 
 

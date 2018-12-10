@@ -1,8 +1,10 @@
 package com.iexec.worker.replicate;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.*;
+import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.chain.ContributionService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CoreTaskClient;
 import com.iexec.worker.feign.CoreWorkerClient;
@@ -12,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Optional;
 
 
 @Slf4j
@@ -25,6 +30,7 @@ public class ReplicateDemandService {
     private ContributionService contributionService;
 
     private String corePublicAddress;
+    private IexecHubService iexecHubService;
 
     @Autowired
     public ReplicateDemandService(CoreTaskClient coreTaskClient,
@@ -32,7 +38,8 @@ public class ReplicateDemandService {
                                   TaskExecutorService executorService,
                                   SubscriptionService subscriptionService,
                                   CoreWorkerClient coreWorkerClient,
-                                  ContributionService contributionService) {
+                                  ContributionService contributionService,
+                                  IexecHubService iexecHubService) {
         this.coreTaskClient = coreTaskClient;
         this.workerConfigService = workerConfigService;
         this.executorService = executorService;
@@ -40,6 +47,7 @@ public class ReplicateDemandService {
         this.contributionService = contributionService;
 
         corePublicAddress = coreWorkerClient.getPublicConfiguration().getSchedulerPublicAddress();
+        this.iexecHubService = iexecHubService;
     }
 
     @Scheduled(fixedRate = 1000)
@@ -47,31 +55,77 @@ public class ReplicateDemandService {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
 
-            AvailableReplicateModel model = coreTaskClient.getAvailableReplicate(
+            ContributionAuthorization contribAuth = coreTaskClient.getAvailableReplicate(
                     workerConfigService.getWorkerWalletAddress(),
                     workerConfigService.getWorkerEnclaveAdress());
 
-            if (model == null) {
+            if (contribAuth == null) {
                 return "NO TASK AVAILABLE";
             }
 
-            String chainTaskId = model.getContributionAuthorization().getChainTaskId();
+            String chainTaskId = contribAuth.getChainTaskId();
             log.info("Received task [chainTaskId:{}]", chainTaskId);
 
             // verify that the signature is valid
-            ContributionAuthorization contribAuth = model.getContributionAuthorization();
             if( !contributionService.isContributionAuthorizationValid(contribAuth, corePublicAddress)){
-                log.warn("The contribution authorization is NOT valid, the task will not be performed [chainTaskId:{}, contribAuth:{}]",
+                log.warn("The contribution contribAuth is NOT valid, the task will not be performed [chainTaskId:{}, contribAuth:{}]",
                         chainTaskId, contribAuth);
                 return "Bad signature in received replicate";
             } else {
-                log.info("The contribution authorization is valid [chainTaskId:{}]", chainTaskId);
+                log.info("The contribution contribAuth is valid [chainTaskId:{}]", chainTaskId);
                 subscriptionService.subscribeToTaskNotifications(chainTaskId);
-                executorService.addReplicate(model);
+
+                Optional<AvailableReplicateModel> optionalModel = retrieveAvailableReplicateModelFromContribAuth(contribAuth);
+                if (!optionalModel.isPresent()){
+                    log.info("Failed to retrieveAvailableReplicateModelFromContribAuth [chainTaskId:{}]", chainTaskId);
+                    return "Failed to retrieveAvailableReplicateModelFromContribAuth";
+                }
+
+                executorService.addReplicate(optionalModel.get());
                 return "Asked";
             }
         }
         log.info("The worker is already full, it can't accept more tasks");
         return "Worker cannot accept more task";
+    }
+
+    private Optional<AvailableReplicateModel> retrieveAvailableReplicateModelFromContribAuth(ContributionAuthorization contribAuth) {
+        Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(contribAuth.getChainTaskId());
+        if (!optionalChainTask.isPresent()){
+            log.info("Failed to retrieve AvailableReplicate, ChainTask error  [chainTaskId:{}]", contribAuth.getChainTaskId());
+            return Optional.empty();
+        }
+        ChainTask chainTask = optionalChainTask.get();
+
+
+        Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
+        if (!optionalChainDeal.isPresent()){
+            log.info("Failed to retrieve AvailableReplicate, ChainDeal error  [chainTaskId:{}]", contribAuth.getChainTaskId());
+            return Optional.empty();
+        }
+        ChainDeal chainDeal = optionalChainDeal.get();
+
+        Optional<ChainCategory> optionalChainCategory = iexecHubService.getChainCategory(chainDeal.getCategory().longValue());
+        if (!optionalChainCategory.isPresent()){
+            log.info("Failed to retrieve AvailableReplicate, ChainCategory error  [chainTaskId:{}]", contribAuth.getChainTaskId());
+            return Optional.empty();
+        }
+        ChainCategory chainCategory = optionalChainCategory.get();
+
+        Optional<ChainApp> optionalChainApp = iexecHubService.getChainApp(chainDeal.getDappPointer());
+        if (!optionalChainApp.isPresent()){
+            log.info("Failed to retrieve AvailableReplicate, ChainApp error  [chainTaskId:{}]", contribAuth.getChainTaskId());
+            return Optional.empty();
+        }
+        ChainApp chainApp = optionalChainApp.get();
+
+
+        return Optional.of(AvailableReplicateModel.builder()
+                .contributionAuthorization(contribAuth)
+                .dappType(DappType.DOCKER)
+                .dappName(chainApp.getName())
+                .cmd(chainDeal.getParams().get(chainTask.getIdx()))
+                .maxTime(chainCategory.getMaxTime())
+                .build());
     }
 }
