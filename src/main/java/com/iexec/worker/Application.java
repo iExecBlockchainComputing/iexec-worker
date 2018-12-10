@@ -63,7 +63,5 @@ public class Application implements CommandLineRunner {
 
         log.info("Registering the worker to the core [worker:{}]", model);
         coreWorkerClient.registerWorker(model);
-
-
     }
 }
