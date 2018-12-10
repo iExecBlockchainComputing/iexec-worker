@@ -3,8 +3,9 @@ package com.iexec.worker;
 
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.feign.CoreWorkerClient;
+import com.iexec.worker.security.TokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,9 @@ public class Application implements CommandLineRunner {
     @Autowired
     private CredentialsService credentialsService;
 
+    @Autowired
+    private TokenService tokenService;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -42,9 +46,10 @@ public class Application implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
+        String workerAddress = credentialsService.getCredentials().getAddress();
         WorkerConfigurationModel model = WorkerConfigurationModel.builder()
                 .name(workerConfig.getWorkerName())
-                .walletAddress(credentialsService.getCredentials().getAddress())
+                .walletAddress(workerAddress)
                 .os(workerConfig.getOS())
                 .cpu(workerConfig.getCPU())
                 .cpuNb(workerConfig.getNbCPU())

@@ -101,20 +101,7 @@ public class ContributionService {
                 HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
         byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
 
-        // check that the public address of the signer can be found
-        for (int i = 0; i < 4; i++) {
-            BigInteger publicKey = Sign.recoverFromSignature((byte) i,
-                    new ECDSASignature(new BigInteger(1, auth.getSignR()), new BigInteger(1, auth.getSignS())), hashTocheck);
-
-            if (publicKey != null) {
-                String addressRecovered = "0x" + Keys.getAddress(publicKey);
-
-                if (addressRecovered.equals(signerAddress)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return SignatureUtils.doesSignatureMatchesAddress(auth.getSignR(), auth.getSignS(),
+                BytesUtils.bytesToString(hashTocheck), signerAddress);
     }
 }

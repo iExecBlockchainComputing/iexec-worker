@@ -3,16 +3,14 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
-import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.docker.DockerComputationService;
-import com.iexec.worker.feign.CoreTaskClient;
+import com.iexec.worker.replicate.UpdateReplicateStatusService;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -24,23 +22,23 @@ import static com.iexec.common.replicate.ReplicateStatus.*;
 public class TaskExecutorService {
 
     // external services
-    private CoreTaskClient coreTaskClient;
     private DockerComputationService dockerComputationService;
     private ResultService resultService;
     private ContributionService contributionService;
+    private UpdateReplicateStatusService replicateStatusService;
 
     // internal variables
     private int maxNbExecutions;
     private ThreadPoolExecutor executor;
 
-    public TaskExecutorService(CoreTaskClient coreTaskClient,
-                               DockerComputationService dockerComputationService,
+    public TaskExecutorService(DockerComputationService dockerComputationService,
                                ContributionService contributionService,
-                               ResultService resultService) {
-        this.coreTaskClient = coreTaskClient;
+                               ResultService resultService,
+                               UpdateReplicateStatusService replicateStatusService) {
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.contributionService = contributionService;
+        this.replicateStatusService = replicateStatusService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() / 2;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
@@ -58,37 +56,30 @@ public class TaskExecutorService {
     }
 
     private MetadataResult executeTask(AvailableReplicateModel model) {
-        String walletAddress = model.getContributionAuthorization().getWorkerWallet();
         String chainTaskId = model.getContributionAuthorization().getChainTaskId();
 
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.info("RUNNING [chainTaskId:{}]", chainTaskId);
-            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, RUNNING);
+            replicateStatusService.updateReplicateStatus(chainTaskId, RUNNING);
 
             if (model.getDappType().equals(DappType.DOCKER)) {
-                try {
-                    log.info("APP_DOWNLOADING [chainTaskId:{}]", chainTaskId);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, APP_DOWNLOADING);
-                    boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, model.getDappName());
-                    if (isImagePulled){
-                        log.info("APP_DOWNLOADED [chainTaskId:{}]", chainTaskId);
-                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, APP_DOWNLOADED);
-                    } else {
-                        log.info("APP_DOWNLOAD_FAILED [chainTaskId:{}]", chainTaskId);
-                        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, APP_DOWNLOAD_FAILED);
-                    }
 
-                    log.info("COMPUTING [chainTaskId:{}]", chainTaskId);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, COMPUTING);
+                replicateStatusService.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
+                boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, model.getDappName());
+                if (isImagePulled) {
+                    replicateStatusService.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
+                } else {
+                    replicateStatusService.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
+                }
+
+                replicateStatusService.updateReplicateStatus(chainTaskId, COMPUTING);
+                try {
                     MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
-                    log.info("COMPUTED [chainTaskId:{}]", chainTaskId);
-                    coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, COMPUTED);
-
+                    replicateStatusService.updateReplicateStatus(chainTaskId, COMPUTED);
                     return metadataResult;
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (Exception e) {
+                    log.error("Error in the run of the application [error:{}]", e.getMessage());
                 }
             }
         } else {
@@ -98,28 +89,25 @@ public class TaskExecutorService {
     }
 
     private void tryToContribute(ContributionAuthorization contribAuth, MetadataResult metadataResult) {
+        if (metadataResult.getDeterministHash().isEmpty()) {
+            return;
+        }
+
         String walletAddress = contribAuth.getWorkerWallet();
         String chainTaskId = contribAuth.getChainTaskId();
 
         if (!contributionService.canContribute(chainTaskId)) {
             log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
                     "walletAddress:{}", chainTaskId, walletAddress);
-            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.ERROR);
+            replicateStatusService.updateReplicateStatus(chainTaskId, ERROR);
             return;
         }
 
-        log.info("CONTRIBUTING [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
-                chainTaskId, walletAddress, metadataResult.getDeterministHash());
-        coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTING);
+        replicateStatusService.updateReplicateStatus(chainTaskId, CONTRIBUTING);
         if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
-            log.info("CONTRIBUTED [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
-                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
-            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTED);
+            replicateStatusService.updateReplicateStatus(chainTaskId, CONTRIBUTED);
         } else {
-            log.warn("CONTRIBUTE_FAILED [chainTaskId:{}, walletAddress:{}, deterministHash:{}]",
-                    chainTaskId, walletAddress, metadataResult.getDeterministHash());
-            coreTaskClient.updateReplicateStatus(chainTaskId, walletAddress, ReplicateStatus.CONTRIBUTE_FAILED);
+            replicateStatusService.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
         }
-
     }
 }
