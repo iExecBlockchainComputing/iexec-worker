@@ -16,7 +16,6 @@ public interface CoreTaskClient {
 
     @RequestMapping(method = RequestMethod.POST, path = "/replicates/{chainTaskId}/updateStatus")
     ResponseEntity updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,
-                                         @RequestParam(name = "walletAddress") String walletAddress,
                                          @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus,
                                          @RequestHeader("Authorization") String bearerToken) throws Exception;
 
