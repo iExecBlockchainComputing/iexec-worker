@@ -13,7 +13,6 @@ import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.math.BigInteger;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -36,7 +35,7 @@ public class IexecHubService {
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
-                           CoreWorkerClient coreWorkerClient) throws ExecutionException, InterruptedException {
+                           CoreWorkerClient coreWorkerClient) {
         this.credentialsService = credentialsService;
         this.iexecHub = ChainUtils.loadHubContract(
                 credentialsService.getCredentials(),
@@ -46,56 +45,6 @@ public class IexecHubService {
                 ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
                 coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
-
-
-        String oldPool = getWorkerAffectation(credentialsService.getCredentials().getAddress());
-        String newPool = coreWorkerClient.getPublicConfiguration().getWorkerPoolAddress();
-
-        if (oldPool.isEmpty()) {
-            subscribeToPool(newPool);
-        } else if (oldPool.equals(newPool)) {
-            log.info("Already registered to pool [pool:{}]", newPool);
-        } else {
-            //TODO: unsubscribe from last and subscribe to current
-        }
-    }
-
-    private String getWorkerAffectation(String worker) {
-        String workerAffectation = "";
-        try {
-            workerAffectation = iexecHub.viewAffectation(worker).send();
-        } catch (Exception e) {
-            log.error("Failed to get worker affectation [worker:{}]", worker);
-        }
-
-        if (workerAffectation.equals("0x0000000000000000000000000000000000000000")) {
-            workerAffectation = "";
-        }
-        return workerAffectation;
-    }
-
-    private boolean subscribeToPool(String poolAddress) throws ExecutionException, InterruptedException {
-        return CompletableFuture.supplyAsync(() -> {
-            log.info("Requested  subscribe [pool:{}, waitingTxCount:{}]", poolAddress, getWaitingTransactionCount());
-            return sendSubscribeTransaction(poolAddress);
-        }, executor).get();
-    }
-
-    private Boolean sendSubscribeTransaction(String poolAddress) {
-        IexecHubABILegacy.WorkerSubscriptionEventResponse subscribeEvent = null;
-        try {
-            RemoteCall<TransactionReceipt> subscribeCall = iexecHub.subscribe(poolAddress);
-            log.info("Sent subscribe [pool:{}]", poolAddress);
-            TransactionReceipt subscribeReceipt = subscribeCall.send();
-            List<IexecHubABILegacy.WorkerSubscriptionEventResponse> workerSubscriptionEvents = iexecHub.getWorkerSubscriptionEvents(subscribeReceipt);
-            if (workerSubscriptionEvents != null && !workerSubscriptionEvents.isEmpty()) {
-                log.info("Subscribed [pool:{}]", workerSubscriptionEvents.get(0).workerpool);
-                subscribeEvent = workerSubscriptionEvents.get(0);
-            }
-        } catch (Exception e) {
-            log.info("Failed subscribe [pool:{}]", poolAddress);
-        }
-        return subscribeEvent != null;
     }
 
 
