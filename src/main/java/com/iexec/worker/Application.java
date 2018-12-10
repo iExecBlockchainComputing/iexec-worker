@@ -61,11 +61,6 @@ public class Application implements CommandLineRunner {
         log.info("Version of the core [version:{}]", coreWorkerClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
 
-        log.info("Get the token from the server");
-        String token = tokenService.getToken();
-        log.info("Token from the server: " + token);
-
-
         log.info("Registering the worker to the core [worker:{}]", model);
         coreWorkerClient.registerWorker(model);
 
