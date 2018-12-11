@@ -1,6 +1,7 @@
 package com.iexec.worker.feign;
 
 
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -11,8 +12,8 @@ import org.springframework.web.bind.annotation.*;
 public interface CoreTaskClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/tasks/available")
-    AvailableReplicateModel getAvailableReplicate(@RequestParam(name = "workerWalletAddress") String workerWalletAddress,
-                                                  @RequestParam(name = "workerEnclaveAddress") String workerEnclaveAddress);
+    ContributionAuthorization getAvailableReplicate(@RequestParam(name = "workerWalletAddress") String workerWalletAddress,
+                                                    @RequestParam(name = "workerEnclaveAddress") String workerEnclaveAddress);
 
     @RequestMapping(method = RequestMethod.POST, path = "/replicates/{chainTaskId}/updateStatus")
     ResponseEntity updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,
