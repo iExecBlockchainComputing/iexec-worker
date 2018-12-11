@@ -163,6 +163,21 @@ public class CustomDockerClientTests {
     }
 
     @Test
+    public void shouldStopComputingIfTooLong() {
+        when(configurationService.getWorkerName()).thenReturn("worker1");
+        String volumeName = customDockerClient.createVolume("taskId");
+        ContainerConfig containerConfig = CustomDockerClient
+                .getContainerConfig("iexechub/vanityeth:latest", "aceace", volumeName);//long computation
+        String containerId = customDockerClient.startContainer("taskId", containerConfig);
+        assertThat(containerId).isNotNull();
+        assertThat(containerId).isNotEmpty();
+        maxExecutionTime = new Date(1000);//1 sec
+        customDockerClient.waitContainer("taskId", maxExecutionTime);
+        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeVolume("taskId");
+    }
+
+    @Test
     public void shouldNotStartContainerWithoutImage() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         String volumeName = customDockerClient.createVolume("taskId");

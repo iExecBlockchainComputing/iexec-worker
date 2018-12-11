@@ -153,6 +153,7 @@ public class CustomDockerClient {
                 log.info("Computation running [taskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
                         taskId, containerId, docker.inspectContainer(containerId).state().status(), isComputed, isTimeout);
                 if (isComputed || isTimeout) {
+                    docker.stopContainer(containerId, 0);
                     break;
                 }
             }
