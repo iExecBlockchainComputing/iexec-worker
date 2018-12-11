@@ -97,7 +97,6 @@ public class ReplicateDemandService {
         }
         ChainTask chainTask = optionalChainTask.get();
 
-
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
         if (!optionalChainDeal.isPresent()){
             log.info("Failed to retrieve AvailableReplicate, ChainDeal error  [chainTaskId:{}]", contribAuth.getChainTaskId());
@@ -105,27 +104,12 @@ public class ReplicateDemandService {
         }
         ChainDeal chainDeal = optionalChainDeal.get();
 
-        Optional<ChainCategory> optionalChainCategory = iexecHubService.getChainCategory(chainDeal.getCategory().longValue());
-        if (!optionalChainCategory.isPresent()){
-            log.info("Failed to retrieve AvailableReplicate, ChainCategory error  [chainTaskId:{}]", contribAuth.getChainTaskId());
-            return Optional.empty();
-        }
-        ChainCategory chainCategory = optionalChainCategory.get();
-
-        Optional<ChainApp> optionalChainApp = iexecHubService.getChainApp(chainDeal.getDappPointer());
-        if (!optionalChainApp.isPresent()){
-            log.info("Failed to retrieve AvailableReplicate, ChainApp error  [chainTaskId:{}]", contribAuth.getChainTaskId());
-            return Optional.empty();
-        }
-        ChainApp chainApp = optionalChainApp.get();
-
-
         return Optional.of(AvailableReplicateModel.builder()
                 .contributionAuthorization(contribAuth)
                 .dappType(DappType.DOCKER)
-                .dappName(chainApp.getName())
+                .dappName(chainDeal.getChainApp().getParams().getUri())
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
-                .maxExecutionTime(chainCategory.getMaxExecutionTime())
+                .maxExecutionTime(chainDeal.getChainCategory().getMaxExecutionTime())
                 .build());
     }
 }

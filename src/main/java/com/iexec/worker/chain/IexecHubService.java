@@ -117,7 +117,7 @@ public class IexecHubService {
     }
 
     public Optional<ChainDeal> getChainDeal(String chainDealId) {
-        return ChainUtils.getChainDeal(iexecClerk, chainDealId);
+        return ChainUtils.getChainDeal(credentialsService.getCredentials(), web3j, iexecHub.getContractAddress(), chainDealId);
     }
 
     public Optional<ChainTask> getChainTask(String chainTaskId) {
