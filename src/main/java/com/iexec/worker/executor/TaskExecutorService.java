@@ -4,7 +4,6 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.chain.ContributionService;
-import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.replicate.UpdateReplicateStatusService;
 import com.iexec.worker.result.MetadataResult;
@@ -27,7 +26,6 @@ public class TaskExecutorService {
     private ResultService resultService;
     private ContributionService contributionService;
     private UpdateReplicateStatusService replicateStatusService;
-    private IexecHubService iexecHubService;
 
     // internal variables
     private int maxNbExecutions;
@@ -36,13 +34,11 @@ public class TaskExecutorService {
     public TaskExecutorService(DockerComputationService dockerComputationService,
                                ContributionService contributionService,
                                ResultService resultService,
-                               UpdateReplicateStatusService replicateStatusService,
-                               IexecHubService iexecHubService) {
+                               UpdateReplicateStatusService replicateStatusService) {
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.replicateStatusService = replicateStatusService;
-        this.iexecHubService = iexecHubService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() / 2;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);

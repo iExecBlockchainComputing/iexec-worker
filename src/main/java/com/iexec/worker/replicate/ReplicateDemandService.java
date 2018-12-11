@@ -125,7 +125,7 @@ public class ReplicateDemandService {
                 .dappType(DappType.DOCKER)
                 .dappName(chainApp.getName())
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
-                .maxTime(chainCategory.getMaxTime())
+                .maxExecutionTime(chainCategory.getMaxExecutionTime())
                 .build());
     }
 }
