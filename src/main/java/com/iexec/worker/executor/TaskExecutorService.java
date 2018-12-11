@@ -73,7 +73,7 @@ public class TaskExecutorService {
 
                 replicateStatusService.updateReplicateStatus(chainTaskId, COMPUTING);
                 try {
-                    MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd());
+                    MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd(), model.getMaxExecutionTime());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
                     replicateStatusService.updateReplicateStatus(chainTaskId, COMPUTED);
