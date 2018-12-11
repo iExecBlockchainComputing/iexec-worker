@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.InputStream;
+import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -28,12 +29,14 @@ public class CustomDockerClientTests {
     private CustomDockerClient customDockerClient;
 
     private DockerClient baseDockerClient;
+    private Date maxExecutionTime;
 
     @Before
     public void beforeEach() throws DockerCertificateException, DockerException, InterruptedException {
         MockitoAnnotations.initMocks(this);
         baseDockerClient = DefaultDockerClient.fromEnv().build();
         baseDockerClient.pull("iexechub/vanityeth:latest");
+        maxExecutionTime = new Date(30*1000);
     }
 
     @Test
@@ -154,7 +157,22 @@ public class CustomDockerClientTests {
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isNotNull();
         assertThat(containerId).isNotEmpty();
-        customDockerClient.waitContainer("taskId");
+        customDockerClient.waitContainer("taskId", maxExecutionTime);
+        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeVolume("taskId");
+    }
+
+    @Test
+    public void shouldStopComputingIfTooLong() {
+        when(configurationService.getWorkerName()).thenReturn("worker1");
+        String volumeName = customDockerClient.createVolume("taskId");
+        ContainerConfig containerConfig = CustomDockerClient
+                .getContainerConfig("iexechub/vanityeth:latest", "aceace", volumeName);//long computation
+        String containerId = customDockerClient.startContainer("taskId", containerConfig);
+        assertThat(containerId).isNotNull();
+        assertThat(containerId).isNotEmpty();
+        maxExecutionTime = new Date(1000);//1 sec
+        customDockerClient.waitContainer("taskId", maxExecutionTime);
         customDockerClient.removeContainer("taskId");
         customDockerClient.removeVolume("taskId");
     }
@@ -177,7 +195,7 @@ public class CustomDockerClientTests {
         ContainerConfig containerConfig = CustomDockerClient
                 .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
         customDockerClient.startContainer("taskId", containerConfig);
-        boolean executionDone = customDockerClient.waitContainer("taskId");
+        boolean executionDone = customDockerClient.waitContainer("taskId", maxExecutionTime);
         assertThat(executionDone).isTrue();
         customDockerClient.removeContainer("taskId");
         customDockerClient.removeVolume("taskId");
@@ -197,7 +215,7 @@ public class CustomDockerClientTests {
         customDockerClient.startContainer("taskId", containerConfig);
         InputStream containerResultArchive = customDockerClient.getContainerResultArchive("taskId");
         assertThat(containerResultArchive).isNotNull();
-        customDockerClient.waitContainer("taskId");
+        customDockerClient.waitContainer("taskId", maxExecutionTime);
         customDockerClient.removeContainer("taskId");
         customDockerClient.removeVolume("taskId");
     }
@@ -209,7 +227,7 @@ public class CustomDockerClientTests {
         ContainerConfig containerConfig = CustomDockerClient
                 .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
         customDockerClient.startContainer("taskId", containerConfig);
-        customDockerClient.waitContainer("taskId");
+        customDockerClient.waitContainer("taskId", maxExecutionTime);
 
         boolean containerRemoved = customDockerClient.removeContainer("taskId");
         assertThat(containerRemoved).isTrue();
@@ -226,7 +244,7 @@ public class CustomDockerClientTests {
 
         boolean containerRemoved = customDockerClient.removeContainer("taskId");
         assertThat(containerRemoved).isFalse();
-        customDockerClient.waitContainer("taskId");
+        customDockerClient.waitContainer("taskId", maxExecutionTime);
         customDockerClient.removeContainer("taskId");
         customDockerClient.removeVolume("taskId");
     }

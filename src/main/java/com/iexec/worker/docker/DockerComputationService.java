@@ -20,6 +20,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.Date;
 
 import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
 import static com.iexec.worker.utils.FileHelper.createFileWithContent;
@@ -43,13 +45,13 @@ public class DockerComputationService {
         this.resultService = resultService;
     }
 
-    public MetadataResult dockerRun(String chainTaskId, String image, String cmd) throws IOException {
+    public MetadataResult dockerRun(String chainTaskId, String image, String cmd, Date maxExecutionTime) throws IOException {
         //TODO: check image equals image:tag
         String containerId = "";
         if (dockerClient.isImagePulled(image)) {
             String volumeName = dockerClient.createVolume(chainTaskId);
             ContainerConfig containerConfig = getContainerConfig(image, cmd, volumeName);
-            containerId = startComputation(chainTaskId, containerConfig);
+            containerId = startComputation(chainTaskId, containerConfig, maxExecutionTime);
         } else {
             createStdoutFile(chainTaskId, "Failed to pull image");
         }
@@ -72,11 +74,11 @@ public class DockerComputationService {
         return dockerClient.pullImage(chainTaskId, image);
     }
 
-    private String startComputation(String chainTaskId, ContainerConfig containerConfig) {
+    private String startComputation(String chainTaskId, ContainerConfig containerConfig, Date maxExecutionTime) {
         String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
         if (!containerId.isEmpty()) {
-
-            waitForComputation(chainTaskId);
+            Date executionTimeout = Date.from(Instant.now().plusMillis(maxExecutionTime.getTime()));
+            waitForComputation(chainTaskId, executionTimeout);
             copyComputationResults(chainTaskId);
 
             dockerClient.removeContainer(chainTaskId);
@@ -108,8 +110,8 @@ public class DockerComputationService {
     }
 
 
-    private void waitForComputation(String chainTaskId) {
-        boolean executionDone = dockerClient.waitContainer(chainTaskId);
+    private void waitForComputation(String chainTaskId, Date executionTimeout) {
+        boolean executionDone = dockerClient.waitContainer(chainTaskId, executionTimeout);
 
         if (executionDone) {
             String dockerLogs = dockerClient.getContainerLogs(chainTaskId);

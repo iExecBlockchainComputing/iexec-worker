@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -141,15 +142,20 @@ public class CustomDockerClient {
         return containerId;
     }
 
-    boolean waitContainer(String taskId) {
+    boolean waitContainer(String taskId, Date executionTimeout) {
         String containerId = getContainerId(taskId);
-        //TODO: add category timeout
         boolean isExecutionDone = false;
         try {
-            while (!docker.inspectContainer(containerId).state().status().equals(EXITED)) {
+            while (true) {
+                boolean isComputed = docker.inspectContainer(containerId).state().status().equals(EXITED);
+                boolean isTimeout = new Date().after(executionTimeout);
                 Thread.sleep(1000);
-                log.info("Computation running [taskId:{}, containerId:{}, status:{}]",
-                        taskId, containerId, docker.inspectContainer(containerId).state().status());
+                log.info("Computation running [taskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
+                        taskId, containerId, docker.inspectContainer(containerId).state().status(), isComputed, isTimeout);
+                if (isComputed || isTimeout) {
+                    docker.stopContainer(containerId, 0);
+                    break;
+                }
             }
             log.info("Computation completed [taskId:{}, containerId:{}]",
                     taskId, containerId);
