@@ -5,7 +5,7 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CoreWorkerClient;
-import com.iexec.worker.security.TokenService;
+import com.iexec.worker.feign.CustomFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,15 +37,14 @@ public class Application implements CommandLineRunner {
     private CredentialsService credentialsService;
 
     @Autowired
-    private TokenService tokenService;
+    private CustomFeignClient feignClient;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
 
     @Override
-    public void run(String... args) throws Exception {
-
+    public void run(String... args) {
         String workerAddress = credentialsService.getCredentials().getAddress();
         WorkerConfigurationModel model = WorkerConfigurationModel.builder()
                 .name(workerConfig.getWorkerName())
@@ -62,6 +61,8 @@ public class Application implements CommandLineRunner {
         log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
 
         log.info("Registering the worker to the core [worker:{}]", model);
-        coreWorkerClient.registerWorker(model);
+        feignClient.registerWorker(model);
     }
+
+
 }

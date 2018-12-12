@@ -5,8 +5,8 @@ import com.iexec.common.result.TaskNotificationType;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
-import com.iexec.worker.replicate.UpdateReplicateStatusService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -38,7 +38,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private ResultRepoClient resultRepoClient;
     private ResultService resultService;
     private RevealService revealService;
-    private UpdateReplicateStatusService replicateStatusService;
+    private CustomFeignClient feignClient;
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
@@ -48,11 +48,11 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                ResultRepoClient resultRepoClient,
                                ResultService resultService,
                                RevealService revealService,
-                               UpdateReplicateStatusService replicateStatusService) {
+                               CustomFeignClient feignClient) {
         this.resultRepoClient = resultRepoClient;
         this.resultService = resultService;
         this.revealService = revealService;
-        this.replicateStatusService = replicateStatusService;
+        this.feignClient = feignClient;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
@@ -136,28 +136,28 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
         }
 
-        replicateStatusService.updateReplicateStatus(chainTaskId, REVEALING);
+        feignClient.updateReplicateStatus(chainTaskId, REVEALING);
         if (revealService.reveal(chainTaskId)) {
-            replicateStatusService.updateReplicateStatus(chainTaskId, REVEALED);
+            feignClient.updateReplicateStatus(chainTaskId, REVEALED);
         } else {
-            replicateStatusService.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
+            feignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
         }
     }
 
     private void abortConsensusReached(String chainTaskId) {
         cleanReplicate(chainTaskId);
-        replicateStatusService.updateReplicateStatus(chainTaskId, ABORT_CONSENSUS_REACHED);
+        feignClient.updateReplicateStatus(chainTaskId, ABORT_CONSENSUS_REACHED);
     }
 
     private void uploadResult(String chainTaskId) {
-        replicateStatusService.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
+        feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
         resultRepoClient.addResult(resultService.getResultModelWithZip(chainTaskId));
-        replicateStatusService.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+        feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
     }
 
     private void completeTask(String chainTaskId) {
         cleanReplicate(chainTaskId);
-        replicateStatusService.updateReplicateStatus(chainTaskId, COMPLETED);
+        feignClient.updateReplicateStatus(chainTaskId, COMPLETED);
     }
 
     private void unsubscribeFromTaskNotifications(String chainTaskId) {

@@ -5,7 +5,7 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.docker.DockerComputationService;
-import com.iexec.worker.replicate.UpdateReplicateStatusService;
+import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ public class TaskExecutorService {
     private DockerComputationService dockerComputationService;
     private ResultService resultService;
     private ContributionService contributionService;
-    private UpdateReplicateStatusService replicateStatusService;
+    private CustomFeignClient feignClient;
 
     // internal variables
     private int maxNbExecutions;
@@ -34,11 +34,11 @@ public class TaskExecutorService {
     public TaskExecutorService(DockerComputationService dockerComputationService,
                                ContributionService contributionService,
                                ResultService resultService,
-                               UpdateReplicateStatusService replicateStatusService) {
+                               CustomFeignClient feignClient) {
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.contributionService = contributionService;
-        this.replicateStatusService = replicateStatusService;
+        this.feignClient = feignClient;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() / 2;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
@@ -59,24 +59,24 @@ public class TaskExecutorService {
         String chainTaskId = model.getContributionAuthorization().getChainTaskId();
 
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
-            replicateStatusService.updateReplicateStatus(chainTaskId, RUNNING);
+            feignClient.updateReplicateStatus(chainTaskId, RUNNING);
 
             if (model.getDappType().equals(DappType.DOCKER)) {
 
-                replicateStatusService.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
+                feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
                 boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, model.getDappName());
                 if (isImagePulled) {
-                    replicateStatusService.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
+                    feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
                 } else {
-                    replicateStatusService.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
+                    feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
                 }
 
-                replicateStatusService.updateReplicateStatus(chainTaskId, COMPUTING);
+                feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
                 try {
                     MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd(), model.getMaxExecutionTime());
                     //save metadataResult (without zip payload) in memory
                     resultService.addMetaDataResult(chainTaskId, metadataResult);
-                    replicateStatusService.updateReplicateStatus(chainTaskId, COMPUTED);
+                    feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
                     return metadataResult;
                 } catch (Exception e) {
                     log.error("Error in the run of the application [error:{}]", e.getMessage());
@@ -99,15 +99,15 @@ public class TaskExecutorService {
         if (!contributionService.canContribute(chainTaskId)) {
             log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
                     "walletAddress:{}", chainTaskId, walletAddress);
-            replicateStatusService.updateReplicateStatus(chainTaskId, ERROR);
+            feignClient.updateReplicateStatus(chainTaskId, ERROR);
             return;
         }
 
-        replicateStatusService.updateReplicateStatus(chainTaskId, CONTRIBUTING);
+        feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
         if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
-            replicateStatusService.updateReplicateStatus(chainTaskId, CONTRIBUTED);
+            feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED);
         } else {
-            replicateStatusService.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
+            feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
         }
     }
 }
