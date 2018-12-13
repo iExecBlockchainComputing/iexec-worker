@@ -9,11 +9,9 @@ import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.StompFrameHandler;
-import org.springframework.messaging.simp.stomp.StompHeaders;
-import org.springframework.messaging.simp.stomp.StompSession;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.messaging.simp.stomp.*;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.client.WebSocketClient;
@@ -77,6 +75,20 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         log.info("SubscriptionService set up [session: {}]", session.getSessionId());
         this.session = session;
     }
+
+    @Override
+    public void handleException(StompSession session, @Nullable StompCommand command,
+                                StompHeaders headers, byte[] payload, Throwable exception) {
+        log.info("Received handleException [session: {}]", session.getSessionId());
+    }
+
+
+    @Override
+    public void handleTransportError(StompSession session, Throwable exception) {
+        log.info("Received handleTransportError [session: {}]", session.getSessionId());
+
+    }
+
 
     public void subscribeToTaskNotifications(String chainTaskId) {
         if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
