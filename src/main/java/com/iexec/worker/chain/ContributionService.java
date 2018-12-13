@@ -54,7 +54,7 @@ public class ContributionService {
                 || chainTask.getStatus().equals(ChainTaskStatus.COMPLETED)
                 || chainTask.getStatus().equals(ChainTaskStatus.FAILLED);
 
-        boolean consensusDeadlineReached = chainTask.getConsensusDeadline() < new Date().getTime();
+        boolean contributionDeadlineReached = chainTask.getContributionDeadline() < new Date().getTime();
 
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
         if (!optionalContribution.isPresent()) {
@@ -63,13 +63,13 @@ public class ContributionService {
         ChainContribution chainContribution = optionalContribution.get();
         boolean isContributionUnset = chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
 
-        if (isTaskActive && !consensusDeadlineReached && isContributionUnset && !willNeverBeAbleToContribute) {
+        if (isTaskActive && !contributionDeadlineReached && isContributionUnset && !willNeverBeAbleToContribute) {
             log.info("Can contribute [chainTaskId:{}]", chainTaskId);
             return true;
         } else {
-            log.warn("Can't contribute [chainTaskId:{}, isTaskActive:{}, consensusDeadlineReached:{}, " +
+            log.warn("Can't contribute [chainTaskId:{}, isTaskActive:{}, contributionDeadlineReached:{}, " +
                             "isContributionUnset:{}, chainTaskStatus:{}], willNeverBeAbleToContribute:{}",
-                    chainTaskId, isTaskActive, consensusDeadlineReached, isContributionUnset, chainTask.getStatus(),
+                    chainTaskId, isTaskActive, contributionDeadlineReached, isContributionUnset, chainTask.getStatus(),
                     willNeverBeAbleToContribute);
             return false;
         }

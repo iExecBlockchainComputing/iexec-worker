@@ -40,7 +40,6 @@ public class RevealService {
         ChainTask chainTask = optionalChainTask.get();
 
         boolean isChainTaskStatusRevealing = chainTask.getStatus().equals(ChainTaskStatus.REVEALING);
-        boolean isConsensusDeadlineReached = chainTask.getConsensusDeadline() < new Date().getTime();
         boolean isRevealDeadlineReached = chainTask.getRevealDeadline() < new Date().getTime();
 
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
@@ -64,7 +63,7 @@ public class RevealService {
             );
         }
 
-        boolean ret = isChainTaskStatusRevealing && !isConsensusDeadlineReached && !isRevealDeadlineReached &&
+        boolean ret = isChainTaskStatusRevealing && !isRevealDeadlineReached &&
                 isChainContributionStatusContributed && isContributionResultHashConsensusValue &&
                 isContributionResultHashCorrect && isContributionResultSealCorrect;
 
@@ -72,10 +71,10 @@ public class RevealService {
             log.info("All the conditions are valid for the reveal to happen [chainTaskId:{}]", chainTaskId);
         } else {
             log.warn("One or more conditions are not met for the reveal to happen [chainTaskId:{}, " +
-                    "isChainTaskStatusRevealing:{}, isConsensusDeadlineReached:{}, isRevealDeadlineReached:{}, " +
+                    "isChainTaskStatusRevealing:{}, isRevealDeadlineReached:{}, " +
                     "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
                     "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
-                    isChainTaskStatusRevealing, isConsensusDeadlineReached, isRevealDeadlineReached,
+                    isChainTaskStatusRevealing, isRevealDeadlineReached,
                     isChainContributionStatusContributed, isContributionResultHashConsensusValue,
                     isContributionResultHashCorrect, isContributionResultSealCorrect);
         }
