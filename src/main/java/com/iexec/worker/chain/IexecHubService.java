@@ -2,11 +2,12 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.*;
+import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.feign.CoreWorkerClient;
+import com.iexec.worker.feign.CustomFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,19 +39,19 @@ public class IexecHubService {
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
-                           CoreWorkerClient coreWorkerClient) {
+                           CustomFeignClient customFeignClient) {
         this.credentialsService = credentialsService;
+        PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
+        this.web3j = ChainUtils.getWeb3j(publicConfiguration.getBlockchainURL());
         this.iexecHub = ChainUtils.loadHubContract(
                 credentialsService.getCredentials(),
-                ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
-                coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
+                this.web3j,
+                publicConfiguration.getIexecHubAddress());
         this.iexecClerk = ChainUtils.loadClerkContract(credentialsService.getCredentials(),
-                ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL()),
-                coreWorkerClient.getPublicConfiguration().getIexecHubAddress());
+                this.web3j,
+                publicConfiguration.getIexecHubAddress());
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
-        this.web3j = ChainUtils.getWeb3j(coreWorkerClient.getPublicConfiguration().getBlockchainURL());
     }
-
 
     IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {

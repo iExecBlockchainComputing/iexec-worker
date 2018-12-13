@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.*;
 public interface CoreWorkerClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/version")
-    String getCoreVersion();
+    String getCoreVersion() throws FeignException;
 
     @RequestMapping(method = RequestMethod.GET, path = "/workers/config")
-    PublicConfiguration getPublicConfiguration();
+    PublicConfiguration getPublicConfiguration() throws FeignException;
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
     void ping(@RequestHeader("Authorization") String bearerToken) throws FeignException;
@@ -26,9 +26,9 @@ public interface CoreWorkerClient {
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/login")
     String login(@RequestParam(name = "walletAddress") String walletAddress,
-                 @RequestBody Signature authorization);
+                 @RequestBody Signature authorization) throws FeignException;
 
     @RequestMapping(method = RequestMethod.GET, path = "/workers/challenge")
-    String getChallenge(@RequestParam(name = "walletAddress") String walletAddress);
+    String getChallenge(@RequestParam(name = "walletAddress") String walletAddress) throws FeignException;
 
 }

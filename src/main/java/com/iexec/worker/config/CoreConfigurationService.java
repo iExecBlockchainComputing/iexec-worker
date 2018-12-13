@@ -21,6 +21,17 @@ public class CoreConfigurationService {
     @PostConstruct
     public void run() throws MalformedURLException {
         url = new URL("http://" + coreHost + ":" + corePort);
+        getUrl();
+    }
+
+    public String getUrl() {
+        return getProtocol() + "://" +
+                getHost() + ":" +
+                getPort();
+    }
+
+    public String getProtocol() {
+        return url.getProtocol();
     }
 
     public String getHost() {
