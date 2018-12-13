@@ -4,7 +4,6 @@ package com.iexec.worker;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.CoreWorkerClient;
 import com.iexec.worker.feign.CustomFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +25,6 @@ public class Application implements CommandLineRunner {
 
     @Value("${core.port}")
     private String corePort;
-
-    @Autowired
-    private CoreWorkerClient coreWorkerClient;
 
     @Autowired
     private WorkerConfigurationService workerConfig;
@@ -57,8 +53,8 @@ public class Application implements CommandLineRunner {
 
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
-        log.info("Version of the core [version:{}]", coreWorkerClient.getCoreVersion());
-        log.info("Get configuration of the core [config:{}]", coreWorkerClient.getPublicConfiguration());
+        log.info("Version of the core [version:{}]", feignClient.getCoreVersion());
+        log.info("Get configuration of the core [config:{}]", feignClient.getPublicConfiguration());
 
         log.info("Registering the worker to the core [worker:{}]", model);
         feignClient.registerWorker(model);
