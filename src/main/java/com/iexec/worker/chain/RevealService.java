@@ -95,4 +95,8 @@ public class RevealService {
 
         return false;
     }
+
+    public boolean hasEnoughGas() {
+        return iexecHubService.hasEnoughGas();
+    }
 }
