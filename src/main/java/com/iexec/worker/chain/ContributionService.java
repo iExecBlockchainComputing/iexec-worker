@@ -6,11 +6,7 @@ import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.ECDSASignature;
-import org.web3j.crypto.Keys;
-import org.web3j.crypto.Sign;
 
-import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -38,10 +34,10 @@ public class ContributionService {
 
         Optional<ChainAccount> optionalChainAccount = iexecHubService.getChainAccount();
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
-        if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()){
+        if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()) {
             return false;
         }
-        if (optionalChainAccount.get().getDeposit() < optionalChainDeal.get().getWorkerStake().longValue()){
+        if (optionalChainAccount.get().getDeposit() < optionalChainDeal.get().getWorkerStake().longValue()) {
             log.error("Stake to low to contribute [chainTaskId:{}, current:{}, required:{}]",
                     chainTaskId, optionalChainAccount.get().getDeposit(),
                     optionalChainDeal.get().getWorkerStake().longValue());
@@ -65,6 +61,7 @@ public class ContributionService {
 
         if (isTaskActive && !contributionDeadlineReached && isContributionUnset && !willNeverBeAbleToContribute) {
             log.info("Can contribute [chainTaskId:{}]", chainTaskId);
+
             return true;
         } else {
             log.warn("Can't contribute [chainTaskId:{}, isTaskActive:{}, contributionDeadlineReached:{}, " +
@@ -76,7 +73,7 @@ public class ContributionService {
 
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash){
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) {
         String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
                 contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
@@ -103,5 +100,9 @@ public class ContributionService {
 
         return SignatureUtils.doesSignatureMatchesAddress(auth.getSignR(), auth.getSignS(),
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
+    }
+
+    public boolean hasEnoughGas() {
+        return iexecHubService.hasEnoughGas();
     }
 }
