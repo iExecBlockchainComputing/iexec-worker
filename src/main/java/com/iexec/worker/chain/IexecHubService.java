@@ -79,7 +79,7 @@ public class IexecHubService {
             log.info("Sent contribute [chainTaskId:{}, contributionHash:{}]", contribAuth.getChainTaskId(), contributionHash);
             TransactionReceipt contributeReceipt = contributeCall.send();
             if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()) {
-                log.info("Contributed [chainTaskId:{}, contributionHash:{}, gasUsed:{}]", contribAuth.getChainTaskId(), contributionHash, contributeReceipt.getGasUsed());
+                log.info("Contributed [chainTaskId:{}, contributionHash:{}]", contribAuth.getChainTaskId(), contributionHash);
                 contributeEvent = iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
@@ -104,7 +104,7 @@ public class IexecHubService {
             log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
             TransactionReceipt revealReceipt = revealCall.send();
             if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()) {
-                log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]", chainTaskId, resultDigest, revealReceipt.getGasUsed());
+                log.info("Revealed [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
                 revealEvent = iexecHub.getTaskRevealEvents(revealReceipt).get(0);
             }
         } catch (Exception e) {
@@ -141,10 +141,6 @@ public class IexecHubService {
     public Optional<ChainApp> getChainApp(String address) {
         App app = ChainUtils.loadDappContract(credentialsService.getCredentials(), web3j, address);
         return ChainUtils.getChainApp(app);
-    }
-
-    public boolean hasEnoughGas() {
-        return ChainUtils.hasEnoughGas(web3j, credentialsService.getCredentials().getAddress());
     }
 
 

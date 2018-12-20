@@ -103,11 +103,6 @@ public class TaskExecutorService {
             return;
         }
 
-        if (!contributionService.hasEnoughGas()) {
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
-            System.exit(0);
-        }
-
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
         if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED);

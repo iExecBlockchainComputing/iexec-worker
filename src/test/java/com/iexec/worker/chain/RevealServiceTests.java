@@ -68,7 +68,6 @@ public class RevealServiceTests {
                         .resultHash(contributionValue)
                         .resultSeal(contributionSeal)
                         .build());
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
                 .deterministHash(deterministHash)

@@ -3,7 +3,6 @@ package com.iexec.worker;
 
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import lombok.extern.slf4j.Slf4j;
@@ -36,9 +35,6 @@ public class Application implements CommandLineRunner {
     @Autowired
     private CustomFeignClient feignClient;
 
-    @Autowired
-    private IexecHubService iexecHubService;
-
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -59,10 +55,6 @@ public class Application implements CommandLineRunner {
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", feignClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", feignClient.getPublicConfiguration());
-
-        if (!iexecHubService.hasEnoughGas()){
-            System.exit(0);
-        }
 
         log.info("Registering the worker to the core [worker:{}]", model);
         feignClient.registerWorker(model);

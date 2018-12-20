@@ -65,7 +65,6 @@ public class ContributionService {
 
         if (isTaskActive && !contributionDeadlineReached && isContributionUnset && !willNeverBeAbleToContribute) {
             log.info("Can contribute [chainTaskId:{}]", chainTaskId);
-
             return true;
         } else {
             log.warn("Can't contribute [chainTaskId:{}, isTaskActive:{}, contributionDeadlineReached:{}, " +
@@ -104,9 +103,5 @@ public class ContributionService {
 
         return SignatureUtils.doesSignatureMatchesAddress(auth.getSignR(), auth.getSignS(),
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
-    }
-
-    public boolean hasEnoughGas() {
-        return iexecHubService.hasEnoughGas();
     }
 }

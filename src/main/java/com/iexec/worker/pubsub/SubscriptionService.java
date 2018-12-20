@@ -146,12 +146,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
         if (!revealService.canReveal(chainTaskId)) {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
-        }
-
-        if (!revealService.hasEnoughGas()) {
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
-            System.exit(0);
         }
 
         feignClient.updateReplicateStatus(chainTaskId, REVEALING);
