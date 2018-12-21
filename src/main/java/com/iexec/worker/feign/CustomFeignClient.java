@@ -114,6 +114,7 @@ public class CustomFeignClient {
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
         try {
+            log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
             coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
@@ -122,6 +123,7 @@ public class CustomFeignClient {
                 updateReplicateStatus(chainTaskId, status);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
+                log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
                 coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken());
             }
         }
