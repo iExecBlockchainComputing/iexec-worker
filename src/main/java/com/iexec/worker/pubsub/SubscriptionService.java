@@ -120,12 +120,16 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             String chainTaskId = notif.getChainTaskId();
 
             switch (type) {
-                case PLEASE_REVEAL:
-                    reveal(chainTaskId);
+                case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
+                    abortContributionTimeout(chainTaskId);
                     break;
 
                 case PLEASE_ABORT_CONSENSUS_REACHED:
                     abortConsensusReached(chainTaskId);
+                    break;
+
+                case PLEASE_REVEAL:
+                reveal(chainTaskId);
                     break;
 
                 case PLEASE_UPLOAD:
@@ -165,6 +169,11 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private void abortConsensusReached(String chainTaskId) {
         cleanReplicate(chainTaskId);
         feignClient.updateReplicateStatus(chainTaskId, ABORT_CONSENSUS_REACHED);
+    }
+
+    private void abortContributionTimeout(String chainTaskId) {
+        cleanReplicate(chainTaskId);
+        feignClient.updateReplicateStatus(chainTaskId, ABORT_CONTRIBUTION_TIMEOUT);
     }
 
     private void uploadResult(String chainTaskId) {
