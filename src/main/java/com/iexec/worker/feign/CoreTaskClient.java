@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.*;
 public interface CoreTaskClient {
 
     @RequestMapping(method = RequestMethod.GET, path = "/tasks/available")
-    ContributionAuthorization getAvailableReplicate(@RequestHeader("Authorization") String bearerToken,
-                                                    @RequestParam(name = "workerEnclaveAddress") String workerEnclaveAddress) throws FeignException;
+    ContributionAuthorization getAvailableReplicate(@RequestHeader("Authorization") String bearerToken) throws FeignException;
 
     @RequestMapping(method = RequestMethod.POST, path = "/replicates/{chainTaskId}/updateStatus")
     void updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,

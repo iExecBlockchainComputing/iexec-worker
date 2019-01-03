@@ -1,5 +1,6 @@
 package com.iexec.worker.result;
 
+import com.iexec.common.security.Signature;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,5 +17,6 @@ public class MetadataResult {
     private String cmd;
     private String containerId;//should be called processId
     private String deterministHash;
+    private Signature executionEnclaveSignature;
 
 }

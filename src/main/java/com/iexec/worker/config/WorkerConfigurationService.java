@@ -15,9 +15,6 @@ public class WorkerConfigurationService {
     @Value("${worker.resultBaseDir}")
     private String resultBaseDir;
 
-    // TODO: SGX enclave always null for now
-    private String enclaveAddress = "0x0000000000000000000000000000000000000000";
-
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -28,10 +25,6 @@ public class WorkerConfigurationService {
 
     public String getWorkerWalletAddress(){
         return credentialsService.getCredentials().getAddress();
-    }
-
-    public String getWorkerEnclaveAdress(){
-        return enclaveAddress;
     }
 
     public String getResultBaseDir() {

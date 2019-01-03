@@ -109,7 +109,7 @@ public class TaskExecutorService {
         }
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
-        if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash())) {
+        if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash(), metadataResult.getExecutionEnclaveSignature())) {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED);
         } else {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);

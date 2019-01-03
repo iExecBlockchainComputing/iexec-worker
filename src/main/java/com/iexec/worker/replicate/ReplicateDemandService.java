@@ -53,7 +53,7 @@ public class ReplicateDemandService {
     public String askForReplicate() {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
-            ContributionAuthorization contribAuth = feignClient.getAvailableReplicate(workerConfigService.getWorkerEnclaveAdress());
+            ContributionAuthorization contribAuth = feignClient.getAvailableReplicate();
 
             if (contribAuth == null) {
                 return "NO TASK AVAILABLE";

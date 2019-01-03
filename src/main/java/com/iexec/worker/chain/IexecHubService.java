@@ -6,6 +6,7 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CustomFeignClient;
 import lombok.extern.slf4j.Slf4j;
@@ -22,14 +23,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static com.iexec.common.utils.BytesUtils.EMPTY_ADDRESS;
+import static com.iexec.common.utils.BytesUtils.EMPTY_HEXASTRING_64;
+import static com.iexec.common.utils.BytesUtils.stringToBytes;
+
 
 @Slf4j
 @Service
 public class IexecHubService {
-
-    // NULL variables since no SGX usage for now
-    private static final String EMPTY_ENCLAVE_CHALLENGE = "0x0000000000000000000000000000000000000000";
-    private static final String EMPTY_HEXASTRING_64 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     private final IexecHubABILegacy iexecHub;
     private final CredentialsService credentialsService;
@@ -53,26 +54,45 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal, Signature executionEnclaveSignature) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
-            return sendContributeTransaction(contribAuth, contributionHash, seal);
+            return sendContributeTransaction(contribAuth, contributionHash, seal, executionEnclaveSignature);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String contributionHash, String seal) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String contributionHash, String seal, Signature executionEnclaveSignature) {
+        BigInteger enclaveSignV = BigInteger.ZERO;
+        byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
+        byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
+
+        if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())){
+            
+            if (executionEnclaveSignature == null){
+                log.info("executionEnclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
+            }
+
+            byte[] vBytes = new byte[1];
+            vBytes[0] = executionEnclaveSignature.getSignV();
+
+            enclaveSignV = new BigInteger(vBytes);
+            enclaveSignR = executionEnclaveSignature.getSignR();
+            enclaveSignS = executionEnclaveSignature.getSignS();
+       
+        }
+
         // No SGX used for now
         IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
         try {
 
             RemoteCall<TransactionReceipt> contributeCall = iexecHub.contributeABILegacy(
-                    BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
-                    BytesUtils.stringToBytes(contributionHash),
-                    BytesUtils.stringToBytes(seal),
-                    EMPTY_ENCLAVE_CHALLENGE,
-                    BigInteger.valueOf(0),
-                    BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
-                    BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                    stringToBytes(contribAuth.getChainTaskId()),
+                    stringToBytes(contributionHash),
+                    stringToBytes(seal),
+                    contribAuth.getEnclave(),
+                    enclaveSignV,
+                    enclaveSignR,
+                    enclaveSignS,
                     BigInteger.valueOf(contribAuth.getSignV()),
                     contribAuth.getSignR(),
                     contribAuth.getSignS());
@@ -99,8 +119,8 @@ public class IexecHubService {
         IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
         try {
             RemoteCall<TransactionReceipt> revealCall = iexecHub.reveal(
-                    BytesUtils.stringToBytes(chainTaskId),
-                    BytesUtils.stringToBytes(resultDigest));
+                    stringToBytes(chainTaskId),
+                    stringToBytes(resultDigest));
             log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
             TransactionReceipt revealReceipt = revealCall.send();
             if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()) {

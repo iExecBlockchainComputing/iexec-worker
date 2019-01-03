@@ -1,6 +1,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
+import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
@@ -73,7 +74,7 @@ public class ContributionService {
 
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) {
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, Signature executionEnclaveSignature) {
         String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
                 contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
@@ -81,7 +82,7 @@ public class ContributionService {
         // For now no SGX used!
         String contributionValue = HashUtils.concatenateAndHash(contribAuth.getChainTaskId(), deterministHash);
         try {
-            return iexecHubService.contribute(contribAuth, contributionValue, seal) != null;
+            return iexecHubService.contribute(contribAuth, contributionValue, seal, executionEnclaveSignature) != null;
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
