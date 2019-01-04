@@ -3,6 +3,7 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
@@ -16,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.worker.chain.ContributionService.*;
 
 @Slf4j
 @Service
@@ -92,13 +94,41 @@ public class TaskExecutorService {
         if (metadataResult.getDeterministHash().isEmpty()) {
             return;
         }
-
-        String walletAddress = contribAuth.getWorkerWallet();
         String chainTaskId = contribAuth.getChainTaskId();
 
+
+        if (metadataResult.getExecutionEnclaveSignature() != null) {
+
+            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), metadataResult.getDeterministHash());
+            String resultHash = computeResultHash(contribAuth.getChainTaskId(), metadataResult.getDeterministHash());
+
+            boolean isEnclaveSignatureValid = isEnclaveSignatureValid(
+                    resultHash,
+                    resultSeal,
+                    metadataResult.getExecutionEnclaveSignature(),
+                    contribAuth.getEnclave());
+            if (!isEnclaveSignatureValid) {
+                log.error("The worker cannot contribute, enclaveSignature not valid [chainTaskId:{}, " +
+                                "isEnclaveSignatureValid:{}, " +
+                                "resultHash:{}, " +
+                                "resultSeal:{}, " +
+                                "enclaveR:{}, " +
+                                "enclaveS:{}, " +
+                                "enclaveAddress:{}",
+                        chainTaskId,
+                        isEnclaveSignatureValid,
+                        resultHash,
+                        resultSeal,
+                        BytesUtils.bytesToString(metadataResult.getExecutionEnclaveSignature().getSignR()),
+                        BytesUtils.bytesToString(metadataResult.getExecutionEnclaveSignature().getSignS()),
+                        contribAuth.getEnclave());
+                return;
+            }
+
+        }
+
         if (!contributionService.canContribute(chainTaskId)) {
-            log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
-                    "walletAddress:{}", chainTaskId, walletAddress);
+            log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}", chainTaskId);
             feignClient.updateReplicateStatus(chainTaskId, ERROR);
             return;
         }

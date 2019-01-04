@@ -132,15 +132,15 @@ public class DockerComputationService {
             }
         }
 
-        if (lines.size() < 5) {
+        if (lines.size() < 6) {
             log.info("ExecutionEnclaveSignature hasn't enought lines [chainTaskId:{}]", chainTaskId);
             return null;
         }
 
         try {
-            signatureBuilder.signV(new BigInteger(lines.get(2)).toByteArray()[0]);
-            signatureBuilder.signR(BytesUtils.stringToBytes(lines.get(3)));
-            signatureBuilder.signS(BytesUtils.stringToBytes(lines.get(4)));
+            signatureBuilder.signV(new BigInteger(lines.get(3)).toByteArray()[0]);
+            signatureBuilder.signR(BytesUtils.stringToBytes(lines.get(4)));
+            signatureBuilder.signS(BytesUtils.stringToBytes(lines.get(5)));
         } catch (Exception e) {
             log.info("ExecutionEnclaveSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
             return null;

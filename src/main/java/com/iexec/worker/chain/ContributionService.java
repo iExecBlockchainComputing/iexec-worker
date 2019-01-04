@@ -75,22 +75,22 @@ public class ContributionService {
     }
 
     public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, Signature executionEnclaveSignature) {
-        String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
-        log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
-                contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
-
-        // For now no SGX used!
-        String contributionValue = HashUtils.concatenateAndHash(contribAuth.getChainTaskId(), deterministHash);
+        String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
+        String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         try {
-            return iexecHubService.contribute(contribAuth, contributionValue, seal, executionEnclaveSignature) != null;
+            return iexecHubService.contribute(contribAuth, resultHash, resultSeal, executionEnclaveSignature) != null;
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
         return false;
     }
 
-    private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {
+    public static String computeResultSeal(String walletAddress, String chainTaskId, String deterministHash) {
         return HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
+    }
+
+    public static String computeResultHash(String chainTaskId, String deterministHash) {
+        return HashUtils.concatenateAndHash(chainTaskId, deterministHash);
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
@@ -102,6 +102,15 @@ public class ContributionService {
         return SignatureUtils.doesSignatureMatchesAddress(auth.getSignR(), auth.getSignS(),
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
     }
+
+    public static boolean isEnclaveSignatureValid(String resulHash, String resultSeal, Signature enclaveSignature, String signerAddress) {
+        byte[] hash = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
+        byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
+
+        return SignatureUtils.doesSignatureMatchesAddress(enclaveSignature.getSignR(), enclaveSignature.getSignS(),
+                BytesUtils.bytesToString(hashTocheck), signerAddress);
+    }
+
 
     public boolean hasEnoughGas() {
         return iexecHubService.hasEnoughGas();

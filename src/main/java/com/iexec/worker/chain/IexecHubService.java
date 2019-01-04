@@ -54,14 +54,14 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal, Signature executionEnclaveSignature) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Signature executionEnclaveSignature) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
-            return sendContributeTransaction(contribAuth, contributionHash, seal, executionEnclaveSignature);
+            return sendContributeTransaction(contribAuth, resultHash, resultSeal, executionEnclaveSignature);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String contributionHash, String seal, Signature executionEnclaveSignature) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Signature executionEnclaveSignature) {
         BigInteger enclaveSignV = BigInteger.ZERO;
         byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
         byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
@@ -87,8 +87,8 @@ public class IexecHubService {
 
             RemoteCall<TransactionReceipt> contributeCall = iexecHub.contributeABILegacy(
                     stringToBytes(contribAuth.getChainTaskId()),
-                    stringToBytes(contributionHash),
-                    stringToBytes(seal),
+                    stringToBytes(resultHash),
+                    stringToBytes(resultSeal),
                     contribAuth.getEnclave(),
                     enclaveSignV,
                     enclaveSignR,
@@ -96,10 +96,10 @@ public class IexecHubService {
                     BigInteger.valueOf(contribAuth.getSignV()),
                     contribAuth.getSignR(),
                     contribAuth.getSignS());
-            log.info("Sent contribute [chainTaskId:{}, contributionHash:{}]", contribAuth.getChainTaskId(), contributionHash);
+            log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", contribAuth.getChainTaskId(), resultHash);
             TransactionReceipt contributeReceipt = contributeCall.send();
             if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()) {
-                log.info("Contributed [chainTaskId:{}, contributionHash:{}, gasUsed:{}]", contribAuth.getChainTaskId(), contributionHash, contributeReceipt.getGasUsed());
+                log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]", contribAuth.getChainTaskId(), resultHash, contributeReceipt.getGasUsed());
                 contributeEvent = iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
