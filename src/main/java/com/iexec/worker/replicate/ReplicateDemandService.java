@@ -49,7 +49,7 @@ public class ReplicateDemandService {
         corePublicAddress = feignClient.getPublicConfiguration().getSchedulerPublicAddress();
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRateString =  "#{publicConfigurationService.askForReplicatePeriod}")
     public String askForReplicate() {
         // choose if the worker can run a task or not
         if (executorService.canAcceptMoreReplicate()) {
