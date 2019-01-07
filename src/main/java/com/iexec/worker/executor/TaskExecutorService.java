@@ -92,19 +92,16 @@ public class TaskExecutorService {
         if (metadataResult.getDeterministHash().isEmpty()) {
             return;
         }
-
-        String walletAddress = contribAuth.getWorkerWallet();
         String chainTaskId = contribAuth.getChainTaskId();
 
         if (!contributionService.canContribute(chainTaskId)) {
-            log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}, " +
-                    "walletAddress:{}", chainTaskId, walletAddress);
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
+            log.warn("Cant contribute [chainTaskId:{}]", chainTaskId);
+            feignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE);
             return;
         }
 
         if (!contributionService.hasEnoughGas()) {
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
+            feignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
             System.exit(0);
         }
 
