@@ -159,8 +159,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
 
         feignClient.updateReplicateStatus(chainTaskId, REVEALING);
-        if (revealService.reveal(chainTaskId)) {
-            feignClient.updateReplicateStatus(chainTaskId, REVEALED);
+        long revealBlockNumber = revealService.reveal(chainTaskId);
+        if (revealBlockNumber != 0) {
+            feignClient.updateReplicateStatus(chainTaskId, REVEALED, revealBlockNumber);
         } else {
             feignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
         }

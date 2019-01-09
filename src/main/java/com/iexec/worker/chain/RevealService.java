@@ -4,6 +4,7 @@ import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.result.ResultService;
@@ -82,18 +83,20 @@ public class RevealService {
         return ret;
     }
 
-    public boolean reveal(String chainTaskId){
+    // returns the block number of the reveal if successful, 0 otherwise
+    public long reveal(String chainTaskId) {
         MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
         if (metadataResult != null && metadataResult.getDeterministHash() != null) {
             String deterministHash = metadataResult.getDeterministHash();
             try {
-                return iexecHubService.reveal(chainTaskId, deterministHash) != null;
+                IexecHubABILegacy.TaskRevealEventResponse response = iexecHubService.reveal(chainTaskId, deterministHash);
+                return response.log.getBlockNumber().longValue();
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
 
-        return false;
+        return 0;
     }
 
     public boolean hasEnoughGas() {
