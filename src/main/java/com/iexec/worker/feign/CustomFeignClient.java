@@ -113,18 +113,22 @@ public class CustomFeignClient {
     }
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
+        updateReplicateStatus(chainTaskId, status, 0L);
+    }
+
+    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, long blockNumber) {
         try {
             log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-            coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken());
+            coreTaskClient.updateReplicateStatus(chainTaskId, status, blockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to updateReplicateStatus, will retry [instance:{}]", url);
                 sleep();
-                updateReplicateStatus(chainTaskId, status);
+                updateReplicateStatus(chainTaskId, status, blockNumber);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
                 log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-                coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken());
+                coreTaskClient.updateReplicateStatus(chainTaskId, status, blockNumber, getToken());
             }
         }
     }

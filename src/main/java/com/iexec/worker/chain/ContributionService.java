@@ -1,6 +1,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
+import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
@@ -73,7 +74,8 @@ public class ContributionService {
 
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash) {
+    // returns the block number of the contribution if successful, 0 otherwise
+    public long contribute(ContributionAuthorization contribAuth, String deterministHash) {
         String seal = computeSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         log.debug("Computation of the seal [wallet:{}, chainTaskId:{}, deterministHash:{}, seal:{}]",
                 contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash, seal);
@@ -81,11 +83,12 @@ public class ContributionService {
         // For now no SGX used!
         String contributionValue = HashUtils.concatenateAndHash(contribAuth.getChainTaskId(), deterministHash);
         try {
-            return iexecHubService.contribute(contribAuth, contributionValue, seal) != null;
+            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, contributionValue, seal);
+            return response.log.getBlockNumber().longValue();
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
-        return false;
+        return 0;
     }
 
     private String computeSeal(String walletAddress, String chainTaskId, String deterministHash) {

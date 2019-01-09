@@ -16,8 +16,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
+import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Optional;
 
@@ -366,14 +368,14 @@ public class RevealServiceTests {
     public void shouldNotRevealWithEmptyMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getMetaDataResult(chainTaskId)).thenReturn(new MetadataResult());
-        assertThat(revealService.reveal(chainTaskId)).isFalse();
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(0);
     }
 
     @Test
     public void shouldNotRevealWithNullMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getMetaDataResult(chainTaskId)).thenReturn(null);
-        assertThat(revealService.reveal(chainTaskId)).isFalse();
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(0);
     }
 
     @Test
@@ -384,10 +386,15 @@ public class RevealServiceTests {
         when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
                 .deterministHash(deterministHash)
                 .build());
-        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(
-                new IexecHubABILegacy.TaskRevealEventResponse());
+        IexecHubABILegacy.TaskRevealEventResponse response = new IexecHubABILegacy.TaskRevealEventResponse();
 
-        assertThat(revealService.reveal(chainTaskId)).isTrue();
+        // 0x200 in hexa = 512 in decimal
+        response.log =
+                new Log(false, "logIndex", "transactionIndex", "transactionHash",
+                        "blockHash", "0x200", "address", "data", "type", new ArrayList<String>());
+
+        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(response);
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(512);
     }
 
     @Test(expected = Exception.class)
