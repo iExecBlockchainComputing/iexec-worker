@@ -76,11 +76,11 @@ public class ContributionService {
     }
 
     // returns the block number of the contribution if successful, 0 otherwise
-    public long contribute(ContributionAuthorization contribAuth, String deterministHash, TeeSignature.Sign executionEnclaveSignature) {
+    public long contribute(ContributionAuthorization contribAuth, String deterministHash, Optional<TeeSignature.Sign> optionalEnclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         try {
-            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, resultHash, resultSeal, executionEnclaveSignature);
+            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, resultHash, resultSeal, optionalEnclaveSignature);
             return response.log.getBlockNumber().longValue();
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();

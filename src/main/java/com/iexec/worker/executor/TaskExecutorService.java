@@ -53,7 +53,7 @@ public class TaskExecutorService {
         ContributionAuthorization contribAuth = replicateModel.getContributionAuthorization();
 
         CompletableFuture.supplyAsync(() -> executeTask(replicateModel), executor)
-                .thenAccept(metadataResult -> tryToContribute(contribAuth, metadataResult));
+                .thenAccept(resultInfo -> tryToContribute(contribAuth, resultInfo));
     }
 
     private ResultInfo executeTask(AvailableReplicateModel replicateModel) {
@@ -94,11 +94,11 @@ public class TaskExecutorService {
         }
         String chainTaskId = contribAuth.getChainTaskId();
 
-        if (resultInfo.getEnclaveSignature() != null) {
+        if (resultInfo.getEnclaveSignature().isPresent()) {
             String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
             String resultHash = computeResultHash(contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
             boolean isEnclaveSignatureValid = contributionService.isEnclaveSignatureValid(resultHash,resultSeal,
-                    resultInfo.getEnclaveSignature(), contribAuth.getEnclave());
+                    resultInfo.getEnclaveSignature().get(), contribAuth.getEnclave());
 
             if (!isEnclaveSignatureValid) {
                 log.error("The worker cannot contribute, enclaveSignature not valid [chainTaskId:{}, " +

@@ -1,10 +1,13 @@
 package com.iexec.worker.result;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.worker.security.TeeSignature;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.Optional;
 
 @Data
 @NoArgsConstructor
@@ -17,6 +20,7 @@ public class ResultInfo {
     private String cmd;
     private String containerId;//should be called processId
     private String deterministHash;
-    private TeeSignature.Sign enclaveSignature;
+    @JsonIgnore
+    private Optional<TeeSignature.Sign> enclaveSignature;
 
 }

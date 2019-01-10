@@ -53,32 +53,31 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, TeeSignature.Sign executionEnclaveSignature) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Optional<TeeSignature.Sign> optionalEnclaveSignature) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
-            return sendContributeTransaction(contribAuth, resultHash, resultSeal, executionEnclaveSignature);
+            return sendContributeTransaction(contribAuth, resultHash, resultSeal, optionalEnclaveSignature);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, TeeSignature.Sign executionEnclaveSignature) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Optional<TeeSignature.Sign> optionalEnclaveSignature) {
+        IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
         BigInteger enclaveSignV = BigInteger.ZERO;
         byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
         byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
 
         if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())){
-            
-            if (executionEnclaveSignature == null){
+            if (!optionalEnclaveSignature.isPresent()){
                 log.info("enclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
+                return contributeEvent;
             }
 
-            enclaveSignV = BigInteger.valueOf(executionEnclaveSignature.getV());
-            enclaveSignR = stringToBytes(executionEnclaveSignature.getR());
-            enclaveSignS = stringToBytes(executionEnclaveSignature.getS());
-       
+            TeeSignature.Sign enclaveSignature = optionalEnclaveSignature.get();
+            enclaveSignV = BigInteger.valueOf(enclaveSignature.getV());
+            enclaveSignR = stringToBytes(enclaveSignature.getR());
+            enclaveSignS = stringToBytes(enclaveSignature.getS());
         }
 
-        // No SGX used for now
-        IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
         try {
 
             RemoteCall<TransactionReceipt> contributeCall = iexecHub.contributeABILegacy(

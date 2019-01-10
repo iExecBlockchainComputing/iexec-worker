@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Optional;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
 import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
@@ -128,13 +129,13 @@ public class DockerComputationService {
         return hash;
     }
 
-    TeeSignature.Sign getEnclaveSignature(String chainTaskId) throws IOException {
+    Optional<TeeSignature.Sign> getEnclaveSignature(String chainTaskId) throws IOException {
         String executionEnclaveSignatureFileName = resultService.getResultFolderPath(chainTaskId) + "/iexec/" + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
         Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
 
         if (!executionEnclaveSignatureFilePath.toFile().exists()) {
             log.info("TeeSignature file doesn't exist [chainTaskId:{}]", chainTaskId);
-            return null;
+            return Optional.empty();
         }
 
         ObjectMapper mapper = new ObjectMapper();
@@ -142,13 +143,13 @@ public class DockerComputationService {
 
         if (teeSignature == null) {
             log.info("TeeSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
-            return null;
+            return Optional.empty();
         }
 
         TeeSignature.Sign s = teeSignature.getSign();
         log.info("TeeSignature file exists [chainTaskId:{}, v:{}, r:{}, s:{}]",
                 chainTaskId, s.getV(), s.getR(), s.getS());
-        return s;
+        return Optional.of(s);
     }
 
     private void waitForComputation(String chainTaskId, Date executionTimeout) {

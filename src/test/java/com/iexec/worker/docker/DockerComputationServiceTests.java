@@ -11,6 +11,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Optional;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
 import static org.assertj.core.api.Java6Assertions.assertThat;
@@ -37,19 +38,20 @@ public class DockerComputationServiceTests {
         String sExpected = "0x6bdf554c8c12c158d12f08299afbe0d9c8533bf420a5d3f63ed9827047eab8d";
 
         when(resultService.getResultFolderPath("chainTaskId")).thenReturn("./src/test/resources");
-        TeeSignature.Sign enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
+        Optional<TeeSignature.Sign> enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
 
-        assertThat(enclaveSignature.getV()).isEqualTo(vExpected);
-        assertThat(enclaveSignature.getR()).isEqualTo(rExpected);
-        assertThat(enclaveSignature.getS()).isEqualTo(sExpected);
+        assertThat(enclaveSignature.isPresent()).isTrue();
+        assertThat(enclaveSignature.get().getV()).isEqualTo(vExpected);
+        assertThat(enclaveSignature.get().getR()).isEqualTo(rExpected);
+        assertThat(enclaveSignature.get().getS()).isEqualTo(sExpected);
     }
 
     @Test
     public void shouldNotGetEnclaveSignatureSinceFileMissing() throws IOException {
         when(resultService.getResultFolderPath("chainTaskId")).thenReturn("./src/test/resources/fakefolder");
-        TeeSignature.Sign enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
+        Optional<TeeSignature.Sign> enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
 
-        assertThat(enclaveSignature).isNull();
+        assertThat(enclaveSignature.isPresent()).isFalse();
     }
 
 }
