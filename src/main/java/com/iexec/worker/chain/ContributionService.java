@@ -1,6 +1,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
+import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
@@ -74,15 +75,17 @@ public class ContributionService {
 
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, TeeSignature.Sign executionEnclaveSignature) {
+    // returns the block number of the contribution if successful, 0 otherwise
+    public long contribute(ContributionAuthorization contribAuth, String deterministHash, TeeSignature.Sign executionEnclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         try {
-            return iexecHubService.contribute(contribAuth, resultHash, resultSeal, executionEnclaveSignature) != null;
+            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, resultHash, resultSeal, executionEnclaveSignature);
+            return response.log.getBlockNumber().longValue();
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
-        return false;
+        return 0;
     }
 
     public static String computeResultSeal(String walletAddress, String chainTaskId, String deterministHash) {

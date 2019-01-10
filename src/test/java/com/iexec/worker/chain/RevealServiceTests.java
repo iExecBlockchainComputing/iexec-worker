@@ -16,7 +16,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
+import org.web3j.protocol.core.methods.response.Log;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Optional;
 
@@ -177,7 +179,7 @@ public class RevealServiceTests {
     }
 
     @Test
-    public void cannotRevealSinceHashDoesntMatchConsensus(){
+    public void cannotRevealSinceHashDoesntMatchConsensus() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String privateKey = "0x2a46e8c1535792f6689b10d5c882c9363910c30751ec193ae71ec71630077909";
@@ -365,14 +367,14 @@ public class RevealServiceTests {
     public void shouldNotRevealWithEmptyMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getResultInfo(chainTaskId)).thenReturn(new ResultInfo());
-        assertThat(revealService.reveal(chainTaskId)).isFalse();
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(0);
     }
 
     @Test
     public void shouldNotRevealWithNullMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getResultInfo(chainTaskId)).thenReturn(null);
-        assertThat(revealService.reveal(chainTaskId)).isFalse();
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(0);
     }
 
     @Test
@@ -383,10 +385,15 @@ public class RevealServiceTests {
         when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
-        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(
-                new IexecHubABILegacy.TaskRevealEventResponse());
+        IexecHubABILegacy.TaskRevealEventResponse response = new IexecHubABILegacy.TaskRevealEventResponse();
 
-        assertThat(revealService.reveal(chainTaskId)).isTrue();
+        // 0x200 in hexa = 512 in decimal
+        response.log =
+                new Log(false, "logIndex", "transactionIndex", "transactionHash",
+                        "blockHash", "0x200", "address", "data", "type", new ArrayList<String>());
+
+        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(response);
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(512);
     }
 
     @Test(expected = Exception.class)

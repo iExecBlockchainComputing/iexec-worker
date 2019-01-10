@@ -4,6 +4,7 @@ import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
@@ -70,9 +71,9 @@ public class RevealService {
             log.info("All the conditions are valid for the reveal to happen [chainTaskId:{}]", chainTaskId);
         } else {
             log.warn("One or more conditions are not met for the reveal to happen [chainTaskId:{}, " +
-                    "isChainTaskStatusRevealing:{}, isRevealDeadlineReached:{}, " +
-                    "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
-                    "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
+                            "isChainTaskStatusRevealing:{}, isRevealDeadlineReached:{}, " +
+                            "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
+                            "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
                     isChainTaskStatusRevealing, isRevealDeadlineReached,
                     isChainContributionStatusContributed, isContributionResultHashConsensusValue,
                     isContributionResultHashCorrect, isContributionResultSealCorrect);
@@ -81,18 +82,20 @@ public class RevealService {
         return ret;
     }
 
-    public boolean reveal(String chainTaskId){
+    // returns the block number of the reveal if successful, 0 otherwise
+    public long reveal(String chainTaskId) {
         ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
         if (resultInfo != null && resultInfo.getDeterministHash() != null) {
             String deterministHash = resultInfo.getDeterministHash();
             try {
-                return iexecHubService.reveal(chainTaskId, deterministHash) != null;
+                IexecHubABILegacy.TaskRevealEventResponse response = iexecHubService.reveal(chainTaskId, deterministHash);
+                return response.log.getBlockNumber().longValue();
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
 
-        return false;
+        return 0;
     }
 
     public boolean hasEnoughGas() {

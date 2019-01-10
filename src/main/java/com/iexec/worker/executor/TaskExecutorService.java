@@ -108,19 +108,21 @@ public class TaskExecutorService {
         }
 
         if (!contributionService.canContribute(chainTaskId)) {
-            log.warn("The worker cannot contribute since the contribution wouldn't be valid [chainTaskId:{}", chainTaskId);
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
+            log.warn("Cant contribute [chainTaskId:{}]", chainTaskId);
+            feignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE);
             return;
         }
 
         if (!contributionService.hasEnoughGas()) {
-            feignClient.updateReplicateStatus(chainTaskId, ERROR);
+            feignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
             System.exit(0);
         }
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
-        if (contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), resultInfo.getEnclaveSignature())) {
-            feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED);
+
+        long contributionBlockNumber = contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), resultInfo.getEnclaveSignature());
+        if (contributionBlockNumber != 0) {
+            feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, contributionBlockNumber);
         } else {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
         }
