@@ -5,11 +5,10 @@ import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.result.MetadataResult;
+import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.Date;
 import java.util.Optional;
@@ -52,9 +51,9 @@ public class RevealService {
 
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
-        MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
-        if (metadataResult != null && metadataResult.getDeterministHash() != null) {
-            String deterministHash = metadataResult.getDeterministHash();
+        ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
+        if (resultInfo != null && resultInfo.getDeterministHash() != null) {
+            String deterministHash = resultInfo.getDeterministHash();
             isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, deterministHash));
 
             String walletAddress = credentialsService.getCredentials().getAddress();
@@ -83,9 +82,9 @@ public class RevealService {
     }
 
     public boolean reveal(String chainTaskId){
-        MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
-        if (metadataResult != null && metadataResult.getDeterministHash() != null) {
-            String deterministHash = metadataResult.getDeterministHash();
+        ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
+        if (resultInfo != null && resultInfo.getDeterministHash() != null) {
+            String deterministHash = resultInfo.getDeterministHash();
             try {
                 return iexecHubService.reveal(chainTaskId, deterministHash) != null;
             } catch (ExecutionException | InterruptedException e) {

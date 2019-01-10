@@ -2,6 +2,7 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.security.Signature;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.security.TeeSignature;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -30,25 +31,25 @@ public class DockerComputationServiceTests {
     }
 
     @Test
-    public void shoudlGetVrsOfSignatureFile() throws IOException {
+    public void shouldGetEnclaveSignature() throws IOException {
         int vExpected = 27;
-        String rExpected = "4e3db90707b569fbbbf9dc00a3b473e59a976fd2acff1fc022cf703f172d07ec";
-        String sExpected = "6777dcd28b761aebf533188770ef304e67472297ced7d99b0745131662b9f597";
+        String rExpected = "0x253554311f2793b72785a45eff4cbbe04c45d2e5a4d89057dfbc721e69b61d39";
+        String sExpected = "0x6bdf554c8c12c158d12f08299afbe0d9c8533bf420a5d3f63ed9827047eab8d";
 
         when(resultService.getResultFolderPath("chainTaskId")).thenReturn("./src/test/resources");
-        Signature signature = dockerComputationService.getExecutionEnclaveSignature("chainTaskId");
+        TeeSignature.Sign enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
 
-        assertThat(signature.getSignV()).isEqualTo(new BigInteger("" + vExpected).toByteArray()[0]);
-        assertThat(cleanHexPrefix(bytesToString(signature.getSignR()))).isEqualTo(rExpected);
-        assertThat(cleanHexPrefix(bytesToString(signature.getSignS()))).isEqualTo(sExpected);
+        assertThat(enclaveSignature.getV()).isEqualTo(vExpected);
+        assertThat(enclaveSignature.getR()).isEqualTo(rExpected);
+        assertThat(enclaveSignature.getS()).isEqualTo(sExpected);
     }
 
     @Test
-    public void shoudlNotReturnSignatureWhenFileMissing() throws IOException {
+    public void shouldNotGetEnclaveSignatureSinceFileMissing() throws IOException {
         when(resultService.getResultFolderPath("chainTaskId")).thenReturn("./src/test/resources/fakefolder");
-        Signature signature = dockerComputationService.getExecutionEnclaveSignature("chainTaskId");
+        TeeSignature.Sign enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
 
-        assertThat(signature).isNull();
+        assertThat(enclaveSignature).isNull();
     }
 
 }

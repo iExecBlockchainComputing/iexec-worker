@@ -3,11 +3,10 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.result.MetadataResult;
+import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,23 +49,23 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public void addReplicate(AvailableReplicateModel model) {
-        ContributionAuthorization contribAuth = model.getContributionAuthorization();
+    public void addReplicate(AvailableReplicateModel replicateModel) {
+        ContributionAuthorization contribAuth = replicateModel.getContributionAuthorization();
 
-        CompletableFuture.supplyAsync(() -> executeTask(model), executor)
+        CompletableFuture.supplyAsync(() -> executeTask(replicateModel), executor)
                 .thenAccept(metadataResult -> tryToContribute(contribAuth, metadataResult));
     }
 
-    private MetadataResult executeTask(AvailableReplicateModel model) {
-        String chainTaskId = model.getContributionAuthorization().getChainTaskId();
+    private ResultInfo executeTask(AvailableReplicateModel replicateModel) {
+        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
 
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
             feignClient.updateReplicateStatus(chainTaskId, RUNNING);
 
-            if (model.getDappType().equals(DappType.DOCKER)) {
+            if (replicateModel.getAppType().equals(DappType.DOCKER)) {
 
                 feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-                boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, model.getDappName());
+                boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
                 if (isImagePulled) {
                     feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
                 } else {
@@ -75,11 +74,10 @@ public class TaskExecutorService {
 
                 feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
                 try {
-                    MetadataResult metadataResult = dockerComputationService.dockerRun(chainTaskId, model.getDappName(), model.getCmd(), model.getMaxExecutionTime());
-                    //save metadataResult (without zip payload) in memory
-                    resultService.addMetaDataResult(chainTaskId, metadataResult);
+                    ResultInfo resultInfo = dockerComputationService.dockerRun(replicateModel);
+                    resultService.addResultInfo(chainTaskId, resultInfo);
                     feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-                    return metadataResult;
+                    return resultInfo;
                 } catch (Exception e) {
                     log.error("Error in the run of the application [error:{}]", e.getMessage());
                 }
@@ -87,44 +85,26 @@ public class TaskExecutorService {
         } else {
             log.warn("Task NOT initialized on chain [chainTaskId:{}]", chainTaskId);
         }
-        return new MetadataResult();
+        return new ResultInfo();
     }
 
-    private void tryToContribute(ContributionAuthorization contribAuth, MetadataResult metadataResult) {
-        if (metadataResult.getDeterministHash().isEmpty()) {
+    private void tryToContribute(ContributionAuthorization contribAuth, ResultInfo resultInfo) {
+        if (resultInfo.getDeterministHash().isEmpty()) {
             return;
         }
         String chainTaskId = contribAuth.getChainTaskId();
 
+        if (resultInfo.getEnclaveSignature() != null) {
+            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
+            String resultHash = computeResultHash(contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
+            boolean isEnclaveSignatureValid = contributionService.isEnclaveSignatureValid(resultHash,resultSeal,
+                    resultInfo.getEnclaveSignature(), contribAuth.getEnclave());
 
-        if (metadataResult.getExecutionEnclaveSignature() != null) {
-
-            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), metadataResult.getDeterministHash());
-            String resultHash = computeResultHash(contribAuth.getChainTaskId(), metadataResult.getDeterministHash());
-
-            boolean isEnclaveSignatureValid = isEnclaveSignatureValid(
-                    resultHash,
-                    resultSeal,
-                    metadataResult.getExecutionEnclaveSignature(),
-                    contribAuth.getEnclave());
             if (!isEnclaveSignatureValid) {
                 log.error("The worker cannot contribute, enclaveSignature not valid [chainTaskId:{}, " +
-                                "isEnclaveSignatureValid:{}, " +
-                                "resultHash:{}, " +
-                                "resultSeal:{}, " +
-                                "enclaveR:{}, " +
-                                "enclaveS:{}, " +
-                                "enclaveAddress:{}",
-                        chainTaskId,
-                        isEnclaveSignatureValid,
-                        resultHash,
-                        resultSeal,
-                        metadataResult.getExecutionEnclaveSignature().getR(),
-                        metadataResult.getExecutionEnclaveSignature().getS(),
-                        contribAuth.getEnclave());
-                //return;
+                                "isEnclaveSignatureValid:{}]", chainTaskId, isEnclaveSignatureValid);
+                return;
             }
-
         }
 
         if (!contributionService.canContribute(chainTaskId)) {
@@ -139,7 +119,7 @@ public class TaskExecutorService {
         }
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
-        if (contributionService.contribute(contribAuth, metadataResult.getDeterministHash(), metadataResult.getExecutionEnclaveSignature())) {
+        if (contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), resultInfo.getEnclaveSignature())) {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED);
         } else {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);

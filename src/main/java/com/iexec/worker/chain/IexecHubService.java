@@ -6,9 +6,8 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
-import com.iexec.common.security.Signature;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -54,14 +53,14 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, EnclaveSignature.Sign executionEnclaveSignature) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, TeeSignature.Sign executionEnclaveSignature) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
             return sendContributeTransaction(contribAuth, resultHash, resultSeal, executionEnclaveSignature);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, EnclaveSignature.Sign executionEnclaveSignature) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, TeeSignature.Sign executionEnclaveSignature) {
         BigInteger enclaveSignV = BigInteger.ZERO;
         byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
         byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
@@ -69,7 +68,7 @@ public class IexecHubService {
         if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())){
             
             if (executionEnclaveSignature == null){
-                log.info("executionEnclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
+                log.info("enclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
             }
 
             enclaveSignV = BigInteger.valueOf(executionEnclaveSignature.getV());

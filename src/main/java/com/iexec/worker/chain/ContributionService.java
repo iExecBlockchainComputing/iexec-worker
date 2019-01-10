@@ -1,10 +1,10 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
-import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
+import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -74,7 +74,7 @@ public class ContributionService {
 
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, EnclaveSignature.Sign executionEnclaveSignature) {
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, TeeSignature.Sign executionEnclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         try {
@@ -103,12 +103,12 @@ public class ContributionService {
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
     }
 
-    public static boolean isEnclaveSignatureValid(String resulHash, String resultSeal, EnclaveSignature.Sign enclaveSignature, String signerAddress) {
+    public boolean isEnclaveSignatureValid(String resulHash, String resultSeal, TeeSignature.Sign enclaveSignature, String signerAddress) {
         byte[] hash = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
         byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
 
         return SignatureUtils.doesSignatureMatchesAddress(BytesUtils.stringToBytes(enclaveSignature.getR()), BytesUtils.stringToBytes(enclaveSignature.getS()),
-                BytesUtils.bytesToString(hashTocheck), signerAddress);
+                BytesUtils.bytesToString(hashTocheck), signerAddress.toLowerCase());
     }
 
 

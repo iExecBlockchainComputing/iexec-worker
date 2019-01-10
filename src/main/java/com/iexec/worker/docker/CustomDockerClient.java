@@ -63,6 +63,7 @@ public class CustomDockerClient {
         }
     }
 
+    /*
     static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName) {
         ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
         if (containerConfigBuilder != null){
@@ -70,8 +71,9 @@ public class CustomDockerClient {
         }
         return null;
     }
+    */
 
-    static ContainerConfig getContainerConfigWithEnv(String imageWithTag, String cmd, String volumeName, String... env) {
+    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName, String... env) {
         ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
         if (containerConfigBuilder != null){
             return containerConfigBuilder.env(env).build();

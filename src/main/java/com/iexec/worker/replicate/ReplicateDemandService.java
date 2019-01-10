@@ -5,6 +5,7 @@ import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.tee.TeeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -102,10 +103,11 @@ public class ReplicateDemandService {
 
         return Optional.of(AvailableReplicateModel.builder()
                 .contributionAuthorization(contribAuth)
-                .dappType(DappType.DOCKER)
-                .dappName(chainDeal.getChainApp().getParams().getUri())
+                .appType(DappType.DOCKER)
+                .appUri(chainDeal.getChainApp().getParams().getUri())
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
-                .maxExecutionTime(chainDeal.getChainCategory().getMaxExecutionTime())
+                .timeRef(chainDeal.getChainCategory().getMaxExecutionTime())
+                .isTrustedExecution(TeeUtils.isTrustedExecutionTag(chainDeal.getTag()))
                 .build());
     }
 

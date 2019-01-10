@@ -6,7 +6,7 @@ import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.result.MetadataResult;
+import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.Before;
@@ -16,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.Date;
 import java.util.Optional;
@@ -70,7 +69,7 @@ public class RevealServiceTests {
                         .build());
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -103,7 +102,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -136,7 +135,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -169,7 +168,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -202,7 +201,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -235,7 +234,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -266,7 +265,7 @@ public class RevealServiceTests {
                         .resultSeal(Hash.sha3("Dummy contribution seal"))
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(credentialsService.getCredentials()).thenReturn(credentials);
@@ -325,7 +324,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(new MetadataResult());
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(new ResultInfo());
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -356,7 +355,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(null);
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(null);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -365,14 +364,14 @@ public class RevealServiceTests {
     @Test
     public void shouldNotRevealWithEmptyMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(new MetadataResult());
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(new ResultInfo());
         assertThat(revealService.reveal(chainTaskId)).isFalse();
     }
 
     @Test
     public void shouldNotRevealWithNullMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(null);
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(null);
         assertThat(revealService.reveal(chainTaskId)).isFalse();
     }
 
@@ -381,7 +380,7 @@ public class RevealServiceTests {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(
@@ -395,7 +394,7 @@ public class RevealServiceTests {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        when(resultService.getMetaDataResult(chainTaskId)).thenReturn(MetadataResult.builder()
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
                 .deterministHash(deterministHash)
                 .build());
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new Exception());

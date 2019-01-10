@@ -1,11 +1,11 @@
 package com.iexec.worker.docker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iexec.common.security.Signature;
-import com.iexec.worker.chain.EnclaveSignature;
+import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.result.MetadataResult;
+import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,10 @@ import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +26,7 @@ import java.time.Instant;
 import java.util.Date;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
-import static com.iexec.worker.docker.CustomDockerClient.getContainerConfigWithEnv;
+import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
 import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
@@ -31,7 +34,9 @@ import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 public class DockerComputationService {
 
     private static final String DETERMINIST_FILE_NAME = "consensus.iexec";
-    private static final String EXECUTION_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
+    private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
+    private static final String TEE_DOCKER_ENV_CHAIN_TASKID = "TASKID";
+    private static final String TEE_DOCKER_ENV_WORKER_ADDRESS = "WORKER";
     private static final String STDOUT_FILENAME = "stdout.txt";
 
     private final CustomDockerClient dockerClient;
@@ -46,14 +51,24 @@ public class DockerComputationService {
         this.resultService = resultService;
     }
 
-    public MetadataResult dockerRun(String chainTaskId, String image, String cmd, Date maxExecutionTime) throws IOException {
+    public ResultInfo dockerRun(AvailableReplicateModel replicateModel) throws IOException {
+        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
+        String image = replicateModel.getAppUri();
         //TODO: check image equals image:tag
         String containerId = "";
         if (dockerClient.isImagePulled(image)) {
             String volumeName = dockerClient.createVolume(chainTaskId);
-            ContainerConfig containerConfig = getContainerConfigWithEnv(image, cmd, volumeName, "TASKID="+chainTaskId, "WORKER="+configurationService.getWorkerWalletAddress());
-            System.out.println(containerConfig);
-            containerId = startComputation(chainTaskId, containerConfig, maxExecutionTime);
+            ContainerConfig containerConfig;
+
+            if (replicateModel.isTrustedExecution()) {
+                containerConfig = getContainerConfig(image, replicateModel.getCmd(), volumeName,
+                        TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
+                        TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress());
+            } else {
+                containerConfig = getContainerConfig(image, replicateModel.getCmd(), volumeName);
+            }
+
+            containerId = startComputation(chainTaskId, containerConfig, replicateModel.getTimeRef());
 
         } else {
             createStdoutFile(chainTaskId, "Failed to pull image");
@@ -65,14 +80,12 @@ public class DockerComputationService {
         String hash = computeDeterministHash(chainTaskId);
         log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, hash);
 
-        EnclaveSignature.Sign executionEnclaveSignature = getExecutionEnclaveSignature(chainTaskId);
-
-        return MetadataResult.builder()
+        return ResultInfo.builder()
                 .image(image)
-                .cmd(cmd)
+                .cmd(replicateModel.getCmd())
                 .deterministHash(hash)
                 .containerId(containerId)
-                .executionEnclaveSignature(executionEnclaveSignature)
+                .enclaveSignature(getEnclaveSignature(chainTaskId))
                 .build();
     }
 
@@ -115,25 +128,25 @@ public class DockerComputationService {
         return hash;
     }
 
-    EnclaveSignature.Sign getExecutionEnclaveSignature(String chainTaskId) throws IOException {
-        String executionEnclaveSignatureFileName = resultService.getResultFolderPath(chainTaskId) + "/iexec/" + EXECUTION_ENCLAVE_SIGNATURE_FILE_NAME;
+    TeeSignature.Sign getEnclaveSignature(String chainTaskId) throws IOException {
+        String executionEnclaveSignatureFileName = resultService.getResultFolderPath(chainTaskId) + "/iexec/" + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
         Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
 
         if (!executionEnclaveSignatureFilePath.toFile().exists()) {
-            log.info("ExecutionEnclaveSignature file doesn't exist [chainTaskId:{}]", chainTaskId);
+            log.info("TeeSignature file doesn't exist [chainTaskId:{}]", chainTaskId);
             return null;
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        EnclaveSignature enclaveSignature = mapper.readValue(executionEnclaveSignatureFilePath.toFile(), EnclaveSignature.class);
+        TeeSignature teeSignature = mapper.readValue(executionEnclaveSignatureFilePath.toFile(), TeeSignature.class);
 
-        if (enclaveSignature == null) {
-            log.info("ExecutionEnclaveSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
+        if (teeSignature == null) {
+            log.info("TeeSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
             return null;
         }
 
-        EnclaveSignature.Sign s = enclaveSignature.getSign();
-        log.info("ExecutionEnclaveSignature file exists [chainTaskId:{}, v:{}, r:{}, s:{}]",
+        TeeSignature.Sign s = teeSignature.getSign();
+        log.info("TeeSignature file exists [chainTaskId:{}, v:{}, r:{}, s:{}]",
                 chainTaskId, s.getV(), s.getR(), s.getS());
         return s;
     }
