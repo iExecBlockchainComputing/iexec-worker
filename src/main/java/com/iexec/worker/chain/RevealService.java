@@ -6,11 +6,10 @@ import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.result.MetadataResult;
+import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.Date;
 import java.util.Optional;
@@ -53,9 +52,9 @@ public class RevealService {
 
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
-        MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
-        if (metadataResult != null && metadataResult.getDeterministHash() != null) {
-            String deterministHash = metadataResult.getDeterministHash();
+        ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
+        if (resultInfo != null && resultInfo.getDeterministHash() != null) {
+            String deterministHash = resultInfo.getDeterministHash();
             isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, deterministHash));
 
             String walletAddress = credentialsService.getCredentials().getAddress();
@@ -72,9 +71,9 @@ public class RevealService {
             log.info("All the conditions are valid for the reveal to happen [chainTaskId:{}]", chainTaskId);
         } else {
             log.warn("One or more conditions are not met for the reveal to happen [chainTaskId:{}, " +
-                    "isChainTaskStatusRevealing:{}, isRevealDeadlineReached:{}, " +
-                    "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
-                    "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
+                            "isChainTaskStatusRevealing:{}, isRevealDeadlineReached:{}, " +
+                            "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
+                            "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
                     isChainTaskStatusRevealing, isRevealDeadlineReached,
                     isChainContributionStatusContributed, isContributionResultHashConsensusValue,
                     isContributionResultHashCorrect, isContributionResultSealCorrect);
@@ -85,9 +84,9 @@ public class RevealService {
 
     // returns the block number of the reveal if successful, 0 otherwise
     public long reveal(String chainTaskId) {
-        MetadataResult metadataResult = resultService.getMetaDataResult(chainTaskId);
-        if (metadataResult != null && metadataResult.getDeterministHash() != null) {
-            String deterministHash = metadataResult.getDeterministHash();
+        ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
+        if (resultInfo != null && resultInfo.getDeterministHash() != null) {
+            String deterministHash = resultInfo.getDeterministHash();
             try {
                 IexecHubABILegacy.TaskRevealEventResponse response = iexecHubService.reveal(chainTaskId, deterministHash);
                 return response.log.getBlockNumber().longValue();

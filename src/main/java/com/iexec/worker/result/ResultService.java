@@ -17,16 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class ResultService {
 
-    private Map<String, MetadataResult> metadataResultMap;
+    private Map<String, ResultInfo> resultInfoMap;
     private WorkerConfigurationService configurationService;
 
     public ResultService(WorkerConfigurationService configurationService) {
         this.configurationService = configurationService;
-        this.metadataResultMap = new ConcurrentHashMap<>();
+        this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
     public ResultModel getResultModelWithZip(String chainTaskId) {
-        MetadataResult metadataResult = getMetaDataResult(chainTaskId);
+        ResultInfo resultInfo = getResultInfo(chainTaskId);
         byte[] zipResultAsBytes = new byte[0];
         String zipLocation = getResultZipFilePath(chainTaskId);
         try {
@@ -37,23 +37,23 @@ public class ResultService {
 
         return ResultModel.builder()
                 .chainTaskId(chainTaskId)
-                .image(metadataResult.getImage())
-                .cmd(metadataResult.getCmd())
+                .image(resultInfo.getImage())
+                .cmd(resultInfo.getCmd())
                 .zip(zipResultAsBytes)
-                .deterministHash(metadataResult.getDeterministHash())
+                .deterministHash(resultInfo.getDeterministHash())
                 .build();
     }
 
-    public void addMetaDataResult(String chainTaskId, MetadataResult metadataResult) {
-        metadataResultMap.put(chainTaskId, metadataResult);
+    public void addResultInfo(String chainTaskId, ResultInfo resultInfo) {
+        resultInfoMap.put(chainTaskId, resultInfo);
     }
 
-    public MetadataResult getMetaDataResult(String chainTaskId) {
-        return metadataResultMap.get(chainTaskId);
+    public ResultInfo getResultInfo(String chainTaskId) {
+        return resultInfoMap.get(chainTaskId);
     }
 
     public boolean removeResult(String chainTaskId) {
-        boolean deletedInMap = metadataResultMap.remove(chainTaskId) != null;
+        boolean deletedInMap = resultInfoMap.remove(chainTaskId) != null;
         boolean deletedZipFile = FileHelper.deleteFile(getResultZipFilePath(chainTaskId));
         boolean deletedResultFolder = FileHelper.deleteFolder(getResultFolderPath(chainTaskId));
 

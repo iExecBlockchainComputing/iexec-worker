@@ -2,12 +2,15 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.security.TeeSignature;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static com.iexec.worker.chain.ContributionService.computeResultHash;
+import static com.iexec.worker.chain.ContributionService.computeResultSeal;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 
 public class ContributionServiceTests {
@@ -43,5 +46,25 @@ public class ContributionServiceTests {
                 .build();
 
         assertThat(contributionService.isContributionAuthorizationValid(contribAuth, signingAddress)).isTrue();
+    }
+
+    @Test
+    public void ShouldReturnTrueSinceIsEnclaveSignatureValid() {
+        String chainTaskId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
+        String worker = "0x1a69b2eb604db8eba185df03ea4f5288dcbbd248";
+        String deterministHash = "0xb7e58c9d6fbde4420e87af44786ec46c797123d0667b72920b4cead23d60188b";
+
+        String resultHash = computeResultHash(chainTaskId, deterministHash);
+        String resultSeal = computeResultSeal(worker, chainTaskId, deterministHash);
+
+        String enclaveAddress = "0x3cB738D98D7A70e81e81B0811Fae2452BcA049Bc";
+
+        int v = 27;
+        String r = "0xfe0d8948ca8739b0926ed5729532686b283755a1c1e660abf1ebd6362d1545c8";
+        String s = "0x14e53d7cd66ec0a1cfe330b1e16e460ae354d33fb84cf9d62213b10c109f0db5";
+
+        TeeSignature enclaveSignature = new TeeSignature("", "", "", v, r, s);
+
+        assertThat(contributionService.isEnclaveSignatureValid(resultHash, resultSeal , enclaveSignature.getSign(), enclaveAddress)).isTrue();
     }
 }

@@ -6,8 +6,8 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,14 +22,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static com.iexec.common.utils.BytesUtils.EMPTY_ADDRESS;
+import static com.iexec.common.utils.BytesUtils.EMPTY_HEXASTRING_64;
+import static com.iexec.common.utils.BytesUtils.stringToBytes;
+
 
 @Slf4j
 @Service
 public class IexecHubService {
-
-    // NULL variables since no SGX usage for now
-    private static final String EMPTY_ENCLAVE_CHALLENGE = "0x0000000000000000000000000000000000000000";
-    private static final String EMPTY_HEXASTRING_64 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     private final IexecHubABILegacy iexecHub;
     private final CredentialsService credentialsService;
@@ -53,33 +53,48 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String contributionHash, String seal) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Optional<TeeSignature.Sign> optionalEnclaveSignature) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
-            return sendContributeTransaction(contribAuth, contributionHash, seal);
+            return sendContributeTransaction(contribAuth, resultHash, resultSeal, optionalEnclaveSignature);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String contributionHash, String seal) {
-        // No SGX used for now
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Optional<TeeSignature.Sign> optionalEnclaveSignature) {
         IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
+        BigInteger enclaveSignV = BigInteger.ZERO;
+        byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
+        byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
+
+        if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())){
+            if (!optionalEnclaveSignature.isPresent()){
+                log.info("enclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
+                return contributeEvent;
+            }
+
+            TeeSignature.Sign enclaveSignature = optionalEnclaveSignature.get();
+            enclaveSignV = BigInteger.valueOf(enclaveSignature.getV());
+            enclaveSignR = stringToBytes(enclaveSignature.getR());
+            enclaveSignS = stringToBytes(enclaveSignature.getS());
+        }
+
         try {
 
             RemoteCall<TransactionReceipt> contributeCall = iexecHub.contributeABILegacy(
-                    BytesUtils.stringToBytes(contribAuth.getChainTaskId()),
-                    BytesUtils.stringToBytes(contributionHash),
-                    BytesUtils.stringToBytes(seal),
-                    EMPTY_ENCLAVE_CHALLENGE,
-                    BigInteger.valueOf(0),
-                    BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
-                    BytesUtils.stringToBytes(EMPTY_HEXASTRING_64),
+                    stringToBytes(contribAuth.getChainTaskId()),
+                    stringToBytes(resultHash),
+                    stringToBytes(resultSeal),
+                    contribAuth.getEnclave(),
+                    enclaveSignV,
+                    enclaveSignR,
+                    enclaveSignS,
                     BigInteger.valueOf(contribAuth.getSignV()),
                     contribAuth.getSignR(),
                     contribAuth.getSignS());
-            log.info("Sent contribute [chainTaskId:{}, contributionHash:{}]", contribAuth.getChainTaskId(), contributionHash);
+            log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", contribAuth.getChainTaskId(), resultHash);
             TransactionReceipt contributeReceipt = contributeCall.send();
             if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()) {
-                log.info("Contributed [chainTaskId:{}, contributionHash:{}, gasUsed:{}]", contribAuth.getChainTaskId(), contributionHash, contributeReceipt.getGasUsed());
+                log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]", contribAuth.getChainTaskId(), resultHash, contributeReceipt.getGasUsed());
                 contributeEvent = iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
@@ -99,8 +114,8 @@ public class IexecHubService {
         IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
         try {
             RemoteCall<TransactionReceipt> revealCall = iexecHub.reveal(
-                    BytesUtils.stringToBytes(chainTaskId),
-                    BytesUtils.stringToBytes(resultDigest));
+                    stringToBytes(chainTaskId),
+                    stringToBytes(resultDigest));
             log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
             TransactionReceipt revealReceipt = revealCall.send();
             if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()) {
