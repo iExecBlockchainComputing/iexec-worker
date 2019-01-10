@@ -47,7 +47,7 @@ public class CustomDockerClient {
         return null;
     }
 
-    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName) {
+    private static ContainerConfig.Builder getContainerConfigBuilder(String imageWithTag, String cmd, String volumeName) {
         HostConfig hostConfig = getHostConfig(volumeName);
 
         if (imageWithTag.isEmpty() || hostConfig == null) {
@@ -57,10 +57,26 @@ public class CustomDockerClient {
                 .image(imageWithTag)
                 .hostConfig(hostConfig);
         if (cmd == null || cmd.isEmpty()) {
-            return builder.build();
+            return builder;
         } else {
-            return builder.cmd(cmd).build();
+            return builder.cmd(cmd);
         }
+    }
+
+    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName) {
+        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
+        if (containerConfigBuilder != null){
+            return containerConfigBuilder.build();
+        }
+        return null;
+    }
+
+    static ContainerConfig getContainerConfigWithEnv(String imageWithTag, String cmd, String volumeName, String... env) {
+        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
+        if (containerConfigBuilder != null){
+            return containerConfigBuilder.env(env).build();
+        }
+        return null;
     }
 
     boolean pullImage(String taskId, String image) {

@@ -74,7 +74,7 @@ public class ContributionService {
 
     }
 
-    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, Signature executionEnclaveSignature) {
+    public boolean contribute(ContributionAuthorization contribAuth, String deterministHash, EnclaveSignature.Sign executionEnclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         try {
@@ -103,11 +103,11 @@ public class ContributionService {
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
     }
 
-    public static boolean isEnclaveSignatureValid(String resulHash, String resultSeal, Signature enclaveSignature, String signerAddress) {
+    public static boolean isEnclaveSignatureValid(String resulHash, String resultSeal, EnclaveSignature.Sign enclaveSignature, String signerAddress) {
         byte[] hash = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
         byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
 
-        return SignatureUtils.doesSignatureMatchesAddress(enclaveSignature.getSignR(), enclaveSignature.getSignS(),
+        return SignatureUtils.doesSignatureMatchesAddress(BytesUtils.stringToBytes(enclaveSignature.getR()), BytesUtils.stringToBytes(enclaveSignature.getS()),
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
     }
 

@@ -1,7 +1,8 @@
 package com.iexec.worker.docker;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.security.Signature;
-import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.chain.EnclaveSignature;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.result.MetadataResult;
 import com.iexec.worker.result.ResultService;
@@ -15,17 +16,14 @@ import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
-import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
+import static com.iexec.worker.docker.CustomDockerClient.getContainerConfigWithEnv;
 import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
@@ -53,8 +51,10 @@ public class DockerComputationService {
         String containerId = "";
         if (dockerClient.isImagePulled(image)) {
             String volumeName = dockerClient.createVolume(chainTaskId);
-            ContainerConfig containerConfig = getContainerConfig(image, cmd, volumeName);
+            ContainerConfig containerConfig = getContainerConfigWithEnv(image, cmd, volumeName, "TASKID="+chainTaskId, "WORKER="+configurationService.getWorkerWalletAddress());
+            System.out.println(containerConfig);
             containerId = startComputation(chainTaskId, containerConfig, maxExecutionTime);
+
         } else {
             createStdoutFile(chainTaskId, "Failed to pull image");
         }
@@ -65,7 +65,7 @@ public class DockerComputationService {
         String hash = computeDeterministHash(chainTaskId);
         log.info("Determinist Hash has been computed [chainTaskId:{}, deterministHash:{}]", chainTaskId, hash);
 
-        Signature executionEnclaveSignature = getExecutionEnclaveSignature(chainTaskId);
+        EnclaveSignature.Sign executionEnclaveSignature = getExecutionEnclaveSignature(chainTaskId);
 
         return MetadataResult.builder()
                 .image(image)
@@ -101,7 +101,7 @@ public class DockerComputationService {
 
         if (deterministFilePath.toFile().exists()) {
             byte[] content = Files.readAllBytes(deterministFilePath);
-            String hash = bytesToString(Hash.sha3(content));
+            String hash = bytesToString(Hash.sha256(content));
             log.info("The determinist file exists and its hash has been computed [chainTaskId:{}, hash:{}]", chainTaskId, hash);
             return hash;
         } else {
@@ -110,45 +110,31 @@ public class DockerComputationService {
 
         String resultFilePathName = resultService.getResultZipFilePath(chainTaskId);
         byte[] content = Files.readAllBytes(Paths.get(resultFilePathName));
-        String hash = bytesToString(Hash.sha3(content));
+        String hash = bytesToString(Hash.sha256(content));
         log.info("The hash of the result file will be used instead [chainTaskId:{}, hash:{}]", chainTaskId, hash);
         return hash;
     }
 
-    Signature getExecutionEnclaveSignature(String chainTaskId) throws IOException {
+    EnclaveSignature.Sign getExecutionEnclaveSignature(String chainTaskId) throws IOException {
         String executionEnclaveSignatureFileName = resultService.getResultFolderPath(chainTaskId) + "/iexec/" + EXECUTION_ENCLAVE_SIGNATURE_FILE_NAME;
         Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
-        Signature.SignatureBuilder signatureBuilder = Signature.builder();
 
         if (!executionEnclaveSignatureFilePath.toFile().exists()) {
             log.info("ExecutionEnclaveSignature file doesn't exist [chainTaskId:{}]", chainTaskId);
             return null;
         }
-        List<String> lines = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(executionEnclaveSignatureFilePath.toFile()))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                lines.add(line);
-            }
-        }
 
-        if (lines.size() < 6) {
-            log.info("ExecutionEnclaveSignature hasn't enought lines [chainTaskId:{}]", chainTaskId);
-            return null;
-        }
+        ObjectMapper mapper = new ObjectMapper();
+        EnclaveSignature enclaveSignature = mapper.readValue(executionEnclaveSignatureFilePath.toFile(), EnclaveSignature.class);
 
-        try {
-            signatureBuilder.signV(new BigInteger(lines.get(3)).toByteArray()[0]);
-            signatureBuilder.signR(BytesUtils.stringToBytes(lines.get(4)));
-            signatureBuilder.signS(BytesUtils.stringToBytes(lines.get(5)));
-        } catch (Exception e) {
+        if (enclaveSignature == null) {
             log.info("ExecutionEnclaveSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
             return null;
         }
 
-        Signature s = signatureBuilder.build();
+        EnclaveSignature.Sign s = enclaveSignature.getSign();
         log.info("ExecutionEnclaveSignature file exists [chainTaskId:{}, v:{}, r:{}, s:{}]",
-                chainTaskId, s.getSignV(), bytesToString(s.getSignR()), bytesToString(s.getSignS()));
+                chainTaskId, s.getV(), s.getR(), s.getS());
         return s;
     }
 

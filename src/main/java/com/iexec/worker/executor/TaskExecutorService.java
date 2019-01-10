@@ -119,10 +119,10 @@ public class TaskExecutorService {
                         isEnclaveSignatureValid,
                         resultHash,
                         resultSeal,
-                        BytesUtils.bytesToString(metadataResult.getExecutionEnclaveSignature().getSignR()),
-                        BytesUtils.bytesToString(metadataResult.getExecutionEnclaveSignature().getSignS()),
+                        metadataResult.getExecutionEnclaveSignature().getR(),
+                        metadataResult.getExecutionEnclaveSignature().getS(),
                         contribAuth.getEnclave());
-                return;
+                //return;
             }
 
         }

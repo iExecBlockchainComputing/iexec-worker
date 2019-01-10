@@ -54,14 +54,14 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Signature executionEnclaveSignature) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, EnclaveSignature.Sign executionEnclaveSignature) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
             return sendContributeTransaction(contribAuth, resultHash, resultSeal, executionEnclaveSignature);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Signature executionEnclaveSignature) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, EnclaveSignature.Sign executionEnclaveSignature) {
         BigInteger enclaveSignV = BigInteger.ZERO;
         byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
         byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
@@ -72,12 +72,9 @@ public class IexecHubService {
                 log.info("executionEnclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
             }
 
-            byte[] vBytes = new byte[1];
-            vBytes[0] = executionEnclaveSignature.getSignV();
-
-            enclaveSignV = new BigInteger(vBytes);
-            enclaveSignR = executionEnclaveSignature.getSignR();
-            enclaveSignS = executionEnclaveSignature.getSignS();
+            enclaveSignV = BigInteger.valueOf(executionEnclaveSignature.getV());
+            enclaveSignR = stringToBytes(executionEnclaveSignature.getR());
+            enclaveSignS = stringToBytes(executionEnclaveSignature.getS());
        
         }
 
