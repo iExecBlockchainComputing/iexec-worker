@@ -63,16 +63,6 @@ public class CustomDockerClient {
         }
     }
 
-    /*
-    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName) {
-        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
-        if (containerConfigBuilder != null){
-            return containerConfigBuilder.build();
-        }
-        return null;
-    }
-    */
-
     static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName, String... env) {
         ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
         if (containerConfigBuilder != null){
