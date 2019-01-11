@@ -11,6 +11,7 @@ import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Sign;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
@@ -53,30 +54,15 @@ public class IexecHubService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Optional<TeeSignature.Sign> optionalEnclaveSignature) throws ExecutionException, InterruptedException {
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Sign.SignatureData enclaveSignatureData) throws ExecutionException, InterruptedException {
         return CompletableFuture.supplyAsync(() -> {
             log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
-            return sendContributeTransaction(contribAuth, resultHash, resultSeal, optionalEnclaveSignature);
+            return sendContributeTransaction(contribAuth, resultHash, resultSeal, enclaveSignatureData);
         }, executor).get();
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Optional<TeeSignature.Sign> optionalEnclaveSignature) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Sign.SignatureData enclaveSignatureData) {
         IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
-        BigInteger enclaveSignV = BigInteger.ZERO;
-        byte[] enclaveSignR = stringToBytes(EMPTY_HEXASTRING_64);
-        byte[] enclaveSignS = stringToBytes(EMPTY_HEXASTRING_64);
-
-        if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())){
-            if (!optionalEnclaveSignature.isPresent()){
-                log.info("enclaveSignature should not be null, can't contribute [chainTaskId:{]", contribAuth.getChainTaskId());
-                return contributeEvent;
-            }
-
-            TeeSignature.Sign enclaveSignature = optionalEnclaveSignature.get();
-            enclaveSignV = BigInteger.valueOf(enclaveSignature.getV());
-            enclaveSignR = stringToBytes(enclaveSignature.getR());
-            enclaveSignS = stringToBytes(enclaveSignature.getS());
-        }
 
         try {
 
@@ -85,9 +71,9 @@ public class IexecHubService {
                     stringToBytes(resultHash),
                     stringToBytes(resultSeal),
                     contribAuth.getEnclave(),
-                    enclaveSignV,
-                    enclaveSignR,
-                    enclaveSignS,
+                    BigInteger.valueOf(enclaveSignatureData.getV()),
+                    enclaveSignatureData.getR(),
+                    enclaveSignatureData.getS(),
                     BigInteger.valueOf(contribAuth.getSignV()),
                     contribAuth.getSignR(),
                     contribAuth.getSignS());
