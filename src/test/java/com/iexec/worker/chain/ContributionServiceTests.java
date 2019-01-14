@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.web3j.crypto.Sign;
 
 import static com.iexec.worker.chain.ContributionService.computeResultHash;
 import static com.iexec.worker.chain.ContributionService.computeResultSeal;
@@ -63,8 +64,8 @@ public class ContributionServiceTests {
         String r = "0xfe0d8948ca8739b0926ed5729532686b283755a1c1e660abf1ebd6362d1545c8";
         String s = "0x14e53d7cd66ec0a1cfe330b1e16e460ae354d33fb84cf9d62213b10c109f0db5";
 
-        TeeSignature enclaveSignature = new TeeSignature("", "", "", v, r, s);
+        Sign.SignatureData enclaveSignature = new Sign.SignatureData((byte) v, BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s));
 
-        assertThat(contributionService.isEnclaveSignatureValid(resultHash, resultSeal , enclaveSignature.getSign(), enclaveAddress)).isTrue();
+        assertThat(contributionService.isEnclaveSignatureValid(resultHash, resultSeal , enclaveSignature, enclaveAddress)).isTrue();
     }
 }

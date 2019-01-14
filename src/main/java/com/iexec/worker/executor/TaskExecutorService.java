@@ -10,12 +10,16 @@ import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Sign;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.common.utils.BytesUtils.EMPTY_ADDRESS;
+import static com.iexec.common.utils.BytesUtils.EMPTY_HEXASTRING_64;
+import static com.iexec.common.utils.BytesUtils.stringToBytes;
 import static com.iexec.worker.chain.ContributionService.*;
 
 @Slf4j
@@ -93,21 +97,9 @@ public class TaskExecutorService {
             return;
         }
         String chainTaskId = contribAuth.getChainTaskId();
+        Sign.SignatureData enclaveSignatureData = contributionService.getEnclaveSignatureData(contribAuth, resultInfo);
 
-        if (resultInfo.getEnclaveSignature().isPresent()) {
-            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
-            String resultHash = computeResultHash(contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
-            boolean isEnclaveSignatureValid = contributionService.isEnclaveSignatureValid(resultHash,resultSeal,
-                    resultInfo.getEnclaveSignature().get(), contribAuth.getEnclave());
-
-            if (!isEnclaveSignatureValid) {
-                log.error("The worker cannot contribute, enclaveSignature not valid [chainTaskId:{}, " +
-                                "isEnclaveSignatureValid:{}]", chainTaskId, isEnclaveSignatureValid);
-                return;
-            }
-        }
-
-        if (!contributionService.canContribute(chainTaskId)) {
+        if (!contributionService.canContribute(chainTaskId) & enclaveSignatureData != null) {
             log.warn("Cant contribute [chainTaskId:{}]", chainTaskId);
             feignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE);
             return;
@@ -120,7 +112,7 @@ public class TaskExecutorService {
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        long contributionBlockNumber = contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), resultInfo.getEnclaveSignature());
+        long contributionBlockNumber = contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), enclaveSignatureData);
         if (contributionBlockNumber != 0) {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, contributionBlockNumber);
         } else {

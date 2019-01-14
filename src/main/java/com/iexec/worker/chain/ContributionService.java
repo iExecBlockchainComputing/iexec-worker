@@ -5,13 +5,16 @@ import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
-import com.iexec.worker.security.TeeSignature;
+import com.iexec.worker.result.ResultInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Sign;
 
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+
+import static com.iexec.common.utils.BytesUtils.*;
 
 @Slf4j
 @Service
@@ -21,6 +24,14 @@ public class ContributionService {
 
     public ContributionService(IexecHubService iexecHubService) {
         this.iexecHubService = iexecHubService;
+    }
+
+    public static String computeResultSeal(String walletAddress, String chainTaskId, String deterministHash) {
+        return HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
+    }
+
+    public static String computeResultHash(String chainTaskId, String deterministHash) {
+        return HashUtils.concatenateAndHash(chainTaskId, deterministHash);
     }
 
     public boolean isChainTaskInitialized(String chainTaskId) {
@@ -75,25 +86,57 @@ public class ContributionService {
 
     }
 
+    /*
+     * If TEE tag missing :              return empty enclaveSignature
+     * If TEE tag present :              return proper enclaveSignature
+     * If TEE tag present but problem :  return null
+     * */
+    public Sign.SignatureData getEnclaveSignatureData(ContributionAuthorization contribAuth, ResultInfo resultInfo) {
+        Sign.SignatureData enclaveSignatureData;
+        if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())) {
+            if (!resultInfo.getEnclaveSignature().isPresent()) {
+                log.info("Can't contribute (enclaveChalenge is set but enclaveSignature missing) [chainTaskId:{]", contribAuth.getChainTaskId());
+                return null;
+            }
+
+            enclaveSignatureData = new Sign.SignatureData(
+                    resultInfo.getEnclaveSignature().get().getV().byteValue(),
+                    stringToBytes(resultInfo.getEnclaveSignature().get().getR()),
+                    stringToBytes(resultInfo.getEnclaveSignature().get().getS())
+            );
+
+            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
+            String resultHash = computeResultHash(contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
+            boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
+                    enclaveSignatureData, contribAuth.getEnclave());
+
+            if (!isEnclaveSignatureValid) {
+                log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
+                        "isEnclaveSignatureValid:{}]", contribAuth.getChainTaskId(), isEnclaveSignatureValid);
+                return null;
+            }
+
+            return enclaveSignatureData;
+        }
+
+        return new Sign.SignatureData(
+                new Integer(0).byteValue(),
+                stringToBytes(EMPTY_HEXASTRING_64),
+                stringToBytes(EMPTY_HEXASTRING_64)
+        );
+    }
+
     // returns the block number of the contribution if successful, 0 otherwise
-    public long contribute(ContributionAuthorization contribAuth, String deterministHash, Optional<TeeSignature.Sign> optionalEnclaveSignature) {
+    public long contribute(ContributionAuthorization contribAuth, String deterministHash, Sign.SignatureData enclaveSignatureData) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         try {
-            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, resultHash, resultSeal, optionalEnclaveSignature);
+            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignatureData);
             return response.log.getBlockNumber().longValue();
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
         return 0;
-    }
-
-    public static String computeResultSeal(String walletAddress, String chainTaskId, String deterministHash) {
-        return HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
-    }
-
-    public static String computeResultHash(String chainTaskId, String deterministHash) {
-        return HashUtils.concatenateAndHash(chainTaskId, deterministHash);
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
@@ -106,11 +149,11 @@ public class ContributionService {
                 BytesUtils.bytesToString(hashTocheck), signerAddress);
     }
 
-    public boolean isEnclaveSignatureValid(String resulHash, String resultSeal, TeeSignature.Sign enclaveSignature, String signerAddress) {
+    public boolean isEnclaveSignatureValid(String resulHash, String resultSeal, Sign.SignatureData enclaveSignature, String signerAddress) {
         byte[] hash = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
         byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
 
-        return SignatureUtils.doesSignatureMatchesAddress(BytesUtils.stringToBytes(enclaveSignature.getR()), BytesUtils.stringToBytes(enclaveSignature.getS()),
+        return SignatureUtils.doesSignatureMatchesAddress(enclaveSignature.getR(), enclaveSignature.getS(),
                 BytesUtils.bytesToString(hashTocheck), signerAddress.toLowerCase());
     }
 
