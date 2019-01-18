@@ -169,12 +169,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private void abortConsensusReached(String chainTaskId) {
         cleanReplicate(chainTaskId);
-        feignClient.updateReplicateStatus(chainTaskId, ABORT_CONSENSUS_REACHED);
+        feignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
     }
 
     private void abortContributionTimeout(String chainTaskId) {
         cleanReplicate(chainTaskId);
-        feignClient.updateReplicateStatus(chainTaskId, ABORT_CONTRIBUTION_TIMEOUT);
+        feignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONTRIBUTION_TIMEOUT);
     }
 
     private void uploadResult(String chainTaskId) {
