@@ -17,10 +17,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
-// import static com.iexec.common.utils.BytesUtils.EMPTY_ADDRESS;
-// import static com.iexec.common.utils.BytesUtils.EMPTY_HEXASTRING_64;
-// import static com.iexec.common.utils.BytesUtils.stringToBytes;
-// import static com.iexec.worker.chain.ContributionService.*;
 
 @Slf4j
 @Service
