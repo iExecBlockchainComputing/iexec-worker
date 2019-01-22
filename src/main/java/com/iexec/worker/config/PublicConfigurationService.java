@@ -4,13 +4,36 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.worker.feign.CustomFeignClient;
 import org.springframework.stereotype.Service;
 
-@Service("publicConfigurationService")
+@Service
 public class PublicConfigurationService {
 
-    public long askForReplicatePeriod;
+    private PublicConfiguration publicConfiguration;
 
     public PublicConfigurationService(CustomFeignClient customFeignClient){
-        PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
-        askForReplicatePeriod = publicConfiguration.getAskForReplicatePeriod();
+        this.publicConfiguration = customFeignClient.getPublicConfiguration();
     }
+
+    public Integer getChainId() {
+        return publicConfiguration.getChainId();
+    }
+
+    public String getBlockchainURL() {
+        return publicConfiguration.getBlockchainURL();
+    }
+
+    public String getIexecHubAddress() {
+        return publicConfiguration.getIexecHubAddress();
+    }
+
+    public String getWorkerPoolAddress() {
+        return publicConfiguration.getWorkerPoolAddress();
+    }
+    public String getSchedulerPublicAddress() {
+        return publicConfiguration.getSchedulerPublicAddress();
+    }
+
+    public long getAskForReplicatePeriod() {
+        return publicConfiguration.getAskForReplicatePeriod();
+    }
+
 }
