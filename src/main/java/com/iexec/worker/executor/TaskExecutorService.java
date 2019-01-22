@@ -17,10 +17,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
-import static com.iexec.common.utils.BytesUtils.EMPTY_ADDRESS;
-import static com.iexec.common.utils.BytesUtils.EMPTY_HEXASTRING_64;
-import static com.iexec.common.utils.BytesUtils.stringToBytes;
-import static com.iexec.worker.chain.ContributionService.*;
 
 @Slf4j
 @Service
@@ -45,7 +41,7 @@ public class TaskExecutorService {
         this.contributionService = contributionService;
         this.feignClient = feignClient;
 
-        maxNbExecutions = Runtime.getRuntime().availableProcessors() / 2;
+        maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
     }
 
@@ -74,6 +70,7 @@ public class TaskExecutorService {
                     feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
                 } else {
                     feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
+                    return new ResultInfo();
                 }
 
                 feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
