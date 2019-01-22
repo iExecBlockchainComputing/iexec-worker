@@ -12,7 +12,6 @@ import org.web3j.crypto.Sign;
 
 import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 import static com.iexec.common.utils.BytesUtils.*;
 
@@ -128,15 +127,19 @@ public class ContributionService {
 
     // returns the block number of the contribution if successful, 0 otherwise
     public long contribute(ContributionAuthorization contribAuth, String deterministHash, Sign.SignatureData enclaveSignatureData) {
+        long contributeBlock = 0;
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
-        try {
-            IexecHubABILegacy.TaskContributeEventResponse response = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignatureData);
-            return response.log.getBlockNumber().longValue();
-        } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
+        IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignatureData);
+        if (contributeResponse != null) {
+            // it seems response.log.getBlockNumber() could be null (issue in https://github.com/web3j/web3j should be opened)
+            if (contributeResponse.log.getBlockNumber() != null) {
+                contributeBlock = contributeResponse.log.getBlockNumber().longValue();
+            } else {
+                contributeBlock = iexecHubService.getLastBlock();
+            }
         }
-        return 0;
+        return contributeBlock;
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
