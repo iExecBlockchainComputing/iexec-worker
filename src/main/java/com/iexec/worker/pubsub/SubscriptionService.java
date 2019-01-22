@@ -59,20 +59,19 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
+        url = "ws://" + coreHost + ":" + corePort + "/connect";
     }
 
     @PostConstruct
     private void run() {
-        WebSocketClient webSocketClient = new StandardWebSocketClient();
-        stompClient = new WebSocketStompClient(webSocketClient);
-        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-        url = "ws://" + coreHost + ":" + corePort + "/connect";
-
         this.connectStomp();
     }
 
     private void connectStomp() {
+        WebSocketClient webSocketClient = new StandardWebSocketClient();
+        stompClient = new WebSocketStompClient(webSocketClient);
+        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
         stompClient.connect(url, this);
         log.info("Connect STOMP [isRunning: {}]", stompClient.isRunning());
     }
