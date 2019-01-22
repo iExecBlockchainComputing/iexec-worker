@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Service
@@ -84,18 +83,21 @@ public class RevealService {
 
     // returns the block number of the reveal if successful, 0 otherwise
     public long reveal(String chainTaskId) {
+        long revealBlock = 0;
         ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
         if (resultInfo != null && resultInfo.getDeterministHash() != null) {
             String deterministHash = resultInfo.getDeterministHash();
-            try {
-                IexecHubABILegacy.TaskRevealEventResponse response = iexecHubService.reveal(chainTaskId, deterministHash);
-                return response.log.getBlockNumber().longValue();
-            } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
+            IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, deterministHash);
+            if (revealResponse != null) {
+                // it seems response.log.getBlockNumber() could be null (issue in https://github.com/web3j/web3j should be opened)
+                if (revealResponse.log.getBlockNumber() != null) {
+                    revealBlock = revealResponse.log.getBlockNumber().longValue();
+                } else {
+                    revealBlock = iexecHubService.getLastBlock();
+                }
             }
         }
-
-        return 0;
+        return revealBlock;
     }
 
     public boolean hasEnoughGas() {

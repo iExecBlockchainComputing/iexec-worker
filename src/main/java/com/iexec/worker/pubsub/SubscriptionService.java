@@ -44,6 +44,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
+    private WebSocketStompClient stompClient;
+    private String url;
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
@@ -65,35 +67,40 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
+        url = "ws://" + coreHost + ":" + corePort + "/connect";
     }
 
     @PostConstruct
     private void run() {
+        this.connectStomp();
+    }
+
+    private void connectStomp() {
         WebSocketClient webSocketClient = new StandardWebSocketClient();
-        WebSocketStompClient stompClient = new WebSocketStompClient(webSocketClient);
+        stompClient = new WebSocketStompClient(webSocketClient);
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-
-        String url = "ws://" + coreHost + ":" + corePort + "/connect";
         stompClient.connect(url, this);
+        log.info("Connect STOMP [isRunning: {}]", stompClient.isRunning());
     }
 
     @Override
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-        log.info("SubscriptionService set up [session: {}]", session.getSessionId());
+        log.info("SubscriptionService set up [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
         this.session = session;
     }
 
     @Override
     public void handleException(StompSession session, @Nullable StompCommand command,
                                 StompHeaders headers, byte[] payload, Throwable exception) {
-        log.info("Received handleException [session: {}]", session.getSessionId());
+        log.info("Received handleException [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+        this.connectStomp();
     }
 
     @Override
     public void handleTransportError(StompSession session, Throwable exception) {
-        log.info("Received handleTransportError [session: {}]", session.getSessionId());
-
+        log.info("Received handleTransportError [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+        this.connectStomp();
     }
 
     public void subscribeToTaskNotifications(String chainTaskId) {
@@ -135,7 +142,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     break;
 
                 case PLEASE_REVEAL:
-                reveal(chainTaskId);
+                    reveal(chainTaskId);
                     break;
 
                 case PLEASE_UPLOAD:
