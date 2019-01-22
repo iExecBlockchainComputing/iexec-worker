@@ -88,7 +88,8 @@ public class IexecHubService {
                 contributeEvent = iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
-            log.error("Failed contribute [chainTaskId:{}]", contribAuth.getChainTaskId());
+            log.error("Failed contribute [chainTaskId:{}, exception:{}]", contribAuth.getChainTaskId(), e.getMessage());
+            e.printStackTrace();
         }
         return contributeEvent;
     }
@@ -118,7 +119,8 @@ public class IexecHubService {
                 revealEvent = iexecHub.getTaskRevealEvents(revealReceipt).get(0);
             }
         } catch (Exception e) {
-            log.error("Reveal Failed [chainTaskId:{}]", chainTaskId);
+            log.error("Reveal Failed [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
+            e.printStackTrace();
         }
         return revealEvent;
     }

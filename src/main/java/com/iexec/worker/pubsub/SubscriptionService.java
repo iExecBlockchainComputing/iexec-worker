@@ -92,7 +92,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     @Override
     public void handleTransportError(StompSession session, Throwable exception) {
         log.info("Received handleTransportError [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
-        stompClient.connect(url, this);
         this.connectStomp();
     }
 
