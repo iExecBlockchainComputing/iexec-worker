@@ -93,7 +93,10 @@ public class RevealService {
                 if (revealResponse.log.getBlockNumber() != null) {
                     revealBlock = revealResponse.log.getBlockNumber().longValue();
                 } else {
-                    revealBlock = iexecHubService.getLastBlock();
+                    log.error("RevealTransactionReceipt received but blockNumber is null inside [chainTaskId:{}, " +
+                                    "receiptBlockNumber:{}, receiptLog:{}, block:{}]", chainTaskId,
+                            revealResponse.log.getBlockNumber(), revealResponse.log.toString(), iexecHubService.getLastBlock());
+                    revealBlock = -1;
                 }
             }
         }
