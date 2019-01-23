@@ -136,7 +136,10 @@ public class ContributionService {
             if (contributeResponse.log.getBlockNumber() != null) {
                 contributeBlock = contributeResponse.log.getBlockNumber().longValue();
             } else {
-                contributeBlock = iexecHubService.getLastBlock();
+                log.error("ContributeTransactionReceipt received but blockNumber is null inside [chainTaskId:{}, " +
+                        "receiptBlockNumber:{}, receiptLog:{}, block:{}]", contribAuth.getChainTaskId(),
+                        contributeResponse.log.getBlockNumber(), contributeResponse.log.toString(), iexecHubService.getLastBlock());
+                contributeBlock = -1;
             }
         }
         return contributeBlock;
