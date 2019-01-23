@@ -1,7 +1,8 @@
 package com.iexec.worker.feign;
 
-
 import com.iexec.common.result.ResultModel;
+import com.iexec.common.result.eip712.Eip712Challenge;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

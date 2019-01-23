@@ -8,6 +8,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
+import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.worker.result.Eip712ChallengeService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
