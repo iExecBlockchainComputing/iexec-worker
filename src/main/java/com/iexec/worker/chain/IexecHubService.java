@@ -2,10 +2,10 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.*;
-import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,17 +39,14 @@ public class IexecHubService {
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
-                           CustomFeignClient customFeignClient) {
+                           CustomFeignClient customFeignClient,
+                           PublicConfigurationService publicConfigurationService) {
         this.credentialsService = credentialsService;
-        PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
-        this.web3j = ChainUtils.getWeb3j(publicConfiguration.getBlockchainURL());
-        this.iexecHub = ChainUtils.loadHubContract(
-                credentialsService.getCredentials(),
-                this.web3j,
-                publicConfiguration.getIexecHubAddress());
+        this.web3j = ChainUtils.getWeb3j(publicConfigurationService.getBlockchainURL());
+        this.iexecHub = ChainUtils.loadHubContract(credentialsService.getCredentials(),
+                this.web3j, publicConfigurationService.getIexecHubAddress());
         this.iexecClerk = ChainUtils.loadClerkContract(credentialsService.getCredentials(),
-                this.web3j,
-                publicConfiguration.getIexecHubAddress());
+                this.web3j, publicConfigurationService.getIexecHubAddress());
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 

@@ -4,9 +4,12 @@ import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
+import com.iexec.common.result.eip712.Eip712Challenge;
+import com.iexec.worker.result.Eip712ChallengeService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
@@ -37,6 +40,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private ResultService resultService;
     private RevealService revealService;
     private CustomFeignClient feignClient;
+    private Eip712ChallengeService eip712ChallengeService;
+    private PublicConfigurationService publicConfigurationService;
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
@@ -48,11 +53,15 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                ResultRepoClient resultRepoClient,
                                ResultService resultService,
                                RevealService revealService,
-                               CustomFeignClient feignClient) {
+                               CustomFeignClient feignClient,
+                               Eip712ChallengeService eip712ChallengeService,
+                               PublicConfigurationService publicConfigurationService) {
         this.resultRepoClient = resultRepoClient;
         this.resultService = resultService;
         this.revealService = revealService;
         this.feignClient = feignClient;
+        this.eip712ChallengeService = eip712ChallengeService;
+        this.publicConfigurationService = publicConfigurationService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
@@ -85,7 +94,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     @Override
     public void handleException(StompSession session, @Nullable StompCommand command,
                                 StompHeaders headers, byte[] payload, Throwable exception) {
-        log.info("Received handleException [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+        log.error("Received handleException [session: {}, isConnected: {}, Exception: {}]",
+                session.getSessionId(), session.isConnected(), exception.getMessage());
         this.connectStomp();
     }
 
@@ -94,7 +104,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         log.info("Received handleTransportError [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
         this.connectStomp();
     }
-
 
     public void subscribeToTaskNotifications(String chainTaskId) {
         if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
@@ -185,7 +194,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private void uploadResult(String chainTaskId) {
         feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
-        resultRepoClient.addResult(resultService.getResultModelWithZip(chainTaskId));
+        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+        String authorizationToken = eip712ChallengeService.buildAuthorizationToken(eip712Challenge);
+        resultRepoClient.uploadResult(authorizationToken, resultService.getResultModelWithZip(chainTaskId));
         feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
     }
 
