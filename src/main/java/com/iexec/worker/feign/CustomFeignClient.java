@@ -166,7 +166,7 @@ public class CustomFeignClient {
         if (currentToken.isEmpty()) {
             String workerAddress = credentialsService.getCredentials().getAddress();
             String challenge = getChallenge(workerAddress);
-            currentToken = TOKEN_PREFIX + login(workerAddress, signatureService.createSignature(challenge));
+            currentToken = TOKEN_PREFIX + login(workerAddress, signatureService.hashAndSign(challenge));
         }
         return currentToken;
     }
