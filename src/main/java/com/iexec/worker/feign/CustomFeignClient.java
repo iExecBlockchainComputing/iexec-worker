@@ -1,5 +1,6 @@
 package com.iexec.worker.feign;
 
+import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
@@ -109,22 +110,27 @@ public class CustomFeignClient {
     }
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
-        updateReplicateStatus(chainTaskId, status, 0L);
+        updateReplicateStatus(chainTaskId, status, null);
     }
 
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, long blockNumber) {
+    // @Retryable()
+    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ChainReceipt receipt) {
+        log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
+
         try {
-            log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-            coreTaskClient.updateReplicateStatus(chainTaskId, status, blockNumber, getToken());
+            coreTaskClient.updateReplicateStatus(chainTaskId, status, receipt, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to updateReplicateStatus, will retry [instance:{}]", url);
                 sleep();
-                updateReplicateStatus(chainTaskId, status, blockNumber);
-            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+                updateReplicateStatus(chainTaskId, status, receipt);
+                return;
+            }
+
+            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
                 log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-                coreTaskClient.updateReplicateStatus(chainTaskId, status, blockNumber, getToken());
+                coreTaskClient.updateReplicateStatus(chainTaskId, status, receipt, getToken());
             }
         }
     }

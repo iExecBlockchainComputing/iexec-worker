@@ -1,5 +1,6 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
 import com.iexec.worker.chain.RevealService;
@@ -174,12 +175,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
 
         feignClient.updateReplicateStatus(chainTaskId, REVEALING);
-        long revealBlockNumber = revealService.reveal(chainTaskId);
-        if (revealBlockNumber != 0) {
-            feignClient.updateReplicateStatus(chainTaskId, REVEALED, revealBlockNumber);
-        } else {
+        ChainReceipt chainReceipt = revealService.reveal(chainTaskId);
+        if (chainReceipt == null) {
             feignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
+            return;
         }
+
+        feignClient.updateReplicateStatus(chainTaskId, REVEALED, chainReceipt);
     }
 
     private void abortConsensusReached(String chainTaskId) {
