@@ -8,6 +8,7 @@ import com.iexec.common.security.Signature;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.utils.Numeric;
 
 @Service
 @Slf4j
@@ -23,16 +24,15 @@ public class Eip712ChallengeService {
         String challengeString = Eip712ChallengeUtils.getEip712ChallengeString(eip712Challenge);
 
         Signature signature = signatureService.createSignature(challengeString);
-        String r = BytesUtils.bytesToString(signature.getSignR());
-        String s = BytesUtils.bytesToString(signature.getSignS());
-        String v = BytesUtils.bytesToString(new byte[] {signature.getSignV()});
 
-        String signatureString = String.join("", "Ox", r, s, v);
+        String r = Numeric.toHexString(signature.getSignR());
+        String s = Numeric.toHexString(signature.getSignS());
+        String v = Integer.toHexString(signature.getSignV());
+
+        String signatureString = String.join("", r, Numeric.cleanHexPrefix(s), v);
 
         String authoriaztionToken = String.join("_", challengeString, signatureString, signature.getWorkerWallet());
 
         return authoriaztionToken;
-
     }
-
 }

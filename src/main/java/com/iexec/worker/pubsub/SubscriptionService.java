@@ -94,7 +94,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     @Override
     public void handleException(StompSession session, @Nullable StompCommand command,
                                 StompHeaders headers, byte[] payload, Throwable exception) {
-        log.info("Received handleException [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+        log.error("Received handleException [session: {}, isConnected: {}, Exception: {}]",
+                session.getSessionId(), session.isConnected(), exception.getMessage());
         this.connectStomp();
     }
 
