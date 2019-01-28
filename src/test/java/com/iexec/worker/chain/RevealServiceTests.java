@@ -367,18 +367,30 @@ public class RevealServiceTests {
     public void shouldNotRevealWithEmptyMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getResultInfo(chainTaskId)).thenReturn(new ResultInfo());
-        assertThat(revealService.reveal(chainTaskId)).isEqualTo(0);
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(null);
     }
 
     @Test
     public void shouldNotRevealWithNullMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getResultInfo(chainTaskId)).thenReturn(null);
-        assertThat(revealService.reveal(chainTaskId)).isEqualTo(0);
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(null);
+    }
+
+    @Test(expected = Exception.class)
+    public void shouldTriggerExceptionIfTransactionFails() throws Exception {
+        String deterministHash = Hash.sha3("Hello");
+        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
+
+        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
+                .deterministHash(deterministHash)
+                .build());
+        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new Exception());
+        revealService.reveal(chainTaskId);
     }
 
     @Test
-    public void shouldTriggerExceptionIfTransactionFails() throws Exception {
+    public void shouldRevealIfTransactionSucceeds() throws Exception {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
@@ -393,18 +405,7 @@ public class RevealServiceTests {
                         "blockHash", "0x200", "address", "data", "type", new ArrayList<String>());
 
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(response);
-        assertThat(revealService.reveal(chainTaskId)).isEqualTo(512);
-    }
+        assertThat(revealService.reveal(chainTaskId).getBlockNumber()).isEqualTo(512);
 
-    @Test(expected = Exception.class)
-    public void shouldRevealIfTransactionSucceeds() throws Exception {
-        String deterministHash = Hash.sha3("Hello");
-        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-
-        when(resultService.getResultInfo(chainTaskId)).thenReturn(ResultInfo.builder()
-                .deterministHash(deterministHash)
-                .build());
-        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new Exception());
-        revealService.reveal(chainTaskId);
     }
 }
