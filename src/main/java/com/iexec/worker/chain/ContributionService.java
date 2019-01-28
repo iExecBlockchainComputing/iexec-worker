@@ -137,23 +137,8 @@ public class ContributionService {
             return null;
         }
 
-        BigInteger contributeBlock = contributeResponse.log.getBlockNumber();
-        String txHash = contributeResponse.log.getTransactionHash();
- 
-        // it seems response.log.getBlockNumber() could be null (issue in https://github.com/web3j/web3j should be opened)
-        if (contributeBlock == null && txHash == null) {
-            log.error("ContributeTransactionReceipt received but blockNumber and txHash were both null inside "
-                    + "[chainTaskId:{}, receiptLog:{}, lastBlock:{}]", contribAuth.getChainTaskId(),
-                    contributeResponse.log.toString(), iexecHubService.getLastBlock());
-            return ChainReceipt.builder().build();            
-        }
-
-        long blockNumber = contributeBlock != null ? contributeBlock.longValue() : 0;
-
-        return ChainReceipt.builder()
-                .blockNumber(blockNumber)
-                .txHash(txHash)
-                .build();
+        return ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
+                iexecHubService.getLastBlock());
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {

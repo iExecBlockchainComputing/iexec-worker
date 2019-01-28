@@ -5,6 +5,7 @@ import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.ChainUtils;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.result.ResultInfo;
@@ -93,30 +94,13 @@ public class RevealService {
 
         String deterministHash = resultInfo.getDeterministHash();
         IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, deterministHash);
-        
+
         if (revealResponse == null) {
             log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
             return null;
         }
 
-        BigInteger revealBlock = revealResponse.log.getBlockNumber();
-        String txHash = revealResponse.log.getTransactionHash();
-
-        // it seems response.log.getBlockNumber() could be null (issue in https://github.com/web3j/web3j should be opened)
-        if (revealBlock == null && txHash == null) {
-            log.warn("RevealTransactionReceipt received but blockNumber and txHash were both null inside "
-                    + "[chainTaskId:{}, receiptLog:{}, lastBlock:{}]", chainTaskId, revealResponse.log.toString(),
-                    iexecHubService.getLastBlock());
-
-            return ChainReceipt.builder().build();            
-        }
-
-        long blockNumber = revealBlock != null ? revealBlock.longValue() : 0;
-
-        return ChainReceipt.builder()
-                .blockNumber(blockNumber)
-                .txHash(txHash)
-                .build();
+        return ChainUtils.buildChainReceipt(revealResponse.log, chainTaskId, iexecHubService.getLastBlock());
     }
 
     public boolean hasEnoughGas() {
