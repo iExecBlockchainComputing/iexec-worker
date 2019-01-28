@@ -8,6 +8,8 @@ import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @FeignClient(name = "CoreWorkerClient", url = "http://${core.host}:${core.port}")
 public interface CoreWorkerClient {
 
@@ -23,6 +25,9 @@ public interface CoreWorkerClient {
     @RequestMapping(method = RequestMethod.POST, path = "/workers/register")
     void registerWorker(@RequestHeader("Authorization") String bearerToken,
                         @RequestBody WorkerConfigurationModel model) throws FeignException;
+
+    @RequestMapping(method = RequestMethod.GET, path = "/workers/currenttasks")
+    List<String> getCurrentTasks(@RequestHeader("Authorization") String bearerToken) throws FeignException;
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/login")
     String login(@RequestParam(name = "walletAddress") String walletAddress,

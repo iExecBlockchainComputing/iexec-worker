@@ -13,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
+
 @Service
 @Slf4j
 public class CustomFeignClient {
@@ -92,6 +95,22 @@ public class CustomFeignClient {
                 coreWorkerClient.registerWorker(getToken(), model);
             }
         }
+    }
+
+    public List<String> getTasksInProgress(){
+        try {
+            return coreWorkerClient.getCurrentTasks(getToken());
+        } catch (FeignException e) {
+            if (e.status() == 0) {
+                log.error("Failed to get tasks in progress, will retry [instance:{}]", url);
+                sleep();
+            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+                generateNewToken();
+                return coreWorkerClient.getCurrentTasks(getToken());
+            }
+        }
+
+        return Collections.emptyList();
     }
 
     public ContributionAuthorization getAvailableReplicate() {

@@ -6,6 +6,7 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import java.util.Arrays;
+import java.util.List;
 
 @SpringBootApplication
 @EnableFeignClients
@@ -39,6 +43,9 @@ public class Application implements CommandLineRunner {
     @Autowired
     private IexecHubService iexecHubService;
 
+    @Autowired
+    private SubscriptionService subscriptionService;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -60,12 +67,18 @@ public class Application implements CommandLineRunner {
         log.info("Version of the core [version:{}]", feignClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", feignClient.getPublicConfiguration());
 
-        if (!iexecHubService.hasEnoughGas()){
+        if (!iexecHubService.hasEnoughGas()) {
             System.exit(0);
         }
 
-        log.info("Registering the worker to the core [worker:{}]", model);
+        log.info("Register the worker to the core [worker:{}]", model);
         feignClient.registerWorker(model);
+
+        List<String> tasksInProgress = feignClient.getTasksInProgress();
+        log.info("Get tasks in progress [tasks:{}]", Arrays.toString(tasksInProgress.toArray()));
+        for (String chainTaskId : tasksInProgress) {
+            subscriptionService.subscribeToTaskNotifications(chainTaskId);
+        }
     }
 
 
