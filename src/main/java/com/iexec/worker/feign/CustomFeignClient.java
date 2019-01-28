@@ -69,17 +69,19 @@ public class CustomFeignClient {
         return null;
     }
 
-    public void ping() {
+    public String ping() {
         try {
-            coreWorkerClient.ping(getToken());
+            return coreWorkerClient.ping(getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to ping [instance:{}]", url);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                coreWorkerClient.ping(getToken());
+                return coreWorkerClient.ping(getToken());
             }
         }
+
+        return "";
     }
 
     public void registerWorker(WorkerConfigurationModel model) {

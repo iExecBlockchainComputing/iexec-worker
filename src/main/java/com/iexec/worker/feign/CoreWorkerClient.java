@@ -20,7 +20,7 @@ public interface CoreWorkerClient {
     PublicConfiguration getPublicConfiguration() throws FeignException;
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/ping")
-    void ping(@RequestHeader("Authorization") String bearerToken) throws FeignException;
+    String ping(@RequestHeader("Authorization") String bearerToken) throws FeignException;
 
     @RequestMapping(method = RequestMethod.POST, path = "/workers/register")
     void registerWorker(@RequestHeader("Authorization") String bearerToken,
