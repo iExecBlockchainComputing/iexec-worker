@@ -116,6 +116,11 @@ public class CustomFeignClient {
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ChainReceipt chainReceipt) {
         log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
 
+        // chainReceipt should not be null since it goes in the request body
+        if (chainReceipt == null) {
+            chainReceipt = ChainReceipt.builder().blockNumber(-1).build();
+        }
+
         try {
             coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken(), chainReceipt);
         } catch (FeignException e) {
