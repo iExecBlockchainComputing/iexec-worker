@@ -118,7 +118,7 @@ public class CustomFeignClient {
 
         // chainReceipt should not be null since it goes in the request body
         if (chainReceipt == null) {
-            chainReceipt = ChainReceipt.builder().blockNumber(-1).build();
+            chainReceipt = ChainReceipt.builder().build();
         }
 
         try {
