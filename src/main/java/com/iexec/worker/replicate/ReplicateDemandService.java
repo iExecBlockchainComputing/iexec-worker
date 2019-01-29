@@ -6,6 +6,7 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.tee.TeeUtils;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -16,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.web3j.utils.Numeric;
 
+import javax.xml.bind.DatatypeConverter;
 import java.util.Optional;
 
 
@@ -104,7 +107,7 @@ public class ReplicateDemandService {
         return Optional.of(AvailableReplicateModel.builder()
                 .contributionAuthorization(contribAuth)
                 .appType(DappType.DOCKER)
-                .appUri(chainDeal.getChainApp().getParams().getUri())
+                .appUri(BytesUtils.hexStringToAscii(chainDeal.getChainApp().getUri()))
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
                 .timeRef(chainDeal.getChainCategory().getMaxExecutionTime())
                 .isTrustedExecution(TeeUtils.isTrustedExecutionTag(chainDeal.getTag()))
