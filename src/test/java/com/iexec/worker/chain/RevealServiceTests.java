@@ -367,14 +367,14 @@ public class RevealServiceTests {
     public void shouldNotRevealWithEmptyMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getResultInfo(chainTaskId)).thenReturn(new ResultInfo());
-        assertThat(revealService.reveal(chainTaskId)).isEqualTo(null);
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(Optional.empty());
     }
 
     @Test
     public void shouldNotRevealWithNullMetaDataResult() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(resultService.getResultInfo(chainTaskId)).thenReturn(null);
-        assertThat(revealService.reveal(chainTaskId)).isEqualTo(null);
+        assertThat(revealService.reveal(chainTaskId)).isEqualTo(Optional.empty());
     }
 
     @Test(expected = Exception.class)
@@ -405,7 +405,7 @@ public class RevealServiceTests {
                         "blockHash", "0x200", "address", "data", "type", new ArrayList<String>());
 
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(response);
-        assertThat(revealService.reveal(chainTaskId).getBlockNumber()).isEqualTo(512);
+        assertThat(revealService.reveal(chainTaskId).get().getBlockNumber()).isEqualTo(512);
 
     }
 }
