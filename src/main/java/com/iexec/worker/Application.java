@@ -85,7 +85,7 @@ public class Application implements CommandLineRunner {
         }
 
         // clean the results that are not in the list of tasks in progress
-        List<String> resultsInWorker = resultService.getAllChainTaskIdInResultFolder();
+        List<String> resultsInWorker = resultService.getAllChainTaskIdsInResultFolder();
         for(String chainTaskId:resultsInWorker){
             if(!tasksInProgress.contains(chainTaskId)) {
                 resultService.removeResult(chainTaskId);

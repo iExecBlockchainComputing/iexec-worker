@@ -79,7 +79,7 @@ public class ResultService {
         return configurationService.getResultBaseDir() + File.separator + chainTaskId + ".zip";
     }
 
-    public List<String> getAllChainTaskIdInResultFolder(){
+    public List<String> getAllChainTaskIdsInResultFolder(){
         File resultsFolder = new File(configurationService.getResultBaseDir());
         String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
         return Arrays.asList(chainTaskIdFolders);
