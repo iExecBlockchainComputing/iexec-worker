@@ -3,6 +3,7 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Sign;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -96,9 +98,15 @@ public class TaskExecutorService {
         String chainTaskId = contribAuth.getChainTaskId();
         Sign.SignatureData enclaveSignatureData = contributionService.getEnclaveSignatureData(contribAuth, resultInfo);
 
-        if (!contributionService.canContribute(chainTaskId) & enclaveSignatureData != null) {
-            log.warn("Cant contribute [chainTaskId:{}]", chainTaskId);
-            feignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE);
+        Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
+        if (!canContributeStatus.isPresent()){
+            log.error("canContributeStatus should not be empty (getChainTask issue) [chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
+        feignClient.updateReplicateStatus(chainTaskId, canContributeStatus.get());
+        if (!canContributeStatus.get().equals(CAN_CONTRIBUTE) & enclaveSignatureData != null) {
+            log.warn("Cant contribute [chainTaskId:{}, status:{}]", chainTaskId, canContributeStatus.get());
             return;
         }
 
