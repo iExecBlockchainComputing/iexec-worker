@@ -18,6 +18,8 @@ public class CoreConfigurationService {
 
     private URL url;
 
+    private String coreSessionId;
+
     @PostConstruct
     public void run() throws MalformedURLException {
         url = new URL("http://" + coreHost + ":" + corePort);
@@ -40,5 +42,13 @@ public class CoreConfigurationService {
 
     public int getPort() {
         return url.getPort();
+    }
+
+    public String getCoreSessionId() {
+        return coreSessionId;
+    }
+
+    public void setCoreSessionId(String coreSessionId) {
+        this.coreSessionId = coreSessionId;
     }
 }

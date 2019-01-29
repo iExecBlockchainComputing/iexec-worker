@@ -12,3 +12,8 @@ worker:
 wallet:
   encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
+
+management:
+  endpoint:
+    restart:
+      enabled: true
