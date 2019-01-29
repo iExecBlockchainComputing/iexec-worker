@@ -91,7 +91,5 @@ public class Application implements CommandLineRunner {
                 resultService.removeResult(chainTaskId);
             }
         }
-
-        // ask what to do with other tasks
     }
 }
