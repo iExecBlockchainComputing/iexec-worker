@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -75,5 +77,11 @@ public class ResultService {
 
     public String getResultZipFilePath(String chainTaskId){
         return configurationService.getResultBaseDir() + File.separator + chainTaskId + ".zip";
+    }
+
+    public List<String> getAllChainTaskIdsInResultFolder(){
+        File resultsFolder = new File(configurationService.getResultBaseDir());
+        String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
+        return Arrays.asList(chainTaskIdFolders);
     }
 }
