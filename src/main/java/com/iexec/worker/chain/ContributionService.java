@@ -2,6 +2,7 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
@@ -37,52 +38,57 @@ public class ContributionService {
         return iexecHubService.getChainTask(chainTaskId).isPresent();
     }
 
-    public boolean canContribute(String chainTaskId) {
+    public Optional<ReplicateStatus> getCanContributeStatus(String chainTaskId) {
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
-            return false;
+            return Optional.empty();
         }
         ChainTask chainTask = optionalChainTask.get();
 
+        if (!hasEnoughtStakeToContribute(chainTask)){
+            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_STAKE_TOO_LOW);
+        }
+
+        if (!isTaskActiveToContribute(chainTask)){
+            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_TASK_NOT_ACTIVE);
+        }
+
+        if (!isBeforeContributionDeadlineToContribute(chainTask)){
+            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_AFTER_DEADLINE);
+        }
+
+        if (!isContributionUnsetToContribute(chainTask)){
+            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CONTRIBUTION_ALREADY_SET);
+        }
+
+        return Optional.of(ReplicateStatus.CAN_CONTRIBUTE);
+    }
+
+
+    private boolean hasEnoughtStakeToContribute(ChainTask chainTask) {
         Optional<ChainAccount> optionalChainAccount = iexecHubService.getChainAccount();
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
         if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()) {
             return false;
         }
-        if (optionalChainAccount.get().getDeposit() < optionalChainDeal.get().getWorkerStake().longValue()) {
-            log.error("Stake to low to contribute [chainTaskId:{}, current:{}, required:{}]",
-                    chainTaskId, optionalChainAccount.get().getDeposit(),
-                    optionalChainDeal.get().getWorkerStake().longValue());
-            return false;
-        }
+        return optionalChainAccount.get().getDeposit() >= optionalChainDeal.get().getWorkerStake().longValue();
+    }
 
+    private boolean isTaskActiveToContribute(ChainTask chainTask) {
+        return chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
+    }
 
-        boolean isTaskActive = chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
-        boolean willNeverBeAbleToContribute = chainTask.getStatus().equals(ChainTaskStatus.REVEALING)
-                || chainTask.getStatus().equals(ChainTaskStatus.COMPLETED)
-                || chainTask.getStatus().equals(ChainTaskStatus.FAILLED);
+    private boolean isBeforeContributionDeadlineToContribute(ChainTask chainTask) {
+        return new Date().getTime() < chainTask.getContributionDeadline();
+    }
 
-        boolean contributionDeadlineReached = chainTask.getContributionDeadline() < new Date().getTime();
-
-        Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
+    private boolean isContributionUnsetToContribute(ChainTask chainTask) {
+        Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTask.getChainTaskId());
         if (!optionalContribution.isPresent()) {
             return false;
         }
         ChainContribution chainContribution = optionalContribution.get();
-        boolean isContributionUnset = chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
-
-        if (isTaskActive && !contributionDeadlineReached && isContributionUnset && !willNeverBeAbleToContribute) {
-            log.info("Can contribute [chainTaskId:{}]", chainTaskId);
-
-            return true;
-        } else {
-            log.warn("Can't contribute [chainTaskId:{}, isTaskActive:{}, contributionDeadlineReached:{}, " +
-                            "isContributionUnset:{}, chainTaskStatus:{}], willNeverBeAbleToContribute:{}",
-                    chainTaskId, isTaskActive, contributionDeadlineReached, isContributionUnset, chainTask.getStatus(),
-                    willNeverBeAbleToContribute);
-            return false;
-        }
-
+        return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
     }
 
     /*
@@ -137,7 +143,7 @@ public class ContributionService {
                 contributeBlock = contributeResponse.log.getBlockNumber().longValue();
             } else {
                 log.error("ContributeTransactionReceipt received but blockNumber is null inside [chainTaskId:{}, " +
-                        "receiptBlockNumber:{}, receiptLog:{}, block:{}]", contribAuth.getChainTaskId(),
+                                "receiptBlockNumber:{}, receiptLog:{}, block:{}]", contribAuth.getChainTaskId(),
                         contributeResponse.log.getBlockNumber(), contributeResponse.log.toString(), iexecHubService.getLastBlock());
                 contributeBlock = -1;
             }
