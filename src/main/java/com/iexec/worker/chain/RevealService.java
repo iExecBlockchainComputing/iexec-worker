@@ -2,8 +2,10 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
+import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.ChainUtils;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.result.ResultInfo;
@@ -11,6 +13,7 @@ import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
 
@@ -81,26 +84,23 @@ public class RevealService {
         return ret;
     }
 
-    // returns the block number of the reveal if successful, 0 otherwise
-    public long reveal(String chainTaskId) {
-        long revealBlock = 0;
+    // returns the ChainReceipt of the reveal if successful, null otherwise
+    public ChainReceipt reveal(String chainTaskId) {
         ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
-        if (resultInfo != null && resultInfo.getDeterministHash() != null) {
-            String deterministHash = resultInfo.getDeterministHash();
-            IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, deterministHash);
-            if (revealResponse != null) {
-                // it seems response.log.getBlockNumber() could be null (issue in https://github.com/web3j/web3j should be opened)
-                if (revealResponse.log.getBlockNumber() != null) {
-                    revealBlock = revealResponse.log.getBlockNumber().longValue();
-                } else {
-                    log.error("RevealTransactionReceipt received but blockNumber is null inside [chainTaskId:{}, " +
-                                    "receiptBlockNumber:{}, receiptLog:{}, block:{}]", chainTaskId,
-                            revealResponse.log.getBlockNumber(), revealResponse.log.toString(), iexecHubService.getLastBlock());
-                    revealBlock = -1;
-                }
-            }
+
+        if (resultInfo == null || resultInfo.getDeterministHash() == null) {
+            return null;
         }
-        return revealBlock;
+
+        String deterministHash = resultInfo.getDeterministHash();
+        IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, deterministHash);
+
+        if (revealResponse == null) {
+            log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+
+        return ChainUtils.buildChainReceipt(revealResponse.log, chainTaskId, iexecHubService.getLastBlock());
     }
 
     public boolean hasEnoughGas() {

@@ -1,5 +1,6 @@
 package com.iexec.worker.executor;
 
+import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
@@ -117,11 +118,12 @@ public class TaskExecutorService {
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        long contributionBlockNumber = contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), enclaveSignatureData);
-        if (contributionBlockNumber != 0) {
-            feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, contributionBlockNumber);
-        } else {
+        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), enclaveSignatureData);
+        if (chainReceipt == null) {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
+            return;
         }
+
+        feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, chainReceipt);
     }
 }

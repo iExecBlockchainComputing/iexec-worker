@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Sign;
 
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
 
@@ -131,24 +132,19 @@ public class ContributionService {
         );
     }
 
-    // returns the block number of the contribution if successful, 0 otherwise
-    public long contribute(ContributionAuthorization contribAuth, String deterministHash, Sign.SignatureData enclaveSignatureData) {
-        long contributeBlock = 0;
+    // returns ChainReceipt of the contribution if successful, null otherwise
+    public ChainReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, Sign.SignatureData enclaveSignatureData) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignatureData);
-        if (contributeResponse != null) {
-            // it seems response.log.getBlockNumber() could be null (issue in https://github.com/web3j/web3j should be opened)
-            if (contributeResponse.log.getBlockNumber() != null) {
-                contributeBlock = contributeResponse.log.getBlockNumber().longValue();
-            } else {
-                log.error("ContributeTransactionReceipt received but blockNumber is null inside [chainTaskId:{}, " +
-                                "receiptBlockNumber:{}, receiptLog:{}, block:{}]", contribAuth.getChainTaskId(),
-                        contributeResponse.log.getBlockNumber(), contributeResponse.log.toString(), iexecHubService.getLastBlock());
-                contributeBlock = -1;
-            }
+
+        if (contributeResponse == null) {
+            log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribAuth.getChainTaskId());
+            return null;
         }
-        return contributeBlock;
+
+        return ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
+                iexecHubService.getLastBlock());
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
