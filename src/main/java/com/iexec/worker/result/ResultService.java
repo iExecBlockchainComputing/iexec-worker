@@ -60,7 +60,7 @@ public class ResultService {
         boolean deletedZipFile = FileHelper.deleteFile(getResultZipFilePath(chainTaskId));
         boolean deletedResultFolder = FileHelper.deleteFolder(getResultFolderPath(chainTaskId));
 
-        boolean ret = deletedInMap && deletedZipFile && deletedResultFolder;
+        boolean ret = deletedZipFile && deletedResultFolder;
         if (ret) {
             log.info("The result of the chainTaskId has been deleted [chainTaskId:{}]", chainTaskId);
         } else {
