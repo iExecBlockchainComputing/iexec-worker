@@ -1,4 +1,4 @@
-# iexec-worker-new
+# iexec-worker
 
 ### Overview
 
@@ -15,12 +15,12 @@ The iExec-Worker component is in charge of running computing tasks sent by reque
 * for dev purposes:
 
 ```
-cd iexec-worker-new
+cd iexec-worker
 gradle bootRun --refresh-dependencies
 ```
 * or on a remote instance:
 ```
-cd iexec-worker-new
+cd iexec-worker
 ./gradlew bootRun --refresh-dependencies
 ```
 
