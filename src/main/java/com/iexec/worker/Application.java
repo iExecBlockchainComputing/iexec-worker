@@ -78,18 +78,9 @@ public class Application implements CommandLineRunner {
         log.info("Register the worker to the core [worker:{}]", model);
         feignClient.registerWorker(model);
 
-        List<String> tasksInProgress = feignClient.getTasksInProgress();
-        log.info("Get tasks in progress [tasks:{}]", Arrays.toString(tasksInProgress.toArray()));
-        for (String chainTaskId : tasksInProgress) {
-            subscriptionService.subscribeToTaskNotifications(chainTaskId);
-        }
-
-        // clean the results that are not in the list of tasks in progress
-        List<String> resultsInWorker = resultService.getAllChainTaskIdsInResultFolder();
-        for(String chainTaskId:resultsInWorker){
-            if(!tasksInProgress.contains(chainTaskId)) {
-                resultService.removeResult(chainTaskId);
-            }
+        // clean the results folder
+        for (String chainTaskId : resultService.getAllChainTaskIdsInResultFolder()) {
+            resultService.removeResult(chainTaskId);
         }
     }
 }
