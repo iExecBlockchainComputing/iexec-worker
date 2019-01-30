@@ -85,11 +85,11 @@ public class RevealService {
     }
 
     // returns the ChainReceipt of the reveal if successful, null otherwise
-    public ChainReceipt reveal(String chainTaskId) {
+    public Optional<ChainReceipt> reveal(String chainTaskId) {
         ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
 
         if (resultInfo == null || resultInfo.getDeterministHash() == null) {
-            return null;
+            return Optional.empty();
         }
 
         String deterministHash = resultInfo.getDeterministHash();
@@ -97,10 +97,13 @@ public class RevealService {
 
         if (revealResponse == null) {
             log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
-            return null;
+            return Optional.empty();
         }
 
-        return ChainUtils.buildChainReceipt(revealResponse.log, chainTaskId, iexecHubService.getLastBlock());
+        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(revealResponse.log,
+                chainTaskId, iexecHubService.getLastBlock());
+
+        return Optional.of(chainReceipt);
     }
 
     public boolean hasEnoughGas() {

@@ -25,6 +25,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
@@ -175,13 +176,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
 
         feignClient.updateReplicateStatus(chainTaskId, REVEALING);
-        ChainReceipt chainReceipt = revealService.reveal(chainTaskId);
-        if (chainReceipt == null) {
+        Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
+        if (!optionalChainReceipt.isPresent()) {
             feignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
             return;
         }
 
-        feignClient.updateReplicateStatus(chainTaskId, REVEALED, chainReceipt);
+        feignClient.updateReplicateStatus(chainTaskId, REVEALED, optionalChainReceipt.get());
     }
 
     private void abortConsensusReached(String chainTaskId) {
