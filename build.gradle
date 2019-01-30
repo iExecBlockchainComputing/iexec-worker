@@ -24,7 +24,7 @@ group = 'com.iexec.worker'
 sourceCompatibility = 1.8
 
 def UNIQUE_ID='hostname -f'.execute().text.trim()
-def token='curl -XPOST --data name=${UNIQUE_ID} https://c770a93177c87a84c17cdfadc2f2a14f504988b89998083a:@packagecloud.io/install/repositories/iexec/common/tokens.text'.execute().text.trim()
+def token='curl -XPOST --data name=${UNIQUE_ID} https://58448eb9dc6e105c7a3f77c74880f451234251ea3eeae544:@packagecloud.io/install/repositories/iexec/common/tokens.text'.execute().text.trim()
 
 
 repositories {
