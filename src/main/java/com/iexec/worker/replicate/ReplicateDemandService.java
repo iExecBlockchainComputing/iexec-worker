@@ -17,9 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.web3j.utils.Numeric;
 
-import javax.xml.bind.DatatypeConverter;
 import java.util.Optional;
 
 
@@ -73,7 +71,7 @@ public class ReplicateDemandService {
                 return "Bad signature in received replicate";
             } else {
                 log.info("The contribution contribAuth is valid [chainTaskId:{}]", chainTaskId);
-                subscriptionService.subscribeToTaskNotifications(chainTaskId);
+                subscriptionService.subscribeToTopic(chainTaskId);
 
                 Optional<AvailableReplicateModel> optionalModel = retrieveAvailableReplicateModelFromContribAuth(contribAuth);
                 if (!optionalModel.isPresent()) {

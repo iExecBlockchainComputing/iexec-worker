@@ -3,13 +3,13 @@ package com.iexec.worker.pubsub;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.result.TaskNotification;
 import com.iexec.common.result.TaskNotificationType;
+import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
-import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.worker.result.Eip712ChallengeService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +24,8 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -75,16 +77,26 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     @PostConstruct
     private void run() {
-        this.connectStomp();
+        this.restartStomp();
     }
 
-    private void connectStomp() {
+    private void restartStomp() {
+        log.info("Starting STOMP");
         WebSocketClient webSocketClient = new StandardWebSocketClient();
-        stompClient = new WebSocketStompClient(webSocketClient);
-        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-        stompClient.connect(url, this);
-        log.info("Connect STOMP [isRunning: {}]", stompClient.isRunning());
+        this.stompClient = new WebSocketStompClient(webSocketClient);
+        this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
+        this.stompClient.connect(url, this);
+        this.reSubscribeToTopics();
+        log.info("Started STOMP");
+    }
+
+    private void reSubscribeToTopics() {
+        List<String> chainTaskIds = new ArrayList<>(chainTaskIdToSubscription.keySet());
+        for (String chainTaskId : chainTaskIds) {
+            unsubscribeFromTopic(chainTaskId);
+            subscribeToTopic(chainTaskId);
+        }
     }
 
     @Override
@@ -98,34 +110,44 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                 StompHeaders headers, byte[] payload, Throwable exception) {
         log.error("Received handleException [session: {}, isConnected: {}, Exception: {}]",
                 session.getSessionId(), session.isConnected(), exception.getMessage());
-        this.connectStomp();
+        this.restartStomp();
     }
 
     @Override
     public void handleTransportError(StompSession session, Throwable exception) {
         log.info("Received handleTransportError [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
-        this.connectStomp();
+        this.restartStomp();
     }
 
-    public void subscribeToTaskNotifications(String chainTaskId) {
+    private void unsubscribeFromTopic(String chainTaskId) {
         if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
-            log.info("Already subscribed to TaskNotification [chainTaskId:{}]", chainTaskId);
-            return;
+            chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
+            chainTaskIdToSubscription.remove(chainTaskId);
+            log.info("Unsubscribed from topic [chainTaskId:{}]", chainTaskId);
+        } else {
+            log.info("Already unsubscribed from topic [chainTaskId:{}]", chainTaskId);
         }
-        StompSession.Subscription subscription = session.subscribe(getTaskTopicName(chainTaskId), new StompFrameHandler() {
-            @Override
-            public Type getPayloadType(StompHeaders headers) {
-                return TaskNotification.class;
-            }
+    }
 
-            @Override
-            public void handleFrame(StompHeaders headers, Object payload) {
-                TaskNotification taskNotification = (TaskNotification) payload;
-                handleTaskNotification(taskNotification);
-            }
-        });
-        chainTaskIdToSubscription.put(chainTaskId, subscription);
-        log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
+    public void subscribeToTopic(String chainTaskId) {
+        if (!chainTaskIdToSubscription.containsKey(chainTaskId)) {
+            StompSession.Subscription subscription = session.subscribe(getTaskTopicName(chainTaskId), new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return TaskNotification.class;
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    TaskNotification taskNotification = (TaskNotification) payload;
+                    handleTaskNotification(taskNotification);
+                }
+            });
+            chainTaskIdToSubscription.put(chainTaskId, subscription);
+            log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
+        } else {
+            log.info("Already subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
+        }
     }
 
     private void handleTaskNotification(TaskNotification notif) {
@@ -208,19 +230,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         feignClient.updateReplicateStatus(chainTaskId, COMPLETED);
     }
 
-    private void unsubscribeFromTaskNotifications(String chainTaskId) {
-        if (!chainTaskIdToSubscription.containsKey(chainTaskId)) {
-            log.info("Already unsubscribed from TaskNotification [chainTaskId:{}]", chainTaskId);
-            return;
-        }
-        chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
-        chainTaskIdToSubscription.remove(chainTaskId);
-        log.info("Unsubscribed from taskNotification [chainTaskId:{}]", chainTaskId);
-    }
-
     private void cleanReplicate(String chainTaskId) {
         // unsubscribe from the topic and remove the associated result from the machine
-        unsubscribeFromTaskNotifications(chainTaskId);
+        unsubscribeFromTopic(chainTaskId);
         resultService.removeResult(chainTaskId);
     }
 
