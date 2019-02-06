@@ -24,6 +24,8 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,7 +92,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     private void reSubscribeToTopics() {
-        for (String chainTaskId : chainTaskIdToSubscription.keySet()) {
+        List<String> chainTaskIds = new ArrayList<>(chainTaskIdToSubscription.keySet());
+        for (String chainTaskId : chainTaskIds) {
             unsubscribeFromTopic(chainTaskId);
             subscribeToTopic(chainTaskId);
         }
