@@ -15,6 +15,7 @@ import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Service;
@@ -94,7 +95,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         List<String> chainTaskIds = new ArrayList<>(chainTaskIdToSubscription.keySet());
         log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds.toString());
         for (String chainTaskId : chainTaskIds) {
-            unsubscribeFromTopic(chainTaskId);
+            chainTaskIdToSubscription.remove(chainTaskId);
             subscribeToTopic(chainTaskId);
         }
         log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds.toString());
@@ -110,14 +111,21 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     @Override
     public void handleException(StompSession session, @Nullable StompCommand command,
                                 StompHeaders headers, byte[] payload, Throwable exception) {
-        log.error("Received handleException [session: {}, isConnected: {}, Exception: {}]",
-                session.getSessionId(), session.isConnected(), exception.getMessage());
+        SimpMessageType messageType = null;
+        if (command != null) {
+            messageType = command.getMessageType();
+        }
+        log.error("Received handleException [session: {}, isConnected: {}, command: {}, exception: {}]",
+                session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
+        exception.printStackTrace();
         this.restartStomp();
     }
 
     @Override
     public void handleTransportError(StompSession session, Throwable exception) {
-        log.info("Received handleTransportError [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+        log.info("Received handleTransportError [session: {}, isConnected: {}, exception: {}]",
+                session.getSessionId(), session.isConnected(), exception.getMessage());
+        exception.printStackTrace();
         this.restartStomp();
     }
 
@@ -140,9 +148,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                 }
 
                 @Override
-                public void handleFrame(StompHeaders headers, Object payload) {
-                    TaskNotification taskNotification = (TaskNotification) payload;
-                    handleTaskNotification(taskNotification);
+                public void handleFrame(StompHeaders headers, @Nullable Object payload) {
+                    if (payload != null) {
+                        TaskNotification taskNotification = (TaskNotification) payload;
+                        handleTaskNotification(taskNotification);
+                    } else {
+                        log.info("Payload of TaskNotification is null [chainTaskId:{}]", chainTaskId);
+                    }
                 }
             });
             chainTaskIdToSubscription.put(chainTaskId, subscription);
