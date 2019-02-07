@@ -87,22 +87,24 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
         this.stompClient.connect(url, this);
-        this.reSubscribeToTopics();
         log.info("Started STOMP");
     }
 
     private void reSubscribeToTopics() {
         List<String> chainTaskIds = new ArrayList<>(chainTaskIdToSubscription.keySet());
+        log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds.toString());
         for (String chainTaskId : chainTaskIds) {
             unsubscribeFromTopic(chainTaskId);
             subscribeToTopic(chainTaskId);
         }
+        log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds.toString());
     }
 
     @Override
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
         log.info("SubscriptionService set up [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
         this.session = session;
+        this.reSubscribeToTopics();
     }
 
     @Override
