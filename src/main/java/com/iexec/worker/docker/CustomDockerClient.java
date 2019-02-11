@@ -150,13 +150,13 @@ public class CustomDockerClient {
         return containerId;
     }
 
-    boolean waitContainer(String taskId, Date executionTimeout) {
+    boolean waitContainer(String taskId, Date executionTimeoutDate) {
         String containerId = getContainerId(taskId);
         boolean isExecutionDone = false;
         try {
             while (true) {
                 boolean isComputed = docker.inspectContainer(containerId).state().status().equals(EXITED);
-                boolean isTimeout = new Date().after(executionTimeout);
+                boolean isTimeout = new Date().after(executionTimeoutDate);
                 Thread.sleep(1000);
                 log.info("Computation running [taskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
                         taskId, containerId, docker.inspectContainer(containerId).state().status(), isComputed, isTimeout);
