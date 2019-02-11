@@ -107,7 +107,7 @@ public class ReplicateDemandService {
                 .appType(DappType.DOCKER)
                 .appUri(BytesUtils.hexStringToAscii(chainDeal.getChainApp().getUri()))
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
-                .timeRef(chainDeal.getChainCategory().getMaxExecutionTime())
+                .maxExecutionTime(chainDeal.getChainCategory().getMaxExecutionTime())
                 .isTrustedExecution(TeeUtils.isTrustedExecutionTag(chainDeal.getTag()))
                 .build());
     }

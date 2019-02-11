@@ -69,7 +69,7 @@ public class DockerComputationService {
                 containerConfig = getContainerConfig(image, replicateModel.getCmd(), volumeName);
             }
 
-            containerId = startComputation(chainTaskId, containerConfig, replicateModel.getTimeRef());
+            containerId = startComputation(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());
 
         } else {
             createStdoutFile(chainTaskId, "Failed to pull image");
@@ -94,11 +94,11 @@ public class DockerComputationService {
         return dockerClient.pullImage(chainTaskId, image);
     }
 
-    private String startComputation(String chainTaskId, ContainerConfig containerConfig, Date maxExecutionTime) {
+    private String startComputation(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
         String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
         if (!containerId.isEmpty()) {
-            Date executionTimeout = Date.from(Instant.now().plusMillis(maxExecutionTime.getTime()));
-            waitForComputation(chainTaskId, executionTimeout);
+            Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
+            waitForComputation(chainTaskId, executionTimeoutDate);
             copyComputationResults(chainTaskId);
 
             dockerClient.removeContainer(chainTaskId);
@@ -152,8 +152,8 @@ public class DockerComputationService {
         return Optional.of(s);
     }
 
-    private void waitForComputation(String chainTaskId, Date executionTimeout) {
-        boolean executionDone = dockerClient.waitContainer(chainTaskId, executionTimeout);
+    private void waitForComputation(String chainTaskId, Date executionTimeoutDate) {
+        boolean executionDone = dockerClient.waitContainer(chainTaskId, executionTimeoutDate);
 
         if (executionDone) {
             String dockerLogs = dockerClient.getContainerLogs(chainTaskId);
