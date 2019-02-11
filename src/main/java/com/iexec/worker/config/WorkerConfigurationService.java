@@ -4,6 +4,8 @@ import com.iexec.worker.chain.CredentialsService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
+
 @Service
 public class WorkerConfigurationService {
 
@@ -23,7 +25,7 @@ public class WorkerConfigurationService {
         return workerName;
     }
 
-    public String getWorkerWalletAddress(){
+    public String getWorkerWalletAddress() {
         return credentialsService.getCredentials().getAddress();
     }
 
@@ -41,5 +43,10 @@ public class WorkerConfigurationService {
 
     public int getNbCPU() {
         return Runtime.getRuntime().availableProcessors();
+    }
+
+    public int getMemorySize() {
+        com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
+        return new Long(os.getTotalPhysicalMemorySize() / (1024 * 1024 * 1024)).intValue();//in GB
     }
 }
