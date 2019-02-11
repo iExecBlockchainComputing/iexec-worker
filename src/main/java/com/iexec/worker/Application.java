@@ -63,6 +63,7 @@ public class Application implements CommandLineRunner {
                 .os(workerConfig.getOS())
                 .cpu(workerConfig.getCPU())
                 .cpuNb(workerConfig.getNbCPU())
+                .memorySize(workerConfig.getMemorySize())
                 .build();
 
 
