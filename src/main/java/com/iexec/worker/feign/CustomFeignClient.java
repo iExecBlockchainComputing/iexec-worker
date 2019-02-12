@@ -116,15 +116,15 @@ public class CustomFeignClient {
         return Collections.emptyList();
     }
 
-    public ContributionAuthorization getAvailableReplicate() {
+    public ContributionAuthorization getAvailableReplicate(long lastAvailableBlockNumber) {
         try {
-            return coreTaskClient.getAvailableReplicate(getToken());
+            return coreTaskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getAvailableReplicate [instance:{}]", url);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return coreTaskClient.getAvailableReplicate(getToken());
+                return coreTaskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
             }
         }
         return null;

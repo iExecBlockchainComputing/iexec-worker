@@ -26,7 +26,6 @@ import java.util.Optional;
 public class ReplicateDemandService {
 
     private final CustomFeignClient feignClient;
-    private WorkerConfigurationService workerConfigService;
     private TaskExecutorService executorService;
     private SubscriptionService subscriptionService;
     private ContributionService contributionService;
@@ -35,14 +34,12 @@ public class ReplicateDemandService {
     private IexecHubService iexecHubService;
 
     @Autowired
-    public ReplicateDemandService(WorkerConfigurationService workerConfigService,
-                                  TaskExecutorService executorService,
+    public ReplicateDemandService(TaskExecutorService executorService,
                                   SubscriptionService subscriptionService,
                                   ContributionService contributionService,
                                   IexecHubService iexecHubService,
                                   CustomFeignClient feignClient) {
         this.feignClient = feignClient;
-        this.workerConfigService = workerConfigService;
         this.executorService = executorService;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
@@ -54,8 +51,10 @@ public class ReplicateDemandService {
     @Scheduled(fixedRateString =  "#{publicConfigurationService.askForReplicatePeriod}")
     public String askForReplicate() {
         // choose if the worker can run a task or not
-        if (executorService.canAcceptMoreReplicate()) {
-            ContributionAuthorization contribAuth = feignClient.getAvailableReplicate();
+        long lastAvailableBlockNumber = iexecHubService.getLastBlock();
+        if (executorService.canAcceptMoreReplicate() && lastAvailableBlockNumber != 0) {
+
+            ContributionAuthorization contribAuth = feignClient.getAvailableReplicate(lastAvailableBlockNumber);
 
             if (contribAuth == null) {
                 return "NO TASK AVAILABLE";
