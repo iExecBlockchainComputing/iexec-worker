@@ -13,6 +13,8 @@ import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.Eip712ChallengeService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -235,8 +237,10 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
         Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
         String authorizationToken = eip712ChallengeService.buildAuthorizationToken(eip712Challenge);
-        resultRepoClient.uploadResult(authorizationToken, resultService.getResultModelWithZip(chainTaskId));
-        feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken, resultService.getResultModelWithZip(chainTaskId));
+        if (responseEntity.getStatusCode().is2xxSuccessful()) {
+            feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+        }
     }
 
     private void completeTask(String chainTaskId) {
