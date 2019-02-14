@@ -6,7 +6,7 @@ import com.iexec.common.contract.generated.App;
 import com.iexec.common.contract.generated.IexecClerkABILegacy;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.worker.config.PublicConfigurationService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +15,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.tx.gas.ContractGasProvider;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -31,29 +32,49 @@ import static com.iexec.common.utils.BytesUtils.stringToBytes;
 @Service
 public class IexecHubService {
 
-    private final IexecHubABILegacy iexecHub;
     private final CredentialsService credentialsService;
-    private final IexecClerkABILegacy iexecClerk;
     private final ThreadPoolExecutor executor;
     private final Web3j web3j;
+    private final WorkerConfigurationService workerConfigurationService;
+    private PublicConfigurationService publicConfigurationService;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
-                           CustomFeignClient customFeignClient,
-                           PublicConfigurationService publicConfigurationService) {
+                           PublicConfigurationService publicConfigurationService,
+                           WorkerConfigurationService workerConfigurationService) {
         this.credentialsService = credentialsService;
         this.web3j = ChainUtils.getWeb3j(publicConfigurationService.getBlockchainURL());
-        this.iexecHub = ChainUtils.loadHubContract(credentialsService.getCredentials(),
-                this.web3j, publicConfigurationService.getIexecHubAddress());
-        this.iexecClerk = ChainUtils.loadClerkContract(credentialsService.getCredentials(),
-                this.web3j, publicConfigurationService.getIexecHubAddress());
+        this.publicConfigurationService = publicConfigurationService;
+        this.workerConfigurationService = workerConfigurationService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Sign.SignatureData enclaveSignatureData) {
+    private IexecHubABILegacy getHubContract() {
+        return ChainUtils.getHubContract(credentialsService.getCredentials(),
+                this.web3j,
+                publicConfigurationService.getIexecHubAddress(),
+                ChainUtils.getWritingContractGasProvider(web3j,
+                        workerConfigurationService.getGasPriceMultiplier(),
+                        workerConfigurationService.getGasPriceCap()));
+    }
+
+    private IexecClerkABILegacy getClerkContract() {
+        return ChainUtils.getClerkContract(credentialsService.getCredentials(),
+                this.web3j,
+                publicConfigurationService.getIexecHubAddress(),
+                ChainUtils.getWritingContractGasProvider(web3j,
+                        workerConfigurationService.getGasPriceMultiplier(),
+                        workerConfigurationService.getGasPriceCap()));
+    }
+
+    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
+                                                             String resultHash,
+                                                             String resultSeal,
+                                                             Sign.SignatureData enclaveSignatureData) {
         try {
             return CompletableFuture.supplyAsync(() -> {
-                log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]", contribAuth.getChainTaskId(), getWaitingTransactionCount());
+                log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]",
+                        contribAuth.getChainTaskId(), getWaitingTransactionCount());
                 return sendContributeTransaction(contribAuth, resultHash, resultSeal, enclaveSignatureData);
             }, executor).get();
         } catch (InterruptedException | ExecutionException e) {
@@ -62,12 +83,14 @@ public class IexecHubService {
         return null;
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth, String resultHash, String resultSeal, Sign.SignatureData enclaveSignatureData) {
+    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth,
+                                                                                    String resultHash,
+                                                                                    String resultSeal,
+                                                                                    Sign.SignatureData enclaveSignatureData) {
         IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
 
         try {
-
-            RemoteCall<TransactionReceipt> contributeCall = iexecHub.contributeABILegacy(
+            RemoteCall<TransactionReceipt> contributeCall = getHubContract().contributeABILegacy(
                     stringToBytes(contribAuth.getChainTaskId()),
                     stringToBytes(resultHash),
                     stringToBytes(resultSeal),
@@ -80,9 +103,10 @@ public class IexecHubService {
                     contribAuth.getSignS());
             log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", contribAuth.getChainTaskId(), resultHash);
             TransactionReceipt contributeReceipt = contributeCall.send();
-            if (!iexecHub.getTaskContributeEvents(contributeReceipt).isEmpty()) {
-                log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]", contribAuth.getChainTaskId(), resultHash, contributeReceipt.getGasUsed());
-                contributeEvent = iexecHub.getTaskContributeEvents(contributeReceipt).get(0);
+            if (!getHubContract().getTaskContributeEvents(contributeReceipt).isEmpty()) {
+                log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]",
+                        contribAuth.getChainTaskId(), resultHash, contributeReceipt.getGasUsed());
+                contributeEvent = getHubContract().getTaskContributeEvents(contributeReceipt).get(0);
             }
         } catch (Exception e) {
             log.error("Failed contribute [chainTaskId:{}, exception:{}]", contribAuth.getChainTaskId(), e.getMessage());
@@ -106,14 +130,15 @@ public class IexecHubService {
     private IexecHubABILegacy.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
         IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
         try {
-            RemoteCall<TransactionReceipt> revealCall = iexecHub.reveal(
+            RemoteCall<TransactionReceipt> revealCall = getHubContract().reveal(
                     stringToBytes(chainTaskId),
                     stringToBytes(resultDigest));
             log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
             TransactionReceipt revealReceipt = revealCall.send();
-            if (!iexecHub.getTaskRevealEvents(revealReceipt).isEmpty()) {
-                log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]", chainTaskId, resultDigest, revealReceipt.getGasUsed());
-                revealEvent = iexecHub.getTaskRevealEvents(revealReceipt).get(0);
+            if (!getHubContract().getTaskRevealEvents(revealReceipt).isEmpty()) {
+                log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
+                        chainTaskId, resultDigest, revealReceipt.getGasUsed());
+                revealEvent = getHubContract().getTaskRevealEvents(revealReceipt).get(0);
             }
         } catch (Exception e) {
             log.error("Reveal Failed [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
@@ -127,33 +152,33 @@ public class IexecHubService {
     }
 
     public Optional<ChainDeal> getChainDeal(String chainDealId) {
-        return ChainUtils.getChainDeal(credentialsService.getCredentials(), web3j, iexecHub.getContractAddress(), chainDealId);
+        return ChainUtils.getChainDeal(credentialsService.getCredentials(), web3j, getHubContract().getContractAddress(), chainDealId);
     }
 
     public Optional<ChainTask> getChainTask(String chainTaskId) {
-        return ChainUtils.getChainTask(iexecHub, chainTaskId);
+        return ChainUtils.getChainTask(getHubContract(), chainTaskId);
     }
 
 
     Optional<ChainAccount> getChainAccount() {
-        return ChainUtils.getChainAccount(iexecClerk, credentialsService.getCredentials().getAddress());
+        return ChainUtils.getChainAccount(getClerkContract(), credentialsService.getCredentials().getAddress());
     }
 
     Optional<ChainContribution> getChainContribution(String chainTaskId) {
-        return ChainUtils.getChainContribution(iexecHub, chainTaskId, credentialsService.getCredentials().getAddress());
+        return ChainUtils.getChainContribution(getHubContract(), chainTaskId, credentialsService.getCredentials().getAddress());
     }
 
     public Optional<ChainCategory> getChainCategory(long id) {
-        return ChainUtils.getChainCategory(iexecHub, id);
+        return ChainUtils.getChainCategory(getHubContract(), id);
     }
 
     public Optional<ChainApp> getChainApp(String address) {
-        App app = ChainUtils.loadDappContract(credentialsService.getCredentials(), web3j, address);
+        App app = ChainUtils.getAppContract(credentialsService.getCredentials(), web3j, address);
         return ChainUtils.getChainApp(app);
     }
 
     public boolean hasEnoughGas() {
-        return ChainUtils.hasEnoughGas(web3j, credentialsService.getCredentials().getAddress());
+        return ChainUtils.hasEnoughGas(web3j, credentialsService.getCredentials().getAddress(), workerConfigurationService.getGasPriceCap());
     }
 
     public long getLastBlock() {
