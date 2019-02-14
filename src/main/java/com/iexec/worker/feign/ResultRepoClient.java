@@ -20,7 +20,7 @@ public interface ResultRepoClient {
     Eip712Challenge getChallenge(@RequestParam(name = "chainId") Integer chainId) throws FeignException;
 
     @PostMapping("/results")
-    ResponseEntity uploadResult(@RequestHeader("Authorization") String customToken,
+    ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String customToken,
                                 @RequestBody ResultModel resultModel);
 
 }
