@@ -8,6 +8,8 @@ core:
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
   resultBaseDir: ${IEXEC_WORKER_RESULT_BASE_DIR:/tmp/iexec-worker}
+  gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.0} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
+  gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
 
 wallet:
   encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}

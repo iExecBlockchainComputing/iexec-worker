@@ -17,6 +17,12 @@ public class WorkerConfigurationService {
     @Value("${worker.resultBaseDir}")
     private String resultBaseDir;
 
+    @Value("${worker.gasPriceMultiplier}")
+    private float gasPriceMultiplier;
+
+    @Value("${worker.gasPriceCap}")
+    private long gasPriceCap;
+
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -48,5 +54,13 @@ public class WorkerConfigurationService {
     public int getMemorySize() {
         com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
         return new Long(os.getTotalPhysicalMemorySize() / (1024 * 1024 * 1024)).intValue();//in GB
+    }
+
+    public float getGasPriceMultiplier() {
+        return gasPriceMultiplier;
+    }
+
+    public long getGasPriceCap() {
+        return gasPriceCap;
     }
 }
