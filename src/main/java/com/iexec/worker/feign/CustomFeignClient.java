@@ -6,13 +6,14 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
+import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.security.SignatureService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.ECKeyPair;
 
 import java.util.Collections;
 import java.util.List;
@@ -28,16 +29,13 @@ public class CustomFeignClient {
     private CoreWorkerClient coreWorkerClient;
     private CoreTaskClient coreTaskClient;
     private CredentialsService credentialsService;
-    private SignatureService signatureService;
     private String currentToken;
 
     public CustomFeignClient(CoreWorkerClient coreWorkerClient,
                              CoreTaskClient coreTaskClient,
                              CoreConfigurationService coreConfigurationService,
-                             CredentialsService credentialsService,
-                             SignatureService signatureService) {
+                             CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
-        this.signatureService = signatureService;
         this.coreWorkerClient = coreWorkerClient;
         this.coreTaskClient = coreTaskClient;
         this.url = coreConfigurationService.getUrl();
@@ -196,9 +194,13 @@ public class CustomFeignClient {
     private String getToken() {
         if (currentToken.isEmpty()) {
             String workerAddress = credentialsService.getCredentials().getAddress();
+            ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
             String challenge = getChallenge(workerAddress);
-            currentToken = TOKEN_PREFIX + login(workerAddress, signatureService.hashAndSign(challenge));
+
+            Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
+            currentToken = TOKEN_PREFIX + login(workerAddress, signature);
         }
+
         return currentToken;
     }
 

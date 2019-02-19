@@ -1,16 +1,17 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.result.TaskNotification;
-import com.iexec.common.result.TaskNotificationType;
+import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.result.eip712.Eip712Challenge;
+import com.iexec.common.result.eip712.Eip712ChallengeUtils;
+import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
-import com.iexec.worker.result.Eip712ChallengeService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+import org.web3j.crypto.ECKeyPair;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
@@ -47,8 +49,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private ResultService resultService;
     private RevealService revealService;
     private CustomFeignClient feignClient;
-    private Eip712ChallengeService eip712ChallengeService;
     private PublicConfigurationService publicConfigurationService;
+    private CredentialsService credentialsService;
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
@@ -61,14 +63,14 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                ResultService resultService,
                                RevealService revealService,
                                CustomFeignClient feignClient,
-                               Eip712ChallengeService eip712ChallengeService,
-                               PublicConfigurationService publicConfigurationService) {
+                               PublicConfigurationService publicConfigurationService,
+                               CredentialsService credentialsService) {
         this.resultRepoClient = resultRepoClient;
         this.resultService = resultService;
         this.revealService = revealService;
         this.feignClient = feignClient;
-        this.eip712ChallengeService = eip712ChallengeService;
         this.publicConfigurationService = publicConfigurationService;
+        this.credentialsService = credentialsService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
@@ -235,9 +237,15 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private void uploadResult(String chainTaskId) {
         feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
+
         Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
-        String authorizationToken = eip712ChallengeService.buildAuthorizationToken(eip712Challenge);
-        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken, resultService.getResultModelWithZip(chainTaskId));
+        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
+        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+                workerWalletAddress, ecKeyPair);
+
+        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
+                resultService.getResultModelWithZip(chainTaskId));
+
         if (responseEntity.getStatusCode().is2xxSuccessful()) {
             feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
         }
