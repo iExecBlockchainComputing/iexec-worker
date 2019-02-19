@@ -41,7 +41,7 @@ public class PublicConfigurationService {
         return publicConfiguration.getResultRepositoryURL();
     }
 
-    public String getDataRepositoryURL() {
-        return publicConfiguration.getDataRepositoryURL();
+    public String getSmsURL() {
+        return publicConfiguration.getSmsURL();
     }
 }
