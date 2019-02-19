@@ -17,9 +17,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-import java.util.Arrays;
-import java.util.List;
-
 @SpringBootApplication
 @EnableFeignClients
 @EnableScheduling
@@ -64,6 +61,7 @@ public class Application implements CommandLineRunner {
                 .cpu(workerConfig.getCPU())
                 .cpuNb(workerConfig.getNbCPU())
                 .memorySize(workerConfig.getMemorySize())
+                .sgxEnabled(workerConfig.isSgxEnabled())
                 .build();
 
 
