@@ -9,7 +9,6 @@ import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
