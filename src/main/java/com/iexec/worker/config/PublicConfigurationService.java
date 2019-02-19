@@ -28,6 +28,7 @@ public class PublicConfigurationService {
     public String getWorkerPoolAddress() {
         return publicConfiguration.getWorkerPoolAddress();
     }
+
     public String getSchedulerPublicAddress() {
         return publicConfiguration.getSchedulerPublicAddress();
     }
@@ -36,4 +37,11 @@ public class PublicConfigurationService {
         return publicConfiguration.getAskForReplicatePeriod();
     }
 
+    public String getResultRepositoryURL() {
+        return publicConfiguration.getResultRepositoryURL();
+    }
+
+    public String getDataRepositoryURL() {
+        return publicConfiguration.getDataRepositoryURL();
+    }
 }
