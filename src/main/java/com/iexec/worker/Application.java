@@ -61,7 +61,7 @@ public class Application implements CommandLineRunner {
                 .cpu(workerConfig.getCPU())
                 .cpuNb(workerConfig.getNbCPU())
                 .memorySize(workerConfig.getMemorySize())
-                .sgxEnabled(workerConfig.isSgxEnabled())
+                .teeEnabled(workerConfig.isTeeEnabled())
                 .build();
 
 

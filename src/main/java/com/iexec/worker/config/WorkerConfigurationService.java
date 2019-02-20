@@ -23,8 +23,8 @@ public class WorkerConfigurationService {
     @Value("${worker.gasPriceCap}")
     private long gasPriceCap;
 
-    @Value("${worker.sgxEnabled}")
-    private boolean isSgxEnabled;
+    @Value("${worker.teeEnabled}")
+    private boolean isTeeEnabled;
 
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
@@ -67,7 +67,7 @@ public class WorkerConfigurationService {
         return gasPriceCap;
     }
 
-    public boolean isSgxEnabled() {
-        return isSgxEnabled;
+    public boolean isTeeEnabled() {
+        return isTeeEnabled;
     }
 }
