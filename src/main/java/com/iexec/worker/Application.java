@@ -6,7 +6,6 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,9 +39,6 @@ public class Application implements CommandLineRunner {
 
     @Autowired
     private IexecHubService iexecHubService;
-
-    @Autowired
-    private SubscriptionService subscriptionService;
 
     @Autowired
     private ResultService resultService;
