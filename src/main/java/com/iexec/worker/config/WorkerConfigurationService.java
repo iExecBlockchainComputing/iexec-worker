@@ -23,6 +23,9 @@ public class WorkerConfigurationService {
     @Value("${worker.gasPriceCap}")
     private long gasPriceCap;
 
+    @Value("${worker.teeEnabled}")
+    private boolean isTeeEnabled;
+
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -62,5 +65,9 @@ public class WorkerConfigurationService {
 
     public long getGasPriceCap() {
         return gasPriceCap;
+    }
+
+    public boolean isTeeEnabled() {
+        return isTeeEnabled;
     }
 }
