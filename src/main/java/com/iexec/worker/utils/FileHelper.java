@@ -6,6 +6,8 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.zip.ZipEntry;
@@ -13,6 +15,11 @@ import java.util.zip.ZipOutputStream;
 
 @Slf4j
 public class FileHelper {
+
+    public static final String SLASH_IEXEC_OUT = File.separator + "iexec_out";
+    public static final String SLASH_IEXEC_IN = File.separator + "iexec_in";
+    public static final String OUTPUT_FOLDER_NAME = "output";
+    public static final String INPUT_FOLDER_NAME = "input";
 
     private FileHelper() {
         throw new UnsupportedOperationException();
@@ -33,6 +40,36 @@ public class FileHelper {
             log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
         }
         return null;
+    }
+
+    public static boolean downloadFileInDirectory(String fileUri, String directoryPath) {
+        if (!createFolder(directoryPath)) {
+            log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
+            return false;
+        }
+
+        if (fileUri.isEmpty()) {
+            log.error("FileUri shouldn't be empty [fileUri:{}]", fileUri);
+            return false;
+        }
+
+        InputStream in;
+        try {
+            in = new URL(fileUri).openStream();//Not working with https resources yet
+        } catch (IOException e) {
+            log.error("Failed to download file [fileUri:{}, exception:{}]", fileUri, e.getCause());
+            return false;
+        }
+
+        try {
+            String fileName = Paths.get(fileUri).getFileName().toString();
+            Files.copy(in, Paths.get(directoryPath + File.separator + fileName), StandardCopyOption.REPLACE_EXISTING);
+            return true;
+        } catch (IOException e) {
+            log.error("Failed to copy downloaded file to disk [directoryPath:{}, fileUri:{}]",
+                    directoryPath, fileUri);
+            return false;
+        }
     }
 
     public static boolean createFolder(String folderPath) {
@@ -57,7 +94,7 @@ public class FileHelper {
 
     public static boolean deleteFolder(String folderPath) {
         File folder = new File(folderPath);
-        if(!folder.exists()) {
+        if (!folder.exists()) {
             log.info("Folder doesn't exist so can't be deleted [path:{}]", folderPath);
             return false;
         }

@@ -1,19 +1,12 @@
 package com.iexec.worker.chain;
 
-import com.iexec.common.chain.ChainContribution;
-import com.iexec.common.chain.ChainContributionStatus;
-import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.chain.ChainTask;
-import com.iexec.common.chain.ChainTaskStatus;
-import com.iexec.common.chain.ChainUtils;
+import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
 
@@ -54,9 +47,8 @@ public class RevealService {
 
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
-        ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
-        if (resultInfo != null && resultInfo.getDeterministHash() != null) {
-            String deterministHash = resultInfo.getDeterministHash();
+        String deterministHash = resultService.getDeterministHashFromFile(chainTaskId);
+        if (!deterministHash.isEmpty()) {
             isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, deterministHash));
 
             String walletAddress = credentialsService.getCredentials().getAddress();
@@ -86,13 +78,12 @@ public class RevealService {
 
     // returns the ChainReceipt of the reveal if successful, null otherwise
     public Optional<ChainReceipt> reveal(String chainTaskId) {
-        ResultInfo resultInfo = resultService.getResultInfo(chainTaskId);
+        String deterministHash = resultService.getDeterministHashFromFile(chainTaskId);
 
-        if (resultInfo == null || resultInfo.getDeterministHash() == null) {
+        if (deterministHash.isEmpty()) {
             return Optional.empty();
         }
 
-        String deterministHash = resultInfo.getDeterministHash();
         IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, deterministHash);
 
         if (revealResponse == null) {

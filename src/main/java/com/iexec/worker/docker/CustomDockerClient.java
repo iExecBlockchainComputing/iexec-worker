@@ -1,6 +1,7 @@
 package com.iexec.worker.docker;
 
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
@@ -21,9 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class CustomDockerClient {
 
-    public static final String EXITED = "exited";
-    protected static final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
-    private static final String REMOTE_PATH = "/iexec";
+    private static final String EXITED = "exited";
+    private static final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
+
     private DefaultDockerClient docker;
     private WorkerConfigurationService configurationService;
 
@@ -35,20 +36,25 @@ public class CustomDockerClient {
         taskToContainerId = new ConcurrentHashMap<>();
     }
 
-    private static HostConfig getHostConfig(String from) {
-        if (from != null) {
+    private static HostConfig getHostConfig(String volumeNameOut, String volumeNameIn) {
+        if (volumeNameOut != null && volumeNameIn != null) {
             return HostConfig.builder()
-                    .appendBinds(HostConfig.Bind.from(from)
-                            .to(REMOTE_PATH)
-                            .readOnly(false)
-                            .build())
+                    .appendBinds(
+                            HostConfig.Bind.from(volumeNameOut)
+                                    .to(FileHelper.SLASH_IEXEC_OUT)
+                                    .readOnly(false)
+                                    .build(),
+                            HostConfig.Bind.from(volumeNameIn)
+                                    .to(FileHelper.SLASH_IEXEC_IN)
+                                    .readOnly(true)
+                                    .build())
                     .build();
         }
         return null;
     }
 
-    private static ContainerConfig.Builder getContainerConfigBuilder(String imageWithTag, String cmd, String volumeName) {
-        HostConfig hostConfig = getHostConfig(volumeName);
+    private static ContainerConfig.Builder getContainerConfigBuilder(String imageWithTag, String cmd, String volumeNameOut, String volumeNameIn) {
+        HostConfig hostConfig = getHostConfig(volumeNameOut, volumeNameIn);
 
         if (imageWithTag.isEmpty() || hostConfig == null) {
             return null;
@@ -63,9 +69,9 @@ public class CustomDockerClient {
         }
     }
 
-    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeName, String... env) {
-        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeName);
-        if (containerConfigBuilder != null){
+    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeNameOut, String volumeNameIn, String... env) {
+        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeNameOut, volumeNameIn);
+        if (containerConfigBuilder != null) {
             return containerConfigBuilder.env(env).build();
         }
         return null;
@@ -193,7 +199,7 @@ public class CustomDockerClient {
         String containerId = getContainerId(taskId);
         InputStream containerResultArchive = null;
         try {
-            containerResultArchive = docker.archiveContainer(containerId, REMOTE_PATH);
+            containerResultArchive = docker.archiveContainer(containerId, FileHelper.SLASH_IEXEC_OUT);
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to get container archive [taskId:{}, containerId:{}]",
                     taskId, containerId);

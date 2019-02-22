@@ -1,7 +1,6 @@
 package com.iexec.worker.utils;
 
 import org.apache.commons.io.FileUtils;
-import org.hibernate.validator.constraints.br.TituloEleitoral;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -10,11 +9,11 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import static com.iexec.worker.utils.FileHelper.downloadFileInDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class FileHelperTests {
@@ -165,4 +164,29 @@ public class FileHelperTests {
         assertThat(zipFile).isFile();
         assertThat(zipFile.getAbsolutePath()).isEqualTo(TEST_FOLDER + "/taskId.zip");
     }
+
+    @Test
+    public void shouldDownloadFile() {
+        //TODO 1 - Try https resources: https://iex.ec/wp-content/uploads/2018/12/token.svg
+        //TODO 2- Try resources with redirection: https://goo.gl/t8JxoX
+        String fileUri = "http://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/iExec-RLC-RLC-icon.png";
+        boolean isFileDownloaded = downloadFileInDirectory(fileUri, TEST_FOLDER);
+        assertThat(isFileDownloaded).isTrue();
+        assertThat(new File(TEST_FOLDER + "/" + Paths.get(fileUri).getFileName().toString())).exists();
+    }
+
+    @Test
+    public void shouldNotDownloadFileSinceEmptyUri() {
+        String fileUri = "";
+        boolean isFileDownloaded = downloadFileInDirectory(fileUri, TEST_FOLDER);
+        assertThat(isFileDownloaded).isFalse();
+    }
+
+    @Test
+    public void shouldNotDownloadFileSinceDummyUri() {
+        String fileUri = "http://dummy-uri";
+        boolean isFileDownloaded = downloadFileInDirectory(fileUri, TEST_FOLDER);
+        assertThat(isFileDownloaded).isFalse();
+    }
+
 }

@@ -6,7 +6,7 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
-import com.iexec.worker.result.ResultInfo;
+import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Sign;
@@ -45,19 +45,19 @@ public class ContributionService {
         }
         ChainTask chainTask = optionalChainTask.get();
 
-        if (!hasEnoughtStakeToContribute(chainTask)){
+        if (!hasEnoughtStakeToContribute(chainTask)) {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_STAKE_TOO_LOW);
         }
 
-        if (!isTaskActiveToContribute(chainTask)){
+        if (!isTaskActiveToContribute(chainTask)) {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_TASK_NOT_ACTIVE);
         }
 
-        if (!isBeforeContributionDeadlineToContribute(chainTask)){
+        if (!isBeforeContributionDeadlineToContribute(chainTask)) {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_AFTER_DEADLINE);
         }
 
-        if (!isContributionUnsetToContribute(chainTask)){
+        if (!isContributionUnsetToContribute(chainTask)) {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CONTRIBUTION_ALREADY_SET);
         }
 
@@ -96,22 +96,22 @@ public class ContributionService {
      * If TEE tag present :              return proper enclaveSignature
      * If TEE tag present but problem :  return null
      * */
-    public Sign.SignatureData getEnclaveSignatureData(ContributionAuthorization contribAuth, ResultInfo resultInfo) {
+    public Sign.SignatureData getEnclaveSignatureData(ContributionAuthorization contribAuth, String deterministHash, Optional<TeeSignature.Sign> enclaveSignature) {
         Sign.SignatureData enclaveSignatureData;
         if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())) {
-            if (!resultInfo.getEnclaveSignature().isPresent()) {
+            if (!enclaveSignature.isPresent()) {
                 log.info("Can't contribute (enclaveChalenge is set but enclaveSignature missing) [chainTaskId:{]", contribAuth.getChainTaskId());
                 return null;
             }
 
             enclaveSignatureData = new Sign.SignatureData(
-                    resultInfo.getEnclaveSignature().get().getV().byteValue(),
-                    stringToBytes(resultInfo.getEnclaveSignature().get().getR()),
-                    stringToBytes(resultInfo.getEnclaveSignature().get().getS())
+                    enclaveSignature.get().getV().byteValue(),
+                    stringToBytes(enclaveSignature.get().getR()),
+                    stringToBytes(enclaveSignature.get().getS())
             );
 
-            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
-            String resultHash = computeResultHash(contribAuth.getChainTaskId(), resultInfo.getDeterministHash());
+            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
+            String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
             boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
                     enclaveSignatureData, contribAuth.getEnclave());
 
