@@ -42,11 +42,7 @@ public class DockerComputationService {
         //TODO: check image equals image:tag
         String stdout = "";
         if (dockerClient.isImagePulled(image)) {
-            //String volumeNameOut = dockerClient.createVolume(chainTaskId);
-            //String volumeNameOut = configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.SLASH_OUTPUT;
-            //String volumeNameIn = configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.SLASH_INPUT;
             String hostBaseVolume = configurationService.getResultBaseDir() + File.separator + chainTaskId;
-            FileHelper.createFolder(hostBaseVolume + "/output/iexec_out");
             ContainerConfig containerConfig;
 
             if (replicateModel.isTrustedExecution()) {

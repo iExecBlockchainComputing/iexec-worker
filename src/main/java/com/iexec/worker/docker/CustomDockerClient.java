@@ -40,6 +40,7 @@ public class CustomDockerClient {
         if (hostBaseVolume != null && !hostBaseVolume.isEmpty()) {
             String outputMountpoint = hostBaseVolume + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
             String inputMountpoint = hostBaseVolume + FileHelper.SLASH_INPUT;
+            FileHelper.createFolder(inputMountpoint);
             FileHelper.createFolder(outputMountpoint);
 
             boolean isInputMountpointSet = new File(inputMountpoint).exists();
