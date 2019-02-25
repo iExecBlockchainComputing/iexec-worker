@@ -4,6 +4,8 @@ import com.iexec.worker.chain.CredentialsService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+
 import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
 
 @Service
@@ -39,7 +41,7 @@ public class WorkerConfigurationService {
     }
 
     public String getResultBaseDir() {
-        return resultBaseDir + "/" + workerName;
+        return resultBaseDir + File.separator + workerName;
     }
 
     public String getOS() {

@@ -6,10 +6,11 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.chain.ContributionService;
+import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Sign;
@@ -26,6 +27,7 @@ import static com.iexec.common.replicate.ReplicateStatus.*;
 public class TaskExecutorService {
 
     // external services
+    private DatasetService datasetService;
     private DockerComputationService dockerComputationService;
     private ResultService resultService;
     private ContributionService contributionService;
@@ -35,10 +37,12 @@ public class TaskExecutorService {
     private int maxNbExecutions;
     private ThreadPoolExecutor executor;
 
-    public TaskExecutorService(DockerComputationService dockerComputationService,
+    public TaskExecutorService(DatasetService datasetService,
+                               DockerComputationService dockerComputationService,
                                ContributionService contributionService,
                                ResultService resultService,
                                CustomFeignClient feignClient) {
+        this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.contributionService = contributionService;
@@ -56,51 +60,68 @@ public class TaskExecutorService {
         ContributionAuthorization contribAuth = replicateModel.getContributionAuthorization();
 
         CompletableFuture.supplyAsync(() -> executeTask(replicateModel), executor)
-                .thenAccept(resultInfo -> tryToContribute(contribAuth, resultInfo));
+                .thenAccept(isExecuted -> {
+                    String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
+                    Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
+                    tryToContribute(contribAuth, deterministHash, enclaveSignature);
+                });
     }
 
-    private ResultInfo executeTask(AvailableReplicateModel replicateModel) {
+    private boolean executeTask(AvailableReplicateModel replicateModel) {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
+        String stdout = "";
 
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
             feignClient.updateReplicateStatus(chainTaskId, RUNNING);
 
             if (replicateModel.getAppType().equals(DappType.DOCKER)) {
-
+                //App
                 feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-                boolean isImagePulled = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
-                if (isImagePulled) {
+                boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
+                if (isAppDownloaded) {
                     feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
                 } else {
+                    stdout = "Failed to pull image";
                     feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-                    return new ResultInfo();
+                }
+                //Data
+                feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
+                boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, replicateModel.getDatasetUri());
+                if (isDatasetDownloaded) {
+                    feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
+                } else {
+                    stdout = "Failed to pull dataset";
+                    feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
+                }
+                //Compute
+                feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
+                if (isAppDownloaded && isDatasetDownloaded) {
+                    stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel);
+                }
+                if (!stdout.isEmpty()) {
+                    feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
+                } else {
+                    stdout = "Failed to start computation";
+                    feignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
                 }
 
-                feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
-                try {
-                    ResultInfo resultInfo = dockerComputationService.dockerRun(replicateModel);
-                    resultService.addResultInfo(chainTaskId, resultInfo);
-                    feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-                    return resultInfo;
-                } catch (Exception e) {
-                    log.error("Error in the run of the application [error:{}]", e.getMessage());
-                }
+                resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
             }
         } else {
             log.warn("Task NOT initialized on chain [chainTaskId:{}]", chainTaskId);
         }
-        return new ResultInfo();
+        return true;
     }
 
-    private void tryToContribute(ContributionAuthorization contribAuth, ResultInfo resultInfo) {
-        if (resultInfo.getDeterministHash().isEmpty()) {
+    private void tryToContribute(ContributionAuthorization contribAuth, String deterministHash, Optional<TeeSignature.Sign> enclaveSignature) {
+        if (deterministHash.isEmpty()) {
             return;
         }
         String chainTaskId = contribAuth.getChainTaskId();
-        Sign.SignatureData enclaveSignatureData = contributionService.getEnclaveSignatureData(contribAuth, resultInfo);
+        Sign.SignatureData enclaveSignatureData = contributionService.getEnclaveSignatureData(contribAuth, deterministHash, enclaveSignature);
 
         Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
-        if (!canContributeStatus.isPresent()){
+        if (!canContributeStatus.isPresent()) {
             log.error("canContributeStatus should not be empty (getChainTask issue) [chainTaskId:{}]", chainTaskId);
             return;
         }
@@ -118,7 +139,7 @@ public class TaskExecutorService {
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, resultInfo.getDeterministHash(), enclaveSignatureData);
+        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignatureData);
         if (chainReceipt == null) {
             feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
             return;
@@ -126,4 +147,6 @@ public class TaskExecutorService {
 
         feignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, chainReceipt);
     }
+
+
 }

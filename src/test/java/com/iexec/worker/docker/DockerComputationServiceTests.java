@@ -38,7 +38,7 @@ public class DockerComputationServiceTests {
         String sExpected = "0x6bdf554c8c12c158d12f08299afbe0d9c8533bf420a5d3f63ed9827047eab8d";
 
         when(resultService.getResultFolderPath("chainTaskId")).thenReturn("./src/test/resources");
-        Optional<TeeSignature.Sign> enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
+        Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile("chainTaskId");
 
         assertThat(enclaveSignature.isPresent()).isTrue();
         assertThat(enclaveSignature.get().getV()).isEqualTo(vExpected);
@@ -49,7 +49,7 @@ public class DockerComputationServiceTests {
     @Test
     public void shouldNotGetEnclaveSignatureSinceFileMissing() throws IOException {
         when(resultService.getResultFolderPath("chainTaskId")).thenReturn("./src/test/resources/fakefolder");
-        Optional<TeeSignature.Sign> enclaveSignature = dockerComputationService.getEnclaveSignature("chainTaskId");
+        Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile("chainTaskId");
 
         assertThat(enclaveSignature.isPresent()).isFalse();
     }

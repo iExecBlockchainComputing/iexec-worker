@@ -47,7 +47,7 @@ public class ReplicateDemandService {
         corePublicAddress = feignClient.getPublicConfiguration().getSchedulerPublicAddress();
     }
 
-    @Scheduled(fixedRateString =  "#{publicConfigurationService.askForReplicatePeriod}")
+    @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     public String askForReplicate() {
         // choose if the worker can run a task or not
         long lastAvailableBlockNumber = iexecHubService.getLastBlock();
@@ -107,6 +107,7 @@ public class ReplicateDemandService {
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
                 .maxExecutionTime(chainDeal.getChainCategory().getMaxExecutionTime())
                 .isTrustedExecution(TeeUtils.isTrustedExecutionTag(chainDeal.getTag()))
+                .datasetUri(chainDeal.getChainDataset() != null ? BytesUtils.hexStringToAscii(chainDeal.getChainDataset().getUri()) : "")
                 .build());
     }
 

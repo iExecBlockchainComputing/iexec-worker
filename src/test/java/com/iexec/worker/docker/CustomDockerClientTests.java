@@ -13,7 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.InputStream;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,7 +35,7 @@ public class CustomDockerClientTests {
         MockitoAnnotations.initMocks(this);
         baseDockerClient = DefaultDockerClient.fromEnv().build();
         baseDockerClient.pull("iexechub/vanityeth:latest");
-        maxExecutionTime = new Date(30*1000);
+        maxExecutionTime = new Date(30 * 1000);
     }
 
     @Test
@@ -204,20 +203,6 @@ public class CustomDockerClientTests {
     @Test
     public void shouldWaitForCatagoryTimeout() {
 
-    }
-
-    @Test
-    public void shouldGetContainerArchive() {
-        when(configurationService.getWorkerName()).thenReturn("worker1");
-        String volumeName = customDockerClient.createVolume("taskId");
-        ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "a", volumeName);
-        customDockerClient.startContainer("taskId", containerConfig);
-        InputStream containerResultArchive = customDockerClient.getContainerResultArchive("taskId");
-        assertThat(containerResultArchive).isNotNull();
-        customDockerClient.waitContainer("taskId", maxExecutionTime);
-        customDockerClient.removeContainer("taskId");
-        customDockerClient.removeVolume("taskId");
     }
 
     @Test
