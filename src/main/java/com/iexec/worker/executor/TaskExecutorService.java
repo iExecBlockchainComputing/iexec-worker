@@ -86,9 +86,7 @@ public class TaskExecutorService {
                 }
                 //Data
                 feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-                //TODO replace with replicateModel.getDatasetUri()
-                boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId,
-                        "http://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/iExec-RLC-RLC-icon.png");
+                boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, replicateModel.getDatasetUri());
                 if (isDatasetDownloaded) {
                     feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
                 } else {

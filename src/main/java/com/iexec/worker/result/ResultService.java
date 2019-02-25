@@ -93,7 +93,7 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId) {
-        return configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.OUTPUT_FOLDER_NAME;
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
     }
 
     public String getResultZipFilePath(String chainTaskId) {

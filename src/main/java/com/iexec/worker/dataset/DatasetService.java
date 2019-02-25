@@ -18,6 +18,11 @@ public class DatasetService {
         this.configurationService = configurationService;
     }
 
+    /*
+     * In order to keep a linear replicate workflow, we'll always have the steps:
+     * APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING (even when the dataset requested is 0x0).
+     * In the 0x0 dataset case, we'll have an empty datasetUri, and we'll consider the dataset as downloaded
+     */
     public boolean downloadDataset(String chainTaskId, String datasetUri) {
         if (chainTaskId.isEmpty()) {
             log.error("Failed to downloadDataset, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
@@ -33,7 +38,7 @@ public class DatasetService {
     }
 
     public String getDatasetFolderPath(String chainTaskId) {
-        return configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.INPUT_FOLDER_NAME;
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_INPUT;
     }
 
 

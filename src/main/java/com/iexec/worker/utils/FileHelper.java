@@ -18,8 +18,8 @@ public class FileHelper {
 
     public static final String SLASH_IEXEC_OUT = File.separator + "iexec_out";
     public static final String SLASH_IEXEC_IN = File.separator + "iexec_in";
-    public static final String OUTPUT_FOLDER_NAME = "output";
-    public static final String INPUT_FOLDER_NAME = "input";
+    public static final String SLASH_OUTPUT = File.separator + "output";
+    public static final String SLASH_INPUT = File.separator + "input";
 
     private FileHelper() {
         throw new UnsupportedOperationException();
@@ -64,6 +64,7 @@ public class FileHelper {
         try {
             String fileName = Paths.get(fileUri).getFileName().toString();
             Files.copy(in, Paths.get(directoryPath + File.separator + fileName), StandardCopyOption.REPLACE_EXISTING);
+            log.info("Downloaded data [fileUri:{}]", fileUri);
             return true;
         } catch (IOException e) {
             log.error("Failed to copy downloaded file to disk [directoryPath:{}, fileUri:{}]",

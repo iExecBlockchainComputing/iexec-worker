@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.io.InputStream;
+import java.io.File;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,25 +36,39 @@ public class CustomDockerClient {
         taskToContainerId = new ConcurrentHashMap<>();
     }
 
-    private static HostConfig getHostConfig(String volumeNameOut, String volumeNameIn) {
-        if (volumeNameOut != null && volumeNameIn != null) {
+    private static HostConfig getHostConfig(String hostBaseVolume) {
+        if (hostBaseVolume != null && !hostBaseVolume.isEmpty()) {
+            String outputMountpoint = hostBaseVolume + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
+            String inputMountpoint = hostBaseVolume + FileHelper.SLASH_INPUT;
+            FileHelper.createFolder(outputMountpoint);
+
+            boolean isInputMountpointSet = new File(inputMountpoint).exists();
+            boolean isOutputMountpointSet = new File(outputMountpoint).exists();
+
+            if (!(isInputMountpointSet && isOutputMountpointSet)) {
+                log.error("inputMountpoint or outputMountpoint doesn't exists [isInputMountpointSet:{}, " +
+                        "isOutputMountpointSet:{}]", isInputMountpointSet, isOutputMountpointSet);
+                return null;
+            }
+
             return HostConfig.builder()
                     .appendBinds(
-                            HostConfig.Bind.from(volumeNameOut)
-                                    .to(FileHelper.SLASH_IEXEC_OUT)
-                                    .readOnly(false)
-                                    .build(),
-                            HostConfig.Bind.from(volumeNameIn)
+                            HostConfig.Bind.from(inputMountpoint)
                                     .to(FileHelper.SLASH_IEXEC_IN)
                                     .readOnly(true)
-                                    .build())
+                                    .build(),
+                            HostConfig.Bind.from(outputMountpoint)
+                                    .to(FileHelper.SLASH_IEXEC_OUT)
+                                    .readOnly(false)
+                                    .build()
+                    )
                     .build();
         }
         return null;
     }
 
-    private static ContainerConfig.Builder getContainerConfigBuilder(String imageWithTag, String cmd, String volumeNameOut, String volumeNameIn) {
-        HostConfig hostConfig = getHostConfig(volumeNameOut, volumeNameIn);
+    private static ContainerConfig.Builder getContainerConfigBuilder(String imageWithTag, String cmd, String hostBaseVolume) {
+        HostConfig hostConfig = getHostConfig(hostBaseVolume);
 
         if (imageWithTag.isEmpty() || hostConfig == null) {
             return null;
@@ -69,8 +83,8 @@ public class CustomDockerClient {
         }
     }
 
-    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String volumeNameOut, String volumeNameIn, String... env) {
-        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, volumeNameOut, volumeNameIn);
+    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String hostBaseVolume, String... env) {
+        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, hostBaseVolume);
         if (containerConfigBuilder != null) {
             return containerConfigBuilder.env(env).build();
         }
@@ -193,18 +207,6 @@ public class CustomDockerClient {
             }
         }
         return "Failed to get logs of computation";
-    }
-
-    InputStream getContainerResultArchive(String taskId) {
-        String containerId = getContainerId(taskId);
-        InputStream containerResultArchive = null;
-        try {
-            containerResultArchive = docker.archiveContainer(containerId, FileHelper.SLASH_IEXEC_OUT);
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to get container archive [taskId:{}, containerId:{}]",
-                    taskId, containerId);
-        }
-        return containerResultArchive;
     }
 
     boolean removeContainer(String taskId) {

@@ -31,8 +31,7 @@ public class DockerComputationService {
     private final WorkerConfigurationService configurationService;
 
     public DockerComputationService(CustomDockerClient dockerClient,
-                                    WorkerConfigurationService configurationService,
-                                    ResultService resultService) {
+                                    WorkerConfigurationService configurationService) {
         this.dockerClient = dockerClient;
         this.configurationService = configurationService;
     }
@@ -43,16 +42,19 @@ public class DockerComputationService {
         //TODO: check image equals image:tag
         String stdout = "";
         if (dockerClient.isImagePulled(image)) {
-            String volumeNameOut = dockerClient.createVolume(chainTaskId);
-            String volumeNameIn = configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.INPUT_FOLDER_NAME;
+            //String volumeNameOut = dockerClient.createVolume(chainTaskId);
+            //String volumeNameOut = configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.SLASH_OUTPUT;
+            //String volumeNameIn = configurationService.getResultBaseDir() + File.separator + chainTaskId + File.separator + FileHelper.SLASH_INPUT;
+            String hostBaseVolume = configurationService.getResultBaseDir() + File.separator + chainTaskId;
+            FileHelper.createFolder(hostBaseVolume + "/output/iexec_out");
             ContainerConfig containerConfig;
 
             if (replicateModel.isTrustedExecution()) {
-                containerConfig = getContainerConfig(image, replicateModel.getCmd(), volumeNameOut, volumeNameIn,
+                containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
                         TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
                         TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress());
             } else {
-                containerConfig = getContainerConfig(image, replicateModel.getCmd(), volumeNameOut, volumeNameIn);
+                containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume);
             }
 
             stdout = startComputationAndGetLogs(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());
@@ -70,10 +72,8 @@ public class DockerComputationService {
         if (!containerId.isEmpty()) {
             Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
             stdout = waitForComputationAndGetLogs(chainTaskId, executionTimeoutDate);
-            copyComputationResults(chainTaskId);
 
             dockerClient.removeContainer(chainTaskId);
-            dockerClient.removeVolume(chainTaskId);
         }
         return stdout;
     }
@@ -84,32 +84,6 @@ public class DockerComputationService {
             return dockerClient.getContainerLogs(chainTaskId);
         } else {
             return "Computation failed";
-        }
-    }
-
-    private void copyComputationResults(String chainTaskId) {
-        InputStream containerResultArchive = dockerClient.getContainerResultArchive(chainTaskId);
-        String resultBaseDirectory = configurationService.getResultBaseDir();
-
-        try {
-            final TarArchiveInputStream tarStream = new TarArchiveInputStream(containerResultArchive);
-
-            TarArchiveEntry entry;
-            while ((entry = tarStream.getNextTarEntry()) != null) {
-                log.debug(entry.getName());
-                if (entry.isDirectory()) {
-                    continue;
-                }
-                File curfile = new File(resultBaseDirectory + File.separator + chainTaskId + File.separator + FileHelper.OUTPUT_FOLDER_NAME, entry.getName());
-                File parent = curfile.getParentFile();
-                if (!parent.exists()) {
-                    parent.mkdirs();
-                }
-                IOUtils.copy(tarStream, new FileOutputStream(curfile));
-            }
-            log.info("Results from remote added to result folder [chainTaskId:{}]", chainTaskId);
-        } catch (IOException e) {
-            log.error("Failed to copy container results to disk [chainTaskId:{}]", chainTaskId);
         }
     }
 
