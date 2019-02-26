@@ -53,7 +53,8 @@ public class CustomFeignClient {
             return workerClient.getPublicConfiguration();
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getPublicConfiguration, will retry");
+                log.error("Failed to getPublicConfiguration, will retry ");
+                e.printStackTrace();
                 sleep();
                 return getPublicConfiguration();
             }
