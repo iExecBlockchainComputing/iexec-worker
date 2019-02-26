@@ -145,6 +145,7 @@ public class ResultService {
 
     public Optional<TeeSignature.Sign> getEnclaveSignatureFromFile(String chainTaskId) {
         String executionEnclaveSignatureFileName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
+        System.out.println(executionEnclaveSignatureFileName);
         Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
 
         if (!executionEnclaveSignatureFilePath.toFile().exists()) {
