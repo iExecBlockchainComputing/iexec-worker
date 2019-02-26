@@ -115,31 +115,6 @@ public class CustomDockerClient {
         return false;
     }
 
-    String createVolume(String taskId) {
-        String volumeName = getVolumeName(taskId);
-        if (!volumeName.isEmpty()) {
-            Volume toCreate = Volume.builder()
-                    .name(volumeName)
-                    .driver("local")
-                    .build();
-            try {
-                Volume createdVolume = docker.createVolume(toCreate);
-                log.debug("Created volume [taskId:{}, volumeName:{}]", taskId, volumeName);
-                return createdVolume.name();
-            } catch (DockerException | InterruptedException e) {
-                log.error("Failed to create volume [taskId:{}, volumeName:{}]", taskId, volumeName);
-            }
-        }
-        return "";
-    }
-
-    String getVolumeName(String taskId) {
-        if (!taskId.isEmpty() && !configurationService.getWorkerName().isEmpty()) {
-            return DOCKER_BASE_VOLUME_NAME + "-" + configurationService.getWorkerName() + "-" + taskId;
-        }
-        return "";
-    }
-
     String getContainerId(String taskId) {
         if (taskToContainerId.containsKey(taskId)) {
             return taskToContainerId.get(taskId);
@@ -222,20 +197,6 @@ public class CustomDockerClient {
             } catch (DockerException | InterruptedException e) {
                 log.error("Failed to remove container [taskId:{}, containerId:{}]",
                         taskId, containerId);
-            }
-        }
-        return false;
-    }
-
-    boolean removeVolume(String taskId) {
-        String volumeName = getVolumeName(taskId);
-        if (!taskId.isEmpty()) {
-            try {
-                docker.removeVolume(volumeName);
-                log.debug("Removed volume [taskId:{}, volumeName:{}]", taskId, volumeName);
-                return true;
-            } catch (DockerException | InterruptedException e) {
-                log.error("Failed to remove volume [taskId:{}, volumeName:{}]", taskId, volumeName);
             }
         }
         return false;
