@@ -33,6 +33,9 @@ repositories {
     maven {
         url "https://packagecloud.io/priv/${token}/iexec/common/maven2"
     }
+    maven { 
+        url "https://jitpack.io" 
+    }
 }
 
 configurations {
@@ -74,6 +77,9 @@ dependencies {
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
     annotationProcessor "org.projectlombok:lombok:1.18.2"
+
+    // multiaddresses (IPFS)
+    compile 'com.github.multiformats:java-multiaddr:1.3.1'
 
     // package cloud
     deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"

@@ -12,6 +12,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.utils.MultiAddressHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -103,6 +104,8 @@ public class ReplicateDemandService {
         }
         ChainDeal chainDeal = optionalChainDeal.get();
 
+        String datasetURI = chainDeal.getChainDataset() != null ? MultiAddressHelper.convertToURI(chainDeal.getChainDataset().getUri()) : "";
+
         return Optional.of(AvailableReplicateModel.builder()
                 .contributionAuthorization(contribAuth)
                 .appType(DappType.DOCKER)
@@ -110,7 +113,7 @@ public class ReplicateDemandService {
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
                 .maxExecutionTime(chainDeal.getChainCategory().getMaxExecutionTime())
                 .isTrustedExecution(TeeUtils.isTrustedExecutionTag(chainDeal.getTag()))
-                .datasetUri(chainDeal.getChainDataset() != null ? BytesUtils.hexStringToAscii(chainDeal.getChainDataset().getUri()) : "")
+                .datasetUri(datasetURI)
                 .build());
     }
 
