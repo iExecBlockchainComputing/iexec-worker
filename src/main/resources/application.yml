@@ -1,6 +1,13 @@
 server:
   port: ${IEXEC_WORKER_PORT:18091}
 
+http:
+  client:
+    ssl:
+      #required for dev (keystore of core for easy maintainance but should be a truststore with core-cert.pem inside)
+      trust-store: /home/james/iexecdev/iexec-worker/src/main/resources/ssl-keystore-dev.p12
+      trust-store-password: whatever
+
 core:
   host: ${IEXEC_CORE_HOST:localhost}
   port: ${IEXEC_CORE_PORT:18090}

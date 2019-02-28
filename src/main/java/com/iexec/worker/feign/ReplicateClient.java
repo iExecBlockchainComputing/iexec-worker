@@ -11,7 +11,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 
-@FeignClient(name = "ReplicateClient", url = "http://${core.host}:${core.port}")
+@FeignClient(name = "ReplicateClient", url = "https://${core.host}:${core.port}")
 public interface ReplicateClient {
 
     @GetMapping("/replicates/available")

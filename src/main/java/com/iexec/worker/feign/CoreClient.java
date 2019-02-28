@@ -7,7 +7,7 @@ import feign.FeignException;
 
 @FeignClient(
     name = "CoreClient",
-    url = "http://${core.host}:${core.port}"
+    url = "https://${core.host}:${core.port}"
 )
 public interface CoreClient {
 

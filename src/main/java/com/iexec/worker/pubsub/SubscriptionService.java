@@ -12,7 +12,6 @@ import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -69,7 +68,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     @PostConstruct
     private void run() {
-        this.restartStomp();
+        //this.restartStomp();
+        /*
+         * TODO: Secure WebSockets (https://stackoverflow.com/a/38880673)
+         * 1 - [core]   Set sslContext to TcpClient of MessageBroker (use spring messaging & reactor(ipc?))
+         * 2 - [worker] Call wss://core:18090/connect (eventually set sslContext WebSocketClient
+         */
     }
 
     private void restartStomp() {

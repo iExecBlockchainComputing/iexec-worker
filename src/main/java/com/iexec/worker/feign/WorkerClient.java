@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 
-@FeignClient(name = "WorkerClient", url = "https://${core.host}:${core.port}")
+@FeignClient(name = "WorkerClient", url = "https://${core.host}:${core.port}", configuration = FeignConfiguration.class)
 public interface WorkerClient {
 
     @GetMapping("/workers/config")

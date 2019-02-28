@@ -13,11 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import feign.FeignException;
 
-@FeignClient(
-    name = "ResultRepoClient",
-    url = "#{publicConfigurationService.resultRepositoryURL}"
-)
 
+@FeignClient(name = "ResultRepoClient", url = "#{publicConfigurationService.resultRepositoryURL}", configuration = FeignConfiguration.class)
 public interface ResultRepoClient {
 
     @GetMapping("/results/challenge")
