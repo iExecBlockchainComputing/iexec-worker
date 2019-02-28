@@ -61,6 +61,9 @@ public class TaskExecutorService {
 
         CompletableFuture.supplyAsync(() -> executeTask(replicateModel), executor)
                 .thenAccept(isExecuted -> {
+                    if (!isExecuted) {
+                        return;
+                    }
                     String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
                     Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
                     tryToContribute(contribAuth, deterministHash, enclaveSignature);
@@ -71,45 +74,60 @@ public class TaskExecutorService {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
         String stdout = "";
 
-        if (contributionService.isChainTaskInitialized(chainTaskId)) {
-            feignClient.updateReplicateStatus(chainTaskId, RUNNING);
-
-            if (replicateModel.getAppType().equals(DappType.DOCKER)) {
-                //App
-                feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-                boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
-                if (isAppDownloaded) {
-                    feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
-                } else {
-                    stdout = "Failed to pull image";
-                    feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-                }
-                //Data
-                feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-                boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, replicateModel.getDatasetUri());
-                if (isDatasetDownloaded) {
-                    feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
-                } else {
-                    stdout = "Failed to pull dataset";
-                    feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-                }
-                //Compute
-                feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
-                if (isAppDownloaded && isDatasetDownloaded) {
-                    stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel);
-                }
-                if (!stdout.isEmpty()) {
-                    feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-                } else {
-                    stdout = "Failed to start computation";
-                    feignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-                }
-
-                resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
-            }
-        } else {
-            log.warn("Task NOT initialized on chain [chainTaskId:{}]", chainTaskId);
+        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
+            log.error("task NOT initialized onchain [chainTaskId:{}]", chainTaskId);
+            return false;
         }
+
+        // check app type
+        feignClient.updateReplicateStatus(chainTaskId, RUNNING);
+        if (!replicateModel.getAppType().equals(DappType.DOCKER)) {
+            log.error("app is not of type Docker [chainTaskId:{}]", chainTaskId);
+            stdout = "Application is not of type Docker";
+            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            return true;
+        }
+
+        // pull app
+        feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
+        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
+        if (!isAppDownloaded) {
+            stdout = String.format("Failed to pull application image [URI:{}]", replicateModel.getAppUri());
+            log.info(stdout);
+            feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
+            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            return true;
+        }
+
+        feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
+
+        // pull data
+        feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
+        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, replicateModel.getDatasetUri());
+        if (!isDatasetDownloaded) {
+            stdout = String.format("Failed to pull dataset [URI:%s]", replicateModel.getDatasetUri());
+            log.info(stdout);
+            feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
+            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            return true;
+        }
+
+        feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
+
+        // compute
+        feignClient.updateReplicateStatus(chainTaskId, COMPUTING);
+        stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel);
+
+        if (stdout.isEmpty()) {
+            stdout = "Failed to start computation";
+            log.info(stdout);
+            feignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
+            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            return true;
+        }
+
+        feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
+        resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
         return true;
     }
 

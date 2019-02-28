@@ -48,47 +48,50 @@ public class ReplicateDemandService {
     }
 
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
-    public String askForReplicate() {
-        // choose if the worker can run a task or not
+    public void askForReplicate() {
+        // check if the worker can run a task or not
         long lastAvailableBlockNumber = iexecHubService.getLastBlock();
-        if (executorService.canAcceptMoreReplicate() && lastAvailableBlockNumber != 0) {
-
-            ContributionAuthorization contribAuth = feignClient.getAvailableReplicate(lastAvailableBlockNumber);
-
-            if (contribAuth == null) {
-                return "NO TASK AVAILABLE";
-            }
-
-            String chainTaskId = contribAuth.getChainTaskId();
-            log.info("Received task [chainTaskId:{}]", chainTaskId);
-
-            // verify that the signature is valid
-            if (!contributionService.isContributionAuthorizationValid(contribAuth, corePublicAddress)) {
-                log.warn("The contribution contribAuth is NOT valid, the task will not be performed [chainTaskId:{}, contribAuth:{}]",
-                        chainTaskId, contribAuth);
-                return "Bad signature in received replicate";
-            } else {
-                log.info("The contribution contribAuth is valid [chainTaskId:{}]", chainTaskId);
-                subscriptionService.subscribeToTopic(chainTaskId);
-
-                Optional<AvailableReplicateModel> optionalModel = retrieveAvailableReplicateModelFromContribAuth(contribAuth);
-                if (!optionalModel.isPresent()) {
-                    log.info("Failed to retrieveAvailableReplicateModelFromContribAuth [chainTaskId:{}]", chainTaskId);
-                    return "Failed to retrieveAvailableReplicateModelFromContribAuth";
-                }
-
-                executorService.addReplicate(optionalModel.get());
-                return "Asked";
-            }
+        if (!executorService.canAcceptMoreReplicate() && lastAvailableBlockNumber == 0) {
+            log.info("The worker is already full, it can't accept more tasks");
+            return;
         }
-        log.info("The worker is already full, it can't accept more tasks");
-        return "Worker cannot accept more task";
+
+        ContributionAuthorization contribAuth = feignClient.getAvailableReplicate(lastAvailableBlockNumber);
+
+        if (contribAuth == null) {
+            // No task available;
+            return;
+        }
+
+        String chainTaskId = contribAuth.getChainTaskId();
+        log.info("Received task [chainTaskId:{}]", chainTaskId);
+
+        // verify that the ContributionAuthorization is valid
+        if (!contributionService.isContributionAuthorizationValid(contribAuth, corePublicAddress)) {
+            log.error("The contribution contribAuth is NOT valid, the task will not be performed"
+                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contribAuth);
+            return;
+        }
+
+        // log.info("The contribution authorization is valid [chainTaskId:{}]", chainTaskId);
+        subscriptionService.subscribeToTopic(chainTaskId);
+
+        Optional<AvailableReplicateModel> optionalModel = retrieveAvailableReplicateModelFromContribAuth(contribAuth);
+        if (!optionalModel.isPresent()) {
+            log.error("Failed to retrieveAvailableReplicateModelFromContribAuth [chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
+        executorService.addReplicate(optionalModel.get());
+        return;
     }
 
-    private Optional<AvailableReplicateModel> retrieveAvailableReplicateModelFromContribAuth(ContributionAuthorization contribAuth) {
+    private Optional<AvailableReplicateModel> retrieveAvailableReplicateModelFromContribAuth(
+    ContributionAuthorization contribAuth) {
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(contribAuth.getChainTaskId());
         if (!optionalChainTask.isPresent()) {
-            log.info("Failed to retrieve AvailableReplicate, ChainTask error  [chainTaskId:{}]", contribAuth.getChainTaskId());
+            log.info("Failed to retrieve AvailableReplicate, ChainTask error  [chainTaskId:{}]",
+                    contribAuth.getChainTaskId());
             return Optional.empty();
         }
         ChainTask chainTask = optionalChainTask.get();

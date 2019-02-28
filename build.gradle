@@ -62,6 +62,7 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-actuator"
     compile "org.springframework.cloud:spring-cloud-starter"
     compile "org.springframework.cloud:spring-cloud-starter-openfeign"
+    compile "org.springframework.retry:spring-retry"
     testCompile "org.springframework.boot:spring-boot-starter-test"
 
     //docker-client

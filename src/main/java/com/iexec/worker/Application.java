@@ -14,11 +14,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
 
 @SpringBootApplication
 @EnableFeignClients
 @EnableScheduling
+@EnableRetry
 @Slf4j
 public class Application implements CommandLineRunner {
 
@@ -67,11 +70,15 @@ public class Application implements CommandLineRunner {
         log.info("Get configuration of the core [config:{}]", feignClient.getPublicConfiguration());
 
         if (!iexecHubService.hasEnoughGas()) {
+            log.error("No enough gas, please refill your wallet!");
             System.exit(0);
         }
 
-        log.info("Register the worker to the core [worker:{}]", model);
         feignClient.registerWorker(model);
+        log.info("Registered the worker to the core [worker:{}]", model);
+
+        // ask scheduler for tasks left by the worker whithout finishing
+        // feignClient.getUnfinishedTasks();
 
         // clean the results folder
         for (String chainTaskId : resultService.getAllChainTaskIdsInResultFolder()) {
