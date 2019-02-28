@@ -26,18 +26,21 @@ public class CustomFeignClient {
     private static final int RETRY_TIME = 5000;
     private static final String TOKEN_PREFIX = "Bearer ";
     private final String url;
+    private TaskClient taskClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
     private CredentialsService credentialsService;
     private String currentToken;
 
-    public CustomFeignClient(WorkerClient coreWorkerClient,
-                             ReplicateClient coreTaskClient,
-                             CoreConfigurationService coreConfigurationService,
-                             CredentialsService credentialsService) {
+    public CustomFeignClient(TaskClient taskClient,
+                             WorkerClient workerClient,
+                             ReplicateClient replicateClient,
+                             CredentialsService credentialsService,
+                             CoreConfigurationService coreConfigurationService) {
+        this.taskClient = taskClient;
+        this.workerClient = workerClient;
+        this.replicateClient = replicateClient;
         this.credentialsService = credentialsService;
-        this.workerClient = coreWorkerClient;
-        this.replicateClient = coreTaskClient;
         this.url = coreConfigurationService.getUrl();
         this.currentToken = "";
     }
@@ -131,13 +134,13 @@ public class CustomFeignClient {
 
     public ContributionAuthorization getAvailableReplicate(long lastAvailableBlockNumber) {
         try {
-            return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+            return taskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getAvailableReplicate [instance:{}]", url);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+                return taskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
             }
         }
         return null;
