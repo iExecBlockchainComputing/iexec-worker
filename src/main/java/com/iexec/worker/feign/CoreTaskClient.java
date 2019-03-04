@@ -18,6 +18,7 @@ public interface CoreTaskClient {
     @PostMapping("/replicates/{chainTaskId}/updateStatus")
     void updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,
                                @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus,
+                               @RequestParam(name = "resultLink") String resultLink,
                                @RequestHeader("Authorization") String bearerToken,
                                @RequestBody ChainReceipt chainReceipt) throws FeignException;
 }

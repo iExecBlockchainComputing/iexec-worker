@@ -129,10 +129,18 @@ public class CustomFeignClient {
     }
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
-        updateReplicateStatus(chainTaskId, status, null);
+        updateReplicateStatus(chainTaskId, status, null, "");
+    }
+
+    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, String resultLink) {
+        updateReplicateStatus(chainTaskId, status, null, resultLink);
     }
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ChainReceipt chainReceipt) {
+        updateReplicateStatus(chainTaskId, status, chainReceipt, "");
+    }
+
+    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ChainReceipt chainReceipt, String resultLink) {
         log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
 
         // chainReceipt should not be null since it goes in the request body
@@ -141,19 +149,19 @@ public class CustomFeignClient {
         }
 
         try {
-            coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken(), chainReceipt);
+            coreTaskClient.updateReplicateStatus(chainTaskId, status, resultLink, getToken(), chainReceipt);
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to updateReplicateStatus, will retry [instance:{}]", url);
                 sleep();
-                updateReplicateStatus(chainTaskId, status, chainReceipt);
+                updateReplicateStatus(chainTaskId, status, chainReceipt, resultLink);
                 return;
             }
 
             if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
                 log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-                coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken(), chainReceipt);
+                coreTaskClient.updateReplicateStatus(chainTaskId, status, resultLink, getToken(), chainReceipt);
             }
         }
     }
