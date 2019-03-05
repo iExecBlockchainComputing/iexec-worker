@@ -4,6 +4,8 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.common.disconnection.RecoverableAction;
+import com.iexec.common.replicate.InterruptedReplicatesModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
@@ -101,20 +103,37 @@ public class CustomFeignClient {
         }
     }
 
-    // public void getUnfinishedTasks() {
-    //     try {
-    //         coreWorkerClient.getUnfinishedTasks(getToken());
-    //     } catch (FeignException e) {
-    //         if (e.status() == 0) {
-    //             log.error("Failed to registerWorker, will retry [instance:{}]", url);
-    //             sleep();
-    //             registerWorker(model);
-    //         } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
-    //             generateNewToken();
-    //             coreWorkerClient.registerWorker(getToken(), model);
-    //         }
-    //     }
-	// }
+    public InterruptedReplicatesModel getInterruptedReplicates() {
+        try {
+            return taskClient.getInterruptedReplicates(getToken());
+        } catch (FeignException e) {
+            if (e.status() == 0) {
+                log.error("Failed to getInterruptedReplicates, will retry [instance:{}]", url);
+                sleep();
+                return getInterruptedReplicates();
+            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+                generateNewToken();
+                return getInterruptedReplicates();
+            }
+        }
+        return null;
+	}
+
+    public InterruptedReplicatesModel notifyOfRecovery(RecoverableAction interruptedAction, List<String> chainTaskIdList) {
+        try {
+            return taskClient.notifyOfRecovery(interruptedAction, chainTaskIdList, getToken());
+        } catch (FeignException e) {
+            if (e.status() == 0) {
+                log.error("Failed to recover tasks, will retry [instance:{}]", url);
+                sleep();
+                return notifyOfRecovery(interruptedAction, chainTaskIdList);
+            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+                generateNewToken();
+                return notifyOfRecovery(interruptedAction, chainTaskIdList);
+            }
+        }
+        return null;
+	}
 
     public List<String> getTasksInProgress(){
         try {

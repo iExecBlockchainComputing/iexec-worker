@@ -2,6 +2,7 @@ package com.iexec.worker;
 
 
 import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -38,13 +39,16 @@ public class Application implements CommandLineRunner {
     private CredentialsService credentialsService;
 
     @Autowired
-    private CustomFeignClient feignClient;
+    private CustomFeignClient customFeignClient;
 
     @Autowired
     private IexecHubService iexecHubService;
 
     @Autowired
     private ResultService resultService;
+
+    @Autowired
+    private AmnesiaRecoveryService amnesiaRecoveryService;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -66,19 +70,19 @@ public class Application implements CommandLineRunner {
 
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
-        log.info("Version of the core [version:{}]", feignClient.getCoreVersion());
-        log.info("Get configuration of the core [config:{}]", feignClient.getPublicConfiguration());
+        log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
+        log.info("Get configuration of the core [config:{}]", customFeignClient.getPublicConfiguration());
 
         if (!iexecHubService.hasEnoughGas()) {
             log.error("No enough gas, please refill your wallet!");
             System.exit(0);
         }
 
-        feignClient.registerWorker(model);
+        customFeignClient.registerWorker(model);
         log.info("Registered the worker to the core [worker:{}]", model);
 
-        // ask scheduler for tasks left by the worker whithout finishing
-        // feignClient.getUnfinishedTasks();
+        // ask core for interrupted replicates
+        amnesiaRecoveryService.recoverInterruptedReplicates();
 
         // clean the results folder
         for (String chainTaskId : resultService.getAllChainTaskIdsInResultFolder()) {
