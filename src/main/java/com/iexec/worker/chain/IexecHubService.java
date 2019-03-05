@@ -179,7 +179,7 @@ public class IexecHubService extends IexecHubAbstractService {
         }
         return 0;
     }
-
+    
     private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainContributionStatus chainContributionStatus) {
         Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
         return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
