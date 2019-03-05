@@ -9,7 +9,7 @@ public class PublicConfigurationService {
 
     private PublicConfiguration publicConfiguration;
 
-    public PublicConfigurationService(CustomFeignClient customFeignClient){
+    public PublicConfigurationService(CustomFeignClient customFeignClient) {
         this.publicConfiguration = customFeignClient.getPublicConfiguration();
     }
 
@@ -17,7 +17,7 @@ public class PublicConfigurationService {
         return publicConfiguration.getChainId();
     }
 
-    public String getBlockchainURL() {
+    public String getDefaultBlockchainNodeAddress() {
         return publicConfiguration.getBlockchainURL();
     }
 
