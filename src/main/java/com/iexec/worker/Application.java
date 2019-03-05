@@ -82,7 +82,7 @@ public class Application implements CommandLineRunner {
         log.info("Registered the worker to the core [worker:{}]", model);
 
         // ask core for interrupted replicates
-        amnesiaRecoveryService.recoverInterruptedReplicates();
+        amnesiaRecoveryService.recoverInterruptedReplicatesAndNotifyCore();
 
         // clean the results folder
         for (String chainTaskId : resultService.getAllChainTaskIdsInResultFolder()) {

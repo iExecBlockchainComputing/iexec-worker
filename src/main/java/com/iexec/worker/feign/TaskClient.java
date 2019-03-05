@@ -3,8 +3,8 @@ package com.iexec.worker.feign;
 import java.util.List;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.replicate.InterruptedReplicateModel;
-import com.iexec.common.replicate.RecoveredReplicateModel;
+import com.iexec.common.disconnection.InterruptedReplicateModel;
+import com.iexec.common.disconnection.RecoveredReplicateModel;
 
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
