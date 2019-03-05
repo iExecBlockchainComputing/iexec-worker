@@ -88,5 +88,7 @@ public class Application implements CommandLineRunner {
         for (String chainTaskId : resultService.getAllChainTaskIdsInResultFolder()) {
             resultService.removeResult(chainTaskId);
         }
+
+        log.info("Cool, your iexec-worker is all set!");
     }
 }
