@@ -2,6 +2,7 @@ package com.iexec.worker.config;
 
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.worker.feign.CustomFeignClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -9,7 +10,7 @@ public class PublicConfigurationService {
 
     private PublicConfiguration publicConfiguration;
 
-    public PublicConfigurationService(CustomFeignClient customFeignClient){
+    public PublicConfigurationService(CustomFeignClient customFeignClient) {
         this.publicConfiguration = customFeignClient.getPublicConfiguration();
     }
 
@@ -17,7 +18,7 @@ public class PublicConfigurationService {
         return publicConfiguration.getChainId();
     }
 
-    public String getBlockchainURL() {
+    public String getDefaultBlockchainNodeAddress() {
         return publicConfiguration.getBlockchainURL();
     }
 
