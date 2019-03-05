@@ -28,17 +28,21 @@ public class CustomFeignClient {
     private static final int RETRY_TIME = 5000;
     private static final String TOKEN_PREFIX = "Bearer ";
     private final String url;
+
+    private CoreClient coreClient;
     private TaskClient taskClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
     private CredentialsService credentialsService;
     private String currentToken;
 
-    public CustomFeignClient(TaskClient taskClient,
+    public CustomFeignClient(CoreClient coreClient,
+                             TaskClient taskClient,
                              WorkerClient workerClient,
                              ReplicateClient replicateClient,
                              CredentialsService credentialsService,
                              CoreConfigurationService coreConfigurationService) {
+        this.coreClient = coreClient;
         this.taskClient = taskClient;
         this.workerClient = workerClient;
         this.replicateClient = replicateClient;
@@ -62,7 +66,7 @@ public class CustomFeignClient {
 
     public String getCoreVersion() {
         try {
-            return workerClient.getCoreVersion();
+            return coreClient.getCoreVersion();
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getCoreVersion, will retry");

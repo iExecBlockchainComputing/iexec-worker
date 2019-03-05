@@ -13,9 +13,6 @@ import java.util.List;
 @FeignClient(name = "WorkerClient", url = "http://${core.host}:${core.port}")
 public interface WorkerClient {
 
-    @GetMapping("/version")
-    String getCoreVersion() throws FeignException;
-
     @GetMapping("/workers/config")
     PublicConfiguration getPublicConfiguration() throws FeignException;
 
