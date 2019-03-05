@@ -84,7 +84,7 @@ public class TaskExecutorService {
         if (!replicateModel.getAppType().equals(DappType.DOCKER)) {
             log.error("app is not of type Docker [chainTaskId:{}]", chainTaskId);
             stdout = "Application is not of type Docker";
-            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            resultService.saveResult(chainTaskId, replicateModel, stdout);
             return true;
         }
 
@@ -95,7 +95,7 @@ public class TaskExecutorService {
             stdout = String.format("Failed to pull application image [URI:{}]", replicateModel.getAppUri());
             log.info(stdout);
             feignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            resultService.saveResult(chainTaskId, replicateModel, stdout);
             return true;
         }
 
@@ -108,7 +108,7 @@ public class TaskExecutorService {
             stdout = String.format("Failed to pull dataset [URI:%s]", replicateModel.getDatasetUri());
             log.info(stdout);
             feignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            resultService.saveResult(chainTaskId, replicateModel, stdout);
             return true;
         }
 
@@ -122,12 +122,12 @@ public class TaskExecutorService {
             stdout = "Failed to start computation";
             log.info(stdout);
             feignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+            resultService.saveResult(chainTaskId, replicateModel, stdout);
             return true;
         }
 
         feignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-        resultService.saveResultInfo(chainTaskId, replicateModel, stdout);
+        resultService.saveResult(chainTaskId, replicateModel, stdout);
         return true;
     }
 
