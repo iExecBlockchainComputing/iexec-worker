@@ -7,7 +7,8 @@ import java.util.Optional;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.disconnection.RecoverableAction;
 import com.iexec.common.replicate.AvailableReplicateModel;
-import com.iexec.common.replicate.InterruptedReplicatesModel;
+import com.iexec.common.replicate.InterruptedReplicateModel;
+import com.iexec.common.replicate.RecoveredReplicateModel;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateService;
@@ -42,52 +43,49 @@ public class AmnesiaRecoveryService {
         this.resultService = resultService;
     }
 
-    public void recoverInterruptedReplicates() {
-        InterruptedReplicatesModel interruptedReplicatesModel = customFeignClient.getInterruptedReplicates();
+    public void recoverInterruptedReplicatesAndNotifyCore() {
+        List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates();
+        List<RecoveredReplicateModel> recoveredReplicates = new ArrayList<>();
 
-        List<ContributionAuthorization> revealNeededList = interruptedReplicatesModel.getRevealNeededList();
-        List<ContributionAuthorization> resultUploadNeededList = interruptedReplicatesModel.getResultUploadNeededList();
-        List<ContributionAuthorization> contributionNeededList = interruptedReplicatesModel.getContributionNeededList();
+        for (InterruptedReplicateModel interruptedReplicate : interruptedReplicates) {
 
-        recoverTasksAndNotifyCore(revealNeededList, RecoverableAction.REVEAL);
-        recoverTasksAndNotifyCore(resultUploadNeededList, RecoverableAction.RESULT_UPLOAD);
-        recoverTasksWithContributionNeeded(contributionNeededList);
-    }
+            ContributionAuthorization contributionAuth = interruptedReplicate.getContributionAuthorization();
+            String chainTaskId = contributionAuth.getChainTaskId();
 
-    private void recoverTasksAndNotifyCore(List<ContributionAuthorization> list, RecoverableAction interruptedAction) {
-        List<String> recoveredTasks = new ArrayList<>();
-
-        for (ContributionAuthorization contributionAuth : list) {
-            if (!resultService.isResultZipFound(contributionAuth.getChainTaskId())) {
+            if (!resultService.isResultZipFound(chainTaskId)) {
                 continue;
             }
 
-            log.info("interrupted task found [chainTaskId:{}, interruptedAction:{}]",
-                    contributionAuth.getChainTaskId(), interruptedAction);
+            log.info("recovering interrupted task [chainTaskId:{}, recoverableAction:{}]",
+                    chainTaskId, interruptedReplicate.getRecoverableAction());
+
+
+            if (interruptedReplicate.getRecoverableAction().equals(RecoverableAction.CONTRIBUTE)) {
+                replicateService.createReplicateFromContributionAuth(contributionAuth);
+                continue;
+            }
 
             Optional<AvailableReplicateModel> oReplicateModel =
-                    replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+            replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+
             if (!oReplicateModel.isPresent()) {
-                log.info("could not retrieve replicateModel from contributionAuth [chainTaskId:{}]",
-                        contributionAuth.getChainTaskId());
+                log.info("could not retrieve replicateModel from contributionAuth [chainTaskId:{}]", chainTaskId);
                 continue;
             }
 
-            resultService.saveResultInfo(contributionAuth.getChainTaskId(), oReplicateModel.get());
-            subscriptionService.subscribeToTopic(contributionAuth.getChainTaskId());
-            recoveredTasks.add(contributionAuth.getChainTaskId());
+            resultService.saveResultInfo(chainTaskId, oReplicateModel.get());
+            subscriptionService.subscribeToTopic(chainTaskId);
+
+            RecoveredReplicateModel recoveredReplicate = RecoveredReplicateModel.builder()
+                    .chainTaskId(chainTaskId)
+                    .recoverableAction(interruptedReplicate.getRecoverableAction())
+                    .build();
+
+            recoveredReplicates.add(recoveredReplicate);
         }
 
-        if (!recoveredTasks.isEmpty()) {
-            customFeignClient.notifyOfRecovery(interruptedAction, recoveredTasks);
+        if (!recoveredReplicates.isEmpty()) {
+            customFeignClient.notifyOfRecovery(recoveredReplicates);
         }
     }
-
-    private void recoverTasksWithContributionNeeded(List<ContributionAuthorization> contributionNeededList) {
-        for (ContributionAuthorization contributionAuth : contributionNeededList) {
-            log.info("interrupted task found [chainTaskId:{}, interruptedAction:contribution]", contributionAuth.getChainTaskId());
-            replicateService.createReplicateFromContributionAuth(contributionAuth);
-        }
-    }
-
 }

@@ -4,8 +4,8 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
-import com.iexec.common.disconnection.RecoverableAction;
-import com.iexec.common.replicate.InterruptedReplicatesModel;
+import com.iexec.common.replicate.InterruptedReplicateModel;
+import com.iexec.common.replicate.RecoveredReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
@@ -107,7 +107,7 @@ public class CustomFeignClient {
         }
     }
 
-    public InterruptedReplicatesModel getInterruptedReplicates() {
+    public List<InterruptedReplicateModel> getInterruptedReplicates() {
         try {
             return taskClient.getInterruptedReplicates(getToken());
         } catch (FeignException e) {
@@ -123,20 +123,19 @@ public class CustomFeignClient {
         return null;
 	}
 
-    public InterruptedReplicatesModel notifyOfRecovery(RecoverableAction interruptedAction, List<String> chainTaskIdList) {
+    public void notifyOfRecovery(List<RecoveredReplicateModel> recoveredReplicates) {
         try {
-            return taskClient.notifyOfRecovery(interruptedAction, chainTaskIdList, getToken());
+            taskClient.notifyOfRecovery(recoveredReplicates, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to recover tasks, will retry [instance:{}]", url);
                 sleep();
-                return notifyOfRecovery(interruptedAction, chainTaskIdList);
+                notifyOfRecovery(recoveredReplicates);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return notifyOfRecovery(interruptedAction, chainTaskIdList);
+                notifyOfRecovery(recoveredReplicates);
             }
         }
-        return null;
 	}
 
     public List<String> getTasksInProgress(){

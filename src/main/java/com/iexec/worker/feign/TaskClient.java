@@ -3,8 +3,8 @@ package com.iexec.worker.feign;
 import java.util.List;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.disconnection.RecoverableAction;
-import com.iexec.common.replicate.InterruptedReplicatesModel;
+import com.iexec.common.replicate.InterruptedReplicateModel;
+import com.iexec.common.replicate.RecoveredReplicateModel;
 
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -18,14 +18,13 @@ import org.springframework.web.bind.annotation.*;
 public interface TaskClient {
 
     @GetMapping("/tasks/interrupted")
-    InterruptedReplicatesModel getInterruptedReplicates(
+    List<InterruptedReplicateModel> getInterruptedReplicates(
             @RequestHeader("Authorization") String bearerToken
     ) throws FeignException;
 
     @PostMapping("/tasks/recovered")
-    InterruptedReplicatesModel notifyOfRecovery(
-            @RequestParam("interruptedAction") RecoverableAction interruptedAction,
-            @RequestBody() List<String> chainTaskIdList,
+    void notifyOfRecovery(
+            @RequestParam("recoveredReplicates") List<RecoveredReplicateModel> recoveredReplicates,
             @RequestHeader("Authorization") String bearerToken
     ) throws FeignException;
 
