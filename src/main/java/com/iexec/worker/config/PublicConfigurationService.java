@@ -2,7 +2,6 @@ package com.iexec.worker.config;
 
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.worker.feign.CustomFeignClient;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
