@@ -6,7 +6,6 @@ import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.result.ResultInfo;
 import com.iexec.worker.result.ResultService;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.Before;

@@ -37,8 +37,33 @@ public class ResultService {
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
+    public void saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
+        saveStdoutFileInResultFolder(chainTaskId, stdout);
+        saveResultInfo(chainTaskId, replicateModel);
+    }
+
+    private File saveStdoutFileInResultFolder(String chainTaskId, String stdoutContent) {
+        log.info("Stdout file added to result folder [chainTaskId:{}]", chainTaskId);
+        String filePath = getResultFolderPath(chainTaskId) + File.separator + STDOUT_FILENAME;
+        return createFileWithContent(filePath, stdoutContent);
+    }
+
+    public void saveResultInfo(String chainTaskId, AvailableReplicateModel replicateModel) {
+        File zipFile = FileHelper.zipFolder(getResultFolderPath(chainTaskId));
+        log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
+
+        ResultInfo resultInfo = ResultInfo.builder()
+                .image(replicateModel.getAppUri())
+                .cmd(replicateModel.getCmd())
+                .deterministHash(getDeterministHashFromFile(chainTaskId))
+                .datasetUri(replicateModel.getDatasetUri())
+                .build();
+
+        resultInfoMap.put(chainTaskId, resultInfo);
+    }
+
     public ResultModel getResultModelWithZip(String chainTaskId) {
-        ResultInfo resultInfo = getResultInfo(chainTaskId);
+        ResultInfo resultInfo = getResultInfos(chainTaskId);
         byte[] zipResultAsBytes = new byte[0];
         String zipLocation = getResultZipFilePath(chainTaskId);
         try {
@@ -56,24 +81,20 @@ public class ResultService {
                 .build();
     }
 
-    public void saveResultInfo(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
-        createStdoutFile(chainTaskId, stdout);
-
-        File zipFile = FileHelper.zipFolder(getResultFolderPath(chainTaskId));
-        log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
-
-        ResultInfo resultInfo = ResultInfo.builder()
-                .image(replicateModel.getAppUri())
-                .cmd(replicateModel.getCmd())
-                .deterministHash(getDeterministHashFromFile(chainTaskId))
-                .datasetUri(replicateModel.getDatasetUri())
-                .build();
-
-        resultInfoMap.put(chainTaskId, resultInfo);
+    public ResultInfo getResultInfos(String chainTaskId) {
+        return resultInfoMap.get(chainTaskId);
     }
 
-    public ResultInfo getResultInfo(String chainTaskId) {
-        return resultInfoMap.get(chainTaskId);
+    public String getResultZipFilePath(String chainTaskId) {
+        return getResultFolderPath(chainTaskId) + ".zip";
+    }
+
+    public String getResultFolderPath(String chainTaskId) {
+        return configurationService.getResultBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
+    }
+
+    public boolean isResultZipFound(String chainTaskId) {
+        return new File(getResultZipFilePath(chainTaskId)).exists();
     }
 
     public boolean removeResult(String chainTaskId) {
@@ -92,14 +113,6 @@ public class ResultService {
         return deleted;
     }
 
-    public String getResultFolderPath(String chainTaskId) {
-        return configurationService.getResultBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
-    }
-
-    public String getResultZipFilePath(String chainTaskId) {
-        return getResultFolderPath(chainTaskId) + ".zip";
-    }
-
     public List<String> getAllChainTaskIdsInResultFolder() {
         File resultsFolder = new File(configurationService.getResultBaseDir());
         String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
@@ -108,12 +121,6 @@ public class ResultService {
             return Collections.emptyList();
         }
         return Arrays.asList(chainTaskIdFolders);
-    }
-
-    private File createStdoutFile(String chainTaskId, String stdoutContent) {
-        log.info("Stdout file added to result folder [chainTaskId:{}]", chainTaskId);
-        String filePath = getResultFolderPath(chainTaskId) + File.separator + STDOUT_FILENAME;
-        return createFileWithContent(filePath, stdoutContent);
     }
 
     public String getDeterministHashFromFile(String chainTaskId) {
