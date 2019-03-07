@@ -47,23 +47,29 @@ public class AmnesiaRecoveryService {
         List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates();
         List<RecoveredReplicateModel> recoveredReplicates = new ArrayList<>();
 
+        if (interruptedReplicates.isEmpty()) {
+            log.info("no interrupted tasks to recover");
+            return;
+        }
+
         for (InterruptedReplicateModel interruptedReplicate : interruptedReplicates) {
 
             ContributionAuthorization contributionAuth = interruptedReplicate.getContributionAuthorization();
             String chainTaskId = contributionAuth.getChainTaskId();
 
-            if (!resultService.isResultZipFound(chainTaskId)) {
-                continue;
-            }
-
-            log.info("recovering interrupted task [chainTaskId:{}, recoverableAction:{}]",
-                    chainTaskId, interruptedReplicate.getRecoverableAction());
-
-
             if (interruptedReplicate.getRecoverableAction().equals(RecoverableAction.CONTRIBUTE)) {
                 replicateService.createReplicateFromContributionAuth(contributionAuth);
                 continue;
             }
+
+            if (!resultService.isResultZipFound(chainTaskId)) {
+                continue;
+            }
+
+            // TODO: maybe check for result folder
+
+            log.info("recovering interrupted task [chainTaskId:{}, recoverableAction:{}]",
+                    chainTaskId, interruptedReplicate.getRecoverableAction());
 
             Optional<AvailableReplicateModel> oReplicateModel =
             replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);

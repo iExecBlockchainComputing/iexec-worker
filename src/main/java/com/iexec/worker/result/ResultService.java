@@ -39,6 +39,7 @@ public class ResultService {
 
     public void saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
         saveStdoutFileInResultFolder(chainTaskId, stdout);
+        zipResultFolder(chainTaskId);
         saveResultInfo(chainTaskId, replicateModel);
     }
 
@@ -48,10 +49,12 @@ public class ResultService {
         return createFileWithContent(filePath, stdoutContent);
     }
 
-    public void saveResultInfo(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public void zipResultFolder(String chainTaskId) {
         File zipFile = FileHelper.zipFolder(getResultFolderPath(chainTaskId));
         log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
+    }
 
+    public void saveResultInfo(String chainTaskId, AvailableReplicateModel replicateModel) {
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(replicateModel.getAppUri())
                 .cmd(replicateModel.getCmd())

@@ -24,7 +24,8 @@ public interface TaskClient {
 
     @PostMapping("/tasks/recovered")
     void notifyOfRecovery(
-            @RequestParam("recoveredReplicates") List<RecoveredReplicateModel> recoveredReplicates,
+            @RequestBody List<RecoveredReplicateModel> recoveredReplicates,
+            // @RequestBody String recoveredReplicates,
             @RequestHeader("Authorization") String bearerToken
     ) throws FeignException;
 
