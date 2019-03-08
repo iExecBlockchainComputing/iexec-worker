@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class Web3jService extends Web3jAbstractService {
 
-
-    public Web3jService(PublicConfigurationService publicConfigurationService,
-                        WorkerConfigurationService workerConfigurationService) {
-        super(publicConfigurationService.getBlockchainURL(), workerConfigurationService.getGasPriceMultiplier(), workerConfigurationService.getGasPriceCap());
+    public Web3jService(PublicConfigurationService publicConfService,
+                        WorkerConfigurationService workerConfService) {
+        super(!workerConfService.getOverrideBlockchainNodeAddress().isEmpty() ?
+                        workerConfService.getOverrideBlockchainNodeAddress() :
+                        publicConfService.getDefaultBlockchainNodeAddress(),
+                workerConfService.getGasPriceMultiplier(), workerConfService.getGasPriceCap());
     }
 
 }

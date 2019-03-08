@@ -1,10 +1,7 @@
 package com.iexec.worker.chain;
 
 
-import com.iexec.common.chain.ChainAccount;
-import com.iexec.common.chain.ChainContribution;
-import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.chain.IexecHubAbstractService;
+import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,12 +15,15 @@ import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
+import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
 import static com.iexec.common.utils.BytesUtils.stringToBytes;
 
 
@@ -46,7 +46,7 @@ public class IexecHubService extends IexecHubAbstractService {
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
-    
+
     IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
                                                              String resultHash,
                                                              String resultSeal,
@@ -67,32 +67,46 @@ public class IexecHubService extends IexecHubAbstractService {
                                                                                     String resultHash,
                                                                                     String resultSeal,
                                                                                     Sign.SignatureData enclaveSignatureData) {
-        IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
+        TransactionReceipt contributeReceipt;
+        String chainTaskId = contribAuth.getChainTaskId();
+        RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contributeABILegacy(
+                stringToBytes(chainTaskId),
+                stringToBytes(resultHash),
+                stringToBytes(resultSeal),
+                contribAuth.getEnclave(),
+                BigInteger.valueOf(enclaveSignatureData.getV()),
+                enclaveSignatureData.getR(),
+                enclaveSignatureData.getS(),
+                BigInteger.valueOf(contribAuth.getSignV()),
+                contribAuth.getSignR(),
+                contribAuth.getSignS());
+        log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
 
         try {
-            RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contributeABILegacy(
-                    stringToBytes(contribAuth.getChainTaskId()),
-                    stringToBytes(resultHash),
-                    stringToBytes(resultSeal),
-                    contribAuth.getEnclave(),
-                    BigInteger.valueOf(enclaveSignatureData.getV()),
-                    enclaveSignatureData.getR(),
-                    enclaveSignatureData.getS(),
-                    BigInteger.valueOf(contribAuth.getSignV()),
-                    contribAuth.getSignR(),
-                    contribAuth.getSignS());
-            log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", contribAuth.getChainTaskId(), resultHash);
-            TransactionReceipt contributeReceipt = contributeCall.send();
-            if (!getHubContract(web3jService.getWritingContractGasProvider()).getTaskContributeEvents(contributeReceipt).isEmpty()) {
-                log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]",
-                        contribAuth.getChainTaskId(), resultHash, contributeReceipt.getGasUsed());
-                contributeEvent = getHubContract(web3jService.getWritingContractGasProvider()).getTaskContributeEvents(contributeReceipt).get(0);
-            }
+            contributeReceipt = contributeCall.send();
         } catch (Exception e) {
-            log.error("Failed contribute [chainTaskId:{}, exception:{}]", contribAuth.getChainTaskId(), e.getMessage());
+            log.error("Failed to contribute [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
             e.printStackTrace();
+            return null;
         }
-        return contributeEvent;
+
+        List<IexecHubABILegacy.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
+
+        IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
+        if (contributeEvents != null && !contributeEvents.isEmpty()) {
+            contributeEvent = contributeEvents.get(0);
+        }
+
+        if (contributeEvent != null && contributeEvent.log != null &&
+                (!contributeEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
+                        || isContributionStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED))) {
+            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]",
+                    chainTaskId, resultHash, contributeReceipt.getGasUsed());
+            return contributeEvent;
+        }
+
+        log.error("Failed to contribute [chainTaskId:{}]", chainTaskId);
+        return null;
     }
 
     IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
@@ -108,23 +122,37 @@ public class IexecHubService extends IexecHubAbstractService {
     }
 
     private IexecHubABILegacy.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
-        IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
+        TransactionReceipt revealReceipt;
+        RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
+                stringToBytes(chainTaskId),
+                stringToBytes(resultDigest));
+
+        log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
         try {
-            RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
-                    stringToBytes(chainTaskId),
-                    stringToBytes(resultDigest));
-            log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
-            TransactionReceipt revealReceipt = revealCall.send();
-            if (!getHubContract(web3jService.getWritingContractGasProvider()).getTaskRevealEvents(revealReceipt).isEmpty()) {
-                log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
-                        chainTaskId, resultDigest, revealReceipt.getGasUsed());
-                revealEvent = getHubContract(web3jService.getWritingContractGasProvider()).getTaskRevealEvents(revealReceipt).get(0);
-            }
+            revealReceipt = revealCall.send();
         } catch (Exception e) {
-            log.error("Reveal Failed [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
+            log.error("Failed to reveal [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
             e.printStackTrace();
+            return null;
         }
-        return revealEvent;
+
+        List<IexecHubABILegacy.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
+
+        IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
+        if (revealEvents != null && !revealEvents.isEmpty()) {
+            revealEvent = revealEvents.get(0);
+        }
+
+        if (revealEvent != null && revealEvent.log != null &&
+                (!revealEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
+                        || isContributionStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED))) {
+            log.info("Contributed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
+                    chainTaskId, resultDigest, revealReceipt.getGasUsed());
+            return revealEvent;
+        }
+
+        log.error("Failed to reveal [chainTaskId:{}]", chainTaskId);
+        return null;
     }
 
     private long getWaitingTransactionCount() {
@@ -150,6 +178,30 @@ public class IexecHubService extends IexecHubAbstractService {
             log.error("GetLastBlock failed");
         }
         return 0;
+    }
+    
+    private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainContributionStatus chainContributionStatus) {
+        Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
+        return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
+    }
+
+    private boolean isContributionStatusValidOnChainAfterPendingReceipt(String chainTaskId, ChainContributionStatus chainContributionStatus) {
+        long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
+
+        final long startTime = System.currentTimeMillis();
+        long duration = 0;
+        while (duration < maxWaitingTime) {
+            try {
+                if (isContributionStatusValidOnChain(chainTaskId, chainContributionStatus)) {
+                    return true;
+                }
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                log.error("Error in checking the latest block number");
+            }
+            duration = System.currentTimeMillis() - startTime;
+        }
+        return false;
     }
 
 

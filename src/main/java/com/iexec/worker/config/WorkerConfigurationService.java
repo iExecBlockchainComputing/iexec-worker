@@ -28,6 +28,9 @@ public class WorkerConfigurationService {
     @Value("${worker.teeEnabled}")
     private boolean isTeeEnabled;
 
+    @Value("${worker.overrideBlockchainNodeAddress}")
+    private String overrideBlockchainNodeAddress;
+
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -71,5 +74,9 @@ public class WorkerConfigurationService {
 
     public boolean isTeeEnabled() {
         return isTeeEnabled;
+    }
+
+    public String getOverrideBlockchainNodeAddress() {
+        return overrideBlockchainNodeAddress;
     }
 }
