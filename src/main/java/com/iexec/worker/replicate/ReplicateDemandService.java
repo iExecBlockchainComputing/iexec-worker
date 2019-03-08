@@ -15,18 +15,15 @@ import org.springframework.stereotype.Service;
 public class ReplicateDemandService {
 
     private final CustomFeignClient customFeignClient;
-    private TaskExecutorService executorService;
-    private ReplicateService replicateService;
+    private TaskExecutorService taskExecutorService;
     private IexecHubService iexecHubService;
 
     @Autowired
-    public ReplicateDemandService(TaskExecutorService executorService,
-                                  ReplicateService replicateService,
+    public ReplicateDemandService(TaskExecutorService taskExecutorService,
                                   IexecHubService iexecHubService,
                                   CustomFeignClient customFeignClient) {
         this.customFeignClient = customFeignClient;
-        this.executorService = executorService;
-        this.replicateService = replicateService;
+        this.taskExecutorService = taskExecutorService;
         this.iexecHubService = iexecHubService;
     }
 
@@ -34,7 +31,7 @@ public class ReplicateDemandService {
     public void askForReplicate() {
         // check if the worker can run a task or not
         long lastAvailableBlockNumber = iexecHubService.getLastBlock();
-        if (!executorService.canAcceptMoreReplicate() && lastAvailableBlockNumber == 0) {
+        if (!taskExecutorService.canAcceptMoreReplicates() && lastAvailableBlockNumber == 0) {
             log.info("The worker is already full, it can't accept more tasks");
             return;
         }
@@ -42,6 +39,6 @@ public class ReplicateDemandService {
         ContributionAuthorization contribAuth = customFeignClient.getAvailableReplicate(
                 lastAvailableBlockNumber);
 
-        replicateService.createReplicateFromContributionAuth(contribAuth);
+        taskExecutorService.addReplicate(contribAuth);
     }
 }

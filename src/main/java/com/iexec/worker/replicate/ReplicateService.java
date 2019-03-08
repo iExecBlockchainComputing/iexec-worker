@@ -11,9 +11,7 @@ import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.utils.MultiAddressHelper;
 
 import org.springframework.stereotype.Service;
@@ -25,33 +23,23 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class ReplicateService {
 
-    private TaskExecutorService executorService;
-    private SubscriptionService subscriptionService;
     private ContributionService contributionService;
     private IexecHubService iexecHubService;
-
     private String corePublicAddress;
 
-
-
-    public ReplicateService(TaskExecutorService executorService,
-                            SubscriptionService subscriptionService,
-                            ContributionService contributionService,
+    public ReplicateService(ContributionService contributionService,
                             IexecHubService iexecHubService,
-                            CustomFeignClient feignClient) {
-        this.executorService = executorService;
-        this.subscriptionService = subscriptionService;
+                            CustomFeignClient customFeignClient) {
         this.contributionService = contributionService;
         this.iexecHubService = iexecHubService;
 
-        corePublicAddress = feignClient.getPublicConfiguration().getSchedulerPublicAddress();
+        corePublicAddress = customFeignClient.getPublicConfiguration().getSchedulerPublicAddress();
     }
 
-    public void createReplicateFromContributionAuth(ContributionAuthorization contribAuth) {
-        if (contribAuth == null) {
-            // No task available;
-            return;
-        }
+    public Optional<AvailableReplicateModel> contributionAuthToReplicate(ContributionAuthorization contribAuth) {
+
+        // No task available;
+        if (contribAuth == null) return Optional.empty();
 
         String chainTaskId = contribAuth.getChainTaskId();
         log.info("Received task [chainTaskId:{}]", chainTaskId);
@@ -60,29 +48,22 @@ public class ReplicateService {
         if (!contributionService.isContributionAuthorizationValid(contribAuth, corePublicAddress)) {
             log.error("The contribution contribAuth is NOT valid, the task will not be performed"
                     + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contribAuth);
-            return;
+            return Optional.empty();
         }
 
-        subscriptionService.subscribeToTopic(chainTaskId);
-
-        Optional<AvailableReplicateModel> optionalModel = retrieveAvailableReplicateModelFromContribAuth(contribAuth);
-        if (!optionalModel.isPresent()) {
-            log.error("Failed to retrieveAvailableReplicateModelFromContribAuth [chainTaskId:{}]", chainTaskId);
-            return;
-        }
-
-        executorService.addReplicate(optionalModel.get());
-        return;
+        return retrieveAvailableReplicateModelFromContribAuth(contribAuth);
     }
 
     public Optional<AvailableReplicateModel> retrieveAvailableReplicateModelFromContribAuth(
-    ContributionAuthorization contribAuth) {
+            ContributionAuthorization contribAuth) {
+
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(contribAuth.getChainTaskId());
         if (!optionalChainTask.isPresent()) {
             log.info("Failed to retrieve AvailableReplicate, ChainTask error  [chainTaskId:{}]",
                     contribAuth.getChainTaskId());
             return Optional.empty();
         }
+
         ChainTask chainTask = optionalChainTask.get();
 
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
@@ -90,6 +71,7 @@ public class ReplicateService {
             log.info("Failed to retrieve AvailableReplicate, ChainDeal error  [chainTaskId:{}]", contribAuth.getChainTaskId());
             return Optional.empty();
         }
+
         ChainDeal chainDeal = optionalChainDeal.get();
 
         String datasetURI = chainDeal.getChainDataset() != null ? MultiAddressHelper.convertToURI(chainDeal.getChainDataset().getUri()) : "";
