@@ -1,14 +1,15 @@
 package com.iexec.worker.amnesia;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.disconnection.RecoverableAction;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
-import com.iexec.common.disconnection.RecoveredReplicateModel;
+import com.iexec.common.disconnection.RecoveryAction;
+import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateService;
@@ -31,67 +32,132 @@ public class AmnesiaRecoveryService {
     private SubscriptionService subscriptionService;
     private ReplicateService replicateService;
     private ResultService resultService;
-
+    private TaskExecutorService taskExecutorService;
 
     public AmnesiaRecoveryService(CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
                                   ReplicateService replicateService,
-                                  ResultService resultService) {
+                                  ResultService resultService,
+                                  TaskExecutorService taskExecutorService) {
         this.customFeignClient = customFeignClient;
         this.subscriptionService = subscriptionService;
         this.replicateService = replicateService;
         this.resultService = resultService;
+        this.taskExecutorService = taskExecutorService;
     }
 
-    public void recoverInterruptedReplicatesAndNotifyCore() {
+    public List<String> recoverInterruptedReplicates() {
         List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates();
-        List<RecoveredReplicateModel> recoveredReplicates = new ArrayList<>();
+        List<String> recoveredChainTaskIds = new ArrayList<>();
 
         if (interruptedReplicates.isEmpty()) {
             log.info("no interrupted tasks to recover");
-            return;
+            return Collections.emptyList();
         }
 
         for (InterruptedReplicateModel interruptedReplicate : interruptedReplicates) {
 
             ContributionAuthorization contributionAuth = interruptedReplicate.getContributionAuthorization();
             String chainTaskId = contributionAuth.getChainTaskId();
+            RecoveryAction recoveryAction = interruptedReplicate.getRecoverableAction();
 
-            if (interruptedReplicate.getRecoverableAction().equals(RecoverableAction.CONTRIBUTE)) {
-                replicateService.createReplicateFromContributionAuth(contributionAuth);
-                continue;
-            }
-
-            if (!resultService.isResultZipFound(chainTaskId)) {
-                continue;
-            }
-
-            // TODO: maybe check for result folder
-
-            log.info("recovering interrupted task [chainTaskId:{}, recoverableAction:{}]",
-                    chainTaskId, interruptedReplicate.getRecoverableAction());
+            log.info("recovering interrupted task [chainTaskId:{}, recoveryAction:{}]",
+                chainTaskId, recoveryAction);
 
             Optional<AvailableReplicateModel> oReplicateModel =
             replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
 
             if (!oReplicateModel.isPresent()) {
-                log.info("could not retrieve replicateModel from contributionAuth [chainTaskId:{}]", chainTaskId);
+                log.info("could not retrieve replicateModel from contributionAuth to recover task [chainTaskId:{}, RecoveryAction:{}]",
+                        chainTaskId, recoveryAction);
                 continue;
             }
 
-            resultService.saveResultInfo(chainTaskId, oReplicateModel.get());
-            subscriptionService.subscribeToTopic(chainTaskId);
+            AvailableReplicateModel replicateModel = oReplicateModel.get();
 
-            RecoveredReplicateModel recoveredReplicate = RecoveredReplicateModel.builder()
-                    .chainTaskId(chainTaskId)
-                    .recoverableAction(interruptedReplicate.getRecoverableAction())
-                    .build();
+            if (interruptedReplicate.getRecoverableAction().equals(RecoveryAction.CONTRIBUTE)) {
+                recoverReplicateByContributing(contributionAuth, replicateModel);
+                continue;
+            }
 
-            recoveredReplicates.add(recoveredReplicate);
+            if (interruptedReplicate.getRecoverableAction().equals(RecoveryAction.REVEAL)) {
+                recoverReplicateByRevealing(chainTaskId, replicateModel);
+                continue;
+            }
+
+            if (interruptedReplicate.getRecoverableAction().equals(RecoveryAction.UPLOAD_RESULT)) {
+                recoverReplicateByUploadingResult(chainTaskId, replicateModel);
+            }
+
+            recoveredChainTaskIds.add(chainTaskId);
         }
 
-        if (!recoveredReplicates.isEmpty()) {
-            customFeignClient.notifyOfRecovery(recoveredReplicates);
+        return recoveredChainTaskIds;
+    }
+
+    public void recoverReplicateByContributing(ContributionAuthorization contributionAuth, AvailableReplicateModel replicateModel) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+
+        if (resultService.isResultZipFound(chainTaskId)) {
+            taskExecutorService.tryToContribute(contributionAuth);
+            return;
         }
+
+        if (resultService.isResultFolderFound(chainTaskId)) {
+            resultService.zipResultFolder(chainTaskId);
+            resultService.saveResultInfo(chainTaskId, replicateModel);
+            taskExecutorService.tryToContribute(contributionAuth);
+            return;
+        }
+
+        // re-run computation
+        taskExecutorService.addReplicate(contributionAuth);
+        return;
+    }
+
+    public void recoverReplicateByRevealing(String chainTaskId, AvailableReplicateModel replicateModel) {
+
+        boolean resultZipFound = resultService.isResultZipFound(chainTaskId);
+        boolean resultFolderFound = resultService.isResultFolderFound(chainTaskId);
+
+        if (!resultZipFound && !resultFolderFound) {
+            log.error("couldn't recover task by revealing since result was not found "
+                    + "[chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
+        subscriptionService.subscribeToTopic(chainTaskId);
+
+        if (resultZipFound) {
+            taskExecutorService.reveal(chainTaskId);
+            return;
+        }
+
+        resultService.zipResultFolder(chainTaskId);
+        resultService.saveResultInfo(chainTaskId, replicateModel);
+        taskExecutorService.reveal(chainTaskId);
+    }
+
+    public void recoverReplicateByUploadingResult(String chainTaskId, AvailableReplicateModel replicateModel) {
+
+        boolean resultZipFound = resultService.isResultZipFound(chainTaskId);
+        boolean resultFolderFound = resultService.isResultFolderFound(chainTaskId);
+
+        if (!resultZipFound && !resultFolderFound) {
+            log.error("couldn't recover task by uploading since result was not found "
+                    + "[chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
+        subscriptionService.subscribeToTopic(chainTaskId);
+
+        if (resultZipFound) {
+            taskExecutorService.uploadResult(chainTaskId);
+            return;
+        }
+
+        resultService.zipResultFolder(chainTaskId);
+        resultService.saveResultInfo(chainTaskId, replicateModel);
+        taskExecutorService.uploadResult(chainTaskId);
     }
 }

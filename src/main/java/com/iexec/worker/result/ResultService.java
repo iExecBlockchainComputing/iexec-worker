@@ -100,6 +100,10 @@ public class ResultService {
         return new File(getResultZipFilePath(chainTaskId)).exists();
     }
 
+    public boolean isResultFolderFound(String chainTaskId) {
+        return new File(getResultFolderPath(chainTaskId)).exists();
+    }
+
     public boolean removeResult(String chainTaskId) {
         boolean deletedInMap = resultInfoMap.remove(chainTaskId) != null;
         boolean deletedTaskFolder = FileHelper.deleteFolder(new File(getResultFolderPath(chainTaskId)).getParent());
@@ -114,6 +118,14 @@ public class ResultService {
         }
 
         return deleted;
+    }
+
+    public void cleanUnusedResultFolders(List<String> recoveredTasks) {
+        for (String chainTaskId : getAllChainTaskIdsInResultFolder()) {
+            if (!recoveredTasks.contains(chainTaskId)) {
+                removeResult(chainTaskId);
+            }
+        }
     }
 
     public List<String> getAllChainTaskIdsInResultFolder() {

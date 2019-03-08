@@ -1,6 +1,8 @@
 package com.iexec.worker;
 
 
+import java.util.List;
+
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
@@ -82,12 +84,10 @@ public class Application implements CommandLineRunner {
         log.info("Registered the worker to the core [worker:{}]", model);
 
         // ask core for interrupted replicates
-        amnesiaRecoveryService.recoverInterruptedReplicatesAndNotifyCore();
+        List<String> recoveredTasks = amnesiaRecoveryService.recoverInterruptedReplicates();
 
         // clean the results folder
-        for (String chainTaskId : resultService.getAllChainTaskIdsInResultFolder()) {
-            resultService.removeResult(chainTaskId);
-        }
+        resultService.cleanUnusedResultFolders(recoveredTasks);
 
         log.info("Cool, your iexec-worker is all set!");
     }
