@@ -5,7 +5,6 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
-import com.iexec.common.disconnection.RecoveredReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
@@ -121,21 +120,6 @@ public class CustomFeignClient {
             }
         }
         return null;
-	}
-
-    public void notifyOfRecovery(List<RecoveredReplicateModel> recoveredReplicates) {
-        try {
-            taskClient.notifyOfRecovery(recoveredReplicates, getToken());
-        } catch (FeignException e) {
-            if (e.status() == 0) {
-                log.error("Failed to recover tasks, will retry [instance:{}]", url);
-                sleep();
-                notifyOfRecovery(recoveredReplicates);
-            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
-                generateNewToken();
-                notifyOfRecovery(recoveredReplicates);
-            }
-        }
 	}
 
     public List<String> getTasksInProgress(){
