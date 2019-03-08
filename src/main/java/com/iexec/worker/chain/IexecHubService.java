@@ -47,10 +47,6 @@ public class IexecHubService extends IexecHubAbstractService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    public static void main(String[] args) {
-
-    }
-
     IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
                                                              String resultHash,
                                                              String resultSeal,
