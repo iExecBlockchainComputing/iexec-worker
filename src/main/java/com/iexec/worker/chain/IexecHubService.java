@@ -99,7 +99,7 @@ public class IexecHubService extends IexecHubAbstractService {
 
         if (contributeEvent != null && contributeEvent.log != null &&
                 (!contributeEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
-                        || isContributionStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED))) {
+                        || isStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED, this::isContributionStatusValidOnChain))) {
             log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]",
                     chainTaskId, resultHash, contributeReceipt.getGasUsed());
             return contributeEvent;
@@ -108,6 +108,7 @@ public class IexecHubService extends IexecHubAbstractService {
         log.error("Failed to contribute [chainTaskId:{}]", chainTaskId);
         return null;
     }
+
 
     IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
@@ -145,7 +146,7 @@ public class IexecHubService extends IexecHubAbstractService {
 
         if (revealEvent != null && revealEvent.log != null &&
                 (!revealEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
-                        || isContributionStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED))) {
+                        || isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain))) {
             log.info("Contributed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
                     chainTaskId, resultDigest, revealReceipt.getGasUsed());
             return revealEvent;
@@ -179,30 +180,13 @@ public class IexecHubService extends IexecHubAbstractService {
         }
         return 0;
     }
-    
-    private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainContributionStatus chainContributionStatus) {
-        Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
-        return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
-    }
 
-    private boolean isContributionStatusValidOnChainAfterPendingReceipt(String chainTaskId, ChainContributionStatus chainContributionStatus) {
-        long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
-
-        final long startTime = System.currentTimeMillis();
-        long duration = 0;
-        while (duration < maxWaitingTime) {
-            try {
-                if (isContributionStatusValidOnChain(chainTaskId, chainContributionStatus)) {
-                    return true;
-                }
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                log.error("Error in checking the latest block number");
-            }
-            duration = System.currentTimeMillis() - startTime;
+    private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainStatus chainContributionStatus) {
+        if (chainContributionStatus instanceof ChainContributionStatus) {
+            Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
+            return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
         }
         return false;
     }
-
 
 }
