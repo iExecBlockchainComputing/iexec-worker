@@ -18,6 +18,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 
@@ -25,6 +26,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableFeignClients
 @EnableScheduling
 @EnableRetry
+@EnableAsync
 @Slf4j
 public class Application implements CommandLineRunner {
 
@@ -83,12 +85,12 @@ public class Application implements CommandLineRunner {
         customFeignClient.registerWorker(model);
         log.info("Registered the worker to the core [worker:{}]", model);
 
+        log.info("Cool, your iexec-worker is all set!");
+
         // ask core for interrupted replicates
         List<String> recoveredTasks = amnesiaRecoveryService.recoverInterruptedReplicates();
 
         // clean the results folder
         resultService.cleanUnusedResultFolders(recoveredTasks);
-
-        log.info("Cool, your iexec-worker is all set!");
     }
 }

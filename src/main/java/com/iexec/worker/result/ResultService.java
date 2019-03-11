@@ -37,10 +37,15 @@ public class ResultService {
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
-    public void saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
-        saveStdoutFileInResultFolder(chainTaskId, stdout);
-        zipResultFolder(chainTaskId);
-        saveResultInfo(chainTaskId, replicateModel);
+    public boolean saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
+        try {
+            saveStdoutFileInResultFolder(chainTaskId, stdout);
+            zipResultFolder(chainTaskId);
+            saveResultInfo(chainTaskId, replicateModel);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private File saveStdoutFileInResultFolder(String chainTaskId, String stdoutContent) {

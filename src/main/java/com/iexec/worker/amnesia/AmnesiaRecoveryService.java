@@ -50,7 +50,7 @@ public class AmnesiaRecoveryService {
         List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates();
         List<String> recoveredChainTaskIds = new ArrayList<>();
 
-        if (interruptedReplicates.isEmpty()) {
+        if (interruptedReplicates == null || interruptedReplicates.isEmpty()) {
             log.info("no interrupted tasks to recover");
             return Collections.emptyList();
         }
@@ -58,8 +58,8 @@ public class AmnesiaRecoveryService {
         for (InterruptedReplicateModel interruptedReplicate : interruptedReplicates) {
 
             ContributionAuthorization contributionAuth = interruptedReplicate.getContributionAuthorization();
+            RecoveryAction recoveryAction = interruptedReplicate.getRecoveryAction();
             String chainTaskId = contributionAuth.getChainTaskId();
-            RecoveryAction recoveryAction = interruptedReplicate.getRecoverableAction();
 
             log.info("recovering interrupted task [chainTaskId:{}, recoveryAction:{}]",
                 chainTaskId, recoveryAction);
@@ -74,90 +74,93 @@ public class AmnesiaRecoveryService {
             }
 
             AvailableReplicateModel replicateModel = oReplicateModel.get();
+            boolean isRecovered = false;
 
-            if (interruptedReplicate.getRecoverableAction().equals(RecoveryAction.CONTRIBUTE)) {
-                recoverReplicateByContributing(contributionAuth, replicateModel);
-                continue;
+            switch (interruptedReplicate.getRecoveryAction()) {
+                case NONE:
+                    isRecovered = true; // just subscribe and wait
+                    break;
+
+                case CONTRIBUTE:
+                    isRecovered = recoverReplicateByContributing(contributionAuth, replicateModel);
+                    break;
+
+                case REVEAL:
+                    isRecovered = recoverReplicateByRevealing(chainTaskId, replicateModel);
+                    break;
+
+                case UPLOAD_RESULT:
+                    isRecovered = recoverReplicateByUploadingResult(chainTaskId, replicateModel);
+                    break;
             }
 
-            if (interruptedReplicate.getRecoverableAction().equals(RecoveryAction.REVEAL)) {
-                recoverReplicateByRevealing(chainTaskId, replicateModel);
-                continue;
+            if (isRecovered) {
+                subscriptionService.subscribeToTopic(chainTaskId);
+                recoveredChainTaskIds.add(chainTaskId);
             }
-
-            if (interruptedReplicate.getRecoverableAction().equals(RecoveryAction.UPLOAD_RESULT)) {
-                recoverReplicateByUploadingResult(chainTaskId, replicateModel);
-            }
-
-            recoveredChainTaskIds.add(chainTaskId);
         }
 
         return recoveredChainTaskIds;
     }
 
-    public void recoverReplicateByContributing(ContributionAuthorization contributionAuth, AvailableReplicateModel replicateModel) {
+    public boolean recoverReplicateByContributing(ContributionAuthorization contributionAuth, AvailableReplicateModel replicateModel) {
         String chainTaskId = contributionAuth.getChainTaskId();
 
-        if (resultService.isResultZipFound(chainTaskId)) {
-            taskExecutorService.tryToContribute(contributionAuth);
-            return;
+        boolean isResultZipFound = resultService.isResultZipFound(chainTaskId);
+        boolean isResultFolderFound = resultService.isResultFolderFound(chainTaskId);
+
+        if (!isResultFolderFound && !isResultZipFound) {
+            // re-run computation
+            taskExecutorService.addReplicate(contributionAuth, replicateModel);
+            return true;
         }
 
-        if (resultService.isResultFolderFound(chainTaskId)) {
+        if (!isResultZipFound) {
             resultService.zipResultFolder(chainTaskId);
-            resultService.saveResultInfo(chainTaskId, replicateModel);
-            taskExecutorService.tryToContribute(contributionAuth);
-            return;
         }
 
-        // re-run computation
-        taskExecutorService.addReplicate(contributionAuth);
-        return;
+        resultService.saveResultInfo(chainTaskId, replicateModel);
+        taskExecutorService.tryToContribute(contributionAuth);
+        return true;
     }
 
-    public void recoverReplicateByRevealing(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public boolean recoverReplicateByRevealing(String chainTaskId, AvailableReplicateModel replicateModel) {
 
-        boolean resultZipFound = resultService.isResultZipFound(chainTaskId);
-        boolean resultFolderFound = resultService.isResultFolderFound(chainTaskId);
+        boolean isResultZipFound = resultService.isResultZipFound(chainTaskId);
+        boolean isResultFolderFound = resultService.isResultFolderFound(chainTaskId);
 
-        if (!resultZipFound && !resultFolderFound) {
+        if (!isResultZipFound && !isResultFolderFound) {
             log.error("couldn't recover task by revealing since result was not found "
                     + "[chainTaskId:{}]", chainTaskId);
-            return;
+            return false;
         }
 
-        subscriptionService.subscribeToTopic(chainTaskId);
-
-        if (resultZipFound) {
-            taskExecutorService.reveal(chainTaskId);
-            return;
+        if (!isResultZipFound) {
+            resultService.zipResultFolder(chainTaskId);
         }
 
-        resultService.zipResultFolder(chainTaskId);
         resultService.saveResultInfo(chainTaskId, replicateModel);
         taskExecutorService.reveal(chainTaskId);
+        return true;
     }
 
-    public void recoverReplicateByUploadingResult(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public boolean recoverReplicateByUploadingResult(String chainTaskId, AvailableReplicateModel replicateModel) {
 
-        boolean resultZipFound = resultService.isResultZipFound(chainTaskId);
-        boolean resultFolderFound = resultService.isResultFolderFound(chainTaskId);
+        boolean isResultZipFound = resultService.isResultZipFound(chainTaskId);
+        boolean isResultFolderFound = resultService.isResultFolderFound(chainTaskId);
 
-        if (!resultZipFound && !resultFolderFound) {
+        if (!isResultZipFound && !isResultFolderFound) {
             log.error("couldn't recover task by uploading since result was not found "
                     + "[chainTaskId:{}]", chainTaskId);
-            return;
+            return false;
         }
 
-        subscriptionService.subscribeToTopic(chainTaskId);
-
-        if (resultZipFound) {
-            taskExecutorService.uploadResult(chainTaskId);
-            return;
+        if (!isResultZipFound) {
+            resultService.zipResultFolder(chainTaskId);
         }
 
-        resultService.zipResultFolder(chainTaskId);
         resultService.saveResultInfo(chainTaskId, replicateModel);
         taskExecutorService.uploadResult(chainTaskId);
+        return true;
     }
 }

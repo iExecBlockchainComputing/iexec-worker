@@ -165,10 +165,12 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
             switch (type) {
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
+                    unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortContributionTimeout(chainTaskId);
                     break;
 
                 case PLEASE_ABORT_CONSENSUS_REACHED:
+                    unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortConsensusReached(chainTaskId);
                     break;
 
@@ -181,6 +183,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     break;
 
                 case COMPLETED:
+                    unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.completeTask(chainTaskId);
                     break;
 
