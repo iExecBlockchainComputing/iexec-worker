@@ -1,7 +1,5 @@
 package com.iexec.worker.feign;
 
-
-import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import feign.FeignException;
