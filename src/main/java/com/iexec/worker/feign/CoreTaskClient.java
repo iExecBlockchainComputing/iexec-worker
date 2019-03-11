@@ -1,8 +1,8 @@
 package com.iexec.worker.feign;
 
 
-import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -19,5 +19,5 @@ public interface CoreTaskClient {
     void updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,
                                @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus,
                                @RequestHeader("Authorization") String bearerToken,
-                               @RequestBody ChainReceipt chainReceipt) throws FeignException;
+                               @RequestBody ReplicateDetails details) throws FeignException;
 }

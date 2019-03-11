@@ -246,8 +246,10 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
-        if (responseEntity.getStatusCode().is2xxSuccessful()) {
-            feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+        if (responseEntity.getStatusCode().is2xxSuccessful() && responseEntity.getBody() != null) {
+            String resultLink = responseEntity.getBody();
+            log.info("Result uploaded by the worker [resultLink:{}]", resultLink);
+            feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, resultLink);
         }
     }
 
