@@ -230,7 +230,6 @@ public class TaskExecutorService {
     @Async
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
-        // System.exit(3);
 
         Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();

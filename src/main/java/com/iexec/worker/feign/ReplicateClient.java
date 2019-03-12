@@ -1,5 +1,6 @@
 package com.iexec.worker.feign;
 
+import com.iexec.common.replicate.ReplicateDetails;
 import java.util.List;
 
 import com.iexec.common.chain.ChainReceipt;
@@ -30,5 +31,5 @@ public interface ReplicateClient {
     void updateReplicateStatus(@PathVariable(name = "chainTaskId") String chainTaskId,
                                @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus,
                                @RequestHeader("Authorization") String bearerToken,
-                               @RequestBody ChainReceipt chainReceipt) throws FeignException;
+                               @RequestBody ReplicateDetails details) throws FeignException;
 }
