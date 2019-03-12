@@ -9,6 +9,7 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
 import com.iexec.common.disconnection.RecoveryAction;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
@@ -33,21 +34,26 @@ public class AmnesiaRecoveryService {
     private ReplicateService replicateService;
     private ResultService resultService;
     private TaskExecutorService taskExecutorService;
+    private IexecHubService iexecHubService;
 
     public AmnesiaRecoveryService(CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
                                   ReplicateService replicateService,
                                   ResultService resultService,
-                                  TaskExecutorService taskExecutorService) {
+                                  TaskExecutorService taskExecutorService,
+                                  IexecHubService iexecHubService) {
         this.customFeignClient = customFeignClient;
         this.subscriptionService = subscriptionService;
         this.replicateService = replicateService;
         this.resultService = resultService;
         this.taskExecutorService = taskExecutorService;
+        this.iexecHubService = iexecHubService;
     }
 
     public List<String> recoverInterruptedReplicates() {
-        List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates();
+        long lasAvailableBlockNumber = iexecHubService.getLastBlockNumber();
+        List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates(
+                lasAvailableBlockNumber);
         List<String> recoveredChainTaskIds = new ArrayList<>();
 
         if (interruptedReplicates == null || interruptedReplicates.isEmpty()) {

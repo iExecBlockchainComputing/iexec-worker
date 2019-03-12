@@ -171,7 +171,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return web3jService.hasEnoughGas(credentialsService.getCredentials().getAddress());
     }
 
-    public long getLastBlock() {
+    public long getLastBlockNumber() {
         try {
             return web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock().getNumber().longValue();
         } catch (IOException e) {
