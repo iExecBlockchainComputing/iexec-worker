@@ -16,14 +16,15 @@ import org.springframework.web.bind.annotation.*;
 )
 public interface TaskClient {
 
-    @GetMapping("/tasks/interrupted")
-    List<InterruptedReplicateModel> getInterruptedReplicates(
-            @RequestHeader("Authorization") String bearerToken
-    ) throws FeignException;
+    // @GetMapping("/tasks/available")
+    // ContributionAuthorization getAvailableReplicate(
+    //         @RequestParam(name = "blockNumber") long blockNumber,
+    //         @RequestHeader("Authorization") String bearerToken
+    // ) throws FeignException;
 
-    @GetMapping("/tasks/available")
-    ContributionAuthorization getAvailableReplicate(
-            @RequestParam(name = "blockNumber") long blockNumber,
-            @RequestHeader("Authorization") String bearerToken
-    ) throws FeignException;
+    // @GetMapping("/tasks/interrupted")
+    // List<InterruptedReplicateModel> getInterruptedReplicates(
+    //         @RequestParam(name = "blockNumber") long blockNumber,
+    //         @RequestHeader("Authorization") String bearerToken
+    // ) throws FeignException;
 }

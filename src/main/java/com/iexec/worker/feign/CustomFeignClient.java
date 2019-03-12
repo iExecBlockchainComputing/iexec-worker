@@ -106,17 +106,17 @@ public class CustomFeignClient {
         }
     }
 
-    public List<InterruptedReplicateModel> getInterruptedReplicates() {
+    public List<InterruptedReplicateModel> getInterruptedReplicates(long lastAvailableBlockNumber) {
         try {
-            return taskClient.getInterruptedReplicates(getToken());
+            return replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getInterruptedReplicates, will retry [instance:{}]", url);
                 sleep();
-                return getInterruptedReplicates();
+                return getInterruptedReplicates(lastAvailableBlockNumber);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return getInterruptedReplicates();
+                return getInterruptedReplicates(lastAvailableBlockNumber);
             }
         }
         return null;
@@ -140,13 +140,13 @@ public class CustomFeignClient {
 
     public ContributionAuthorization getAvailableReplicate(long lastAvailableBlockNumber) {
         try {
-            return taskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+            return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getAvailableReplicate [instance:{}]", url);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return taskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+                return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
             }
         }
         return null;

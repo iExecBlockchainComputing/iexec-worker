@@ -45,7 +45,7 @@ public class ReplicateDemandService {
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     public void askForReplicate() {
         // check if the worker can run a task or not
-        long lastAvailableBlockNumber = iexecHubService.getLastBlock();
+        long lastAvailableBlockNumber = iexecHubService.getLastBlockNumber();
         if (!taskExecutorService.canAcceptMoreReplicates() && lastAvailableBlockNumber == 0) {
             log.info("The worker is already full, it can't accept more tasks");
             return;
