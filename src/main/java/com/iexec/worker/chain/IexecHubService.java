@@ -76,7 +76,7 @@ public class IexecHubService extends IexecHubAbstractService {
                 enclaveSignatureData.getS(),
                 new byte[]{enclaveSignatureData.getV()});
 
-        byte[] workerPoolSign = BytesUtils.stringToBytes(contribAuth.getSignature().getSignature());
+        byte[] workerPoolSign = BytesUtils.stringToBytes(contribAuth.getSignature().getValue());
 
         RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
                 stringToBytes(chainTaskId),
