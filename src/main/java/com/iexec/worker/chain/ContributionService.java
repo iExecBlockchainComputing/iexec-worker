@@ -5,12 +5,14 @@ import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Keys;
 import org.web3j.crypto.Sign;
 
+import java.math.BigInteger;
+import java.security.SignatureException;
 import java.util.Date;
 import java.util.Optional;
 
@@ -147,23 +149,35 @@ public class ContributionService {
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
-        // create the hash that was used in the signature in the core
-        byte[] hash = BytesUtils.stringToBytes(
-                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
-        byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
 
-        return SignatureUtils.doesSignatureMatchesAddress(auth.getSignR(), auth.getSignS(),
-                BytesUtils.bytesToString(hashTocheck), signerAddress);
+        byte[] message = BytesUtils.stringToBytes(
+                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
+
+        Sign.SignatureData sign = new Sign.SignatureData(auth.getSignV(),
+                auth.getSignR(), auth.getSignS());
+
+        return isSignatureValid(message, sign, signerAddress);
     }
 
     public boolean isEnclaveSignatureValid(String resulHash, String resultSeal, Sign.SignatureData enclaveSignature, String signerAddress) {
-        byte[] hash = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
-        byte[] hashTocheck = SignatureUtils.getEthereumMessageHash(hash);
+        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
 
-        return SignatureUtils.doesSignatureMatchesAddress(enclaveSignature.getR(), enclaveSignature.getS(),
-                BytesUtils.bytesToString(hashTocheck), signerAddress.toLowerCase());
+        return isSignatureValid(message, enclaveSignature, signerAddress);
     }
 
+    private boolean isSignatureValid(byte[] message, Sign.SignatureData sign, String signerAddress) {
+        try {
+            BigInteger publicKey = Sign.signedPrefixedMessageToKey(message, sign);
+            if (publicKey != null) {
+                String addressRecovered = "0x" + Keys.getAddress(publicKey);
+                return addressRecovered.equalsIgnoreCase(signerAddress);
+            }
+
+        } catch (SignatureException e) {
+            log.error("Signature exception [exception:{}]", e.toString());
+        }
+        return false;
+    }
 
     public boolean hasEnoughGas() {
         return iexecHubService.hasEnoughGas();
