@@ -45,7 +45,7 @@ public class ContributionServiceTests {
         String chainTaskid = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String enclaveWallet = "0x9a43BB008b7A657e1936ebf5d8e28e5c5E021596";
 
-        Signature signature = new Signature(workerWallet,
+        Signature signature = new Signature(
                 BytesUtils.stringToBytes("0x99f6b19da6aeb2133763a11204b9895c5b7d0478d08ae3d889a6bd6c820b612f"),
                 BytesUtils.stringToBytes("0x0b64b1f9ceb8472f4944da55d3b75947a04618bae5ddd57a7a2a2d14c3802b7e"),
                 (byte) 27);
