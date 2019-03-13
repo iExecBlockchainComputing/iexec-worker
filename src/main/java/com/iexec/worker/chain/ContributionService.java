@@ -149,7 +149,7 @@ public class ContributionService {
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
-
+        // create the hash that was used in the signature in the core
         byte[] message = BytesUtils.stringToBytes(
                 HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
 
