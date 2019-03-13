@@ -153,8 +153,8 @@ public class ContributionService {
         byte[] message = BytesUtils.stringToBytes(
                 HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
 
-        Sign.SignatureData sign = new Sign.SignatureData(auth.getSignV(),
-                auth.getSignR(), auth.getSignS());
+        Sign.SignatureData sign = new Sign.SignatureData(auth.getSignature().getV(),
+                auth.getSignature().getR(), auth.getSignature().getS());
 
         return isSignatureValid(message, sign, signerAddress);
     }

@@ -3,6 +3,7 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.Arrays;
@@ -75,10 +76,7 @@ public class IexecHubService extends IexecHubAbstractService {
                 enclaveSignatureData.getS(),
                 new byte[]{enclaveSignatureData.getV()});
 
-        byte[] workerPoolSign = Arrays.concatenate(
-                contribAuth.getSignR(),
-                contribAuth.getSignS(),
-                new byte[]{contribAuth.getSignV()});
+        byte[] workerPoolSign = BytesUtils.stringToBytes(contribAuth.getSignature().getSignature());
 
         RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
                 stringToBytes(chainTaskId),
