@@ -5,6 +5,7 @@ import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Sign;
@@ -14,7 +15,6 @@ import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -69,17 +69,24 @@ public class IexecHubService extends IexecHubAbstractService {
                                                                                     Sign.SignatureData enclaveSignatureData) {
         TransactionReceipt contributeReceipt;
         String chainTaskId = contribAuth.getChainTaskId();
-        RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contributeABILegacy(
+
+        byte[] enclaveSign = Arrays.concatenate(
+                enclaveSignatureData.getR(),
+                enclaveSignatureData.getS(),
+                new byte[]{enclaveSignatureData.getV()});
+
+        byte[] workerPoolSign = Arrays.concatenate(
+                contribAuth.getSignR(),
+                contribAuth.getSignS(),
+                new byte[]{contribAuth.getSignV()});
+
+        RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultHash),
                 stringToBytes(resultSeal),
                 contribAuth.getEnclave(),
-                BigInteger.valueOf(enclaveSignatureData.getV()),
-                enclaveSignatureData.getR(),
-                enclaveSignatureData.getS(),
-                BigInteger.valueOf(contribAuth.getSignV()),
-                contribAuth.getSignR(),
-                contribAuth.getSignS());
+                enclaveSign,
+                workerPoolSign);
         log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
 
         try {
@@ -108,7 +115,6 @@ public class IexecHubService extends IexecHubAbstractService {
         log.error("Failed to contribute [chainTaskId:{}]", chainTaskId);
         return null;
     }
-
 
     IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
