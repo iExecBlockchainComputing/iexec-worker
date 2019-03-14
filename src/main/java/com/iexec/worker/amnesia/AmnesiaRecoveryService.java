@@ -68,39 +68,41 @@ public class AmnesiaRecoveryService {
             String chainTaskId = contributionAuth.getChainTaskId();
 
             log.info("recovering interrupted task [chainTaskId:{}, recoveryAction:{}]",
-                chainTaskId, recoveryAction);
+                    chainTaskId, recoveryAction);
 
-            Optional<AvailableReplicateModel> oReplicateModel =
-            replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
-
-            if (!oReplicateModel.isPresent()) {
-                log.info("could not retrieve replicateModel from contributionAuth to recover task [chainTaskId:{}, RecoveryAction:{}]",
-                        chainTaskId, recoveryAction);
-                continue;
-            }
-
-            AvailableReplicateModel replicateModel = oReplicateModel.get();
-            boolean isRecovered = false;
+            boolean shouldSubscribe = false;
 
             switch (interruptedReplicate.getRecoveryAction()) {
-                case NONE:
-                    isRecovered = true; // just subscribe and wait
+                case WAIT:
+                    shouldSubscribe = true; // just subscribe and wait
                     break;
 
                 case CONTRIBUTE:
-                    isRecovered = recoverReplicateByContributing(contributionAuth, replicateModel);
+                    shouldSubscribe = recoverReplicateByContributing(contributionAuth);
                     break;
 
+                case ABORT_CONSENSUS_REACHED:
+                    taskExecutorService.abortConsensusReached(chainTaskId);
+                    shouldSubscribe = false;
+
+                case ABORT_CONTRIBUTION_TIMEOUT:
+                    taskExecutorService.abortContributionTimeout(chainTaskId);
+                    shouldSubscribe = false;
+
                 case REVEAL:
-                    isRecovered = recoverReplicateByRevealing(chainTaskId, replicateModel);
+                    shouldSubscribe = recoverReplicateByRevealing(contributionAuth);
                     break;
 
                 case UPLOAD_RESULT:
-                    isRecovered = recoverReplicateByUploadingResult(chainTaskId, replicateModel);
+                    shouldSubscribe = recoverReplicateByUploadingResult(contributionAuth);
                     break;
+
+                case COMPLETE:
+                    taskExecutorService.completeTask(chainTaskId);
+                    shouldSubscribe = false;
             }
 
-            if (isRecovered) {
+            if (shouldSubscribe) {
                 subscriptionService.subscribeToTopic(chainTaskId);
                 recoveredChainTaskIds.add(chainTaskId);
             }
@@ -109,8 +111,19 @@ public class AmnesiaRecoveryService {
         return recoveredChainTaskIds;
     }
 
-    public boolean recoverReplicateByContributing(ContributionAuthorization contributionAuth, AvailableReplicateModel replicateModel) {
+    public boolean recoverReplicateByContributing(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
+
+        Optional<AvailableReplicateModel> oReplicateModel =
+        replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+
+        if (!oReplicateModel.isPresent()) {
+            log.info("could not retrieve replicateModel from contributionAuth to recover task "
+                    + "[chainTaskId:{}, RecoveryAction:CONTRIBUTE]", chainTaskId);
+            return false;
+        }
+
+        AvailableReplicateModel replicateModel = oReplicateModel.get();
 
         boolean isResultZipFound = resultService.isResultZipFound(chainTaskId);
         boolean isResultFolderFound = resultService.isResultFolderFound(chainTaskId);
@@ -126,11 +139,23 @@ public class AmnesiaRecoveryService {
         }
 
         resultService.saveResultInfo(chainTaskId, replicateModel);
-        taskExecutorService.tryToContribute(contributionAuth);
+        taskExecutorService.contribute(contributionAuth);
         return true;
     }
 
-    public boolean recoverReplicateByRevealing(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public boolean recoverReplicateByRevealing(ContributionAuthorization contributionAuth) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+
+        Optional<AvailableReplicateModel> oReplicateModel =
+        replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+
+        if (!oReplicateModel.isPresent()) {
+            log.info("could not retrieve replicateModel from contributionAuth to recover task "
+                    + "[chainTaskId:{}, RecoveryAction:CONTRIBUTE]", chainTaskId);
+            return false;
+        }
+
+        AvailableReplicateModel replicateModel = oReplicateModel.get();
 
         boolean isResultZipFound = resultService.isResultZipFound(chainTaskId);
         boolean isResultFolderFound = resultService.isResultFolderFound(chainTaskId);
@@ -150,7 +175,19 @@ public class AmnesiaRecoveryService {
         return true;
     }
 
-    public boolean recoverReplicateByUploadingResult(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public boolean recoverReplicateByUploadingResult(ContributionAuthorization contributionAuth) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+
+        Optional<AvailableReplicateModel> oReplicateModel =
+        replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+
+        if (!oReplicateModel.isPresent()) {
+            log.info("could not retrieve replicateModel from contributionAuth to recover task "
+                    + "[chainTaskId:{}, RecoveryAction:CONTRIBUTE]", chainTaskId);
+            return false;
+        }
+
+        AvailableReplicateModel replicateModel = oReplicateModel.get();
 
         boolean isResultZipFound = resultService.isResultZipFound(chainTaskId);
         boolean isResultFolderFound = resultService.isResultFolderFound(chainTaskId);

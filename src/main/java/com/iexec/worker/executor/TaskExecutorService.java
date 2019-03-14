@@ -91,9 +91,9 @@ public class TaskExecutorService {
     public void addReplicate(ContributionAuthorization contributionAuth, AvailableReplicateModel replicateModel) {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
 
-        CompletableFuture.supplyAsync(() -> executeTask(chainTaskId, replicateModel), executor)     // compute
+        CompletableFuture.supplyAsync(() -> compute(chainTaskId, replicateModel), executor)     // compute
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout)) // save result
-                .thenAccept(isSaved -> {if (isSaved) tryToContribute(contributionAuth);})           // contribute
+                .thenAccept(isSaved -> {if (isSaved) contribute(contributionAuth);})                // contribute
                 .handle((res, err) -> {                                                             // handle errors
                     if (err != null) {
                         log.error(err.getMessage());
@@ -104,7 +104,7 @@ public class TaskExecutorService {
     }
 
     @Async
-    private String executeTask(String chainTaskId, AvailableReplicateModel replicateModel) {
+    private String compute(String chainTaskId, AvailableReplicateModel replicateModel) {
         String stdout = "";
 
         // check app type
@@ -155,7 +155,7 @@ public class TaskExecutorService {
     }
 
     @Async
-    public void tryToContribute(ContributionAuthorization contribAuth) {
+    public void contribute(ContributionAuthorization contribAuth) {
         String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
         Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
 
@@ -217,11 +217,13 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALED, optionalChainReceipt.get());
     }
 
+    @Async
     public void abortConsensusReached(String chainTaskId) {
         resultService.removeResult(chainTaskId);
         customFeignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
     }
 
+    @Async
     public void abortContributionTimeout(String chainTaskId) {
         resultService.removeResult(chainTaskId);
         customFeignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONTRIBUTION_TIMEOUT);
@@ -244,6 +246,7 @@ public class TaskExecutorService {
         }
     }
 
+    @Async
     public void completeTask(String chainTaskId) {
         resultService.removeResult(chainTaskId);
         customFeignClient.updateReplicateStatus(chainTaskId, COMPLETED);
