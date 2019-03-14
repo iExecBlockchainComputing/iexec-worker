@@ -75,7 +75,7 @@ public class ContributionServiceTests {
         String r = "0xfe0d8948ca8739b0926ed5729532686b283755a1c1e660abf1ebd6362d1545c8";
         String s = "0x14e53d7cd66ec0a1cfe330b1e16e460ae354d33fb84cf9d62213b10c109f0db5";
 
-        Sign.SignatureData enclaveSignature = new Sign.SignatureData((byte) v, BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s));
+        Signature enclaveSignature = new Signature(BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s), (byte) v);
 
         assertThat(contributionService.isEnclaveSignatureValid(resultHash, resultSeal, enclaveSignature, enclaveAddress)).isTrue();
     }

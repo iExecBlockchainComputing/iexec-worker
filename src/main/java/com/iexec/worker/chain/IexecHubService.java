@@ -3,13 +3,12 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Sign;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.RemoteCall;
@@ -51,12 +50,12 @@ public class IexecHubService extends IexecHubAbstractService {
     IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
                                                              String resultHash,
                                                              String resultSeal,
-                                                             Sign.SignatureData enclaveSignatureData) {
+                                                             Signature enclaveSignature) {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]",
                         contribAuth.getChainTaskId(), getWaitingTransactionCount());
-                return sendContributeTransaction(contribAuth, resultHash, resultSeal, enclaveSignatureData);
+                return sendContributeTransaction(contribAuth, resultHash, resultSeal, enclaveSignature);
             }, executor).get();
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -67,15 +66,11 @@ public class IexecHubService extends IexecHubAbstractService {
     private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth,
                                                                                     String resultHash,
                                                                                     String resultSeal,
-                                                                                    Sign.SignatureData enclaveSignatureData) {
+                                                                                    Signature enclaveSignature) {
         TransactionReceipt contributeReceipt;
         String chainTaskId = contribAuth.getChainTaskId();
 
-        byte[] enclaveSign = Arrays.concatenate(
-                enclaveSignatureData.getR(),
-                enclaveSignatureData.getS(),
-                new byte[]{enclaveSignatureData.getV()});
-
+        byte[] enclaveSign = BytesUtils.stringToBytes(enclaveSignature.getValue());
         byte[] workerPoolSign = BytesUtils.stringToBytes(contribAuth.getSignature().getValue());
 
         RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(

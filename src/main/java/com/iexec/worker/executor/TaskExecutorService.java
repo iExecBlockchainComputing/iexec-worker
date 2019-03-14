@@ -5,15 +5,14 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.security.Signature;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Sign;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -62,8 +61,8 @@ public class TaskExecutorService {
         CompletableFuture.supplyAsync(() -> executeTask(replicateModel), executor)
                 .thenAccept(isExecuted -> {
                     String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
-                    Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
-                    tryToContribute(contribAuth, deterministHash, enclaveSignature);
+                    Optional<Signature> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
+                    tryToContribute(contribAuth, deterministHash, enclaveSignature.orElse(null));
                 });
     }
 
@@ -113,12 +112,12 @@ public class TaskExecutorService {
         return true;
     }
 
-    private void tryToContribute(ContributionAuthorization contribAuth, String deterministHash, Optional<TeeSignature.Sign> enclaveSignature) {
+    private void tryToContribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
         if (deterministHash.isEmpty()) {
             return;
         }
         String chainTaskId = contribAuth.getChainTaskId();
-        Sign.SignatureData enclaveSignatureData = contributionService.getEnclaveSignatureData(contribAuth, deterministHash, enclaveSignature);
+        Signature enclaveSignatureData = contributionService.getEnclaveSignature(contribAuth, deterministHash, enclaveSignature);
 
         Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
         if (!canContributeStatus.isPresent()) {
