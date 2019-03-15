@@ -3,6 +3,7 @@ package com.iexec.worker.result;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.result.ResultModel;
+import com.iexec.common.security.Signature;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.utils.FileHelper;
@@ -170,9 +171,8 @@ public class ResultService {
         return hash;
     }
 
-    public Optional<TeeSignature.Sign> getEnclaveSignatureFromFile(String chainTaskId) {
+    public Optional<Signature> getEnclaveSignatureFromFile(String chainTaskId) {
         String executionEnclaveSignatureFileName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
-        System.out.println(executionEnclaveSignatureFileName);
         Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
 
         if (!executionEnclaveSignatureFilePath.toFile().exists()) {
@@ -193,9 +193,9 @@ public class ResultService {
             return Optional.empty();
         }
 
-        TeeSignature.Sign s = teeSignature.getSign();
-        log.info("TeeSignature file exists [chainTaskId:{}, v:{}, r:{}, s:{}]",
-                chainTaskId, s.getV(), s.getR(), s.getS());
-        return Optional.of(s);
+        Signature sign = teeSignature.getSign();
+        log.info("TeeSignature file exists [chainTaskId:{}, r:{}, sign:{}, v:{}]",
+                chainTaskId, sign.getR(), sign.getS(), sign.getV());
+        return Optional.of(sign);
     }
 }

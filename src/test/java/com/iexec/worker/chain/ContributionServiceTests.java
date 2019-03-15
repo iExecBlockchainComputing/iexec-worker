@@ -2,8 +2,8 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.security.TeeSignature;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -17,7 +17,6 @@ import java.util.Optional;
 
 import static com.iexec.common.chain.ChainTaskStatus.ACTIVE;
 import static com.iexec.common.chain.ChainTaskStatus.REVEALING;
-import static com.iexec.common.chain.ChainTaskStatus.UNSET;
 import static com.iexec.worker.chain.ContributionService.computeResultHash;
 import static com.iexec.worker.chain.ContributionService.computeResultSeal;
 import static org.assertj.core.api.Java6Assertions.assertThat;
@@ -46,13 +45,16 @@ public class ContributionServiceTests {
         String chainTaskid = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         String enclaveWallet = "0x9a43BB008b7A657e1936ebf5d8e28e5c5E021596";
 
+        Signature signature = new Signature(
+                BytesUtils.stringToBytes("0x99f6b19da6aeb2133763a11204b9895c5b7d0478d08ae3d889a6bd6c820b612f"),
+                BytesUtils.stringToBytes("0x0b64b1f9ceb8472f4944da55d3b75947a04618bae5ddd57a7a2a2d14c3802b7e"),
+                (byte) 27);
+
         ContributionAuthorization contribAuth = ContributionAuthorization.builder()
                 .workerWallet(workerWallet)
                 .chainTaskId(chainTaskid)
                 .enclave(enclaveWallet)
-                .signR(BytesUtils.stringToBytes("0x99f6b19da6aeb2133763a11204b9895c5b7d0478d08ae3d889a6bd6c820b612f"))
-                .signS(BytesUtils.stringToBytes("0x0b64b1f9ceb8472f4944da55d3b75947a04618bae5ddd57a7a2a2d14c3802b7e"))
-                .signV((byte) 27)
+                .signature(signature)
                 .build();
 
         assertThat(contributionService.isContributionAuthorizationValid(contribAuth, signingAddress)).isTrue();
@@ -73,9 +75,9 @@ public class ContributionServiceTests {
         String r = "0xfe0d8948ca8739b0926ed5729532686b283755a1c1e660abf1ebd6362d1545c8";
         String s = "0x14e53d7cd66ec0a1cfe330b1e16e460ae354d33fb84cf9d62213b10c109f0db5";
 
-        Sign.SignatureData enclaveSignature = new Sign.SignatureData((byte) v, BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s));
+        Signature enclaveSignature = new Signature(BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s), (byte) v);
 
-        assertThat(contributionService.isEnclaveSignatureValid(resultHash, resultSeal , enclaveSignature, enclaveAddress)).isTrue();
+        assertThat(contributionService.isEnclaveSignatureValid(resultHash, resultSeal, enclaveSignature, enclaveAddress)).isTrue();
     }
 
     @Test
@@ -95,7 +97,7 @@ public class ContributionServiceTests {
                 .dealid(chainDealId)
                 .idx(0)
                 .status(ACTIVE)
-                .contributionDeadline(new Date().getTime()+1000)
+                .contributionDeadline(new Date().getTime() + 1000)
                 .build();
 
         String chainTaskId = chainTask.getChainTaskId();
@@ -117,7 +119,7 @@ public class ContributionServiceTests {
                 .dealid(chainDealId)
                 .idx(0)
                 .status(ACTIVE)
-                .contributionDeadline(new Date().getTime()+1000)
+                .contributionDeadline(new Date().getTime() + 1000)
                 .build();
 
         String chainTaskId = chainTask.getChainTaskId();
@@ -139,7 +141,7 @@ public class ContributionServiceTests {
                 .dealid(chainDealId)
                 .idx(0)
                 .status(REVEALING)
-                .contributionDeadline(new Date().getTime()+1000)
+                .contributionDeadline(new Date().getTime() + 1000)
                 .build();
 
         String chainTaskId = chainTask.getChainTaskId();
@@ -161,7 +163,7 @@ public class ContributionServiceTests {
                 .dealid(chainDealId)
                 .idx(0)
                 .status(ACTIVE)
-                .contributionDeadline(new Date().getTime()-1000)
+                .contributionDeadline(new Date().getTime() - 1000)
                 .build();
 
         String chainTaskId = chainTask.getChainTaskId();
@@ -183,7 +185,7 @@ public class ContributionServiceTests {
                 .dealid(chainDealId)
                 .idx(0)
                 .status(ACTIVE)
-                .contributionDeadline(new Date().getTime()+1000)
+                .contributionDeadline(new Date().getTime() + 1000)
                 .build();
 
         String chainTaskId = chainTask.getChainTaskId();
