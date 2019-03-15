@@ -157,13 +157,13 @@ public class TaskExecutorService {
     @Async
     public void contribute(ContributionAuthorization contribAuth) {
         String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
-        Optional<TeeSignature.Sign> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
+        Optional<Signature> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
 
         if (deterministHash.isEmpty()) {
             return;
         }
         String chainTaskId = contribAuth.getChainTaskId();
-        Signature enclaveSignatureData = contributionService.getEnclaveSignature(contribAuth, deterministHash, enclaveSignature);
+        Signature enclaveSignatureData = contributionService.getEnclaveSignature(contribAuth, deterministHash, enclaveSignature.get());
 
         Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
         if (!canContributeStatus.isPresent()) {
