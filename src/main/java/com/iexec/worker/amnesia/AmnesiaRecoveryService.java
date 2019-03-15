@@ -71,6 +71,7 @@ public class AmnesiaRecoveryService {
                     chainTaskId, recoveryAction);
 
             boolean shouldSubscribe = false;
+            boolean shouldKeepResultFolder = true;
 
             switch (interruptedReplicate.getRecoveryAction()) {
                 case WAIT:
@@ -79,31 +80,37 @@ public class AmnesiaRecoveryService {
 
                 case CONTRIBUTE:
                     shouldSubscribe = recoverReplicateByContributing(contributionAuth);
+                    shouldKeepResultFolder = shouldSubscribe;
                     break;
 
                 case ABORT_CONSENSUS_REACHED:
                     taskExecutorService.abortConsensusReached(chainTaskId);
-                    shouldSubscribe = false;
+                    break;
 
                 case ABORT_CONTRIBUTION_TIMEOUT:
                     taskExecutorService.abortContributionTimeout(chainTaskId);
-                    shouldSubscribe = false;
+                    break;
 
                 case REVEAL:
                     shouldSubscribe = recoverReplicateByRevealing(contributionAuth);
+                    shouldKeepResultFolder = shouldSubscribe;
                     break;
 
                 case UPLOAD_RESULT:
                     shouldSubscribe = recoverReplicateByUploadingResult(contributionAuth);
+                    shouldKeepResultFolder = shouldSubscribe;
                     break;
 
                 case COMPLETE:
                     taskExecutorService.completeTask(chainTaskId);
-                    shouldSubscribe = false;
+                    break;
             }
 
             if (shouldSubscribe) {
                 subscriptionService.subscribeToTopic(chainTaskId);
+            }
+
+            if (shouldKeepResultFolder) {
                 recoveredChainTaskIds.add(chainTaskId);
             }
         }
