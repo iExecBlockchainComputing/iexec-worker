@@ -3,9 +3,9 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.security.TeeSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Keys;
@@ -98,24 +98,17 @@ public class ContributionService {
      * If TEE tag present :              return proper enclaveSignature
      * If TEE tag present but problem :  return null
      * */
-    public Sign.SignatureData getEnclaveSignatureData(ContributionAuthorization contribAuth, String deterministHash, Optional<TeeSignature.Sign> enclaveSignature) {
-        Sign.SignatureData enclaveSignatureData;
+    public Signature getEnclaveSignature(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
         if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())) {
-            if (!enclaveSignature.isPresent()) {
+            if (enclaveSignature == null ) {
                 log.info("Can't contribute (enclaveChalenge is set but enclaveSignature missing) [chainTaskId:{]", contribAuth.getChainTaskId());
                 return null;
             }
 
-            enclaveSignatureData = new Sign.SignatureData(
-                    enclaveSignature.get().getV().byteValue(),
-                    stringToBytes(enclaveSignature.get().getR()),
-                    stringToBytes(enclaveSignature.get().getS())
-            );
-
             String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
             String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
             boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
-                    enclaveSignatureData, contribAuth.getEnclave());
+                    enclaveSignature, contribAuth.getEnclave());
 
             if (!isEnclaveSignatureValid) {
                 log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
@@ -123,21 +116,21 @@ public class ContributionService {
                 return null;
             }
 
-            return enclaveSignatureData;
+            return enclaveSignature;
         }
 
-        return new Sign.SignatureData(
-                new Integer(0).byteValue(),
+        return new Signature (
                 stringToBytes(EMPTY_HEXASTRING_64),
-                stringToBytes(EMPTY_HEXASTRING_64)
+                stringToBytes(EMPTY_HEXASTRING_64),
+                new Integer(0).byteValue()
         );
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
-    public ChainReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, Sign.SignatureData enclaveSignatureData) {
+    public ChainReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
-        IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignatureData);
+        IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignature);
 
         if (contributeResponse == null) {
             log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribAuth.getChainTaskId());
@@ -153,21 +146,20 @@ public class ContributionService {
         byte[] message = BytesUtils.stringToBytes(
                 HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
 
-        Sign.SignatureData sign = new Sign.SignatureData(auth.getSignV(),
-                auth.getSignR(), auth.getSignS());
-
-        return isSignatureValid(message, sign, signerAddress);
+        return isSignatureValid(message, auth.getSignature(), signerAddress);
     }
 
-    public boolean isEnclaveSignatureValid(String resulHash, String resultSeal, Sign.SignatureData enclaveSignature, String signerAddress) {
-        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resulHash, resultSeal));
+    public boolean isEnclaveSignatureValid(String resultHash, String resultSeal, Signature enclaveSignature, String signerAddress) {
+        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
 
         return isSignatureValid(message, enclaveSignature, signerAddress);
     }
 
-    private boolean isSignatureValid(byte[] message, Sign.SignatureData sign, String signerAddress) {
+    private boolean isSignatureValid(byte[] message, Signature sign, String signerAddress) {
         try {
-            BigInteger publicKey = Sign.signedPrefixedMessageToKey(message, sign);
+            Sign.SignatureData signatureData = new Sign.SignatureData(sign.getV(), sign.getR(), sign.getS());
+
+            BigInteger publicKey = Sign.signedPrefixedMessageToKey(message, signatureData);
             if (publicKey != null) {
                 String addressRecovered = "0x" + Keys.getAddress(publicKey);
                 return addressRecovered.equalsIgnoreCase(signerAddress);
