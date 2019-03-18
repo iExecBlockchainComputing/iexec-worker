@@ -30,20 +30,17 @@ public class CustomFeignClient {
     private final String url;
 
     private CoreClient coreClient;
-    private TaskClient taskClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
     private CredentialsService credentialsService;
     private String currentToken;
 
     public CustomFeignClient(CoreClient coreClient,
-                             TaskClient taskClient,
                              WorkerClient workerClient,
                              ReplicateClient replicateClient,
                              CredentialsService credentialsService,
                              CoreConfigurationService coreConfigurationService) {
         this.coreClient = coreClient;
-        this.taskClient = taskClient;
         this.workerClient = workerClient;
         this.replicateClient = replicateClient;
         this.credentialsService = credentialsService;
