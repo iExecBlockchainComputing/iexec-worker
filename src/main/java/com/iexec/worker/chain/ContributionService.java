@@ -6,6 +6,8 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
+import com.iexec.common.utils.SignatureUtils;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Keys;
@@ -99,31 +101,29 @@ public class ContributionService {
      * If TEE tag present but problem :  return null
      * */
     public Signature getEnclaveSignature(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
-        if (!(contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty())) {
-            if (enclaveSignature == null ) {
-                log.info("Can't contribute (enclaveChalenge is set but enclaveSignature missing) [chainTaskId:{]", contribAuth.getChainTaskId());
-                return null;
-            }
 
-            String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
-            String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
-            boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
-                    enclaveSignature, contribAuth.getEnclave());
-
-            if (!isEnclaveSignatureValid) {
-                log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
-                        "isEnclaveSignatureValid:{}]", contribAuth.getChainTaskId(), isEnclaveSignatureValid);
-                return null;
-            }
-
-            return enclaveSignature;
+        if (contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty()) {
+            return SignatureUtils.emptySignature();
         }
 
-        return new Signature (
-                stringToBytes(EMPTY_HEXASTRING_64),
-                stringToBytes(EMPTY_HEXASTRING_64),
-                new Integer(0).byteValue()
-        );
+        if (enclaveSignature == null ) {
+            log.info("Can't contribute (enclaveChalenge is set but enclaveSignature missing) [chainTaskId:{]", contribAuth.getChainTaskId());
+            return null;
+        }
+
+        String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
+        String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
+        boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
+                enclaveSignature, contribAuth.getEnclave());
+
+        if (!isEnclaveSignatureValid) {
+            log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
+                    "isEnclaveSignatureValid:{}]", contribAuth.getChainTaskId(), isEnclaveSignatureValid);
+            return null;
+        }
+
+        return enclaveSignature;
+
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise

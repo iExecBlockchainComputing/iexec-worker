@@ -6,6 +6,7 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
+import com.iexec.common.utils.SignatureUtils;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.ContributionService;
@@ -163,13 +164,18 @@ public class TaskExecutorService {
     @Async
     public void contribute(ContributionAuthorization contribAuth) {
         String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
-        Optional<Signature> enclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
+        Optional<Signature> oEnclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
 
         if (deterministHash.isEmpty()) {
             return;
         }
+
         String chainTaskId = contribAuth.getChainTaskId();
-        Signature enclaveSignatureData = contributionService.getEnclaveSignature(contribAuth, deterministHash, enclaveSignature.get());
+        Signature enclaveSignature = SignatureUtils.emptySignature();
+
+        if (oEnclaveSignature.isPresent()) {
+            enclaveSignature = contributionService.getEnclaveSignature(contribAuth, deterministHash, oEnclaveSignature.get());
+        }
 
         Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
         if (!canContributeStatus.isPresent()) {
@@ -178,7 +184,7 @@ public class TaskExecutorService {
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, canContributeStatus.get());
-        if (!canContributeStatus.get().equals(CAN_CONTRIBUTE) & enclaveSignatureData != null) {
+        if (!canContributeStatus.get().equals(CAN_CONTRIBUTE) & enclaveSignature != null) {
             log.warn("Cant contribute [chainTaskId:{}, status:{}]", chainTaskId, canContributeStatus.get());
             return;
         }
@@ -190,7 +196,7 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignatureData);
+        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
         if (chainReceipt == null) {
             customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
             return;
