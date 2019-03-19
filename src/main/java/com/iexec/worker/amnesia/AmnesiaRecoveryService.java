@@ -137,7 +137,7 @@ public class AmnesiaRecoveryService {
 
         if (!isResultFolderFound && !isResultZipFound) {
             // re-run computation
-            taskExecutorService.addReplicate(contributionAuth, replicateModel);
+            taskExecutorService.addReplicate(replicateModel);
             return true;
         }
 

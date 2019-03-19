@@ -71,6 +71,6 @@ public class ReplicateDemandService {
 
         subscriptionService.subscribeToTopic(chainTaskId);
         
-        taskExecutorService.addReplicate(contributionAuth, oReplicateModel.get());
+        taskExecutorService.addReplicate(oReplicateModel.get());
     }
 }

@@ -87,7 +87,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
 
         Mockito.verify(taskExecutorService, Mockito.times(1))
-                .addReplicate(getStubAuth(), getStubModel().get());
+                .addReplicate(getStubModel().get());
     }
 
     @Test
@@ -240,7 +240,9 @@ public class AmnesiaRecoveryServiceTests {
     }
 
     Optional<AvailableReplicateModel> getStubModel() {
-        return Optional.of(new AvailableReplicateModel());
+        return Optional.of(AvailableReplicateModel.builder()
+                .contributionAuthorization(getStubAuth())
+                .build());
     }
 
 }

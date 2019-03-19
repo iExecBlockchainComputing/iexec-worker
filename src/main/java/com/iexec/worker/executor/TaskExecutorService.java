@@ -24,7 +24,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
-import org.web3j.crypto.Sign;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -88,24 +87,31 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public void addReplicate(ContributionAuthorization contributionAuth, AvailableReplicateModel replicateModel) {
-        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
+    public CompletableFuture<Void> addReplicate(AvailableReplicateModel replicateModel) {
+        ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
+        String chainTaskId = contributionAuth.getChainTaskId();
 
-        CompletableFuture.supplyAsync(() -> compute(chainTaskId, replicateModel), executor)     // compute
-                .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout)) // save result
-                .thenAccept(isSaved -> {if (isSaved) contribute(contributionAuth);})                // contribute
-                .handle((res, err) -> {                                                             // handle errors
+        return CompletableFuture.supplyAsync(() -> compute(replicateModel), executor)
+                .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
+                .thenAccept(isSaved -> {if (isSaved) contribute(contributionAuth);})
+                .handle((res, err) -> {
                     if (err != null) {
-                        log.error(err.getMessage());
-                        return null;
+                        err.printStackTrace();
                     }
                     return res;
                 });
     }
 
     @Async
-    private String compute(String chainTaskId, AvailableReplicateModel replicateModel) {
+    private String compute(AvailableReplicateModel replicateModel) {
+        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
         String stdout = "";
+
+        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
+            log.error("Task not initialized onchain yet [ChainTaskId:{}]", chainTaskId);
+            // Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("Task not initialized onchain yet");
+        }
 
         // check app type
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
