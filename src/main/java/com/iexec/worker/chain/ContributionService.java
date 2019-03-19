@@ -138,7 +138,7 @@ public class ContributionService {
         }
 
         return ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
-                iexecHubService.getLastBlock());
+                iexecHubService.getLastBlockNumber());
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {

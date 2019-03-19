@@ -4,6 +4,7 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.common.disconnection.InterruptedReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
@@ -27,25 +28,29 @@ public class CustomFeignClient {
     private static final int RETRY_TIME = 5000;
     private static final String TOKEN_PREFIX = "Bearer ";
     private final String url;
-    private CoreWorkerClient coreWorkerClient;
-    private CoreTaskClient coreTaskClient;
+
+    private CoreClient coreClient;
+    private WorkerClient workerClient;
+    private ReplicateClient replicateClient;
     private CredentialsService credentialsService;
     private String currentToken;
 
-    public CustomFeignClient(CoreWorkerClient coreWorkerClient,
-                             CoreTaskClient coreTaskClient,
-                             CoreConfigurationService coreConfigurationService,
-                             CredentialsService credentialsService) {
+    public CustomFeignClient(CoreClient coreClient,
+                             WorkerClient workerClient,
+                             ReplicateClient replicateClient,
+                             CredentialsService credentialsService,
+                             CoreConfigurationService coreConfigurationService) {
+        this.coreClient = coreClient;
+        this.workerClient = workerClient;
+        this.replicateClient = replicateClient;
         this.credentialsService = credentialsService;
-        this.coreWorkerClient = coreWorkerClient;
-        this.coreTaskClient = coreTaskClient;
         this.url = coreConfigurationService.getUrl();
         this.currentToken = "";
     }
 
     public PublicConfiguration getPublicConfiguration() {
         try {
-            return coreWorkerClient.getPublicConfiguration();
+            return workerClient.getPublicConfiguration();
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getPublicConfiguration, will retry");
@@ -58,7 +63,7 @@ public class CustomFeignClient {
 
     public String getCoreVersion() {
         try {
-            return coreWorkerClient.getCoreVersion();
+            return coreClient.getCoreVersion();
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getCoreVersion, will retry");
@@ -71,13 +76,13 @@ public class CustomFeignClient {
 
     public String ping() {
         try {
-            return coreWorkerClient.ping(getToken());
+            return workerClient.ping(getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to ping [instance:{}]", url);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return coreWorkerClient.ping(getToken());
+                return workerClient.ping(getToken());
             }
         }
 
@@ -86,7 +91,7 @@ public class CustomFeignClient {
 
     public void registerWorker(WorkerConfigurationModel model) {
         try {
-            coreWorkerClient.registerWorker(getToken(), model);
+            workerClient.registerWorker(getToken(), model);
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to registerWorker, will retry [instance:{}]", url);
@@ -94,21 +99,37 @@ public class CustomFeignClient {
                 registerWorker(model);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                coreWorkerClient.registerWorker(getToken(), model);
+                workerClient.registerWorker(getToken(), model);
             }
         }
     }
 
+    public List<InterruptedReplicateModel> getInterruptedReplicates(long lastAvailableBlockNumber) {
+        try {
+            return replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
+        } catch (FeignException e) {
+            if (e.status() == 0) {
+                log.error("Failed to getInterruptedReplicates, will retry [instance:{}]", url);
+                sleep();
+                return getInterruptedReplicates(lastAvailableBlockNumber);
+            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+                generateNewToken();
+                return getInterruptedReplicates(lastAvailableBlockNumber);
+            }
+        }
+        return null;
+	}
+
     public List<String> getTasksInProgress(){
         try {
-            return coreWorkerClient.getCurrentTasks(getToken());
+            return workerClient.getCurrentTasks(getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to get tasks in progress, will retry [instance:{}]", url);
                 sleep();
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return coreWorkerClient.getCurrentTasks(getToken());
+                return workerClient.getCurrentTasks(getToken());
             }
         }
 
@@ -117,13 +138,13 @@ public class CustomFeignClient {
 
     public ContributionAuthorization getAvailableReplicate(long lastAvailableBlockNumber) {
         try {
-            return coreTaskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+            return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getAvailableReplicate [instance:{}]", url);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return coreTaskClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+                return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
             }
         }
         return null;
@@ -151,7 +172,7 @@ public class CustomFeignClient {
                 .build();
 
         try {
-            coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken(), details);
+            replicateClient.updateReplicateStatus(chainTaskId, status, getToken(), details);
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to updateReplicateStatus, will retry [instance:{}]", url);
@@ -163,14 +184,14 @@ public class CustomFeignClient {
             if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
                 log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-                coreTaskClient.updateReplicateStatus(chainTaskId, status, getToken(), details);
+                replicateClient.updateReplicateStatus(chainTaskId, status, getToken(), details);
             }
         }
     }
 
     private String getChallenge(String workerAddress) {
         try {
-            return coreWorkerClient.getChallenge(workerAddress);
+            return workerClient.getChallenge(workerAddress);
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getChallenge, will retry [instance:{}]", url);
@@ -183,7 +204,7 @@ public class CustomFeignClient {
 
     private String login(String workerAddress, Signature signature) {
         try {
-            return coreWorkerClient.login(workerAddress, signature);
+            return workerClient.login(workerAddress, signature);
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to login, will retry [instance:{}]", url);

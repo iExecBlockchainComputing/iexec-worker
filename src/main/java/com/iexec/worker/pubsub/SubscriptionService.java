@@ -1,21 +1,18 @@
 package com.iexec.worker.pubsub;
 
-import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -25,17 +22,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.web3j.crypto.ECKeyPair;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.iexec.common.replicate.ReplicateStatus.*;
 
 @Slf4j
 @Service
@@ -44,13 +38,10 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private final String coreHost;
     private final int corePort;
     private final String workerWalletAddress;
+
     // external services
-    private ResultRepoClient resultRepoClient;
-    private ResultService resultService;
-    private RevealService revealService;
-    private CustomFeignClient feignClient;
-    private PublicConfigurationService publicConfigurationService;
-    private CredentialsService credentialsService;
+    private TaskExecutorService taskExecutorService;
+
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
@@ -64,13 +55,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                RevealService revealService,
                                CustomFeignClient feignClient,
                                PublicConfigurationService publicConfigurationService,
-                               CredentialsService credentialsService) {
-        this.resultRepoClient = resultRepoClient;
-        this.resultService = resultService;
-        this.revealService = revealService;
-        this.feignClient = feignClient;
-        this.publicConfigurationService = publicConfigurationService;
-        this.credentialsService = credentialsService;
+                               CredentialsService credentialsService,
+                               TaskExecutorService taskExecutorService) {
+        this.taskExecutorService = taskExecutorService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
@@ -133,16 +120,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         this.restartStomp();
     }
 
-    private void unsubscribeFromTopic(String chainTaskId) {
-        if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
-            chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
-            chainTaskIdToSubscription.remove(chainTaskId);
-            log.info("Unsubscribed from topic [chainTaskId:{}]", chainTaskId);
-        } else {
-            log.info("Already unsubscribed from topic [chainTaskId:{}]", chainTaskId);
-        }
-    }
-
     public void subscribeToTopic(String chainTaskId) {
         if (!chainTaskIdToSubscription.containsKey(chainTaskId)) {
             StompSession.Subscription subscription = session.subscribe(getTaskTopicName(chainTaskId), new StompFrameHandler() {
@@ -168,6 +145,16 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
+    public void unsubscribeFromTopic(String chainTaskId) {
+        if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
+            chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
+            chainTaskIdToSubscription.remove(chainTaskId);
+            log.info("Unsubscribed from topic [chainTaskId:{}]", chainTaskId);
+        } else {
+            log.info("Already unsubscribed from topic [chainTaskId:{}]", chainTaskId);
+        }
+    }
+
     private void handleTaskNotification(TaskNotification notif) {
         if (notif.getWorkersAddress().contains(workerWalletAddress)
                 || notif.getWorkersAddress().isEmpty()) {
@@ -178,90 +165,32 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
             switch (type) {
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
-                    abortContributionTimeout(chainTaskId);
+                    unsubscribeFromTopic(chainTaskId);
+                    taskExecutorService.abortContributionTimeout(chainTaskId);
                     break;
 
                 case PLEASE_ABORT_CONSENSUS_REACHED:
-                    abortConsensusReached(chainTaskId);
+                    unsubscribeFromTopic(chainTaskId);
+                    taskExecutorService.abortConsensusReached(chainTaskId);
                     break;
 
                 case PLEASE_REVEAL:
-                    reveal(chainTaskId);
+                    taskExecutorService.reveal(chainTaskId);
                     break;
 
                 case PLEASE_UPLOAD:
-                    uploadResult(chainTaskId);
+                    taskExecutorService.uploadResult(chainTaskId);
                     break;
 
                 case COMPLETED:
-                    completeTask(chainTaskId);
+                    unsubscribeFromTopic(chainTaskId);
+                    taskExecutorService.completeTask(chainTaskId);
                     break;
 
                 default:
                     break;
             }
         }
-    }
-
-    private void reveal(String chainTaskId) {
-        log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
-        if (!revealService.canReveal(chainTaskId)) {
-            log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
-            feignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
-        }
-
-        if (!revealService.hasEnoughGas()) {
-            feignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
-            System.exit(0);
-        }
-
-        feignClient.updateReplicateStatus(chainTaskId, REVEALING);
-        Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
-        if (!optionalChainReceipt.isPresent()) {
-            feignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
-            return;
-        }
-
-        feignClient.updateReplicateStatus(chainTaskId, REVEALED, optionalChainReceipt.get());
-    }
-
-    private void abortConsensusReached(String chainTaskId) {
-        cleanReplicate(chainTaskId);
-        feignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
-    }
-
-    private void abortContributionTimeout(String chainTaskId) {
-        cleanReplicate(chainTaskId);
-        feignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONTRIBUTION_TIMEOUT);
-    }
-
-    private void uploadResult(String chainTaskId) {
-        feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
-
-        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                workerWalletAddress, ecKeyPair);
-
-        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
-                resultService.getResultModelWithZip(chainTaskId));
-
-        if (responseEntity.getStatusCode().is2xxSuccessful() && responseEntity.getBody() != null) {
-            String resultLink = responseEntity.getBody();
-            log.info("Result uploaded by the worker [resultLink:{}]", resultLink);
-            feignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, resultLink);
-        }
-    }
-
-    private void completeTask(String chainTaskId) {
-        cleanReplicate(chainTaskId);
-        feignClient.updateReplicateStatus(chainTaskId, COMPLETED);
-    }
-
-    private void cleanReplicate(String chainTaskId) {
-        // unsubscribe from the topic and remove the associated result from the machine
-        unsubscribeFromTopic(chainTaskId);
-        resultService.removeResult(chainTaskId);
     }
 
     private String getTaskTopicName(String chainTaskId) {

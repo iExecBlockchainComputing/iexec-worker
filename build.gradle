@@ -56,7 +56,7 @@ dependencyManagement {
 dependencies {
     // iexec
     compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    //compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
     compile "org.springframework.boot:spring-boot-starter"
@@ -65,6 +65,7 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-actuator"
     compile "org.springframework.cloud:spring-cloud-starter"
     compile "org.springframework.cloud:spring-cloud-starter-openfeign"
+    compile "org.springframework.retry:spring-retry"
     testCompile "org.springframework.boot:spring-boot-starter-test"
 
     //docker-client
