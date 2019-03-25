@@ -7,6 +7,7 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
@@ -30,7 +31,8 @@ public class CustomFeignClient {
 
     private static final int RETRY_TIME = 5000;
     private static final String TOKEN_PREFIX = "Bearer ";
-    private final String url;
+    private final String coreURL;
+    private final String resultRepoURL;
 
     private CoreClient coreClient;
     private WorkerClient workerClient;
@@ -51,7 +53,8 @@ public class CustomFeignClient {
         this.replicateClient = replicateClient;
         this.publicConfigurationService = publicConfigurationService;
         this.credentialsService = credentialsService;
-        this.url = coreConfigurationService.getUrl();
+        this.coreURL = coreConfigurationService.getUrl();
+        this.resultRepoURL = publicConfigurationService.getResultRepositoryURL();
         this.currentToken = "";
     }
 
@@ -86,7 +89,7 @@ public class CustomFeignClient {
             return workerClient.ping(getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to ping [instance:{}]", url);
+                log.error("Failed to ping [instance:{}]", coreURL);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
                 return workerClient.ping(getToken());
@@ -101,7 +104,7 @@ public class CustomFeignClient {
             workerClient.registerWorker(getToken(), model);
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to registerWorker, will retry [instance:{}]", url);
+                log.error("Failed to registerWorker, will retry [instance:{}]", coreURL);
                 sleep();
                 registerWorker(model);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
@@ -116,7 +119,7 @@ public class CustomFeignClient {
             return replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getInterruptedReplicates, will retry [instance:{}]", url);
+                log.error("Failed to getInterruptedReplicates, will retry [instance:{}]", coreURL);
                 sleep();
                 return getInterruptedReplicates(lastAvailableBlockNumber);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
@@ -132,7 +135,7 @@ public class CustomFeignClient {
             return workerClient.getCurrentTasks(getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to get tasks in progress, will retry [instance:{}]", url);
+                log.error("Failed to get tasks in progress, will retry [instance:{}]", coreURL);
                 sleep();
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
@@ -148,7 +151,7 @@ public class CustomFeignClient {
             return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getAvailableReplicate [instance:{}]", url);
+                log.error("Failed to getAvailableReplicate [instance:{}]", coreURL);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
                 return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
@@ -182,7 +185,7 @@ public class CustomFeignClient {
             replicateClient.updateReplicateStatus(chainTaskId, status, getToken(), details);
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to updateReplicateStatus, will retry [instance:{}]", url);
+                log.error("Failed to updateReplicateStatus, will retry [instance:{}]", coreURL);
                 sleep();
                 updateReplicateStatus(chainTaskId, status, chainReceipt, resultLink);
                 return;
@@ -201,7 +204,7 @@ public class CustomFeignClient {
             return workerClient.getChallenge(workerAddress);
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getCoreChallenge, will retry [instance:{}]", url);
+                log.error("Failed to getCoreChallenge, will retry [instance:{}]", coreURL);
                 sleep();
                 return getCoreChallenge(workerAddress);
             }
@@ -214,7 +217,7 @@ public class CustomFeignClient {
             return resultRepoClient.getChallenge(publicConfigurationService.getChainId());
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getResultRepoChallenge, will retry [instance:{}]", url);
+                log.error("Failed to getResultRepoChallenge, will retry [instance:{}]", resultRepoURL);
                 sleep();
                 return getResultRepoChallenge();
             }
@@ -222,12 +225,23 @@ public class CustomFeignClient {
         return null;
     }
 
+    public boolean uploadResult(String authorizationToken, ResultModel resultModel) {
+        try {
+            return resultRepoClient.uploadResult(authorizationToken, resultModel)
+                    .getStatusCode()
+                    .is2xxSuccessful();
+        } catch (FeignException e) {
+            log.error("Failed to uploadResult [instance:{}]", resultRepoURL);
+            return false;
+        }
+    }
+
     private String login(String workerAddress, Signature signature) {
         try {
             return workerClient.login(workerAddress, signature);
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to login, will retry [instance:{}]", url);
+                log.error("Failed to login, will retry [instance:{}]", coreURL);
                 sleep();
                 return login(workerAddress, signature);
             }

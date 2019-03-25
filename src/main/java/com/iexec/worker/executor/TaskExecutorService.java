@@ -16,11 +16,9 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
@@ -47,7 +45,6 @@ public class TaskExecutorService {
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
-    private ResultRepoClient resultRepoClient;
     private RevealService revealService;
     private CredentialsService credentialsService;
 
@@ -61,7 +58,6 @@ public class TaskExecutorService {
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
-                               ResultRepoClient resultRepoClient,
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService) {
@@ -70,7 +66,6 @@ public class TaskExecutorService {
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
-        this.resultRepoClient = resultRepoClient;
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
@@ -252,12 +247,15 @@ public class TaskExecutorService {
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerWalletAddress, ecKeyPair);
 
-        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
+        boolean isResultUploaded = customFeignClient.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
-        if (responseEntity.getStatusCode().is2xxSuccessful()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+        if (!isResultUploaded) {
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
+            return;
         }
+
+        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
     }
 
     @Async
