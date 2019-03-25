@@ -12,7 +12,6 @@ import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
@@ -50,7 +49,6 @@ public class TaskExecutorService {
     private CustomFeignClient customFeignClient;
     private ResultRepoClient resultRepoClient;
     private RevealService revealService;
-    private PublicConfigurationService publicConfigurationService;
     private CredentialsService credentialsService;
 
     // internal variables
@@ -65,7 +63,6 @@ public class TaskExecutorService {
                                CustomFeignClient customFeignClient,
                                ResultRepoClient resultRepoClient,
                                RevealService revealService,
-                               PublicConfigurationService publicConfigurationService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService) {
         this.datasetService = datasetService;
@@ -76,7 +73,6 @@ public class TaskExecutorService {
         this.resultRepoClient = resultRepoClient;
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
-        this.publicConfigurationService = publicConfigurationService;
         this.credentialsService = credentialsService;
 
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
@@ -245,7 +241,13 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+        Eip712Challenge eip712Challenge = customFeignClient.getResultRepoChallenge();
+
+        if (eip712Challenge == null) {
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
+            return;
+        }
+
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerWalletAddress, ecKeyPair);

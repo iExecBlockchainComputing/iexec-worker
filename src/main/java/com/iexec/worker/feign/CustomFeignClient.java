@@ -7,10 +7,13 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
+import com.iexec.worker.config.PublicConfigurationService;
+
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -32,6 +35,8 @@ public class CustomFeignClient {
     private CoreClient coreClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
+    private ResultRepoClient resultRepoClient;
+    private PublicConfigurationService publicConfigurationService;
     private CredentialsService credentialsService;
     private String currentToken;
 
@@ -39,10 +44,12 @@ public class CustomFeignClient {
                              WorkerClient workerClient,
                              ReplicateClient replicateClient,
                              CredentialsService credentialsService,
+                             PublicConfigurationService publicConfigurationService,
                              CoreConfigurationService coreConfigurationService) {
         this.coreClient = coreClient;
         this.workerClient = workerClient;
         this.replicateClient = replicateClient;
+        this.publicConfigurationService = publicConfigurationService;
         this.credentialsService = credentialsService;
         this.url = coreConfigurationService.getUrl();
         this.currentToken = "";
@@ -189,14 +196,27 @@ public class CustomFeignClient {
         }
     }
 
-    private String getChallenge(String workerAddress) {
+    private String getCoreChallenge(String workerAddress) {
         try {
             return workerClient.getChallenge(workerAddress);
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getChallenge, will retry [instance:{}]", url);
+                log.error("Failed to getCoreChallenge, will retry [instance:{}]", url);
                 sleep();
-                return getChallenge(workerAddress);
+                return getCoreChallenge(workerAddress);
+            }
+        }
+        return null;
+    }
+
+    public Eip712Challenge getResultRepoChallenge() {
+        try {
+            return resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+        } catch (FeignException e) {
+            if (e.status() == 0) {
+                log.error("Failed to getResultRepoChallenge, will retry [instance:{}]", url);
+                sleep();
+                return getResultRepoChallenge();
             }
         }
         return null;
@@ -226,7 +246,7 @@ public class CustomFeignClient {
         if (currentToken.isEmpty()) {
             String workerAddress = credentialsService.getCredentials().getAddress();
             ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-            String challenge = getChallenge(workerAddress);
+            String challenge = getCoreChallenge(workerAddress);
 
             Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
             currentToken = TOKEN_PREFIX + login(workerAddress, signature);
