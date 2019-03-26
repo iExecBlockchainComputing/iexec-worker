@@ -31,7 +31,7 @@ repositories {
     mavenCentral()
     jcenter()
     maven {
-        url "https://packagecloud.io/priv/${token}/iexec/common/maven2"
+        url "https://nexus.iex.ec/repository/hosted-maven"
     }
     maven { 
         url "https://jitpack.io" 
@@ -93,7 +93,7 @@ jacoco {
 build.dependsOn jacocoTestReport
 
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
-def isMasterBranch = gitBranch == "remotes/origin/master"
+def isMasterBranch = true //gitBranch == "remotes/origin/master"
 def canUploadArchives = isMasterBranch
 def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
 def isSnapshotVersion = project.version.contains("SNAPSHOT")
@@ -101,8 +101,8 @@ def isSnapshotVersion = project.version.contains("SNAPSHOT")
 uploadArchives {
     repositories.mavenDeployer {
         configuration = configurations.deployerJars
-        repository(url: "packagecloud+https://packagecloud.io/iexec/worker") {
-            authentication(password: packageCloudPassword)
+        repository(url: "https://nexus.iex.ec/repository/hosted-maven/") {
+            authentication(userName: nexusUser, password: nexusPassword)
         }
     }
 }
@@ -114,7 +114,7 @@ test {
     }
 }
 
-def imageName = "iexechub/iexec-worker"
+def imageName = "nexus.iex.ec/iexec-worker"
 
 project.ext.getDockerImageNameFull = {
     def imageNameWithVersion = imageName + ":${version}"
@@ -146,8 +146,8 @@ buildImage.dependsOn prepareDockerFile
 buildImage.enabled = isMasterBranch || project.hasProperty("forceDockerBuild")
 
 task pushImage(type: Exec) {
-    if (project.hasProperty("dockerHubUser") && project.hasProperty("dockerHubPassword")) {
-        commandLine("sh", "-c", "docker login -u " + project.dockerHubUser + " -p " + project.dockerHubPassword + " && " +
+    if (project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")) {
+        commandLine("sh", "-c", "docker login -u " + project.nexusUser + " -p " + project.nexusPassword + " && " +
                 "docker push " + getDockerImageNameFull() + " && " +
                 "docker tag " + getDockerImageNameFull() + " " + getDockerImageNameShortCommit() + " && " +
                 "docker push " + getDockerImageNameShortCommit() + " && " +
@@ -158,4 +158,4 @@ task pushImage(type: Exec) {
 }
 
 pushImage.dependsOn buildImage
-pushImage.enabled = isMasterBranch && project.hasProperty("dockerHubUser") && project.hasProperty("dockerHubPassword")
+pushImage.enabled = isMasterBranch && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
