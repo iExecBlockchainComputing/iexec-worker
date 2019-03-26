@@ -10,7 +10,6 @@ pipeline {
                 }
             }
         }
-
         stage('Upload Jars') {
               steps {
                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
@@ -18,7 +17,6 @@ pipeline {
                     }
               }
         }
-        
         stage('Build/Upload Docker image') {
               steps {
                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
