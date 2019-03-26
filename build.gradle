@@ -29,8 +29,8 @@ repositories {
     maven {
         url "https://nexus.iex.ec/repository/hosted-maven"
     }
-    maven { 
-        url "https://jitpack.io" 
+    maven {
+        url "https://jitpack.io"
     }
 }
 
@@ -143,7 +143,7 @@ buildImage.enabled = isMasterBranch || project.hasProperty("forceDockerBuild")
 
 task pushImage(type: Exec) {
     if (project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")) {
-        commandLine("sh", "-c", "docker login -u " + project.nexusUser + " -p " + project.nexusPassword + " && " +
+        commandLine("sh", "-c", "docker login -u " + project.nexusUser + " -p " + project.nexusPassword + " nexus.iex.ec && " +
                 "docker push " + getDockerImageNameFull() + " && " +
                 "docker tag " + getDockerImageNameFull() + " " + getDockerImageNameShortCommit() + " && " +
                 "docker push " + getDockerImageNameShortCommit() + " && " +
