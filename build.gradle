@@ -23,18 +23,14 @@ apply plugin: 'jacoco'
 group = 'com.iexec.worker'
 sourceCompatibility = 1.8
 
-def UNIQUE_ID = 'hostname -f'.execute().text.trim()
-def token = 'curl -XPOST --data name=${UNIQUE_ID} https://58448eb9dc6e105c7a3f77c74880f451234251ea3eeae544:@packagecloud.io/install/repositories/iexec/common/tokens.text'.execute().text.trim()
-
-
 repositories {
     mavenCentral()
     jcenter()
     maven {
-        url "https://packagecloud.io/priv/${token}/iexec/common/maven2"
+        url "https://nexus.iex.ec/repository/hosted-maven"
     }
-    maven { 
-        url "https://jitpack.io" 
+    maven {
+        url "https://jitpack.io"
     }
 }
 
@@ -94,15 +90,15 @@ build.dependsOn jacocoTestReport
 
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
 def isMasterBranch = gitBranch == "remotes/origin/master"
-def canUploadArchives = isMasterBranch
+def canUploadArchives = isMasterBranch && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
 def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
 def isSnapshotVersion = project.version.contains("SNAPSHOT")
 
 uploadArchives {
     repositories.mavenDeployer {
         configuration = configurations.deployerJars
-        repository(url: "packagecloud+https://packagecloud.io/iexec/worker") {
-            authentication(password: packageCloudPassword)
+        repository(url: "https://nexus.iex.ec/repository/hosted-maven/") {
+            authentication(userName: project.nexusUser, password: project.nexusPassword)
         }
     }
 }
@@ -114,7 +110,7 @@ test {
     }
 }
 
-def imageName = "iexechub/iexec-worker"
+def imageName = "nexus.iex.ec/iexec-worker"
 
 project.ext.getDockerImageNameFull = {
     def imageNameWithVersion = imageName + ":${version}"
@@ -146,8 +142,8 @@ buildImage.dependsOn prepareDockerFile
 buildImage.enabled = isMasterBranch || project.hasProperty("forceDockerBuild")
 
 task pushImage(type: Exec) {
-    if (project.hasProperty("dockerHubUser") && project.hasProperty("dockerHubPassword")) {
-        commandLine("sh", "-c", "docker login -u " + project.dockerHubUser + " -p " + project.dockerHubPassword + " && " +
+    if (project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")) {
+        commandLine("sh", "-c", "docker login -u " + project.nexusUser + " -p " + project.nexusPassword + " nexus.iex.ec && " +
                 "docker push " + getDockerImageNameFull() + " && " +
                 "docker tag " + getDockerImageNameFull() + " " + getDockerImageNameShortCommit() + " && " +
                 "docker push " + getDockerImageNameShortCommit() + " && " +
@@ -158,4 +154,4 @@ task pushImage(type: Exec) {
 }
 
 pushImage.dependsOn buildImage
-pushImage.enabled = isMasterBranch && project.hasProperty("dockerHubUser") && project.hasProperty("dockerHubPassword")
+pushImage.enabled = isMasterBranch && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
