@@ -23,10 +23,6 @@ apply plugin: 'jacoco'
 group = 'com.iexec.worker'
 sourceCompatibility = 1.8
 
-def UNIQUE_ID = 'hostname -f'.execute().text.trim()
-def token = 'curl -XPOST --data name=${UNIQUE_ID} https://58448eb9dc6e105c7a3f77c74880f451234251ea3eeae544:@packagecloud.io/install/repositories/iexec/common/tokens.text'.execute().text.trim()
-
-
 repositories {
     mavenCentral()
     jcenter()
@@ -94,7 +90,7 @@ build.dependsOn jacocoTestReport
 
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
 def isMasterBranch = true //gitBranch == "remotes/origin/master"
-def canUploadArchives = isMasterBranch
+def canUploadArchives = isMasterBranch && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
 def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
 def isSnapshotVersion = project.version.contains("SNAPSHOT")
 
@@ -102,7 +98,7 @@ uploadArchives {
     repositories.mavenDeployer {
         configuration = configurations.deployerJars
         repository(url: "https://nexus.iex.ec/repository/hosted-maven/") {
-            authentication(userName: nexusUser, password: nexusPassword)
+            authentication(userName: project.nexusUser, password: project.nexusPassword)
         }
     }
 }
