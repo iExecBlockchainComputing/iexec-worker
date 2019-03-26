@@ -22,12 +22,13 @@ apply plugin: 'jacoco'
 
 group = 'com.iexec.worker'
 sourceCompatibility = 1.8
+def nexusMaven = "https://nexus.iex.ec/repository/maven-public/"
 
 repositories {
     mavenCentral()
     jcenter()
     maven {
-        url "https://nexus.iex.ec/repository/maven-public/"
+        url nexusMaven
     }
     maven {
         url "https://jitpack.io"
@@ -97,7 +98,7 @@ def isSnapshotVersion = project.version.contains("SNAPSHOT")
 uploadArchives {
     repositories.mavenDeployer {
         configuration = configurations.deployerJars
-        repository(url: "https://nexus.iex.ec/repository/hosted-maven/") {
+        repository(url: nexusMaven) {
             authentication(userName: project.nexusUser, password: project.nexusPassword)
         }
     }
