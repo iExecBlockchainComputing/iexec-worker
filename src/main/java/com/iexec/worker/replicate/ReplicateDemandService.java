@@ -51,12 +51,15 @@ public class ReplicateDemandService {
             return;
         }
 
-        ContributionAuthorization contributionAuth = customFeignClient.getAvailableReplicate(
-                lastAvailableBlockNumber);
+        Optional<ContributionAuthorization> oContributionAuth =
+                customFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
 
-        if (contributionAuth == null) {
+        if (!oContributionAuth.isPresent()) {
             return;
         }
+
+        ContributionAuthorization contributionAuth = oContributionAuth.get();
+
         String chainTaskId = contributionAuth.getChainTaskId();
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {

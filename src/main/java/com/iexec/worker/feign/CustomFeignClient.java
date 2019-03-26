@@ -23,6 +23,7 @@ import org.web3j.crypto.ECKeyPair;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -146,18 +147,18 @@ public class CustomFeignClient {
         return Collections.emptyList();
     }
 
-    public ContributionAuthorization getAvailableReplicate(long lastAvailableBlockNumber) {
+    public Optional<ContributionAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
         try {
-            return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+            return Optional.of(replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken()));
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getAvailableReplicate [instance:{}]", coreURL);
             } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
                 generateNewToken();
-                return replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+                return Optional.of(replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken()));
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     // TODO: those next 4 methods need to be refactored
@@ -212,9 +213,9 @@ public class CustomFeignClient {
         return null;
     }
 
-    public Eip712Challenge getResultRepoChallenge() {
+    public Optional<Eip712Challenge> getResultRepoChallenge() {
         try {
-            return resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+            return Optional.of(resultRepoClient.getChallenge(publicConfigurationService.getChainId()));
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getResultRepoChallenge, will retry [instance:{}]", resultRepoURL);
@@ -222,7 +223,7 @@ public class CustomFeignClient {
                 return getResultRepoChallenge();
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     public boolean uploadResult(String authorizationToken, ResultModel resultModel) {

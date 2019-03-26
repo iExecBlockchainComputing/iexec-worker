@@ -6,6 +6,7 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
@@ -96,13 +97,19 @@ public class TaskExecutorService {
 
     @Async
     private String compute(AvailableReplicateModel replicateModel) {
-        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
+        ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
+        String chainTaskId = contributionAuth.getChainTaskId();
         String stdout = "";
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
             log.error("Task not initialized onchain yet [ChainTaskId:{}]", chainTaskId);
             // Thread.currentThread().interrupt();
             throw new IllegalArgumentException("Task not initialized onchain yet");
+        }
+
+        // if TeeEnabled + no Tee support return;
+        if (contributionAuth.getEnclave().equals(BytesUtils.EMPTY_ADDRESS)) {
+
         }
 
         // check app type
@@ -154,14 +161,14 @@ public class TaskExecutorService {
 
     @Async
     public void contribute(ContributionAuthorization contribAuth) {
-        String deterministHash = resultService.getDeterministHashFromFile(contribAuth.getChainTaskId());
-        Optional<Signature> oEnclaveSignature = resultService.getEnclaveSignatureFromFile(contribAuth.getChainTaskId());
+        String chainTaskId = contribAuth.getChainTaskId();
+        String deterministHash = resultService.getDeterministHashFromFile(chainTaskId);
+        Optional<Signature> oEnclaveSignature = resultService.getEnclaveSignatureFromFile(chainTaskId);
 
         if (deterministHash.isEmpty()) {
             return;
         }
 
-        String chainTaskId = contribAuth.getChainTaskId();
         Signature enclaveSignature = SignatureUtils.emptySignature();
 
         if (oEnclaveSignature.isPresent()) {
@@ -236,12 +243,14 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Eip712Challenge eip712Challenge = customFeignClient.getResultRepoChallenge();
+        Optional<Eip712Challenge> oEip712Challenge = customFeignClient.getResultRepoChallenge();
 
-        if (eip712Challenge == null) {
+        if (!oEip712Challenge.isPresent()) {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
             return;
         }
+
+        Eip712Challenge eip712Challenge = oEip712Challenge.get();
 
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
