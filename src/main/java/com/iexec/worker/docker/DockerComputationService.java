@@ -41,20 +41,24 @@ public class DockerComputationService {
         String image = replicateModel.getAppUri();
         //TODO: check image equals image:tag
         String stdout = "";
-        if (dockerClient.isImagePulled(image)) {
-            String hostBaseVolume = configurationService.getResultBaseDir() + File.separator + chainTaskId;
-            ContainerConfig containerConfig;
 
-            if (replicateModel.isTrustedExecution()) {
-                containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
-                        TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
-                        TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress());
-            } else {
-                containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume);
-            }
-
-            stdout = startComputationAndGetLogs(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());
+        if (!dockerClient.isImagePulled(image)) {
+            return stdout;
         }
+
+        String hostBaseVolume = configurationService.getResultBaseDir() + File.separator + chainTaskId;
+        ContainerConfig containerConfig;
+
+        if (replicateModel.isTrustedExecution()) {
+            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
+                    TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
+                    TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress());
+        } else {
+            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume);
+        }
+
+        stdout = startComputationAndGetLogs(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());
+
         return stdout;
     }
 
@@ -65,12 +69,15 @@ public class DockerComputationService {
     private String startComputationAndGetLogs(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
         String stdout = "";
         String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
-        if (!containerId.isEmpty()) {
-            Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
-            stdout = waitForComputationAndGetLogs(chainTaskId, executionTimeoutDate);
 
-            dockerClient.removeContainer(chainTaskId);
+        if (containerId.isEmpty()) {
+            return stdout;
         }
+
+        Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
+        stdout = waitForComputationAndGetLogs(chainTaskId, executionTimeoutDate);
+        dockerClient.removeContainer(chainTaskId);
+
         return stdout;
     }
 
