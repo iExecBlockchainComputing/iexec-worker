@@ -77,7 +77,7 @@ public class IexecHubService extends IexecHubAbstractService {
                 stringToBytes(chainTaskId),
                 stringToBytes(resultHash),
                 stringToBytes(resultSeal),
-                contribAuth.getEnclave(),
+                contribAuth.getEnclaveChallenge(),
                 enclaveSign,
                 workerPoolSign);
         log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
