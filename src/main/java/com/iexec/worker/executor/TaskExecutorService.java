@@ -108,7 +108,7 @@ public class TaskExecutorService {
         }
 
         // if TeeEnabled + no Tee support return;
-        if (contributionAuth.getEnclave().equals(BytesUtils.EMPTY_ADDRESS)) {
+        if (contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS)) {
 
         }
 
