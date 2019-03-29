@@ -13,7 +13,6 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.config.PublicConfigurationService;
 
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -33,13 +32,11 @@ public class CustomFeignClient {
     private static final int RETRY_TIME = 5000;
     private static final String TOKEN_PREFIX = "Bearer ";
     private final String coreURL;
-    private final String resultRepoURL;
 
     private CoreClient coreClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
     private ResultRepoClient resultRepoClient;
-    private PublicConfigurationService publicConfigurationService;
     private CredentialsService credentialsService;
     private String currentToken;
 
@@ -47,15 +44,12 @@ public class CustomFeignClient {
                              WorkerClient workerClient,
                              ReplicateClient replicateClient,
                              CredentialsService credentialsService,
-                             PublicConfigurationService publicConfigurationService,
                              CoreConfigurationService coreConfigurationService) {
         this.coreClient = coreClient;
         this.workerClient = workerClient;
         this.replicateClient = replicateClient;
-        this.publicConfigurationService = publicConfigurationService;
         this.credentialsService = credentialsService;
         this.coreURL = coreConfigurationService.getUrl();
-        this.resultRepoURL = publicConfigurationService.getResultRepositoryURL();
         this.currentToken = "";
     }
 
@@ -213,14 +207,14 @@ public class CustomFeignClient {
         return null;
     }
 
-    public Optional<Eip712Challenge> getResultRepoChallenge() {
+    public Optional<Eip712Challenge> getResultRepoChallenge(Integer chainId) {
         try {
-            return Optional.of(resultRepoClient.getChallenge(publicConfigurationService.getChainId()));
+            return Optional.of(resultRepoClient.getChallenge(chainId));
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getResultRepoChallenge, will retry [instance:{}]", resultRepoURL);
+                log.error("Failed to getResultRepoChallenge, will retry");
                 sleep();
-                return getResultRepoChallenge();
+                return getResultRepoChallenge(chainId);
             }
         }
         return Optional.empty();
@@ -232,7 +226,7 @@ public class CustomFeignClient {
                     .getStatusCode()
                     .is2xxSuccessful();
         } catch (FeignException e) {
-            log.error("Failed to uploadResult [instance:{}]", resultRepoURL);
+            log.error("Failed to uploadResult [instance:{}]");
             return false;
         }
     }

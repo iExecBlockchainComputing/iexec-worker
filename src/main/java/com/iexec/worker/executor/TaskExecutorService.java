@@ -13,6 +13,7 @@ import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
@@ -48,6 +49,8 @@ public class TaskExecutorService {
     private CustomFeignClient customFeignClient;
     private RevealService revealService;
     private CredentialsService credentialsService;
+    private PublicConfigurationService publicConfigurationService;
+    private WorkerConfigurationService workerConfigurationService;
 
     // internal variables
     private String workerWalletAddress;
@@ -61,7 +64,8 @@ public class TaskExecutorService {
                                CustomFeignClient customFeignClient,
                                RevealService revealService,
                                CredentialsService credentialsService,
-                               WorkerConfigurationService workerConfigurationService) {
+                               WorkerConfigurationService workerConfigurationService,
+                               PublicConfigurationService publicConfigurationService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -70,6 +74,8 @@ public class TaskExecutorService {
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
+        this.publicConfigurationService = publicConfigurationService;
+        this.workerConfigurationService = workerConfigurationService;
 
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
@@ -107,9 +113,11 @@ public class TaskExecutorService {
             throw new IllegalArgumentException("Task not initialized onchain yet");
         }
 
-        // if TeeEnabled + no Tee support return;
-        if (contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS)) {
-
+        // if (TeeEnabled && no Tee supported) => return;
+        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge()
+                .equals(BytesUtils.EMPTY_ADDRESS);
+        if (doesTaskNeedTee && workerConfigurationService.isTeeEnabled()) {
+            throw new IllegalArgumentException("Task needs TEE, I don't support it");
         }
 
         // check app type
@@ -243,7 +251,7 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Optional<Eip712Challenge> oEip712Challenge = customFeignClient.getResultRepoChallenge();
+        Optional<Eip712Challenge> oEip712Challenge = customFeignClient.getResultRepoChallenge(publicConfigurationService.getChainId());
 
         if (!oEip712Challenge.isPresent()) {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);

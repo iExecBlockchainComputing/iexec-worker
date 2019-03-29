@@ -46,6 +46,7 @@ public class TaskExecutorServiceTests {
     private TaskExecutorService taskExecutorService;
 
     String CHAIN_TASK_ID = "0xfoobar";
+    String ENCLAVE_CHALLENGE = "enclaveChallenge";
 
     @Before
     public void init() {
@@ -68,6 +69,7 @@ public class TaskExecutorServiceTests {
     public void shouldComputeWhenTaskIsInitializedOnchain() throws InterruptedException, ExecutionException {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
+        when(publicConfigurationService.getChainId()).thenReturn(1234);
 
         CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel());
         future.join();
@@ -87,6 +89,7 @@ public class TaskExecutorServiceTests {
     ContributionAuthorization getStubAuth() {
         return ContributionAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .build();
     }
 }
