@@ -43,11 +43,13 @@ public class CustomFeignClient {
     public CustomFeignClient(CoreClient coreClient,
                              WorkerClient workerClient,
                              ReplicateClient replicateClient,
+                             ResultRepoClient resultRepoClient,
                              CredentialsService credentialsService,
                              CoreConfigurationService coreConfigurationService) {
         this.coreClient = coreClient;
         this.workerClient = workerClient;
         this.replicateClient = replicateClient;
+        this.resultRepoClient = resultRepoClient;
         this.credentialsService = credentialsService;
         this.coreURL = coreConfigurationService.getUrl();
         this.currentToken = "";
@@ -143,7 +145,7 @@ public class CustomFeignClient {
 
     public Optional<ContributionAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
         try {
-            return Optional.of(replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken()));
+            return Optional.ofNullable(replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken()));
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getAvailableReplicate [instance:{}]", coreURL);

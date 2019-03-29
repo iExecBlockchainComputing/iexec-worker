@@ -15,7 +15,8 @@ import feign.FeignException;
 
 @FeignClient(
     name = "ResultRepoClient",
-    url = "#{publicConfigurationService.resultRepositoryURL}"
+    // url = "#{publicConfigurationService.resultRepositoryURL}"
+    url = "http://${core.host}:${core.port}"
 )
 
 public interface ResultRepoClient {

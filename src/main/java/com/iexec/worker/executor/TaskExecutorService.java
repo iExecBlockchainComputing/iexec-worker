@@ -114,8 +114,7 @@ public class TaskExecutorService {
         }
 
         // if (TeeEnabled && no Tee supported) => return;
-        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge()
-                .equals(BytesUtils.EMPTY_ADDRESS);
+        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
         if (doesTaskNeedTee && workerConfigurationService.isTeeEnabled()) {
             throw new IllegalArgumentException("Task needs TEE, I don't support it");
         }
