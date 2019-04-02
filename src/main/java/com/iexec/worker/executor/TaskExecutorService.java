@@ -52,10 +52,9 @@ public class TaskExecutorService {
     private CustomResultRepoFeignClient customResultRepoFeignClient;
     private RevealService revealService;
     private CredentialsService credentialsService;
-    private PublicConfigurationService publicConfigurationService;
-    private CredentialsService credentialsService;
-    private IexecHubService iexecHubService;
     private WorkerConfigurationService workerConfigurationService;
+    private PublicConfigurationService publicConfigurationService;
+    private IexecHubService iexecHubService;
 
     // internal variables
     private String workerWalletAddress;
@@ -71,9 +70,8 @@ public class TaskExecutorService {
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
+                               PublicConfigurationService publicConfigurationService,
                                IexecHubService iexecHubService) {
-                               WorkerConfigurationService workerConfigurationService,
-                               PublicConfigurationService publicConfigurationService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -83,10 +81,10 @@ public class TaskExecutorService {
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
-        this.publicConfigurationService = publicConfigurationService;
         this.credentialsService = credentialsService;
-        this.iexecHubService = iexecHubService;
         this.workerConfigurationService = workerConfigurationService;
+        this.publicConfigurationService = publicConfigurationService;
+        this.iexecHubService = iexecHubService;
 
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
