@@ -7,8 +7,6 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.result.ResultModel;
-import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
@@ -36,20 +34,17 @@ public class CustomFeignClient {
     private CoreClient coreClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
-    private ResultRepoClient resultRepoClient;
     private CredentialsService credentialsService;
     private String currentToken;
 
     public CustomFeignClient(CoreClient coreClient,
                              WorkerClient workerClient,
                              ReplicateClient replicateClient,
-                             ResultRepoClient resultRepoClient,
                              CredentialsService credentialsService,
                              CoreConfigurationService coreConfigurationService) {
         this.coreClient = coreClient;
         this.workerClient = workerClient;
         this.replicateClient = replicateClient;
-        this.resultRepoClient = resultRepoClient;
         this.credentialsService = credentialsService;
         this.coreURL = coreConfigurationService.getUrl();
         this.currentToken = "";
@@ -207,30 +202,6 @@ public class CustomFeignClient {
             }
         }
         return null;
-    }
-
-    public Optional<Eip712Challenge> getResultRepoChallenge(Integer chainId) {
-        try {
-            return Optional.of(resultRepoClient.getChallenge(chainId));
-        } catch (FeignException e) {
-            if (e.status() == 0) {
-                log.error("Failed to getResultRepoChallenge, will retry");
-                sleep();
-                return getResultRepoChallenge(chainId);
-            }
-        }
-        return Optional.empty();
-    }
-
-    public boolean uploadResult(String authorizationToken, ResultModel resultModel) {
-        try {
-            return resultRepoClient.uploadResult(authorizationToken, resultModel)
-                    .getStatusCode()
-                    .is2xxSuccessful();
-        } catch (FeignException e) {
-            log.error("Failed to uploadResult [instance:{}]");
-            return false;
-        }
     }
 
     private String login(String workerAddress, Signature signature) {
