@@ -31,6 +31,12 @@ public class WorkerConfigurationService {
     @Value("${worker.overrideBlockchainNodeAddress}")
     private String overrideBlockchainNodeAddress;
 
+    @Value("${worker.httpProxy.host}")
+    private String httpProxyHost;
+
+    @Value("${worker.httpProxy.port}")
+    private Integer httpProxyPort;
+
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -78,5 +84,13 @@ public class WorkerConfigurationService {
 
     public String getOverrideBlockchainNodeAddress() {
         return overrideBlockchainNodeAddress;
+    }
+
+    public String getHttpProxyHost() {
+        return httpProxyHost;
+    }
+
+    public Integer getHttpProxyPort() {
+        return httpProxyPort;
     }
 }
