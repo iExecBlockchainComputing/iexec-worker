@@ -11,6 +11,7 @@ import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -52,6 +53,7 @@ public class TaskExecutorService {
     private RevealService revealService;
     private PublicConfigurationService publicConfigurationService;
     private CredentialsService credentialsService;
+    private IexecHubService iexecHubService;
 
     // internal variables
     private String workerWalletAddress;
@@ -67,7 +69,8 @@ public class TaskExecutorService {
                                RevealService revealService,
                                PublicConfigurationService publicConfigurationService,
                                CredentialsService credentialsService,
-                               WorkerConfigurationService workerConfigurationService) {
+                               WorkerConfigurationService workerConfigurationService,
+                               IexecHubService iexecHubService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -78,6 +81,7 @@ public class TaskExecutorService {
         this.customFeignClient = customFeignClient;
         this.publicConfigurationService = publicConfigurationService;
         this.credentialsService = credentialsService;
+        this.iexecHubService = iexecHubService;
 
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
@@ -196,13 +200,14 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
-        if (chainReceipt == null) {
-            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
+        Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
+        if (!oChainReceipt.isPresent()) {
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED, chainReceipt);
             return;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, chainReceipt);
+        customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, oChainReceipt.get());
     }
 
     @Async
@@ -221,8 +226,9 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALING);
 
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
-        if (!optionalChainReceipt.isPresent()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
+        if (optionalChainReceipt.isPresent()) {
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED, chainReceipt);
             return;
         }
 
