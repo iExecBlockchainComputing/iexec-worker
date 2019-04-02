@@ -12,6 +12,7 @@ import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -52,6 +53,8 @@ public class TaskExecutorService {
     private RevealService revealService;
     private CredentialsService credentialsService;
     private PublicConfigurationService publicConfigurationService;
+    private CredentialsService credentialsService;
+    private IexecHubService iexecHubService;
     private WorkerConfigurationService workerConfigurationService;
 
     // internal variables
@@ -68,6 +71,8 @@ public class TaskExecutorService {
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
+                               IexecHubService iexecHubService) {
+                               WorkerConfigurationService workerConfigurationService,
                                PublicConfigurationService publicConfigurationService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
@@ -79,6 +84,8 @@ public class TaskExecutorService {
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
         this.publicConfigurationService = publicConfigurationService;
+        this.credentialsService = credentialsService;
+        this.iexecHubService = iexecHubService;
         this.workerConfigurationService = workerConfigurationService;
 
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
@@ -205,13 +212,14 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        ChainReceipt chainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
-        if (chainReceipt == null) {
-            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED);
+        Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
+        if (!oChainReceipt.isPresent()) {
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED, chainReceipt);
             return;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, chainReceipt);
+        customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, oChainReceipt.get());
     }
 
     @Async
@@ -230,8 +238,9 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALING);
 
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
-        if (!optionalChainReceipt.isPresent()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED);
+        if (optionalChainReceipt.isPresent()) {
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED, chainReceipt);
             return;
         }
 
