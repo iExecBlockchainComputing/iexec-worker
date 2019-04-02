@@ -127,7 +127,7 @@ public class ContributionService {
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
-    public ChainReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
+    public Optional<ChainReceipt> contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignature);
@@ -137,8 +137,10 @@ public class ContributionService {
             return null;
         }
 
-        return ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
+        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
                 iexecHubService.getLastBlockNumber());
+
+        return Optional.of(chainReceipt);
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
