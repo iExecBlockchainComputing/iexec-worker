@@ -134,7 +134,7 @@ public class ContributionService {
 
         if (contributeResponse == null) {
             log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribAuth.getChainTaskId());
-            return null;
+            return Optional.empty();
         }
 
         ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
