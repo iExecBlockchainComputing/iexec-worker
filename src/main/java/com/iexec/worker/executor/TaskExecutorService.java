@@ -18,6 +18,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomResultRepoFeignClient;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -47,6 +48,7 @@ public class TaskExecutorService {
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
+    private CustomResultRepoFeignClient customResultRepoFeignClient;
     private RevealService revealService;
     private CredentialsService credentialsService;
     private PublicConfigurationService publicConfigurationService;
@@ -62,6 +64,7 @@ public class TaskExecutorService {
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
+                               CustomResultRepoFeignClient customResultRepoFeignClient,
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
@@ -71,6 +74,7 @@ public class TaskExecutorService {
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
+        this.customResultRepoFeignClient = customResultRepoFeignClient;
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
@@ -250,7 +254,7 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Optional<Eip712Challenge> oEip712Challenge = customFeignClient.getResultRepoChallenge(publicConfigurationService.getChainId());
+        Optional<Eip712Challenge> oEip712Challenge = customResultRepoFeignClient.getResultRepoChallenge(publicConfigurationService.getChainId());
 
         if (!oEip712Challenge.isPresent()) {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
@@ -263,7 +267,7 @@ public class TaskExecutorService {
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerWalletAddress, ecKeyPair);
 
-        boolean isResultUploaded = customFeignClient.uploadResult(authorizationToken,
+        boolean isResultUploaded = customResultRepoFeignClient.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
         if (!isResultUploaded) {
