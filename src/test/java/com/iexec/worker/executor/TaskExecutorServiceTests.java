@@ -11,6 +11,7 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.RevealService;
@@ -45,8 +46,10 @@ public class TaskExecutorServiceTests {
     @InjectMocks
     private TaskExecutorService taskExecutorService;
 
-    String CHAIN_TASK_ID = "0xfoobar";
-    String ENCLAVE_CHALLENGE = "enclaveChallenge";
+    private static final String CHAIN_TASK_ID = "0xfoobar";
+    private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
+    private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
+
 
     @Before
     public void init() {
@@ -58,7 +61,7 @@ public class TaskExecutorServiceTests {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel());
+        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -66,12 +69,41 @@ public class TaskExecutorServiceTests {
     }
 
     @Test
-    public void shouldComputeWhenTaskIsInitializedOnchain() throws InterruptedException, ExecutionException {
+    public void shouldNotComputeWhenTeeRequiredButNotSupported() throws InterruptedException, ExecutionException {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
         when(publicConfigurationService.getChainId()).thenReturn(1234);
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel());
+        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
+        future.join();
+
+        Mockito.verify(customFeignClient, never())
+                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+    }
+
+    @Test
+    public void shouldComputeTaskWhithNoTeeRequired() throws InterruptedException, ExecutionException {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
+                .thenReturn(true);
+        when(publicConfigurationService.getChainId()).thenReturn(1234);
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
+
+        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
+        future.join();
+
+        Mockito.verify(customFeignClient, Mockito.atLeastOnce())
+                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+    }
+
+    @Test
+    public void shouldComputeTeeTask() throws InterruptedException, ExecutionException {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
+                .thenReturn(true);
+        when(publicConfigurationService.getChainId()).thenReturn(1234);
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
+
+        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.atLeastOnce())
@@ -79,17 +111,17 @@ public class TaskExecutorServiceTests {
     }
 
 
-    AvailableReplicateModel getStubReplicateModel() {
+    AvailableReplicateModel getStubReplicateModel(String enclaveChallenge) {
         return AvailableReplicateModel.builder()
-                .contributionAuthorization(getStubAuth())
+                .contributionAuthorization(getStubAuth(enclaveChallenge))
                 .appType(DappType.BINARY)
                 .build();
     }
 
-    ContributionAuthorization getStubAuth() {
+    ContributionAuthorization getStubAuth(String enclaveChallenge) {
         return ContributionAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge(ENCLAVE_CHALLENGE)
+                .enclaveChallenge(enclaveChallenge)
                 .build();
     }
 }
