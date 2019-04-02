@@ -226,7 +226,7 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALING);
 
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
-        if (optionalChainReceipt.isPresent()) {
+        if (!optionalChainReceipt.isPresent()) {
             ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
             customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED, chainReceipt);
             return;
