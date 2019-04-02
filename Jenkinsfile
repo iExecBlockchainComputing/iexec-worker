@@ -6,36 +6,38 @@ pipeline {
 
         stage('Test') {
             steps {
-                 sh './gradlew clean test --refresh-dependencies'
+                 sh './gradlew clean test --refresh-dependencies --no-daemon'
+                 junit 'build/test-results/test/*.xml'
             }
         }
 
         stage('Build') {
             steps {
-                sh './gradlew build --refresh-dependencies'
+                sh './gradlew build --refresh-dependencies --no-daemon'
             }
         }
 
         stage('Upload Jars') {
-              steps {
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
-                        sh './gradlew -PnexusUser=$NEXUS_USER -PnexusPassword=$NEXUS_PASSWORD uploadArchives'
-                    }
-              }
+            when {
+                branch 'master'
+            }
+            steps {
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
+                    sh './gradlew -PnexusUser=$NEXUS_USER -PnexusPassword=$NEXUS_PASSWORD uploadArchives --no-daemon'
+                }
+            }
         }
 
         stage('Build/Upload Docker image') {
-              steps {
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
-                        sh './gradlew -PnexusUser=$NEXUS_USER -PnexusPassword=$NEXUS_PASSWORD pushImage'
-                    }
-              }
+            when {
+                branch 'master'
+            }
+            steps {
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
+                    sh './gradlew -PnexusUser=$NEXUS_USER -PnexusPassword=$NEXUS_PASSWORD pushImage --no-daemon'
+                }
+            }
         }
     }
 
-    post {
-        always {
-            junit 'build/test-results/test/*.xml'
-        }
-    }
 }
