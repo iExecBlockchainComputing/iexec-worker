@@ -75,7 +75,7 @@ public class Application implements CommandLineRunner {
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", customFeignClient.getPublicConfiguration());
-        if (workerConfig.getHttpProxyPort() != null && workerConfig.getHttpProxyPort() != null) {
+        if (workerConfig.getHttpProxyHost() != null && workerConfig.getHttpProxyPort() != null) {
             log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
         }
 
