@@ -1,8 +1,6 @@
 package com.iexec.worker;
 
 
-import java.util.List;
-
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
@@ -20,6 +18,8 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import java.util.List;
 
 
 @SpringBootApplication
@@ -71,11 +71,13 @@ public class Application implements CommandLineRunner {
                 .teeEnabled(workerConfig.isTeeEnabled())
                 .build();
 
-
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
         log.info("Get configuration of the core [config:{}]", customFeignClient.getPublicConfiguration());
+        if (workerConfig.getHttpProxyPort() != null && workerConfig.getHttpProxyPort() != null) {
+            log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
+        }
 
         if (!iexecHubService.hasEnoughGas()) {
             log.error("No enough gas, please refill your wallet!");

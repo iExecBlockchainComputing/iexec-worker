@@ -2,25 +2,10 @@ package com.iexec.worker.pubsub;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.executor.TaskExecutorService;
-import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.feign.ResultRepoClient;
-import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
-
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.ProxyAuthenticationStrategy;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -52,9 +37,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private final String coreHost;
     private final int corePort;
     private final String workerWalletAddress;
-    private final String httpProxyHost;
-    private final Integer httpProxyPort;
-
+    private RestTemplate restTemplate;
     // external services
     private TaskExecutorService taskExecutorService;
 
@@ -66,23 +49,17 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
-                               ResultRepoClient resultRepoClient,
-                               ResultService resultService,
-                               RevealService revealService,
-                               CustomFeignClient feignClient,
-                               PublicConfigurationService publicConfigurationService,
-                               CredentialsService credentialsService,
-                               TaskExecutorService taskExecutorService) {
+                               TaskExecutorService taskExecutorService,
+                               RestTemplate restTemplate) {
         this.taskExecutorService = taskExecutorService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
-        this.httpProxyHost = workerConfigurationService.getHttpProxyHost();
-        this.httpProxyPort = workerConfigurationService.getHttpProxyPort();
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
+        this.restTemplate = restTemplate;
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
-        url = "ws://" + coreHost + ":" + corePort + "/connect";
+        url = "http://" + coreHost + ":" + corePort + "/connect";
     }
 
     @PostConstruct
@@ -92,34 +69,16 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private void restartStomp() {
         log.info("Starting STOMP");
-        StandardWebSocketClient client = new StandardWebSocketClient();
-
-        //WebSocketClient webSocketClient = new StandardWebSocketClient();
-
-
-        List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(client),  new RestTemplateXhrTransport(getRestTemplate()));
+        WebSocketClient webSocketClient = new StandardWebSocketClient();
+        List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
+                new RestTemplateXhrTransport(restTemplate));
         SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-
-        this.stompClient = new WebSocketStompClient(sockJsClient);
-        //this.stompClient = new WebSocketStompClient(webSocketClient);
+        this.stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
         this.stompClient.setAutoStartup(true);
         this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
         this.stompClient.connect(url, this);
         log.info("Started STOMP");
-    }
-
-    // Rest template with proxy configuration
-    private RestTemplate getRestTemplate() {
-        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        if (httpProxyHost != null && httpProxyPort != null) {
-            HttpHost myProxy = new HttpHost(httpProxyHost, httpProxyPort);
-            clientBuilder.setProxy(myProxy);
-        }
-
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setHttpClient(clientBuilder.build());
-        return new RestTemplate(factory);
     }
 
     private void reSubscribeToTopics() {
