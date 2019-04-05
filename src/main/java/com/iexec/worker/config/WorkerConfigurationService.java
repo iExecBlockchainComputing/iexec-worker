@@ -1,8 +1,13 @@
 package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
+import org.apache.http.HttpHost;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 
@@ -78,5 +83,26 @@ public class WorkerConfigurationService {
 
     public String getOverrideBlockchainNodeAddress() {
         return overrideBlockchainNodeAddress;
+    }
+
+    public String getHttpProxyHost() {
+        return System.getProperty("http.proxyHost");
+    }
+
+    public Integer getHttpProxyPort() {
+        String proxyPort = System.getProperty("http.proxyPort");
+        return proxyPort != null && !proxyPort.isEmpty() ? Integer.valueOf(proxyPort) : null;
+    }
+
+    @Bean
+    private RestTemplate restTemplate() {
+        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+        if (getHttpProxyHost() != null && getHttpProxyPort() != null) {
+            HttpHost myProxy = new HttpHost(getHttpProxyHost(), getHttpProxyPort());
+            clientBuilder.setProxy(myProxy);
+        }
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+        factory.setHttpClient(clientBuilder.build());
+        return new RestTemplate(factory);
     }
 }
