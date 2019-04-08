@@ -164,3 +164,16 @@ task pushImage(type: Exec) {
 
 pushImage.dependsOn buildImage
 pushImage.enabled = isMasterBranch && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
+
+//gradle bootRun -PproxyHost=192.168.XX.XXX -PproxyPort=3128
+project.ext.getJvmArgs = {
+    if (project.hasProperty("proxyHost") && project.hasProperty("proxyPort")) {
+        return ["-Dhttp.proxyHost="+project.proxyHost, "-Dhttp.proxyPort="+project.proxyPort]
+    } else {
+        return  []
+    }
+}
+
+bootRun {
+    jvmArgs = project.ext.getJvmArgs()
+}
