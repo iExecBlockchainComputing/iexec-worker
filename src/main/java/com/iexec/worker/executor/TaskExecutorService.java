@@ -261,7 +261,8 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Optional<Eip712Challenge> oEip712Challenge = customResultRepoFeignClient.getResultRepoChallenge(publicConfigurationService.getChainId());
+        Optional<Eip712Challenge> oEip712Challenge = customResultRepoFeignClient.getResultRepoChallenge(
+                publicConfigurationService.getChainId());
 
         if (!oEip712Challenge.isPresent()) {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
