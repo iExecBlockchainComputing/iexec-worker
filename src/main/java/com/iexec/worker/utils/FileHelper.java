@@ -133,4 +133,13 @@ public class FileHelper {
         }
         return null;
     }
+
+    public static String getDatasetFileName(String datasetFolder) {
+        String[] fileList = new File(datasetFolder).list();
+        if (fileList.length == 0) {
+            return "";
+        }
+
+        return fileList[0];
+    }
 }
