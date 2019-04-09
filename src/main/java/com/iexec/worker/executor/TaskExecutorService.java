@@ -202,7 +202,7 @@ public class TaskExecutorService {
 
         Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
         if (!oChainReceipt.isPresent()) {
-            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
             customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED, chainReceipt);
             return;
         }
@@ -227,7 +227,7 @@ public class TaskExecutorService {
 
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
         if (!optionalChainReceipt.isPresent()) {
-            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
             customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED, chainReceipt);
             return;
         }

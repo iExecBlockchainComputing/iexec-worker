@@ -138,7 +138,7 @@ public class ContributionService {
         }
 
         ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
-                iexecHubService.getLastBlockNumber());
+                iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);
     }
