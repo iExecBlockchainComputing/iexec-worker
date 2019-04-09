@@ -16,7 +16,7 @@ import java.util.Optional;
 
 @Service
 @Slf4j
-public class CustomResultRepoFeignClient {
+public class ResultRepoClientWrapper {
 
     private static final int BACKOFF = 5000; // 5s
     private static final int MAX_ATTEMPS = 5;
@@ -24,7 +24,7 @@ public class CustomResultRepoFeignClient {
 
     private ResultRepoClient resultRepoClient;
 
-    public CustomResultRepoFeignClient(ResultRepoClient resultRepoClient) {
+    public ResultRepoClientWrapper(ResultRepoClient resultRepoClient) {
         this.resultRepoClient = resultRepoClient;
     }
 

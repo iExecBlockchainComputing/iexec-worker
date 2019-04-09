@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+
 @Service
 @Slf4j
 public class CustomFeignClient {
@@ -30,12 +31,12 @@ public class CustomFeignClient {
     private static final int RETRY_TIME = 5000;
     private static final String TOKEN_PREFIX = "Bearer ";
     private final String coreURL;
+    private String currentToken;
 
     private CoreClient coreClient;
     private WorkerClient workerClient;
     private ReplicateClient replicateClient;
     private CredentialsService credentialsService;
-    private String currentToken;
 
     public CustomFeignClient(CoreClient coreClient,
                              WorkerClient workerClient,

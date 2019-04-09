@@ -19,7 +19,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.feign.CustomResultRepoFeignClient;
+import com.iexec.worker.feign.ResultRepoClientWrapper;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,7 +49,7 @@ public class TaskExecutorService {
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
-    private CustomResultRepoFeignClient customResultRepoFeignClient;
+    private ResultRepoClientWrapper resultRepoClientWrapper;
     private RevealService revealService;
     private CredentialsService credentialsService;
     private WorkerConfigurationService workerConfigurationService;
@@ -66,7 +66,7 @@ public class TaskExecutorService {
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
-                               CustomResultRepoFeignClient customResultRepoFeignClient,
+                               ResultRepoClientWrapper resultRepoClientWrapper,
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
@@ -77,7 +77,7 @@ public class TaskExecutorService {
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
-        this.customResultRepoFeignClient = customResultRepoFeignClient;
+        this.resultRepoClientWrapper = resultRepoClientWrapper;
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
@@ -261,7 +261,7 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Optional<Eip712Challenge> oEip712Challenge = customResultRepoFeignClient.getResultRepoChallenge(
+        Optional<Eip712Challenge> oEip712Challenge = resultRepoClientWrapper.getResultRepoChallenge(
                 publicConfigurationService.getChainId());
 
         if (!oEip712Challenge.isPresent()) {
@@ -275,7 +275,7 @@ public class TaskExecutorService {
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerWalletAddress, ecKeyPair);
 
-        boolean isResultUploaded = customResultRepoFeignClient.uploadResult(authorizationToken,
+        boolean isResultUploaded = resultRepoClientWrapper.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
         if (!isResultUploaded) {
