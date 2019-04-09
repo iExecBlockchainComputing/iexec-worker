@@ -158,6 +158,15 @@ public class TaskExecutorService {
             return stdout;
         }
 
+        // decrypt data
+        boolean isDataDecrypted = datasetService.decryptData(replicateModel.getContributionAuthorization());
+        if (!isDataDecrypted) {
+            customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
+            stdout = "Failed to decrypt fetched data, URI:" + replicateModel.getDatasetUri();
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return stdout;
+        }
+
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
 
         // compute
