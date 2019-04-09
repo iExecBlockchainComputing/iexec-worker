@@ -51,7 +51,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldNotRecoverSinceNothingToRecover() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(Collections.emptyList());
 
@@ -62,7 +62,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldRecoverByWaiting() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.WAIT));
         
@@ -74,7 +74,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldRecoverByComputingAgainWhenResultNotFound() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.CONTRIBUTE));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -92,7 +92,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldRecoverByContributingWhenResultFound() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.CONTRIBUTE));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -110,7 +110,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldAbortSinceConsensusReached() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.ABORT_CONSENSUS_REACHED));
         
@@ -125,7 +125,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldAbortSinceContributionTimeout() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(
                         RecoveryAction.ABORT_CONTRIBUTION_TIMEOUT));
@@ -141,7 +141,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldNotRecoverByRevealingWhenResultNotFound() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.REVEAL));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -158,7 +158,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldRecoverByRevealingWhenResultFound() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.REVEAL));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -176,7 +176,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldNotRecoverByUploadingWhenResultNotFound() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.UPLOAD_RESULT));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -193,7 +193,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldRecoverByUploadingWhenResultFound() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.UPLOAD_RESULT));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -211,7 +211,7 @@ public class AmnesiaRecoveryServiceTests {
 
     @Test
     public void shouldCompleteTask() {
-        when(iexecHubService.getLastBlockNumber()).thenReturn(blockNumber);
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.COMPLETE));
         
