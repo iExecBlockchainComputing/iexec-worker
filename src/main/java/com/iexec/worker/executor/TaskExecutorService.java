@@ -260,7 +260,7 @@ public class TaskExecutorService {
                 resultService.getResultModelWithZip(chainTaskId));
 
         if (responseEntity.getStatusCode().is2xxSuccessful()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, responseEntity.getBody());
         }
     }
 
