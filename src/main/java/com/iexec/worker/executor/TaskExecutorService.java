@@ -125,7 +125,7 @@ public class TaskExecutorService {
         // if (TeeEnabled && no Tee supported) => return;
         boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
         if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
-            throw new IllegalArgumentException("Task needs TEE, I don't support it");
+            throw new UnsupportedOperationException("Task needs TEE, I don't support it");
         }
 
         // check app type
@@ -158,6 +158,9 @@ public class TaskExecutorService {
             return stdout;
         }
 
+        customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
+        customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
+
         // decrypt data
         boolean isDataDecrypted = datasetService.decryptData(replicateModel.getContributionAuthorization());
         if (!isDataDecrypted) {
@@ -167,10 +170,7 @@ public class TaskExecutorService {
             return stdout;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
-
         // compute
-        customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
         stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel);
 
         if (stdout.isEmpty()) {
