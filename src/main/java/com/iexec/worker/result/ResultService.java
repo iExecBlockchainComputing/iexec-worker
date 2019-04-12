@@ -28,6 +28,7 @@ public class ResultService {
 
     private static final String DETERMINIST_FILE_NAME = "consensus.iexec";
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
+    private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
 
     private Map<String, ResultInfo> resultInfoMap;
@@ -169,6 +170,28 @@ public class ResultService {
         }
 
         return hash;
+    }
+
+    public String getCallbackContentFromFile(String chainTaskId) {
+        String content = "";
+        try {
+            String callbackFilePathName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + CALLBACK_FILE_NAME;
+            Path callFilePath = Paths.get(callbackFilePathName);
+
+            if (callFilePath.toFile().exists()) {
+                byte[] contentByte = Files.readAllBytes(callFilePath);
+                content = bytesToString(contentByte);
+                log.info("Callback file exists [chainTaskId:{}, content:{}]", chainTaskId, content);
+                return content;
+            } else {
+                log.info("No callback file [chainTaskId:{}]", chainTaskId);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            log.error("Failed to getCallbackContentFromFile [chainTaskId:{}]", chainTaskId);
+        }
+
+        return content;
     }
 
     public Optional<Signature> getEnclaveSignatureFromFile(String chainTaskId) {

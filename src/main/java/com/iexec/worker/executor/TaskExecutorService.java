@@ -5,10 +5,10 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.security.Signature;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
+import com.iexec.common.security.Signature;
+import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
@@ -21,7 +21,6 @@ import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -35,7 +34,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import static com.iexec.common.replicate.ReplicateStatus.*;
 
 
-/* 
+/*
  * this service is only caller by ReplicateDemandService when getting new replicate
  * or by AmnesiaRecoveryService when recovering an interrupted task
  */
@@ -98,7 +97,9 @@ public class TaskExecutorService {
 
         return CompletableFuture.supplyAsync(() -> compute(replicateModel), executor)
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
-                .thenAccept(isSaved -> {if (isSaved) contribute(contributionAuth);})
+                .thenAccept(isSaved -> {
+                    if (isSaved) contribute(contributionAuth);
+                })
                 .handle((res, err) -> {
                     if (err != null) {
                         err.printStackTrace();
@@ -249,18 +250,30 @@ public class TaskExecutorService {
 
     @Async
     public void uploadResult(String chainTaskId) {
+
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                workerWalletAddress, ecKeyPair);
+        String finalizePayload = resultService.getCallbackContentFromFile(chainTaskId);
 
-        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
-                resultService.getResultModelWithZip(chainTaskId));
+        if (finalizePayload.isEmpty()) {
+            Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+            ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
+            String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+                    workerWalletAddress, ecKeyPair);
 
-        if (responseEntity.getStatusCode().is2xxSuccessful()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, responseEntity.getBody());
+            ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
+                    resultService.getResultModelWithZip(chainTaskId));
+
+            if (responseEntity != null && responseEntity.getStatusCode().is2xxSuccessful()) {
+                finalizePayload = responseEntity.getBody();
+                log.info("Zip uri will be sent to core [finalizePayload:{}]", finalizePayload);
+            }
+        } else {
+            log.info("Content of callback file will be sent to core [finalizePayload:{}]", finalizePayload);
+        }
+
+        if (finalizePayload != null && !finalizePayload.isEmpty()) {
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, finalizePayload);
         }
     }
 
