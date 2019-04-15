@@ -66,6 +66,7 @@ public class DatasetService {
             return false;
         }
 
+        // rename decrypted dataset to original file
         FileHelper.deleteFile(datasetFilePath);
         return FileHelper.renameFile(decryptedDatasetFilePath, datasetFilePath);
     }

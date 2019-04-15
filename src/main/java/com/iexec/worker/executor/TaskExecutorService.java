@@ -123,7 +123,6 @@ public class TaskExecutorService {
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
             log.error("Task not initialized onchain yet [ChainTaskId:{}]", chainTaskId);
-            // Thread.currentThread().interrupt();
             throw new IllegalArgumentException("Task not initialized onchain yet");
         }
 
@@ -167,7 +166,7 @@ public class TaskExecutorService {
 
         boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
         if (!isFetched) {
-            log.warn("No secrets fetched for this task [chainTaskId:{}]:", chainTaskId);
+            log.warn("No secrets fetched for this task, continuing [chainTaskId:{}]:", chainTaskId);
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
@@ -176,7 +175,7 @@ public class TaskExecutorService {
         boolean isDataDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
         if (!isDataDecrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to decrypt fetched data, URI:" + replicateModel.getDatasetUri();
+            stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }

@@ -192,14 +192,14 @@ public class CustomFeignClient {
         }
     }
 
-    private String getCoreChallenge(String workerAddress) {
+    private String getChallenge(String workerAddress) {
         try {
             return workerClient.getChallenge(workerAddress);
         } catch (FeignException e) {
             if (e.status() == 0) {
                 log.error("Failed to getCoreChallenge, will retry [instance:{}]", coreURL);
                 sleep();
-                return getCoreChallenge(workerAddress);
+                return getChallenge(workerAddress);
             }
         }
         return null;
@@ -229,7 +229,7 @@ public class CustomFeignClient {
         if (currentToken.isEmpty()) {
             String workerAddress = credentialsService.getCredentials().getAddress();
             ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-            String challenge = getCoreChallenge(workerAddress);
+            String challenge = getChallenge(workerAddress);
 
             Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
             currentToken = TOKEN_PREFIX + login(workerAddress, signature);
