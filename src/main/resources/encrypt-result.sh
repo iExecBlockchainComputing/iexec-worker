@@ -76,21 +76,21 @@ IV=$(openssl rand ${IV_LENGTH} | tee ${IV_FILE} | od -An -tx1 | tr -d ' \n')
 echo "[SHELL] generated IV_KEY"
 
 ### ENCRYPT RESULT AND AES KEY
-mv ${IV_FILE} ${IEXEC_OUT}/${ENC_RESULT_FILE}
-openssl enc ${AES_ALG} -K ${AES_KEY} -iv ${IV} -in ${RESULT_FILE} >> ${IEXEC_OUT}/${ENC_RESULT_FILE}
-openssl rsautl -encrypt -oaep -inkey ${KEY_FILE} -pubin -in ${AES_KEY_FILE} >> ${IEXEC_OUT}/${ENC_KEY_FILE}
+mv ${IV_FILE} ${IEXEC_OUT}/${ENC_RESULT_FILE} 2>&1
+openssl enc ${AES_ALG} -K ${AES_KEY} -iv ${IV} -in ${RESULT_FILE} >> ${IEXEC_OUT}/${ENC_RESULT_FILE} 2>&1
+openssl rsautl -encrypt -oaep -inkey ${KEY_FILE} -pubin -in ${AES_KEY_FILE} >> ${IEXEC_OUT}/${ENC_KEY_FILE} 2>&1
 echo "[SHELL] encrypted result and key successfully"
 
 ### ZIP
-zip -r ${IEXEC_OUT} ${IEXEC_OUT}/${ENC_RESULT_FILE} ${IEXEC_OUT}/${ENC_KEY_FILE}
+zip -r ${IEXEC_OUT} ${IEXEC_OUT}/${ENC_RESULT_FILE} ${IEXEC_OUT}/${ENC_KEY_FILE} 2>&1
 
 ### SHRED KEY
-shred -u ${AES_KEY_FILE}
+shred -u ${AES_KEY_FILE} 2>&1
 AES_KEY=""
 
 ### REMOVE TEMPORARY FILES
-rm -f ${IEXEC_OUT}/${ENC_RESULT_FILE}
-rm -f ${IEXEC_OUT}/${ENC_KEY_FILE}
-rm -f ${AES_KEY_FILE}
+rm -f ${IEXEC_OUT}/${ENC_RESULT_FILE} 2>&1
+rm -f ${IEXEC_OUT}/${ENC_KEY_FILE} 2>&1
+rm -f ${AES_KEY_FILE} 2>&1
 
 echo "[SHELL] encrypted result zipped to '${IEXEC_OUT}.zip'"

@@ -24,8 +24,8 @@ function decryptFile()
 	echo "[SHELL] decrypted dataset file"
 
 	shred -u ${KEY_FILE} 2>&1
-	rm -f ${KEY_FILE}
-	rm -f ${SECRET_FILE}
+	rm -f ${KEY_FILE} 2>&1
+	rm -f ${SECRET_FILE} 2>&1
 
 	echo "[SHELL] ended with success"
 }
