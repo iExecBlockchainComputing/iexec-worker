@@ -100,14 +100,14 @@ public class SmsService {
     }
 
     public String getBeneficiarySecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/output/beneficiary.secret
-        return workerConfigurationService.getTaskOutputDir(chainTaskId)
+        // /worker-base-dir/chainTaskId/beneficiary.secret
+        return workerConfigurationService.getTaskBaseDir(chainTaskId)
                 + File.separator + BENEFICIARY_SECRET_FILENAME;
     }
 
     public String getEnclaveSecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/output/enclave.secret
-        return workerConfigurationService.getTaskOutputDir(chainTaskId)
+        // /worker-base-dir/chainTaskId/enclave.secret
+        return workerConfigurationService.getTaskBaseDir(chainTaskId)
                 + File.separator + ENCLAVE_SECRET_FILENAME;
     }
 }
