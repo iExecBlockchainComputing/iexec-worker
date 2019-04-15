@@ -51,7 +51,7 @@ public class AmnesiaRecoveryService {
     }
 
     public List<String> recoverInterruptedReplicates() {
-        long lasAvailableBlockNumber = iexecHubService.getLastBlockNumber();
+        long lasAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         List<InterruptedReplicateModel> interruptedReplicates = customFeignClient.getInterruptedReplicates(
                 lasAvailableBlockNumber);
         List<String> recoveredChainTaskIds = new ArrayList<>();

@@ -171,13 +171,8 @@ public class IexecHubService extends IexecHubAbstractService {
         return web3jService.hasEnoughGas(credentialsService.getCredentials().getAddress());
     }
 
-    public long getLastBlockNumber() {
-        try {
-            return web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock().getNumber().longValue();
-        } catch (IOException e) {
-            log.error("GetLastBlock failed");
-        }
-        return 0;
+    public long getLatestBlockNumber() {
+        return web3jService.getLatestBlockNumber();
     }
 
     private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainStatus chainContributionStatus) {

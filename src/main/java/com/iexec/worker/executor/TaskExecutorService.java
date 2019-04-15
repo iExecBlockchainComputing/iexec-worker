@@ -232,7 +232,7 @@ public class TaskExecutorService {
 
         Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
         if (!oChainReceipt.isPresent()) {
-            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
             customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED, chainReceipt);
             return;
         }
@@ -257,7 +257,7 @@ public class TaskExecutorService {
 
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
         if (!optionalChainReceipt.isPresent()) {
-            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLastBlockNumber(), "");
+            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
             customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED, chainReceipt);
             return;
         }
@@ -305,9 +305,8 @@ public class TaskExecutorService {
         boolean isResultUploaded = resultRepoClientWrapper.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
-        if (!isResultUploaded) {
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-            return;
+        if (responseEntity.getStatusCode().is2xxSuccessful()) {
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, responseEntity.getBody());
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
