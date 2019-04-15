@@ -197,7 +197,7 @@ public class CustomFeignClient {
             return workerClient.getChallenge(workerAddress);
         } catch (FeignException e) {
             if (e.status() == 0) {
-                log.error("Failed to getCoreChallenge, will retry [instance:{}]", coreURL);
+                log.error("Failed to get core challenge, will retry [instance:{}]", coreURL);
                 sleep();
                 return getChallenge(workerAddress);
             }
