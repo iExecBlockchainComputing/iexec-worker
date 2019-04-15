@@ -94,17 +94,20 @@ public class SmsService {
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {
-        // /<worker-base-dir>/chainTaskId/input/dataset.secret
-        return workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + DATASET_SECRET_FILENAME;
+        // /worker-base-dir/chainTaskId/input/dataset.secret
+        return workerConfigurationService.getTaskInputDir(chainTaskId)
+                + File.separator + DATASET_SECRET_FILENAME;
     }
 
     public String getBeneficiarySecretFilePath(String chainTaskId) {
-        // /<worker-base-dir>/chainTaskId/output/beneficiary.secret
-        return workerConfigurationService.getTaskOutputDir(chainTaskId) + File.separator + BENEFICIARY_SECRET_FILENAME;
+        // /worker-base-dir/chainTaskId/output/beneficiary.secret
+        return workerConfigurationService.getTaskOutputDir(chainTaskId)
+                + File.separator + BENEFICIARY_SECRET_FILENAME;
     }
 
     public String getEnclaveSecretFilePath(String chainTaskId) {
-        // TODO
-        return workerConfigurationService.getTaskOutputDir(chainTaskId) + File.separator + ENCLAVE_SECRET_FILENAME;
+        // /worker-base-dir/chainTaskId/output/enclave.secret
+        return workerConfigurationService.getTaskOutputDir(chainTaskId)
+                + File.separator + ENCLAVE_SECRET_FILENAME;
     }
 }
