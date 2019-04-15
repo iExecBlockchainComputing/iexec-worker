@@ -6,6 +6,7 @@ import com.iexec.common.result.eip712.Eip712Challenge;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -49,16 +50,19 @@ public class ResultRepoClientWrapper {
         maxAttempts = MAX_ATTEMPS,
         backoff = @Backoff(delay = BACKOFF)
     )
-    public boolean uploadResult(String authorizationToken, ResultModel resultModel) {
-            return resultRepoClient.uploadResult(authorizationToken, resultModel)
-                    .getStatusCode()
-                    .is2xxSuccessful();
+    public String uploadResult(String authorizationToken, ResultModel resultModel) {
+        ResponseEntity<String> responseEntity =
+                resultRepoClient.uploadResult(authorizationToken, resultModel);
+        
+        return responseEntity.getStatusCode().is2xxSuccessful()
+                ? responseEntity.getBody()
+                : "";
     }
 
     @Recover
-    public boolean uploadResult(FeignException e, String authorizationToken, ResultModel resultModel) {
+    public String uploadResult(FeignException e, String authorizationToken, ResultModel resultModel) {
         log.error("Failed to upload result [attempts:{}]", MAX_ATTEMPS);
         e.printStackTrace();
-        return false;
+        return "";
     }
 }

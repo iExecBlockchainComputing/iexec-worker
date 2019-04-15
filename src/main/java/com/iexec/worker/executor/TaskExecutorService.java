@@ -302,14 +302,15 @@ public class TaskExecutorService {
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerWalletAddress, ecKeyPair);
 
-        boolean isResultUploaded = resultRepoClientWrapper.uploadResult(authorizationToken,
+        String resultURI = resultRepoClientWrapper.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
-        if (responseEntity.getStatusCode().is2xxSuccessful()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, responseEntity.getBody());
+        if (resultURI.isEmpty()) {
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
+            return;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED);
+        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, resultURI);
     }
 
     @Async
