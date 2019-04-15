@@ -46,7 +46,7 @@ public class DockerComputationService {
             return stdout;
         }
 
-        String hostBaseVolume = configurationService.getResultBaseDir() + File.separator + chainTaskId;
+        String hostBaseVolume = configurationService.getTaskBaseDir(chainTaskId);
         ContainerConfig containerConfig;
 
         if (replicateModel.isTrustedExecution()) {

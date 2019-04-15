@@ -99,7 +99,11 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId) {
-        return configurationService.getResultBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
+        return configurationService.getTaskOutputDir(chainTaskId);
+    }
+
+    public String getEncryptedResultZipFilePath(String chainTaskId) {
+        return configurationService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
     }
 
     public boolean isResultZipFound(String chainTaskId) {
@@ -108,6 +112,10 @@ public class ResultService {
 
     public boolean isResultFolderFound(String chainTaskId) {
         return new File(getResultFolderPath(chainTaskId)).exists();
+    }
+
+    public boolean isEncryptedResultZipFound(String chainTaskId) {
+        return new File(getEncryptedResultZipFilePath(chainTaskId)).exists();
     }
 
     public boolean removeResult(String chainTaskId) {
@@ -135,7 +143,7 @@ public class ResultService {
     }
 
     public List<String> getAllChainTaskIdsInResultFolder() {
-        File resultsFolder = new File(configurationService.getResultBaseDir());
+        File resultsFolder = new File(configurationService.getWorkerBaseDir());
         String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
 
         if (chainTaskIdFolders == null || chainTaskIdFolders.length == 0) {

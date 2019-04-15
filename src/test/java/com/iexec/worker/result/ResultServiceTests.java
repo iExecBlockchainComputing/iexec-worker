@@ -35,7 +35,7 @@ public class ResultServiceTests {
         String sExpected = "0x6bdf554c8c12c158d12f08299afbe0d9c8533bf420a5d3f63ed9827047eab8d1";
         byte vExpected = 27;
 
-        when(configurationService.getResultBaseDir()).thenReturn("./src/test/resources/tmp/test-worker");
+        when(configurationService.getTaskOutputDir(chainTaskId)).thenReturn("./src/test/resources/tmp/test-worker");
         Optional<Signature> enclaveSignature = resultService.getEnclaveSignatureFromFile(chainTaskId);
 
         assertThat(enclaveSignature.isPresent()).isTrue();
