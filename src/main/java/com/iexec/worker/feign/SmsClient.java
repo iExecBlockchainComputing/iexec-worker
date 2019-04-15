@@ -16,6 +16,6 @@ import feign.FeignException;
 )
 public interface SmsClient {
 
-    @PostMapping("/secret")
+    @PostMapping("/secure")
     SmsSecretResponse getTaskSecrets(@RequestBody SmsSecretRequest smsSecretRequest) throws FeignException;
 }

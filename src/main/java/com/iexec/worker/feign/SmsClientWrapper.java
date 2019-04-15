@@ -1,7 +1,9 @@
 package com.iexec.worker.feign;
 
 import com.iexec.common.sms.SmsSecretRequest;
+import com.iexec.common.sms.SmsSecretRequestBody;
 import com.iexec.common.sms.SmsSecretResponse;
+import com.iexec.common.sms.TaskSecrets;
 
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -23,26 +25,23 @@ public class SmsClientWrapper {
     }
 
     @Retryable(value = FeignException.class)
-    public Optional<SmsSecretResponse> getTaskSecrets(SmsSecretRequest smsSecretRequest) {
+    public Optional<TaskSecrets> getTaskSecrets(SmsSecretRequestBody smsSecretRequestBody) {
+        SmsSecretRequest smsSecretRequest = new SmsSecretRequest(smsSecretRequestBody);
         SmsSecretResponse smsSecretResponse = smsClient.getTaskSecrets(smsSecretRequest);
 
-        if (!smsSecretResponse.isOk() || smsSecretResponse.getData() == null) {
+        if (!smsSecretResponse.isOk()) {
             log.error("An error occured while getting task secrets [chainTaskId:{}, erroMsg:{}]",
-                    smsSecretRequest.getChainTaskId(), smsSecretResponse.getErrorMessage());
+                    smsSecretRequestBody.getChainTaskId(), smsSecretResponse.getErrorMessage());
             return Optional.empty();
         }
 
-        return Optional.of(smsSecretResponse);
+        return Optional.of(smsSecretResponse.getData().getSecrets());
     }
 
     @Recover
-    private Optional<SmsSecretResponse> getTaskSecrets(FeignException e, SmsSecretRequest smsSecretRequest) {
-        if (e.status() == 404) {
-            // no secret means we do not need to decrypt data
-            return Optional.of(new SmsSecretResponse());
-        }
-
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]", smsSecretRequest.getChainTaskId());
+    private Optional<TaskSecrets> getTaskSecrets(FeignException e, SmsSecretRequestBody smsSecretRequestBody) {
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
+                smsSecretRequestBody.getChainTaskId());
         e.printStackTrace();
         return Optional.empty();
     }
