@@ -142,4 +142,14 @@ public class FileHelper {
 
         return fileList[0];
     }
+
+    public static boolean renameFile(String oldPath, String newPath) {
+        try {
+            return new File(oldPath).renameTo(new File(newPath));
+        } catch (Exception e) {
+            log.error("could not rename file [oldPath:{}, newPath:{}]", oldPath, newPath);
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

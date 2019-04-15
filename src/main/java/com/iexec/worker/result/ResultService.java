@@ -6,13 +6,16 @@ import com.iexec.common.result.ResultModel;
 import com.iexec.common.security.Signature;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.security.TeeSignature;
+import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,9 +35,12 @@ public class ResultService {
 
     private Map<String, ResultInfo> resultInfoMap;
     private WorkerConfigurationService configurationService;
+    private SmsService smsService;
 
-    public ResultService(WorkerConfigurationService configurationService) {
+    public ResultService(WorkerConfigurationService configurationService,
+                         SmsService smsService) {
         this.configurationService = configurationService;
+        this.smsService = smsService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -205,5 +211,56 @@ public class ResultService {
         log.info("TeeSignature file exists [chainTaskId:{}, r:{}, sign:{}, v:{}]",
                 chainTaskId, sign.getR(), sign.getS(), sign.getV());
         return Optional.of(sign);
+    }
+
+    public boolean encryptResult(String chainTaskId) {
+        String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
+        String resultZipFilePath = getResultZipFilePath(chainTaskId);
+        String taskOutputDir = configurationService.getTaskOutputDir(chainTaskId);
+
+        if (!new File(beneficiarySecretFilePath).exists()) {
+            log.info("No beneficiary secret file found, result won't be encrypted [chainTaskId:{}]", chainTaskId);
+            return true;
+        }
+
+        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
+                resultZipFilePath, beneficiarySecretFilePath);
+
+        encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
+
+        String encryptedResultFilePath = getEncryptedResultZipFilePath(chainTaskId);
+
+        if (!new File(encryptedResultFilePath).exists()) {
+            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
+                    chainTaskId, encryptedResultFilePath);
+            return false;
+        }
+
+        FileHelper.deleteFile(resultZipFilePath);
+        return FileHelper.renameFile(encryptedResultFilePath, resultZipFilePath);
+    }
+
+    public void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
+        String cmd = String.format("./encrypt-result.sh --root-dir=%s --result-file=%s --key-file=%s",
+                taskOutputDir, resultZipFilePath, publicKeyFilePath);
+
+        ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
+        pb.directory(new File("./src/main/resources/"));
+
+        try {
+            Process pr = pb.start();
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+            String line;
+    
+            while ((line = in.readLine()) != null) { log.info(line); }
+    
+            pr.waitFor();
+            in.close();
+        } catch (Exception e) {
+            log.error("Error while trying to encrypt result [resultZipFilePath{}, publicKeyFilePath:{}]",
+                    resultZipFilePath, publicKeyFilePath);
+            e.printStackTrace();
+        }
     }
 }

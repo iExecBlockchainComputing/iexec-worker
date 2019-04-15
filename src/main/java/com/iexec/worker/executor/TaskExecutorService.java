@@ -281,6 +281,13 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
+        boolean isResultEncrypted = resultService.encryptResult(chainTaskId);
+        if (!isResultEncrypted) {
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
+            log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
         Optional<Eip712Challenge> oEip712Challenge = resultRepoClientWrapper.getResultRepoChallenge(
                 publicConfigurationService.getChainId());
 
