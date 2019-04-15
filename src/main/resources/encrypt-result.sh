@@ -1,40 +1,57 @@
 #!/bin/bash
 
-# function encrypt()
-# {
-# 	openssl rand -base64 -out $1.keybin 256
-# 	openssl enc -aes-256-cbc -pbkdf2 -kfile $1.keybin -in $1 -out $1.enc
-# 	openssl rsautl -encrypt -inkey key.pub -pubin -in $1.keybin -out $1.keybin.enc
-# 	tar -cf $1.tar $1.enc $1.keybin.enc
-# 	shred -u $1.enc $1.keybin $1.keybin.enc
-# }
-#
-# function decrypt()
-# {
-# 	tar -xf $1.tar
-# 	openssl rsautl -decrypt -inkey key.pem -in $1.keybin.enc -out $1.keybin
-# 	openssl enc -d -aes-256-cbc -pbkdf2 -kfile $1.keybin -in $1.enc -out $1.recovered
-# 	shred -u $1.enc $1.keybin $1.keybin.enc
-# }
-
-INPUT="result.zip"
-PUB_KEY=".tee-secrets/beneficiary/0x4d65930f53da6C277F1769170Df69d772a492008_key.pub"
-
-if [ $# -ge 1 ]; then INPUT=$1; fi
-if [ $# -ge 2 ]; then PUB_KEY=$2; fi
-
-if [ ! -f "$INPUT" ]; then echo "missing input file '$INPUT'"; exit 255; fi
-if [ ! -f "$PUB_KEY" ]; then echo "missing key file '$PUB_KEY'"; exit 255; fi
+# ./encrypt-result --root-dir="" --result-file="" --key-file=""
 
 
-ROOT_FOLDER="iexec_out"
-ENC_RESULT_FILE="result.zip.aes"
-ENC_KEY_FILE="encrypted_key"
+for i in "$@"
+do
+	case $i in
+		--root-dir=*)
+		ROOT_DIR="${i#*=}"
+		shift
+		;;
+		--result-file=*)
+		RESULT_FILE="${i#*=}"
+		shift
+		;;
+		--key-file=*)
+		KEY_FILE="${i#*=}"
+		shift
+		;;
+	esac
+done
+
+if [[ -z ${ROOT_DIR} ]]; then
+    echo "[SHELL] no root directory specified"
+    exit
+fi
+
+if [[ ! -f "${RESULT_FILE}" ]]; then
+    echo "[SHELL] result file not found '${RESULT_FILE}'"
+    exit
+fi
+
+if [[ ! -f "${KEY_FILE}" ]]; then
+    echo "[SHELL] key file not found '${KEY_FILE}'"
+	exit
+fi
+
+IEXEC_OUT="iexec_out"
 AES_KEY_FILE=".iexec-tee-temporary-key"
 IV_FILE=".iexec-tee-iv-key"
+ENC_RESULT_FILE="result.zip.aes"
+ENC_KEY_FILE="encrypted_key"
 IV_LENGTH=16
 
-PUB_KEY_SIZE=$(openssl rsa -text -noout -pubin -in ${PUB_KEY} | head -n 1 | grep -o '[[:digit:]]*')
+cd ${ROOT_DIR}
+
+case "$(uname -s)" in
+    Linux*)     PUB_KEY_SIZE=$(openssl rsa -text -noout -pubin -in ${KEY_FILE} | head -n 1 | grep -o '[[:digit:]]*');;
+    Darwin*)    PUB_KEY_SIZE=$(openssl rsa -text -noout -pubin -in ${KEY_FILE} | head -n 1 | egrep -o '[0-9]+');;
+esac
+
+echo "[SHELL] PUB_KEY_SIZE: ${PUB_KEY_SIZE}"
+
 case ${PUB_KEY_SIZE} in
 	2048)
 		AES_KEY_SIZE=16 # 16 bytes = 128bits
@@ -45,37 +62,35 @@ case ${PUB_KEY_SIZE} in
 		AES_ALG="-aes-256-cbc"
 		;;
 	*)
-		echo "unsuported public key size"
+		echo "[SHELL] unsuported public key size"
 		exit 1
 		;;
 esac
 
-### MAKE ROOT FOLDER IF NOT EXIST
-mkdir -p ${ROOT_FOLDER}
-
 ### GENERATE AES KEY
 AES_KEY=$(openssl rand ${AES_KEY_SIZE} | tee ${AES_KEY_FILE} | od -An -tx1 | tr -d ' \n')
-# echo "AES KEY SIZE:" ${AES_KEY_SIZE}
-# echo "AES KEY:" ${AES_KEY}
+echo "[SHELL] generated AES_KEY"
 
 ### GENERATE IV
 IV=$(openssl rand ${IV_LENGTH} | tee ${IV_FILE} | od -An -tx1 | tr -d ' \n')
-# echo "IV LENGTH:" ${IV}
-# echo "IV:" ${IV}
+echo "[SHELL] generated IV_KEY"
 
 ### ENCRYPT RESULT AND AES KEY
-mv ${IV_FILE} ${ROOT_FOLDER}/${ENC_RESULT_FILE}
-openssl enc ${AES_ALG} -K ${AES_KEY} -iv ${IV} -in ${INPUT} >> ${ROOT_FOLDER}/${ENC_RESULT_FILE}
-openssl rsautl -encrypt -oaep -inkey ${PUB_KEY} -pubin -in ${AES_KEY_FILE} >> ${ROOT_FOLDER}/${ENC_KEY_FILE}
+mv ${IV_FILE} ${IEXEC_OUT}/${ENC_RESULT_FILE}
+openssl enc ${AES_ALG} -K ${AES_KEY} -iv ${IV} -in ${RESULT_FILE} >> ${IEXEC_OUT}/${ENC_RESULT_FILE}
+openssl rsautl -encrypt -oaep -inkey ${KEY_FILE} -pubin -in ${AES_KEY_FILE} >> ${IEXEC_OUT}/${ENC_KEY_FILE}
+echo "[SHELL] encrypted result and key successfully"
 
 ### ZIP
-zip -r ${ROOT_FOLDER} ${ROOT_FOLDER}/${ENC_RESULT_FILE} ${ROOT_FOLDER}/${ENC_KEY_FILE}
-
-### REMOVE TEMPORARY FILES
-rm ${ROOT_FOLDER}/${ENC_RESULT_FILE} ${ROOT_FOLDER}/${ENC_KEY_FILE}
+zip -r ${IEXEC_OUT} ${IEXEC_OUT}/${ENC_RESULT_FILE} ${IEXEC_OUT}/${ENC_KEY_FILE}
 
 ### SHRED KEY
 shred -u ${AES_KEY_FILE}
 AES_KEY=""
 
-echo "Result succesfully encrypted to '${ROOT_FOLDER}.zip'"
+### REMOVE TEMPORARY FILES
+rm -f ${IEXEC_OUT}/${ENC_RESULT_FILE}
+rm -f ${IEXEC_OUT}/${ENC_KEY_FILE}
+rm -f ${AES_KEY_FILE}
+
+echo "[SHELL] encrypted result zipped to '${IEXEC_OUT}.zip'"

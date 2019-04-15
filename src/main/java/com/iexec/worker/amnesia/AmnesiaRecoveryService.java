@@ -122,7 +122,7 @@ public class AmnesiaRecoveryService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         Optional<AvailableReplicateModel> oReplicateModel =
-        replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+                replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
 
         if (!oReplicateModel.isPresent()) {
             log.info("could not retrieve replicateModel from contributionAuth to recover task "

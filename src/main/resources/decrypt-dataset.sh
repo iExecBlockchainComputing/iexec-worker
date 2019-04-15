@@ -3,20 +3,31 @@
 
 function decryptFile()
 {
-	if [ -e $1 ] && [ -e $2 ]
+	ENC_DATA_FILE="$1"
+	DEC_DATA_FILE="$1.recovered"
+	SECRET_FILE="$2"
+	KEY_FILE="$2.keybin"
+
+	if [ -e ${ENC_DATA_FILE} ] && [ -e ${SECRET_FILE} ]
 	then
-		echo "Decrypting '$1'..."
-		echo "keyfile: '$2'"
+		echo "[SHELL] encrypted data file '${ENC_DATA_FILE}'"
+		echo "[SHELL] secret file: '${SECRET_FILE}'"
 	else
-		echo "Cannot find '$1' or '$2'. Skipping."
+		echo "[SHELL] cannot find '${ENC_DATA_FILE}' or '${SECRET_FILE}'. Skipping."
 		exit
 	fi
 
-	openssl base64 -d -in $2 -out $2.keybin
-	openssl enc -aes-256-cbc -pbkdf2 -d -in $1 -out $1.recovered -kfile $2.keybin
-	shred -u $2.keybin
-	# mv $1.recovered $1
-	echo "decrypted file with success"
+	openssl base64 -d -in ${SECRET_FILE} -out ${KEY_FILE} 2>&1
+	echo "[SHELL] converted secret file from base64 to bin format"
+
+	openssl enc -d -aes-256-cbc -in ${ENC_DATA_FILE} -out ${DEC_DATA_FILE} -kfile ${KEY_FILE} 2>&1
+	echo "[SHELL] decrypted dataset file"
+
+	shred -u ${KEY_FILE} 2>&1
+	rm -f ${KEY_FILE}
+	rm -f ${SECRET_FILE}
+
+	echo "[SHELL] ended with success"
 }
 
 decryptFile $1 $2
