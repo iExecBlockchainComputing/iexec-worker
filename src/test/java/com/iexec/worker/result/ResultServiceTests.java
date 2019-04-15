@@ -3,6 +3,8 @@ package com.iexec.worker.result;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.sms.SmsService;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -17,8 +19,8 @@ import static org.mockito.Mockito.when;
 
 public class ResultServiceTests {
 
-    @Mock
-    private WorkerConfigurationService configurationService;
+    @Mock private WorkerConfigurationService configurationService;
+    @Mock private SmsService smsService;
 
     @InjectMocks
     private ResultService resultService;
@@ -35,7 +37,8 @@ public class ResultServiceTests {
         String sExpected = "0x6bdf554c8c12c158d12f08299afbe0d9c8533bf420a5d3f63ed9827047eab8d1";
         byte vExpected = 27;
 
-        when(configurationService.getTaskOutputDir(chainTaskId)).thenReturn("./src/test/resources/tmp/test-worker");
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn("./src/test/resources/tmp/test-worker/" + chainTaskId + "/output");
         Optional<Signature> enclaveSignature = resultService.getEnclaveSignatureFromFile(chainTaskId);
 
         assertThat(enclaveSignature.isPresent()).isTrue();
