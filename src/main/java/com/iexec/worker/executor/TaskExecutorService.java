@@ -21,6 +21,8 @@ import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClientWrapper;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.sms.SmsService;
+
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.scheduling.annotation.Async;
@@ -55,6 +57,7 @@ public class TaskExecutorService {
     private WorkerConfigurationService workerConfigurationService;
     private PublicConfigurationService publicConfigurationService;
     private IexecHubService iexecHubService;
+    private SmsService smsService;
 
     // internal variables
     private String workerWalletAddress;
@@ -71,7 +74,8 @@ public class TaskExecutorService {
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
                                PublicConfigurationService publicConfigurationService,
-                               IexecHubService iexecHubService) {
+                               IexecHubService iexecHubService,
+                               SmsService smsService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -85,6 +89,7 @@ public class TaskExecutorService {
         this.workerConfigurationService = workerConfigurationService;
         this.publicConfigurationService = publicConfigurationService;
         this.iexecHubService = iexecHubService;
+        this.smsService = smsService;
 
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
@@ -159,10 +164,16 @@ public class TaskExecutorService {
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
+
+        boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
+        if (!isFetched) {
+            log.warn("No secrets fetched for this task [chainTaskId:{}]:", chainTaskId);
+        }
+
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
 
         // decrypt data
-        boolean isDataDecrypted = datasetService.decryptData(replicateModel.getContributionAuthorization());
+        boolean isDataDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
         if (!isDataDecrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
             stdout = "Failed to decrypt fetched data, URI:" + replicateModel.getDatasetUri();
