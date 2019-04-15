@@ -219,7 +219,7 @@ public class ResultService {
         String taskOutputDir = configurationService.getTaskOutputDir(chainTaskId);
 
         if (!new File(beneficiarySecretFilePath).exists()) {
-            log.info("No beneficiary secret file found, result won't be encrypted [chainTaskId:{}]", chainTaskId);
+            log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
             return true;
         }
 

@@ -50,7 +50,7 @@ public class DatasetService {
         String datasetSecretFilePath = smsService.getDatasetSecretFilePath(chainTaskId);
 
         if (!new File(datasetSecretFilePath).exists()) {
-            log.info("No dataset secret found, no need to decrypt data [chainTaskId:{}]", chainTaskId);
+            log.info("No dataset secret found, will continue without decrypting dataset [chainTaskId:{}]", chainTaskId);
             return true;
         }
 
