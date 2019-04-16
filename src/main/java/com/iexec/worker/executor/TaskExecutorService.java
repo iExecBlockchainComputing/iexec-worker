@@ -4,14 +4,12 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.worker.chain.ContributionService;
-import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -26,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.ECKeyPair;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +33,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import static com.iexec.common.replicate.ReplicateStatus.*;
 
 
-/* 
+/*
  * this service is only caller by ReplicateDemandService when getting new replicate
  * or by AmnesiaRecoveryService when recovering an interrupted task
  */
@@ -58,7 +55,6 @@ public class TaskExecutorService {
     private SmsService smsService;
 
     // internal variables
-    private String workerWalletAddress;
     private int maxNbExecutions;
     private ThreadPoolExecutor executor;
 
@@ -102,7 +98,9 @@ public class TaskExecutorService {
 
         return CompletableFuture.supplyAsync(() -> compute(replicateModel), executor)
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
-                .thenAccept(isSaved -> {if (isSaved) contribute(contributionAuth);})
+                .thenAccept(isSaved -> {
+                    if (isSaved) contribute(contributionAuth);
+                })
                 .handle((res, err) -> {
                     if (err != null) {
                         err.printStackTrace();
@@ -228,11 +226,13 @@ public class TaskExecutorService {
         Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
         if (!oChainReceipt.isPresent()) {
             ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
-            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED, chainReceipt);
+            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED,
+                    ReplicateDetails.builder().chainReceipt(chainReceipt).build());
             return;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED, oChainReceipt.get());
+        customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED,
+                ReplicateDetails.builder().chainReceipt(oChainReceipt.get()).build());
     }
 
     @Async
@@ -253,11 +253,13 @@ public class TaskExecutorService {
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
         if (!optionalChainReceipt.isPresent()) {
             ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
-            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED, chainReceipt);
+            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED,
+                    ReplicateDetails.builder().chainReceipt(chainReceipt).build());
             return;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, REVEALED, optionalChainReceipt.get());
+        customFeignClient.updateReplicateStatus(chainTaskId, REVEALED,
+                ReplicateDetails.builder().chainReceipt(optionalChainReceipt.get()).build());
     }
 
     @Async
@@ -275,7 +277,13 @@ public class TaskExecutorService {
     @Async
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
+        String resultLink = resultService.uploadResult(chainTaskId);
+        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
 
+        if (resultLink.isEmpty()) {
+            log.error("ResultLink missing (aborting) [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
+            return;
         boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
         boolean isResultEncrypted = false;
 
@@ -309,6 +317,13 @@ public class TaskExecutorService {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
             return;
         }
+
+        log.info("UploadResult with details [chainTaskId:{}, resultLink:{}, callbackData:{}]", chainTaskId, resultLink, callbackData);
+        ReplicateDetails details = ReplicateDetails.builder()
+                .resultLink(resultLink)
+                .chainCallbackData(callbackData)
+                .build();
+        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
 
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, resultURI);
     }
