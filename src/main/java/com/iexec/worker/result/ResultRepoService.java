@@ -1,7 +1,8 @@
-package com.iexec.worker.feign;
+package com.iexec.worker.result;
 
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
+import com.iexec.worker.feign.ResultRepoClient;
 
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +16,9 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 
-@Service
 @Slf4j
-public class ResultRepoClientWrapper {
+@Service
+public class ResultRepoService {
 
     private static final int BACKOFF = 5000; // 5s
     private static final int MAX_ATTEMPS = 5;
@@ -25,7 +26,7 @@ public class ResultRepoClientWrapper {
 
     private ResultRepoClient resultRepoClient;
 
-    public ResultRepoClientWrapper(ResultRepoClient resultRepoClient) {
+    public ResultRepoService(ResultRepoClient resultRepoClient) {
         this.resultRepoClient = resultRepoClient;
     }
 
@@ -34,7 +35,7 @@ public class ResultRepoClientWrapper {
         maxAttempts = MAX_ATTEMPS,
         backoff = @Backoff(delay = BACKOFF)
     )
-    public Optional<Eip712Challenge> getResultRepoChallenge(Integer chainId) {
+    public Optional<Eip712Challenge> getChallenge(Integer chainId) {
             return Optional.of(resultRepoClient.getChallenge(chainId));
     }
 

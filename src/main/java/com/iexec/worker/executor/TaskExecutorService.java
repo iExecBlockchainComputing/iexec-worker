@@ -19,7 +19,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.feign.ResultRepoClientWrapper;
+import com.iexec.worker.result.ResultRepoService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 
@@ -51,7 +51,7 @@ public class TaskExecutorService {
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
-    private ResultRepoClientWrapper resultRepoClientWrapper;
+    private ResultRepoService resultRepoService;
     private RevealService revealService;
     private CredentialsService credentialsService;
     private WorkerConfigurationService workerConfigurationService;
@@ -69,7 +69,7 @@ public class TaskExecutorService {
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
-                               ResultRepoClientWrapper resultRepoClientWrapper,
+                               ResultRepoService resultRepoService,
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
@@ -81,7 +81,7 @@ public class TaskExecutorService {
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
-        this.resultRepoClientWrapper = resultRepoClientWrapper;
+        this.resultRepoService = resultRepoService;
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
         this.credentialsService = credentialsService;
@@ -287,7 +287,7 @@ public class TaskExecutorService {
             return;
         }
 
-        Optional<Eip712Challenge> oEip712Challenge = resultRepoClientWrapper.getResultRepoChallenge(
+        Optional<Eip712Challenge> oEip712Challenge = resultRepoService.getChallenge(
                 publicConfigurationService.getChainId());
 
         if (!oEip712Challenge.isPresent()) {
@@ -301,7 +301,7 @@ public class TaskExecutorService {
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerWalletAddress, ecKeyPair);
 
-        String resultURI = resultRepoClientWrapper.uploadResult(authorizationToken,
+        String resultURI = resultRepoService.uploadResult(authorizationToken,
                 resultService.getResultModelWithZip(chainTaskId));
 
         if (resultURI.isEmpty()) {
