@@ -6,18 +6,23 @@ import java.util.Optional;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.sms.SmsSecret;
+import com.iexec.common.sms.SmsSecretRequest;
 import com.iexec.common.sms.SmsSecretRequestBody;
+import com.iexec.common.sms.SmsSecretResponse;
 import com.iexec.common.sms.TaskSecrets;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.SmsClientWrapper;
+import com.iexec.worker.feign.SmsClient;
 import com.iexec.worker.utils.FileHelper;
 
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Sign;
 
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -30,15 +35,14 @@ public class SmsService {
     private static final String BENEFICIARY_SECRET_FILENAME = "beneficiary.secret";
     private static final String ENCLAVE_SECRET_FILENAME = "enclave.secret";
 
-
-    private SmsClientWrapper smsClientWrapper;
+    private SmsClient smsClient;
     private CredentialsService credentialsService;
     private WorkerConfigurationService workerConfigurationService;
 
-    public SmsService(SmsClientWrapper smsClientWrapper,
+    public SmsService(SmsClient smsClient,
                       CredentialsService credentialsService,
                       WorkerConfigurationService workerConfigurationService) {
-        this.smsClientWrapper = smsClientWrapper;
+        this.smsClient = smsClient;
         this.credentialsService = credentialsService;
         this.workerConfigurationService = workerConfigurationService;
     }
@@ -58,7 +62,7 @@ public class SmsService {
                 .workerSignature(new Signature(workerSignature).getValue())
                 .build();
 
-        Optional<TaskSecrets> oTaskSecrets = smsClientWrapper.getTaskSecrets(smsSecretRequestBody);
+        Optional<TaskSecrets> oTaskSecrets = getTaskSecrets(smsSecretRequestBody);
 
         if (!oTaskSecrets.isPresent()) {
             return false;
@@ -91,6 +95,28 @@ public class SmsService {
         } else {
             log.info("No enclave secret found for this task [chainTaskId:{}]", chainTaskId);
         }
+    }
+
+    @Retryable(value = FeignException.class)
+    public Optional<TaskSecrets> getTaskSecrets(SmsSecretRequestBody smsSecretRequestBody) {
+        SmsSecretRequest smsSecretRequest = new SmsSecretRequest(smsSecretRequestBody);
+        SmsSecretResponse smsSecretResponse = smsClient.getTaskSecrets(smsSecretRequest);
+
+        if (!smsSecretResponse.isOk()) {
+            log.error("An error occured while getting task secrets [chainTaskId:{}, erroMsg:{}]",
+                    smsSecretRequestBody.getChainTaskId(), smsSecretResponse.getErrorMessage());
+            return Optional.empty();
+        }
+
+        return Optional.of(smsSecretResponse.getData().getSecrets());
+    }
+
+    @Recover
+    private Optional<TaskSecrets> getTaskSecrets(FeignException e, SmsSecretRequestBody smsSecretRequestBody) {
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
+                smsSecretRequestBody.getChainTaskId());
+        e.printStackTrace();
+        return Optional.empty();
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {
