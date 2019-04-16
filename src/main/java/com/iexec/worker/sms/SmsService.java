@@ -74,19 +74,19 @@ public class SmsService {
         SmsSecret beneficiarySecret = taskSecrets.getBeneficiarySecret();
         SmsSecret enclaveSecret = taskSecrets.getEnclaveSecret();
 
-        if (datasetSecret != null && !datasetSecret.getSecret().equals("None")) {
+        if (datasetSecret != null && datasetSecret.getSecret() != null) {
             FileHelper.createFileWithContent(getDatasetSecretFilePath(chainTaskId), datasetSecret.getSecret() + "\n");
         } else {
             log.info("No dataset secret found for this task [chainTaskId:{}]", chainTaskId);
         }
 
-        if (beneficiarySecret != null && !beneficiarySecret.getSecret().equals("None")) {
+        if (beneficiarySecret != null && beneficiarySecret.getSecret() != null) {
             FileHelper.createFileWithContent(getBeneficiarySecretFilePath(chainTaskId), beneficiarySecret.getSecret());
         } else {
             log.info("No beneficiary secret found for this task [chainTaskId:{}]", chainTaskId);
         }
 
-        if (enclaveSecret != null && !enclaveSecret.getSecret().equals("None")) {
+        if (enclaveSecret != null && enclaveSecret.getSecret() != null) {
             FileHelper.createFileWithContent(getEnclaveSecretFilePath(chainTaskId), enclaveSecret.getSecret());
         } else {
             log.info("No enclave secret found for this task [chainTaskId:{}]", chainTaskId);
