@@ -134,11 +134,13 @@ public class FileHelper {
         return null;
     }
 
-    public static boolean renameFile(String oldPath, String newPath) {
+    public static boolean replaceFile(String toBeReplaced, String replacer) {
         try {
-            return new File(oldPath).renameTo(new File(newPath));
-        } catch (Exception e) {
-            log.error("could not rename file [oldPath:{}, newPath:{}]", oldPath, newPath);
+            Files.delete(Paths.get(toBeReplaced));
+            return new File(replacer).renameTo(new File(toBeReplaced));
+        } catch (IOException e) {
+            log.error("Problem when trying to replace file [toBeReplaced:{}, replacer:{}]",
+                    toBeReplaced, replacer);
             e.printStackTrace();
             return false;
         }

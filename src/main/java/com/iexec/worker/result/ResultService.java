@@ -236,8 +236,8 @@ public class ResultService {
             return false;
         }
 
-        FileHelper.deleteFile(resultZipFilePath);
-        return FileHelper.renameFile(encryptedResultFilePath, resultZipFilePath);
+        // replace result file file with encypted one
+        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
     }
 
     public void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {

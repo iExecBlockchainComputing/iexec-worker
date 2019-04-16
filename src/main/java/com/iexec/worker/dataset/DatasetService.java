@@ -50,7 +50,7 @@ public class DatasetService {
         String datasetSecretFilePath = smsService.getDatasetSecretFilePath(chainTaskId);
 
         if (!new File(datasetSecretFilePath).exists()) {
-            log.info("No dataset secret found, will continue without decrypting dataset [chainTaskId:{}]", chainTaskId);
+            log.info("No dataset secret file found, will continue without decrypting dataset [chainTaskId:{}]", chainTaskId);
             return true;
         }
 
@@ -66,9 +66,8 @@ public class DatasetService {
             return false;
         }
 
-        // rename decrypted dataset to original file
-        FileHelper.deleteFile(datasetFilePath);
-        return FileHelper.renameFile(decryptedDatasetFilePath, datasetFilePath);
+        // replace original dataset file with decrypted one
+        return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
     }
 
     public void decryptFile(String dataFilePath, String secretFilePath) {
