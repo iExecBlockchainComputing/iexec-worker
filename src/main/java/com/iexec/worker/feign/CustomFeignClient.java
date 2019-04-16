@@ -1,6 +1,5 @@
 package com.iexec.worker.feign;
 
-import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
@@ -118,9 +117,9 @@ public class CustomFeignClient {
             }
         }
         return null;
-	}
+    }
 
-    public List<String> getTasksInProgress(){
+    public List<String> getTasksInProgress() {
         try {
             return workerClient.getCurrentTasks(getToken());
         } catch (FeignException e) {
@@ -150,26 +149,12 @@ public class CustomFeignClient {
         return null;
     }
 
-    // TODO: those next 4 methods need to be refactored
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
-        updateReplicateStatus(chainTaskId, status, null, "");
+        updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().build());
     }
 
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, String resultLink) {
-        updateReplicateStatus(chainTaskId, status, null, resultLink);
-    }
-
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ChainReceipt chainReceipt) {
-        updateReplicateStatus(chainTaskId, status, chainReceipt, "");
-    }
-
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ChainReceipt chainReceipt, String resultLink) {
+    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {
         log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
-
-        ReplicateDetails details = ReplicateDetails.builder()
-                .chainReceipt(chainReceipt)
-                .resultLink(resultLink)
-                .build();
 
         try {
             replicateClient.updateReplicateStatus(chainTaskId, status, getToken(), details);
@@ -177,7 +162,7 @@ public class CustomFeignClient {
             if (e.status() == 0) {
                 log.error("Failed to updateReplicateStatus, will retry [instance:{}]", url);
                 sleep();
-                updateReplicateStatus(chainTaskId, status, chainReceipt, resultLink);
+                updateReplicateStatus(chainTaskId, status, details);
                 return;
             }
 
