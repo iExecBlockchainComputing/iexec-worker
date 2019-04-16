@@ -16,7 +16,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.result.ResultRepoService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 
@@ -47,9 +46,7 @@ public class TaskExecutorService {
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
-    private ResultRepoService resultRepoService;
     private RevealService revealService;
-    private CredentialsService credentialsService;
     private WorkerConfigurationService workerConfigurationService;
     private IexecHubService iexecHubService;
     private SmsService smsService;
@@ -63,9 +60,7 @@ public class TaskExecutorService {
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
-                               ResultRepoService resultRepoService,
                                RevealService revealService,
-                               CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
                                SmsService smsService) {
@@ -74,16 +69,12 @@ public class TaskExecutorService {
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
-        this.resultRepoService = resultRepoService;
         this.revealService = revealService;
         this.customFeignClient = customFeignClient;
-        this.credentialsService = credentialsService;
-        this.credentialsService = credentialsService;
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
 
-        this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
     }
@@ -277,13 +268,7 @@ public class TaskExecutorService {
     @Async
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
-        String resultLink = resultService.uploadResult(chainTaskId);
-        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
 
-        if (resultLink.isEmpty()) {
-            log.error("ResultLink missing (aborting) [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-            return;
         boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
         boolean isResultEncrypted = false;
 
@@ -297,35 +282,25 @@ public class TaskExecutorService {
             return;
         }
 
-        Optional<Eip712Challenge> oEip712Challenge = resultRepoService.getChallenge();
+        String resultLink = resultService.uploadResult(chainTaskId);
 
-        if (!oEip712Challenge.isPresent()) {
+        if (resultLink.isEmpty()) {
+            log.error("ResultLink missing (aborting) [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
             return;
         }
 
-        Eip712Challenge eip712Challenge = oEip712Challenge.get();
+        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
 
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                workerWalletAddress, ecKeyPair);
+        log.info("Uploaded result with details [chainTaskId:{}, resultLink:{}, callbackData:{}]",
+                chainTaskId, resultLink, callbackData);
 
-        String resultURI = resultRepoService.uploadResult(authorizationToken,
-                resultService.getResultModelWithZip(chainTaskId));
-
-        if (resultURI.isEmpty()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-            return;
-        }
-
-        log.info("UploadResult with details [chainTaskId:{}, resultLink:{}, callbackData:{}]", chainTaskId, resultLink, callbackData);
         ReplicateDetails details = ReplicateDetails.builder()
                 .resultLink(resultLink)
                 .chainCallbackData(callbackData)
                 .build();
-        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
 
-        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, resultURI);
+        customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
     }
 
     @Async

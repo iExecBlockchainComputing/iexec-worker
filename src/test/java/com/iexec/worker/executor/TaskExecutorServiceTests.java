@@ -2,12 +2,9 @@ package com.iexec.worker.executor;
 
 import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOADED;
 import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOAD_FAILED;
-import static org.assertj.core.api.Java6Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
-import java.math.BigInteger;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -16,8 +13,6 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
@@ -36,9 +31,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.ResponseEntity;
-import org.web3j.crypto.Credentials;
-import org.web3j.crypto.ECKeyPair;
 
 public class TaskExecutorServiceTests {
 
@@ -143,6 +135,7 @@ public class TaskExecutorServiceTests {
                 .chainCallbackData("calbackData")
                 .build();
 
+        when(resultService.isResultEncryptionNeeded(chainTaskId)).thenReturn(false);
         when(resultService.uploadResult(chainTaskId)).thenReturn(details.getResultLink());
         when(resultService.getCallbackDataFromFile(chainTaskId)).thenReturn(details.getChainCallbackData());
 
@@ -162,6 +155,7 @@ public class TaskExecutorServiceTests {
                 .chainCallbackData("calbackData")
                 .build();
 
+        when(resultService.isResultEncryptionNeeded(chainTaskId)).thenReturn(false);
         when(resultService.uploadResult(chainTaskId)).thenReturn(details.getResultLink());
         when(resultService.getCallbackDataFromFile(chainTaskId)).thenReturn(details.getChainCallbackData());
 
