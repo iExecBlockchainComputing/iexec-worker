@@ -56,14 +56,6 @@ public class ResultService {
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
-    public static void main(String[] args) throws IOException {
-        byte[] callbackFileBytes = Files.readAllBytes(Paths.get("/home/james/iexecdev/iexec-worker/src/test/resources/tmp/test-worker/1234/output/iexec_out/callback.iexec"));
-        String hexaString = new String(callbackFileBytes);//0x000000000[...]0000000000016a0caa8[...]
-        byte[] finalizePayload = stringToBytes(hexaString);
-        System.out.println(hexaString);
-        System.out.println(Arrays.toString(finalizePayload));
-    }
-
     public boolean saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
         try {
             saveStdoutFileInResultFolder(chainTaskId, stdout);
@@ -205,7 +197,7 @@ public class ResultService {
 
             if (callbackFilePath.toFile().exists()) {
                 byte[] callbackFileBytes = Files.readAllBytes(callbackFilePath);
-                hexaString = new String(callbackFileBytes);//0x000000000[...]0000000000016a0caa8[...]
+                hexaString = new String(callbackFileBytes);
                 boolean isHexaString = BytesUtils.isHexaString(hexaString);
                 log.info("Callback file exists [chainTaskId:{}, hexaString:{}, isHexaString:{}]", chainTaskId, hexaString, isHexaString);
                 return isHexaString ? hexaString : "";
