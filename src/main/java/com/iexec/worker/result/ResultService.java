@@ -3,12 +3,20 @@ package com.iexec.worker.result;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.result.ResultModel;
+import com.iexec.common.result.eip712.Eip712Challenge;
+import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.security.Signature;
+import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
 
 import java.io.File;
@@ -20,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
+import static com.iexec.common.utils.BytesUtils.stringToBytes;
 import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
@@ -30,13 +39,29 @@ public class ResultService {
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
-
+    private final PublicConfigurationService publicConfigurationService;
+    private final CredentialsService credentialsService;
+    private final ResultRepoClient resultRepoClient;
     private Map<String, ResultInfo> resultInfoMap;
     private WorkerConfigurationService configurationService;
 
-    public ResultService(WorkerConfigurationService configurationService) {
+    public ResultService(WorkerConfigurationService configurationService,
+                         PublicConfigurationService publicConfigurationService,
+                         CredentialsService credentialsService,
+                         ResultRepoClient resultRepoClient) {
         this.configurationService = configurationService;
+        this.publicConfigurationService = publicConfigurationService;
+        this.credentialsService = credentialsService;
+        this.resultRepoClient = resultRepoClient;
         this.resultInfoMap = new ConcurrentHashMap<>();
+    }
+
+    public static void main(String[] args) throws IOException {
+        byte[] callbackFileBytes = Files.readAllBytes(Paths.get("/home/james/iexecdev/iexec-worker/src/test/resources/tmp/test-worker/1234/output/iexec_out/callback.iexec"));
+        String hexaString = new String(callbackFileBytes);//0x000000000[...]0000000000016a0caa8[...]
+        byte[] finalizePayload = stringToBytes(hexaString);
+        System.out.println(hexaString);
+        System.out.println(Arrays.toString(finalizePayload));
     }
 
     public boolean saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
@@ -172,26 +197,27 @@ public class ResultService {
         return hash;
     }
 
-    public String getCallbackContentFromFile(String chainTaskId) {
-        String content = "";
+    public String getCallbackDataFromFile(String chainTaskId) {
+        String hexaString = "";
         try {
             String callbackFilePathName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + CALLBACK_FILE_NAME;
-            Path callFilePath = Paths.get(callbackFilePathName);
+            Path callbackFilePath = Paths.get(callbackFilePathName);
 
-            if (callFilePath.toFile().exists()) {
-                byte[] contentByte = Files.readAllBytes(callFilePath);
-                content = bytesToString(contentByte);
-                log.info("Callback file exists [chainTaskId:{}, content:{}]", chainTaskId, content);
-                return content;
+            if (callbackFilePath.toFile().exists()) {
+                byte[] callbackFileBytes = Files.readAllBytes(callbackFilePath);
+                hexaString = new String(callbackFileBytes);//0x000000000[...]0000000000016a0caa8[...]
+                boolean isHexaString = BytesUtils.isHexaString(hexaString);
+                log.info("Callback file exists [chainTaskId:{}, hexaString:{}, isHexaString:{}]", chainTaskId, hexaString, isHexaString);
+                return isHexaString ? hexaString : "";
             } else {
                 log.info("No callback file [chainTaskId:{}]", chainTaskId);
             }
         } catch (IOException e) {
             e.printStackTrace();
-            log.error("Failed to getCallbackContentFromFile [chainTaskId:{}]", chainTaskId);
+            log.error("Failed to getCallbackDataFromFile [chainTaskId:{}]", chainTaskId);
         }
 
-        return content;
+        return hexaString;
     }
 
     public Optional<Signature> getEnclaveSignatureFromFile(String chainTaskId) {
@@ -220,5 +246,23 @@ public class ResultService {
         log.info("TeeSignature file exists [chainTaskId:{}, r:{}, sign:{}, v:{}]",
                 chainTaskId, sign.getR(), sign.getS(), sign.getV());
         return Optional.of(sign);
+    }
+
+
+    public String uploadResult(String chainTaskId) {
+        String resultLink = "";
+        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
+        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+                credentialsService.getCredentials().getAddress(), ecKeyPair);
+
+        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
+                getResultModelWithZip(chainTaskId));
+
+        if (responseEntity != null && responseEntity.getStatusCode().is2xxSuccessful()) {
+            resultLink = responseEntity.getBody();
+        }
+
+        return resultLink;
     }
 }
