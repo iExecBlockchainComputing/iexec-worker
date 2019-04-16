@@ -108,7 +108,7 @@ public class ResultService {
         return configurationService.getTaskOutputDir(chainTaskId);
     }
 
-    public String getEncryptedResultZipFilePath(String chainTaskId) {
+    public String getEncryptedResultFilePath(String chainTaskId) {
         return configurationService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
     }
 
@@ -121,7 +121,7 @@ public class ResultService {
     }
 
     public boolean isEncryptedResultZipFound(String chainTaskId) {
-        return new File(getEncryptedResultZipFilePath(chainTaskId)).exists();
+        return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
     public boolean removeResult(String chainTaskId) {
@@ -213,22 +213,28 @@ public class ResultService {
         return Optional.of(sign);
     }
 
+    public boolean isResultEncryptionNeeded(String chainTaskId) {
+        String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
+
+        if (!new File(beneficiarySecretFilePath).exists()) {
+            log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
+        return true;
+    }
+
     public boolean encryptResult(String chainTaskId) {
         String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
         String resultZipFilePath = getResultZipFilePath(chainTaskId);
         String taskOutputDir = configurationService.getTaskOutputDir(chainTaskId);
-
-        if (!new File(beneficiarySecretFilePath).exists()) {
-            log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
-            return true;
-        }
 
         log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
                 resultZipFilePath, beneficiarySecretFilePath);
 
         encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
 
-        String encryptedResultFilePath = getEncryptedResultZipFilePath(chainTaskId);
+        String encryptedResultFilePath = getEncryptedResultFilePath(chainTaskId);
 
         if (!new File(encryptedResultFilePath).exists()) {
             log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",

@@ -14,7 +14,6 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
@@ -55,7 +54,6 @@ public class TaskExecutorService {
     private RevealService revealService;
     private CredentialsService credentialsService;
     private WorkerConfigurationService workerConfigurationService;
-    private PublicConfigurationService publicConfigurationService;
     private IexecHubService iexecHubService;
     private SmsService smsService;
 
@@ -73,7 +71,6 @@ public class TaskExecutorService {
                                RevealService revealService,
                                CredentialsService credentialsService,
                                WorkerConfigurationService workerConfigurationService,
-                               PublicConfigurationService publicConfigurationService,
                                IexecHubService iexecHubService,
                                SmsService smsService) {
         this.datasetService = datasetService;
@@ -87,7 +84,6 @@ public class TaskExecutorService {
         this.credentialsService = credentialsService;
         this.credentialsService = credentialsService;
         this.workerConfigurationService = workerConfigurationService;
-        this.publicConfigurationService = publicConfigurationService;
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
 
@@ -280,15 +276,20 @@ public class TaskExecutorService {
     public void uploadResult(String chainTaskId) {
         customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOADING);
 
-        boolean isResultEncrypted = resultService.encryptResult(chainTaskId);
-        if (!isResultEncrypted) {
+        boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
+        boolean isResultEncrypted = false;
+
+        if (isResultEncryptionNeeded) {
+            isResultEncrypted = resultService.encryptResult(chainTaskId);
+        }
+
+        if (isResultEncryptionNeeded && !isResultEncrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
             log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
             return;
         }
 
-        Optional<Eip712Challenge> oEip712Challenge = resultRepoService.getChallenge(
-                publicConfigurationService.getChainId());
+        Optional<Eip712Challenge> oEip712Challenge = resultRepoService.getChallenge();
 
         if (!oEip712Challenge.isPresent()) {
             customFeignClient.updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
