@@ -157,8 +157,14 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
 
         // decrypt data
-        boolean isDataDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
-        if (!isDataDecrypted) {
+        boolean isDatasetDecryptionNeeded = datasetService.isDatasetDecryptionNeeded(chainTaskId);
+        boolean isDatasetDecrypted = false;
+
+        if (isDatasetDecryptionNeeded) {
+            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
+        }
+
+        if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
             stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);

@@ -44,15 +44,21 @@ public class DatasetService {
         return FileHelper.downloadFileInDirectory(datasetUri, workerConfigurationService.getTaskInputDir(chainTaskId));
     }
 
-    public boolean decryptDataset(String chainTaskId, String datasetUri) {
-        String datasetFileName = Paths.get(datasetUri).getFileName().toString();
-        String datasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + datasetFileName;
+    public boolean isDatasetDecryptionNeeded(String chainTaskId) {
         String datasetSecretFilePath = smsService.getDatasetSecretFilePath(chainTaskId);
 
         if (!new File(datasetSecretFilePath).exists()) {
             log.info("No dataset secret file found, will continue without decrypting dataset [chainTaskId:{}]", chainTaskId);
-            return true;
+            return false;
         }
+
+        return true;
+    }
+
+    public boolean decryptDataset(String chainTaskId, String datasetUri) {
+        String datasetFileName = Paths.get(datasetUri).getFileName().toString();
+        String datasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + datasetFileName;
+        String datasetSecretFilePath = smsService.getDatasetSecretFilePath(chainTaskId);
 
         log.info("Decrypting dataset file [datasetFile:{}, secretFile:{}]", datasetFilePath, datasetSecretFilePath);
 
@@ -70,7 +76,7 @@ public class DatasetService {
         return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
     }
 
-    public void decryptFile(String dataFilePath, String secretFilePath) {
+    private void decryptFile(String dataFilePath, String secretFilePath) {
         String cmd = String.format("./decrypt-dataset.sh %s %s", dataFilePath, secretFilePath);
 
         ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
