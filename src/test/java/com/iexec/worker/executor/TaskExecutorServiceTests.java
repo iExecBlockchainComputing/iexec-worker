@@ -3,6 +3,7 @@ package com.iexec.worker.executor;
 import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOADED;
 import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOAD_FAILED;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CompletableFuture;
@@ -16,6 +17,7 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -24,6 +26,7 @@ import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.sms.SmsService;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -41,9 +44,10 @@ public class TaskExecutorServiceTests {
     @Mock private CustomFeignClient customFeignClient;
     @Mock private ResultRepoClient resultRepoClient;
     @Mock private RevealService revealService;
-    @Mock private PublicConfigurationService publicConfigurationService;
-    @Mock private CredentialsService credentialsService;
     @Mock private WorkerConfigurationService workerConfigurationService;
+    @Mock private IexecHubService iexecHubService;
+    @Mock private SmsService smsService;
+    
 
     @InjectMocks
     private TaskExecutorService taskExecutorService;
@@ -74,7 +78,6 @@ public class TaskExecutorServiceTests {
     public void shouldNotComputeWhenTeeRequiredButNotSupported() throws InterruptedException, ExecutionException {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
-        when(publicConfigurationService.getChainId()).thenReturn(1234);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
         CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
@@ -88,7 +91,6 @@ public class TaskExecutorServiceTests {
     public void shouldComputeTaskWhithNoTeeRequired() throws InterruptedException, ExecutionException {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
-        when(publicConfigurationService.getChainId()).thenReturn(1234);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
         CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
@@ -102,7 +104,6 @@ public class TaskExecutorServiceTests {
     public void shouldComputeTeeTask() throws InterruptedException, ExecutionException {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
-        when(publicConfigurationService.getChainId()).thenReturn(1234);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
 
         CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
@@ -125,6 +126,49 @@ public class TaskExecutorServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge(enclaveChallenge)
                 .build();
+    }
+
+    @Test
+    public void shouldNotEncryptResult() {
+        ReplicateDetails details = ReplicateDetails.builder()
+        .resultLink("resultUri")
+        .chainCallbackData("calbackData")
+        .build();
+
+        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
+        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
+
+        taskExecutorService.uploadResult(CHAIN_TASK_ID);
+
+        verify(resultService, never()).encryptResult(CHAIN_TASK_ID);
+    }
+
+    @Test
+    public void shouldEncryptResult() {
+        ReplicateDetails details = ReplicateDetails.builder()
+        .resultLink("resultUri")
+        .chainCallbackData("calbackData")
+        .build();
+
+        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
+        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
+
+        taskExecutorService.uploadResult(CHAIN_TASK_ID);
+
+        verify(resultService, Mockito.times(1)).encryptResult(CHAIN_TASK_ID);
+    }
+
+    @Test
+    public void shouldNotUploadResultSinceNotEncryptedWhenNeeded() {
+        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(false);
+
+        taskExecutorService.uploadResult(CHAIN_TASK_ID);
+
+        verify(resultService, never()).uploadResult(CHAIN_TASK_ID);
     }
 
     @Test
