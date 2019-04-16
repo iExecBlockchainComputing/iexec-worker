@@ -278,11 +278,11 @@ public class ResultService {
             return false;
         }
 
-        // replace result file file with encypted one
+        // replace result file with the encypted one
         return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
     }
 
-    public void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
+    private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
         String cmd = String.format("./encrypt-result.sh --root-dir=%s --result-file=%s --key-file=%s",
                 taskOutputDir, resultZipFilePath, publicKeyFilePath);
 
