@@ -10,10 +10,8 @@ import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.web3j.utils.Numeric;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Optional;
 
 import static org.assertj.core.api.Java6Assertions.assertThat;
@@ -21,12 +19,10 @@ import static org.mockito.Mockito.when;
 
 public class ResultServiceTests {
 
-    @Mock private WorkerConfigurationService configurationService;
-    @Mock private SmsService smsService;
     private final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker";
 
-    @Mock
-    private WorkerConfigurationService configurationService;
+    @Mock private WorkerConfigurationService configurationService;
+    @Mock private SmsService smsService;
 
     @InjectMocks
     private ResultService resultService;
@@ -66,7 +62,8 @@ public class ResultServiceTests {
     public void shouldGetCallbackDataFromFile(){
         String chainTaskId = "1234";
         String expected = "0x0000000000000000000000000000000000000000000000000000016a0caa81920000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000004982f5d9a7000000000000000000000000000000000000000000000000000000000000000094254432d5553442d390000000000000000000000000000000000000000000000";
-        when(configurationService.getResultBaseDir()).thenReturn(IEXEC_WORKER_TMP_FOLDER);
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
         assertThat(callbackDataString).isEqualTo(expected);
     }
@@ -74,7 +71,8 @@ public class ResultServiceTests {
     @Test
     public void shouldNotGetCallbackDataSinceNotHexa(){
         String chainTaskId = "fake";
-        when(configurationService.getResultBaseDir()).thenReturn(IEXEC_WORKER_TMP_FOLDER);
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
         assertThat(callbackDataString).isEqualTo("");
     }
@@ -82,7 +80,8 @@ public class ResultServiceTests {
     @Test
     public void shouldNotGetCallbackDataSinceNoFile(){
         String chainTaskId = "fake2";
-        when(configurationService.getResultBaseDir()).thenReturn(IEXEC_WORKER_TMP_FOLDER);
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
         assertThat(callbackDataString).isEqualTo("");
     }
@@ -90,7 +89,8 @@ public class ResultServiceTests {
     @Test
     public void shouldNotGetCallbackDataSinceChainTaskIdMissing(){
         String chainTaskId = "";
-        when(configurationService.getResultBaseDir()).thenReturn(IEXEC_WORKER_TMP_FOLDER);
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
         assertThat(callbackDataString).isEqualTo("");
     }

@@ -3,21 +3,14 @@ package com.iexec.worker.result;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.result.ResultModel;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
 
 import java.io.BufferedReader;
@@ -31,7 +24,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
-import static com.iexec.common.utils.BytesUtils.stringToBytes;
 import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
@@ -42,23 +34,14 @@ public class ResultService {
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
-    private final PublicConfigurationService publicConfigurationService;
-    private final CredentialsService credentialsService;
-    private final ResultRepoClient resultRepoClient;
+
     private Map<String, ResultInfo> resultInfoMap;
     private WorkerConfigurationService configurationService;
     private SmsService smsService;
 
     public ResultService(WorkerConfigurationService configurationService,
-                         PublicConfigurationService publicConfigurationService,
-                         CredentialsService credentialsService,
-                         ResultRepoClient resultRepoClient) {
-    public ResultService(WorkerConfigurationService configurationService,
                          SmsService smsService) {
         this.configurationService = configurationService;
-        this.publicConfigurationService = publicConfigurationService;
-        this.credentialsService = credentialsService;
-        this.resultRepoClient = resultRepoClient;
         this.smsService = smsService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
@@ -256,22 +239,22 @@ public class ResultService {
     }
 
 
-    public String uploadResult(String chainTaskId) {
-        String resultLink = "";
-        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                credentialsService.getCredentials().getAddress(), ecKeyPair);
+    // public String uploadResult(String chainTaskId) {
+    //     String resultLink = "";
+    //     Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
+    //     ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
+    //     String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+    //             credentialsService.getCredentials().getAddress(), ecKeyPair);
 
-        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
-                getResultModelWithZip(chainTaskId));
+    //     ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
+    //             getResultModelWithZip(chainTaskId));
 
-        if (responseEntity != null && responseEntity.getStatusCode().is2xxSuccessful()) {
-            resultLink = responseEntity.getBody();
-        }
+    //     if (responseEntity != null && responseEntity.getStatusCode().is2xxSuccessful()) {
+    //         resultLink = responseEntity.getBody();
+    //     }
 
-        return resultLink;
-    }
+    //     return resultLink;
+    // }
 
     public boolean isResultEncryptionNeeded(String chainTaskId) {
         String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
