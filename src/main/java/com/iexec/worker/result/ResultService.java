@@ -8,19 +8,19 @@ import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.security.TeeSignature;
+import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,7 +28,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
-import static com.iexec.common.utils.BytesUtils.stringToBytes;
 import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
@@ -39,20 +38,22 @@ public class ResultService {
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
-    private final PublicConfigurationService publicConfigurationService;
-    private final CredentialsService credentialsService;
-    private final ResultRepoClient resultRepoClient;
-    private Map<String, ResultInfo> resultInfoMap;
+
     private WorkerConfigurationService configurationService;
+    private ResultRepoService resultRepoService;
+    private CredentialsService credentialsService;
+    private SmsService smsService;
+
+    private Map<String, ResultInfo> resultInfoMap;
 
     public ResultService(WorkerConfigurationService configurationService,
-                         PublicConfigurationService publicConfigurationService,
+                         ResultRepoService resultRepoService,
                          CredentialsService credentialsService,
-                         ResultRepoClient resultRepoClient) {
+                         SmsService smsService) {
         this.configurationService = configurationService;
-        this.publicConfigurationService = publicConfigurationService;
+        this.resultRepoService = resultRepoService;
         this.credentialsService = credentialsService;
-        this.resultRepoClient = resultRepoClient;
+        this.smsService = smsService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -117,7 +118,11 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId) {
-        return configurationService.getResultBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
+        return configurationService.getTaskOutputDir(chainTaskId);
+    }
+
+    public String getEncryptedResultFilePath(String chainTaskId) {
+        return configurationService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
     }
 
     public boolean isResultZipFound(String chainTaskId) {
@@ -126,6 +131,10 @@ public class ResultService {
 
     public boolean isResultFolderFound(String chainTaskId) {
         return new File(getResultFolderPath(chainTaskId)).exists();
+    }
+
+    public boolean isEncryptedResultZipFound(String chainTaskId) {
+        return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
     public boolean removeResult(String chainTaskId) {
@@ -153,7 +162,7 @@ public class ResultService {
     }
 
     public List<String> getAllChainTaskIdsInResultFolder() {
-        File resultsFolder = new File(configurationService.getResultBaseDir());
+        File resultsFolder = new File(configurationService.getWorkerBaseDir());
         String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
 
         if (chainTaskIdFolders == null || chainTaskIdFolders.length == 0) {
@@ -240,21 +249,80 @@ public class ResultService {
         return Optional.of(sign);
     }
 
+    public boolean isResultEncryptionNeeded(String chainTaskId) {
+        String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
 
-    public String uploadResult(String chainTaskId) {
-        String resultLink = "";
-        Eip712Challenge eip712Challenge = resultRepoClient.getChallenge(publicConfigurationService.getChainId());
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                credentialsService.getCredentials().getAddress(), ecKeyPair);
-
-        ResponseEntity<String> responseEntity = resultRepoClient.uploadResult(authorizationToken,
-                getResultModelWithZip(chainTaskId));
-
-        if (responseEntity != null && responseEntity.getStatusCode().is2xxSuccessful()) {
-            resultLink = responseEntity.getBody();
+        if (!new File(beneficiarySecretFilePath).exists()) {
+            log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
+            return false;
         }
 
-        return resultLink;
+        return true;
+    }
+
+    public boolean encryptResult(String chainTaskId) {
+        String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
+        String resultZipFilePath = getResultZipFilePath(chainTaskId);
+        String taskOutputDir = configurationService.getTaskOutputDir(chainTaskId);
+
+        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
+                resultZipFilePath, beneficiarySecretFilePath);
+
+        encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
+
+        String encryptedResultFilePath = getEncryptedResultFilePath(chainTaskId);
+
+        if (!new File(encryptedResultFilePath).exists()) {
+            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
+                    chainTaskId, encryptedResultFilePath);
+            return false;
+        }
+
+        // replace result file with the encypted one
+        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
+    }
+
+    private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
+        String cmd = String.format("./encrypt-result.sh --root-dir=%s --result-file=%s --key-file=%s",
+                taskOutputDir, resultZipFilePath, publicKeyFilePath);
+
+        ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
+        pb.directory(new File("./src/main/resources/"));
+
+        try {
+            Process pr = pb.start();
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+            String line;
+    
+            while ((line = in.readLine()) != null) { log.info(line); }
+    
+            pr.waitFor();
+            in.close();
+        } catch (Exception e) {
+            log.error("Error while trying to encrypt result [resultZipFilePath{}, publicKeyFilePath:{}]",
+                    resultZipFilePath, publicKeyFilePath);
+            e.printStackTrace();
+        }
+    }
+
+    public String uploadResult(String chainTaskId) {
+        Optional<Eip712Challenge> oEip712Challenge = resultRepoService.getChallenge();
+
+        if (!oEip712Challenge.isPresent()) {
+            return "";
+        }
+
+        Eip712Challenge eip712Challenge = oEip712Challenge.get();
+
+        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
+        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+                configurationService.getWorkerWalletAddress(), ecKeyPair);
+
+        if (authorizationToken.isEmpty()) {
+            return "";
+        }
+
+        return resultRepoService.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
     }
 }

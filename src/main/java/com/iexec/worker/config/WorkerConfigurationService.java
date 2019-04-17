@@ -1,6 +1,8 @@
 package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.utils.FileHelper;
+
 import org.apache.http.HttpHost;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,8 +23,8 @@ public class WorkerConfigurationService {
     @Value("${worker.name}")
     private String workerName;
 
-    @Value("${worker.resultBaseDir}")
-    private String resultBaseDir;
+    @Value("${worker.workerBaseDir}")
+    private String workerBaseDir;
 
     @Value("${worker.gasPriceMultiplier}")
     private float gasPriceMultiplier;
@@ -48,8 +50,20 @@ public class WorkerConfigurationService {
         return credentialsService.getCredentials().getAddress();
     }
 
-    public String getResultBaseDir() {
-        return resultBaseDir + File.separator + workerName;
+    public String getWorkerBaseDir() {
+        return workerBaseDir + File.separator + workerName;
+    }
+
+    public String getTaskBaseDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId;
+    }
+
+    public String getTaskInputDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_INPUT;
+    }
+
+    public String getTaskOutputDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
     }
 
     public String getOS() {

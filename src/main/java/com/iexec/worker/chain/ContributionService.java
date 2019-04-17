@@ -102,7 +102,7 @@ public class ContributionService {
      * */
     public Signature getEnclaveSignature(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
 
-        if (contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty()) {
+        if (contribAuth.getEnclaveChallenge().equals(EMPTY_ADDRESS) || contribAuth.getEnclaveChallenge().isEmpty()) {
             return SignatureUtils.emptySignature();
         }
 
@@ -114,7 +114,7 @@ public class ContributionService {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
-                enclaveSignature, contribAuth.getEnclave());
+                enclaveSignature, contribAuth.getEnclaveChallenge());
 
         if (!isEnclaveSignatureValid) {
             log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
@@ -146,7 +146,7 @@ public class ContributionService {
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
         // create the hash that was used in the signature in the core
         byte[] message = BytesUtils.stringToBytes(
-                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
+                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
 
         return isSignatureValid(message, auth.getSignature(), signerAddress);
     }
