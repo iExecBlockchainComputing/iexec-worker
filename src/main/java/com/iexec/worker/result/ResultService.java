@@ -34,7 +34,7 @@ import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 @Service
 public class ResultService {
 
-    private static final String DETERMINIST_FILE_NAME = "consensus.iexec";
+    private static final String DETERMINIST_FILE_NAME = "determinism.iexec";
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
