@@ -6,6 +6,7 @@ import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.executor.TaskExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -69,16 +70,32 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private void restartStomp() {
         log.info("Starting STOMP");
-        WebSocketClient webSocketClient = new StandardWebSocketClient();
-        List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
-                new RestTemplateXhrTransport(restTemplate));
-        SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-        this.stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
-        this.stompClient.setAutoStartup(true);
-        this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-        this.stompClient.connect(url, this);
-        log.info("Started STOMP");
+        if (isConnectEndpointUp()) {
+            WebSocketClient webSocketClient = new StandardWebSocketClient();
+            List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
+                    new RestTemplateXhrTransport(restTemplate));
+            SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
+            this.stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
+            this.stompClient.setAutoStartup(true);
+            this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+            this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
+            this.stompClient.connect(url, this);
+            log.info("Started STOMP");
+        }
+    }
+
+    private boolean isConnectEndpointUp() {
+        ResponseEntity<String> checkConnectionEntity = restTemplate.getForEntity(url, String.class);
+        if (checkConnectionEntity.getStatusCode().is2xxSuccessful()) {
+            return true;
+        }
+        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:]", url, checkConnectionEntity.getStatusCode());
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return isConnectEndpointUp();
     }
 
     private void reSubscribeToTopics() {
