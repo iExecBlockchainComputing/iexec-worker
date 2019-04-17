@@ -133,4 +133,16 @@ public class FileHelper {
         }
         return null;
     }
+
+    public static boolean replaceFile(String toBeReplaced, String replacer) {
+        try {
+            Files.delete(Paths.get(toBeReplaced));
+            return new File(replacer).renameTo(new File(toBeReplaced));
+        } catch (IOException e) {
+            log.error("Problem when trying to replace file [toBeReplaced:{}, replacer:{}]",
+                    toBeReplaced, replacer);
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

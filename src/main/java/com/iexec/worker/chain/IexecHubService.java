@@ -77,7 +77,7 @@ public class IexecHubService extends IexecHubAbstractService {
                 stringToBytes(chainTaskId),
                 stringToBytes(resultHash),
                 stringToBytes(resultSeal),
-                contribAuth.getEnclave(),
+                contribAuth.getEnclaveChallenge(),
                 enclaveSign,
                 workerPoolSign);
         log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
@@ -146,7 +146,7 @@ public class IexecHubService extends IexecHubAbstractService {
         if (revealEvent != null && revealEvent.log != null &&
                 (!revealEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
                         || isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain))) {
-            log.info("Contributed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
+            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
                     chainTaskId, resultDigest, revealReceipt.getGasUsed());
             return revealEvent;
         }
