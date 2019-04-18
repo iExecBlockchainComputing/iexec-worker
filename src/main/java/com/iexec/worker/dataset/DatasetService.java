@@ -77,10 +77,14 @@ public class DatasetService {
     }
 
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        String cmd = String.format("./decrypt-dataset.sh %s %s", dataFilePath, secretFilePath);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File scriptFile = new File(classLoader.getResource("decrypt-dataset.sh").getFile());
+        String scriptFilePath = scriptFile.getAbsolutePath();
+
+        String cmd = scriptFilePath + " " + dataFilePath + " " + secretFilePath;
 
         ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-        pb.directory(new File("./src/main/resources/"));
+        // pb.directory(new File("./src/main/resources/"));
 
         try {
             Process pr = pb.start();

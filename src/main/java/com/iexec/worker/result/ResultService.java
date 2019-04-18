@@ -283,11 +283,17 @@ public class ResultService {
     }
 
     private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
-        String cmd = String.format("./encrypt-result.sh --root-dir=%s --result-file=%s --key-file=%s",
+        ClassLoader classLoader = getClass().getClassLoader();
+        File scriptFile = new File(classLoader.getResource("encrypt-result.sh").getFile());
+        String scriptFilePath = scriptFile.getAbsolutePath();
+
+        String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
                 taskOutputDir, resultZipFilePath, publicKeyFilePath);
 
+        String cmd = scriptFilePath + " " + options;
+
         ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-        pb.directory(new File("./src/main/resources/"));
+        // pb.directory(new File("./src/main/resources/"));
 
         try {
             Process pr = pb.start();
