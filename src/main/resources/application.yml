@@ -6,8 +6,8 @@ core:
   port: ${IEXEC_CORE_PORT:18090}
 
 worker:
-  name: ${IEXEC_WORKER_NAME:customWorker}
-  resultBaseDir: ${IEXEC_WORKER_RESULT_BASE_DIR:/tmp/iexec-worker}
+  name: ${IEXEC_WORKER_NAME:my-iexec-worker}
+  resultBaseDir: ${IEXEC_WORKER_RESULT_BASE_DIR:/tmp/iexec-worker1}
   gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.0} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
   gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
   teeEnabled: ${IEXEC_TEE_ENABLED:false}

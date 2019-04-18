@@ -49,7 +49,7 @@ public class WorkerConfigurationService {
     }
 
     public String getResultBaseDir() {
-        return resultBaseDir + File.separator + workerName;
+        return resultBaseDir;
     }
 
     public String getOS() {
