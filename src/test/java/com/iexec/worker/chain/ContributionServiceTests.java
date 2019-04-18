@@ -53,7 +53,7 @@ public class ContributionServiceTests {
         ContributionAuthorization contribAuth = ContributionAuthorization.builder()
                 .workerWallet(workerWallet)
                 .chainTaskId(chainTaskid)
-                .enclave(enclaveWallet)
+                .enclaveChallenge(enclaveWallet)
                 .signature(signature)
                 .build();
 
