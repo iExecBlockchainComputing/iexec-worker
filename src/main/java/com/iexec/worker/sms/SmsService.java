@@ -65,6 +65,8 @@ public class SmsService {
         Optional<TaskSecrets> oTaskSecrets = getTaskSecrets(smsSecretRequestBody);
 
         if (!oTaskSecrets.isPresent()) {
+            log.error("Could not call SMS to get secrets, aborting [chainTaskId:{}]",
+                    contributionAuth.getChainTaskId());
             return false;
         }
 
