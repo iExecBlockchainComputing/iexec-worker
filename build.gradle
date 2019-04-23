@@ -52,7 +52,7 @@ dependencyManagement {
 dependencies {
     // iexec
     compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    //compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
     compile "org.springframework.boot:spring-boot-starter"
@@ -87,6 +87,22 @@ jacoco {
 }
 // the test coverage report will be created just before the build
 build.dependsOn jacocoTestReport
+
+task createVersion(type: Copy) {
+    // delete old one
+    delete 'src/main/java/com/iexec/core/utils/version/Version.java'
+    // use and copy template to the new location
+    from 'src/main/resources/Version.java.template'
+    into 'src/main/java/com/iexec/worker/utils/version/'
+
+    rename { String fileName ->
+        fileName.replace('.template', '')
+    }
+    // replace tokens in the template file
+    filter(ReplaceTokens, tokens: [projectversion: "${version}".toString()])
+}
+// the createVersion task should be called before compileJava or the version service will not work
+compileJava.dependsOn createVersion
 
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
 def isMasterBranch = gitBranch == "master"

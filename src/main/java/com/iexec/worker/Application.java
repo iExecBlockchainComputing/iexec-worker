@@ -1,6 +1,7 @@
 package com.iexec.worker;
 
 
+import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
@@ -8,6 +9,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +56,9 @@ public class Application implements CommandLineRunner {
     @Autowired
     private AmnesiaRecoveryService amnesiaRecoveryService;
 
+    @Autowired
+    private VersionService versionService;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -74,9 +79,17 @@ public class Application implements CommandLineRunner {
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
-        log.info("Get configuration of the core [config:{}]", customFeignClient.getPublicConfiguration());
+        PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
+        log.info("Get configuration of the core [config:{}]", publicConfiguration);
         if (workerConfig.getHttpProxyHost() != null && workerConfig.getHttpProxyPort() != null) {
             log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
+        }
+
+        if (!publicConfiguration.getWorkerVersionRequired().isEmpty() &&
+                !versionService.getVersion().equals(publicConfiguration.getWorkerVersionRequired())) {
+            log.error("Bad version, please upgrade your iexec-worker [current:{}, required:{}]",
+                    versionService.getVersion(), publicConfiguration.getWorkerVersionRequired());
+            System.exit(0);
         }
 
         if (!iexecHubService.hasEnoughGas()) {
