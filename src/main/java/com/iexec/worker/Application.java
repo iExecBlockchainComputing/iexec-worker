@@ -85,10 +85,10 @@ public class Application implements CommandLineRunner {
             log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
         }
 
-        if (!publicConfiguration.getWorkerVersionRequired().isEmpty() &&
-                !versionService.getVersion().equals(publicConfiguration.getWorkerVersionRequired())) {
+        if (!publicConfiguration.getRequiredWorkerVersion().isEmpty() &&
+                !versionService.getVersion().equals(publicConfiguration.getRequiredWorkerVersion())) {
             log.error("Bad version, please upgrade your iexec-worker [current:{}, required:{}]",
-                    versionService.getVersion(), publicConfiguration.getWorkerVersionRequired());
+                    versionService.getVersion(), publicConfiguration.getRequiredWorkerVersion());
             System.exit(0);
         }
 
