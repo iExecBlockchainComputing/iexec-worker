@@ -16,6 +16,9 @@ wallet:
   encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
 
+decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
+encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
+
 management:
   endpoint:
     restart:

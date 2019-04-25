@@ -13,6 +13,8 @@ import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
@@ -33,6 +35,9 @@ import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 @Slf4j
 @Service
 public class ResultService {
+
+    @Value("${encryptFilePath}")
+    private String scriptFilePath;
 
     private static final String DETERMINIST_FILE_NAME = "determinism.iexec";
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
@@ -283,17 +288,12 @@ public class ResultService {
     }
 
     private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
-        ClassLoader classLoader = getClass().getClassLoader();
-        File scriptFile = new File(classLoader.getResource("encrypt-result.sh").getFile());
-        String scriptFilePath = scriptFile.getAbsolutePath();
-
         String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
                 taskOutputDir, resultZipFilePath, publicKeyFilePath);
 
-        String cmd = scriptFilePath + " " + options;
+        String cmd = this.scriptFilePath + " " + options;
 
         ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-        // pb.directory(new File("./src/main/resources/"));
 
         try {
             Process pr = pb.start();

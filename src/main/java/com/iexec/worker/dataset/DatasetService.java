@@ -4,6 +4,8 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -15,6 +17,9 @@ import java.nio.file.Paths;
 @Slf4j
 @Service
 public class DatasetService {
+
+    @Value("${decryptFilePath}")
+    private String scriptFilePath;
 
     private final WorkerConfigurationService workerConfigurationService;
     private final SmsService smsService;
@@ -77,14 +82,9 @@ public class DatasetService {
     }
 
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        ClassLoader classLoader = getClass().getClassLoader();
-        File scriptFile = new File(classLoader.getResource("decrypt-dataset.sh").getFile());
-        String scriptFilePath = scriptFile.getAbsolutePath();
+        String[] cmd = new String[]{this.scriptFilePath, dataFilePath, secretFilePath};
 
-        String cmd = scriptFilePath + " " + dataFilePath + " " + secretFilePath;
-
-        ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-        // pb.directory(new File("./src/main/resources/"));
+        ProcessBuilder pb = new ProcessBuilder(cmd);
 
         try {
             Process pr = pb.start();
