@@ -2,29 +2,30 @@ package com.iexec.worker.pubsub;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.executor.TaskExecutorService;
-import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.feign.ResultRepoClient;
-import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+import org.springframework.web.socket.sockjs.client.RestTemplateXhrTransport;
+import org.springframework.web.socket.sockjs.client.SockJsClient;
+import org.springframework.web.socket.sockjs.client.Transport;
+import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,7 +38,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private final String coreHost;
     private final int corePort;
     private final String workerWalletAddress;
-
+    private RestTemplate restTemplate;
     // external services
     private TaskExecutorService taskExecutorService;
 
@@ -49,21 +50,17 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
-                               ResultRepoClient resultRepoClient,
-                               ResultService resultService,
-                               RevealService revealService,
-                               CustomFeignClient feignClient,
-                               PublicConfigurationService publicConfigurationService,
-                               CredentialsService credentialsService,
-                               TaskExecutorService taskExecutorService) {
+                               TaskExecutorService taskExecutorService,
+                               RestTemplate restTemplate) {
         this.taskExecutorService = taskExecutorService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
+        this.restTemplate = restTemplate;
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
-        url = "ws://" + coreHost + ":" + corePort + "/connect";
+        url = "http://" + coreHost + ":" + corePort + "/connect";
     }
 
     @PostConstruct
@@ -78,12 +75,32 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private void restartStomp() {
         log.info("Starting STOMP");
-        WebSocketClient webSocketClient = new StandardWebSocketClient();
-        this.stompClient = new WebSocketStompClient(webSocketClient);
-        this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-        this.stompClient.connect(url, this);
-        log.info("Started STOMP");
+        if (isConnectEndpointUp()) {
+            WebSocketClient webSocketClient = new StandardWebSocketClient();
+            List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
+                    new RestTemplateXhrTransport(restTemplate));
+            SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
+            this.stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
+            this.stompClient.setAutoStartup(true);
+            this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+            this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
+            this.stompClient.connect(url, this);
+            log.info("Started STOMP");
+        }
+    }
+
+    private boolean isConnectEndpointUp() {
+        ResponseEntity<String> checkConnectionEntity = restTemplate.getForEntity(url, String.class);
+        if (checkConnectionEntity.getStatusCode().is2xxSuccessful()) {
+            return true;
+        }
+        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:]", url, checkConnectionEntity.getStatusCode());
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return isConnectEndpointUp();
     }
 
     private void reSubscribeToTopics() {

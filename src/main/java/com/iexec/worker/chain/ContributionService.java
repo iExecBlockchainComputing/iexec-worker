@@ -102,7 +102,7 @@ public class ContributionService {
      * */
     public Signature getEnclaveSignature(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
 
-        if (contribAuth.getEnclave().equals(EMPTY_ADDRESS) || contribAuth.getEnclave().isEmpty()) {
+        if (contribAuth.getEnclaveChallenge().equals(EMPTY_ADDRESS) || contribAuth.getEnclaveChallenge().isEmpty()) {
             return SignatureUtils.emptySignature();
         }
 
@@ -114,7 +114,7 @@ public class ContributionService {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
-                enclaveSignature, contribAuth.getEnclave());
+                enclaveSignature, contribAuth.getEnclaveChallenge());
 
         if (!isEnclaveSignatureValid) {
             log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
@@ -127,24 +127,26 @@ public class ContributionService {
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
-    public ChainReceipt contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
+    public Optional<ChainReceipt> contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
         IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignature);
 
         if (contributeResponse == null) {
             log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribAuth.getChainTaskId());
-            return null;
+            return Optional.empty();
         }
 
-        return ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
-                iexecHubService.getLastBlockNumber());
+        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
+                iexecHubService.getLatestBlockNumber());
+
+        return Optional.of(chainReceipt);
     }
 
     public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
         // create the hash that was used in the signature in the core
         byte[] message = BytesUtils.stringToBytes(
-                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclave()));
+                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
 
         return isSignatureValid(message, auth.getSignature(), signerAddress);
     }

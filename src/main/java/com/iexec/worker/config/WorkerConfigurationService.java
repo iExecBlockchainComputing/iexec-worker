@@ -1,8 +1,15 @@
 package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.utils.FileHelper;
+
+import org.apache.http.HttpHost;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 
@@ -16,8 +23,8 @@ public class WorkerConfigurationService {
     @Value("${worker.name}")
     private String workerName;
 
-    @Value("${worker.resultBaseDir}")
-    private String resultBaseDir;
+    @Value("${worker.workerBaseDir}")
+    private String workerBaseDir;
 
     @Value("${worker.gasPriceMultiplier}")
     private float gasPriceMultiplier;
@@ -43,8 +50,20 @@ public class WorkerConfigurationService {
         return credentialsService.getCredentials().getAddress();
     }
 
-    public String getResultBaseDir() {
-        return resultBaseDir + File.separator + workerName;
+    public String getWorkerBaseDir() {
+        return workerBaseDir + File.separator + workerName;
+    }
+
+    public String getTaskBaseDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId;
+    }
+
+    public String getTaskInputDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_INPUT;
+    }
+
+    public String getTaskOutputDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
     }
 
     public String getOS() {
@@ -78,5 +97,26 @@ public class WorkerConfigurationService {
 
     public String getOverrideBlockchainNodeAddress() {
         return overrideBlockchainNodeAddress;
+    }
+
+    public String getHttpProxyHost() {
+        return System.getProperty("http.proxyHost");
+    }
+
+    public Integer getHttpProxyPort() {
+        String proxyPort = System.getProperty("http.proxyPort");
+        return proxyPort != null && !proxyPort.isEmpty() ? Integer.valueOf(proxyPort) : null;
+    }
+
+    @Bean
+    private RestTemplate restTemplate() {
+        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+        if (getHttpProxyHost() != null && getHttpProxyPort() != null) {
+            HttpHost myProxy = new HttpHost(getHttpProxyHost(), getHttpProxyPort());
+            clientBuilder.setProxy(myProxy);
+        }
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+        factory.setHttpClient(clientBuilder.build());
+        return new RestTemplate(factory);
     }
 }

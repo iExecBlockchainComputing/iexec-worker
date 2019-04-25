@@ -77,7 +77,7 @@ public class IexecHubService extends IexecHubAbstractService {
                 stringToBytes(chainTaskId),
                 stringToBytes(resultHash),
                 stringToBytes(resultSeal),
-                contribAuth.getEnclave(),
+                contribAuth.getEnclaveChallenge(),
                 enclaveSign,
                 workerPoolSign);
         log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
@@ -146,7 +146,7 @@ public class IexecHubService extends IexecHubAbstractService {
         if (revealEvent != null && revealEvent.log != null &&
                 (!revealEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
                         || isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain))) {
-            log.info("Contributed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
+            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
                     chainTaskId, resultDigest, revealReceipt.getGasUsed());
             return revealEvent;
         }
@@ -171,13 +171,8 @@ public class IexecHubService extends IexecHubAbstractService {
         return web3jService.hasEnoughGas(credentialsService.getCredentials().getAddress());
     }
 
-    public long getLastBlockNumber() {
-        try {
-            return web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock().getNumber().longValue();
-        } catch (IOException e) {
-            log.error("GetLastBlock failed");
-        }
-        return 0;
+    public long getLatestBlockNumber() {
+        return web3jService.getLatestBlockNumber();
     }
 
     private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainStatus chainContributionStatus) {

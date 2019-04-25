@@ -45,18 +45,21 @@ public class ReplicateDemandService {
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     public void askForReplicate() {
         // check if the worker can run a task or not
-        long lastAvailableBlockNumber = iexecHubService.getLastBlockNumber();
+        long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         if (!taskExecutorService.canAcceptMoreReplicates() && lastAvailableBlockNumber == 0) {
             log.info("The worker is already full, it can't accept more tasks");
             return;
         }
 
-        ContributionAuthorization contributionAuth = customFeignClient.getAvailableReplicate(
-                lastAvailableBlockNumber);
+        Optional<ContributionAuthorization> oContributionAuth =
+                customFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
 
-        if (contributionAuth == null) {
+        if (!oContributionAuth.isPresent()) {
             return;
         }
+
+        ContributionAuthorization contributionAuth = oContributionAuth.get();
+
         String chainTaskId = contributionAuth.getChainTaskId();
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {

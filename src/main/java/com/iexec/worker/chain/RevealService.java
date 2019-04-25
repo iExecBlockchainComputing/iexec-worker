@@ -92,7 +92,7 @@ public class RevealService {
         }
 
         ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(revealResponse.log,
-                chainTaskId, iexecHubService.getLastBlockNumber());
+                chainTaskId, iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);
     }

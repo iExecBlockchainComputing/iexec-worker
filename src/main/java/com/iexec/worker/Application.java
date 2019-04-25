@@ -1,8 +1,7 @@
 package com.iexec.worker;
 
 
-import java.util.List;
-
+import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
@@ -10,6 +9,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +20,8 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import java.util.List;
 
 
 @SpringBootApplication
@@ -54,6 +56,9 @@ public class Application implements CommandLineRunner {
     @Autowired
     private AmnesiaRecoveryService amnesiaRecoveryService;
 
+    @Autowired
+    private VersionService versionService;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -71,12 +76,22 @@ public class Application implements CommandLineRunner {
                 .teeEnabled(workerConfig.isTeeEnabled())
                 .build();
 
-
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
 
         log.info("Address of the core [address:{}]", "https://" + coreHost + ":" + corePort);
         log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
-        log.info("Get configuration of the core [config:{}]", customFeignClient.getPublicConfiguration());
+        PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
+        log.info("Get configuration of the core [config:{}]", publicConfiguration);
+        if (workerConfig.getHttpProxyHost() != null && workerConfig.getHttpProxyPort() != null) {
+            log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
+        }
+
+        if (!publicConfiguration.getRequiredWorkerVersion().isEmpty() &&
+                !versionService.getVersion().equals(publicConfiguration.getRequiredWorkerVersion())) {
+            log.error("Bad version, please upgrade your iexec-worker [current:{}, required:{}]",
+                    versionService.getVersion(), publicConfiguration.getRequiredWorkerVersion());
+            System.exit(0);
+        }
 
         if (!iexecHubService.hasEnoughGas()) {
             log.error("No enough gas, please refill your wallet!");
