@@ -291,7 +291,9 @@ public class ResultService {
         String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
                 taskOutputDir, resultZipFilePath, publicKeyFilePath);
 
-        ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, options);
+        String cmd = this.scriptFilePath + " " + options;
+
+        ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
 
         try {
             Process pr = pb.start();
