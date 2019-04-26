@@ -10,6 +10,9 @@ import java.net.URL;
 @Service
 public class CoreConfigurationService {
 
+    @Value("${core.protocol}")
+    private String coreProtocol;
+
     @Value("${core.host}")
     private String coreHost;
 
@@ -22,7 +25,7 @@ public class CoreConfigurationService {
 
     @PostConstruct
     public void run() throws MalformedURLException {
-        url = new URL("https://" + coreHost + ":" + corePort);
+        url = new URL(coreProtocol + "://" + coreHost + ":" + corePort);
         getUrl();
     }
 
@@ -32,15 +35,15 @@ public class CoreConfigurationService {
                 getPort();
     }
 
-    public String getProtocol() {
+    private String getProtocol() {
         return url.getProtocol();
     }
 
-    public String getHost() {
+    private String getHost() {
         return url.getHost();
     }
 
-    public int getPort() {
+    private int getPort() {
         return url.getPort();
     }
 

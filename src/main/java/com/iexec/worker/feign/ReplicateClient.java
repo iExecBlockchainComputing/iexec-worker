@@ -1,17 +1,19 @@
 package com.iexec.worker.feign;
 
-import com.iexec.common.replicate.ReplicateDetails;
-import java.util.List;
-
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
+import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 
-@FeignClient(name = "ReplicateClient", url = "https://${core.host}:${core.port}")
+
+@FeignClient(name = "ReplicateClient",
+        url = "${core.protocol}://${core.host}:${core.port}",
+        configuration = FeignConfiguration.class)
 public interface ReplicateClient {
 
     @GetMapping("/replicates/available")

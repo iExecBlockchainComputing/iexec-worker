@@ -35,8 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
-    private final String coreHost;
-    private final int corePort;
     private final String workerWalletAddress;
     private RestTemplate restTemplate;
     // external services
@@ -48,29 +46,21 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private WebSocketStompClient stompClient;
     private String url;
 
-    public SubscriptionService(CoreConfigurationService coreConfigurationService,
+    public SubscriptionService(CoreConfigurationService coreConfService,
                                WorkerConfigurationService workerConfigurationService,
                                TaskExecutorService taskExecutorService,
                                RestTemplate restTemplate) {
         this.taskExecutorService = taskExecutorService;
-
-        this.coreHost = coreConfigurationService.getHost();
-        this.corePort = coreConfigurationService.getPort();
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.restTemplate = restTemplate;
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
-        url = "http://" + coreHost + ":" + corePort + "/connect";
+        url = coreConfService.getUrl() + "/connect";
     }
 
     @PostConstruct
     private void run() {
-        //this.restartStomp();
-        /*
-         * TODO: Secure WebSockets (https://stackoverflow.com/a/38880673)
-         * 1 - [core]   Set sslContext to TcpClient of MessageBroker (use spring messaging & reactor(ipc?))
-         * 2 - [worker] Call wss://core:18090/connect (eventually set sslContext WebSocketClient
-         */
+        this.restartStomp();
     }
 
     private void restartStomp() {
