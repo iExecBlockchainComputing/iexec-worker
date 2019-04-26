@@ -145,4 +145,9 @@ public class FileHelper {
             return false;
         }
     }
+
+    public static boolean renameFile(String oldPath, String newPath) {
+        log.info("Renaming file [oldPath:{}, newPath:{}]", oldPath, newPath);
+        return new File(oldPath).renameTo(new File(newPath));
+    }
 }

@@ -18,6 +18,8 @@ import java.nio.file.Paths;
 @Service
 public class DatasetService {
 
+    private static final String DECRYPTED_DATASET_FILENAME = "dataset.iexec";
+
     @Value("${decryptFilePath}")
     private String scriptFilePath;
 
@@ -77,8 +79,12 @@ public class DatasetService {
             return false;
         }
 
-        // replace original dataset file with decrypted one
-        return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
+        // replace original dataset file with decrypted one and rename it to 'dataset.iexec'
+        String finalDatasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId)
+                + File.separator + DECRYPTED_DATASET_FILENAME;
+
+        return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath) &&
+                FileHelper.renameFile(datasetFilePath, finalDatasetFilePath);
     }
 
     private void decryptFile(String dataFilePath, String secretFilePath) {
@@ -99,5 +105,15 @@ public class DatasetService {
                     dataFilePath, secretFilePath);
             e.printStackTrace();
         }
+    }
+
+    public void renameDatasetFile(String chainTaskId, String datasetUri) {
+        String datasetFileName = Paths.get(datasetUri).getFileName().toString();
+        String datasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + datasetFileName;
+
+        String finalDatasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId)
+                + File.separator + DECRYPTED_DATASET_FILENAME;
+
+        FileHelper.renameFile(datasetFilePath, finalDatasetFilePath);
     }
 }

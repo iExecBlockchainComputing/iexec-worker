@@ -162,6 +162,8 @@ public class TaskExecutorService {
 
         if (isDatasetDecryptionNeeded) {
             isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
+        } else {
+            datasetService.renameDatasetFile(chainTaskId, replicateModel.getDatasetUri());
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
