@@ -82,9 +82,7 @@ public class DatasetService {
     }
 
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        String[] cmd = new String[]{this.scriptFilePath, dataFilePath, secretFilePath};
-
-        ProcessBuilder pb = new ProcessBuilder(cmd);
+        ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
 
         try {
             Process pr = pb.start();
