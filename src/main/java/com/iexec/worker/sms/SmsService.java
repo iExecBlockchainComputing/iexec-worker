@@ -82,18 +82,21 @@ public class SmsService {
 
         if (datasetSecret != null && datasetSecret.getSecret() != null) {
             FileHelper.createFileWithContent(getDatasetSecretFilePath(chainTaskId), datasetSecret.getSecret() + "\n");
+            log.info("Downloaded dataset secret [chainTaskId:{}]", chainTaskId);
         } else {
             log.info("No dataset secret found for this task [chainTaskId:{}]", chainTaskId);
         }
 
         if (beneficiarySecret != null && beneficiarySecret.getSecret() != null) {
             FileHelper.createFileWithContent(getBeneficiarySecretFilePath(chainTaskId), beneficiarySecret.getSecret());
+            log.info("Downloaded beneficiary secret [chainTaskId:{}]", chainTaskId);
         } else {
             log.info("No beneficiary secret found for this task [chainTaskId:{}]", chainTaskId);
         }
 
         if (enclaveSecret != null && enclaveSecret.getSecret() != null) {
             FileHelper.createFileWithContent(getEnclaveSecretFilePath(chainTaskId), enclaveSecret.getSecret());
+            log.info("Downloaded enclave secret [chainTaskId:{}]", chainTaskId);
         } else {
             log.info("No enclave secret found for this task [chainTaskId:{}]", chainTaskId);
         }
