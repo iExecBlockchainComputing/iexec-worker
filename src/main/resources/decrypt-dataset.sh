@@ -21,7 +21,12 @@ fi
 openssl base64 -d -in ${SECRET_FILE} -out ${KEY_FILE} 2>&1
 echo "[SHELL] converted secret file from base64 to bin format"
 
-openssl enc -d -aes-256-cbc -in ${ENC_DATA_FILE} -out ${DEC_DATA_FILE} -kfile ${KEY_FILE} 2>&1
+case "$(uname -s)" in
+    Linux*)     openssl enc -d -aes-256-cbc -pbkdf2 -in ${ENC_DATA_FILE} -out ${DEC_DATA_FILE} -kfile ${KEY_FILE} 2>&1;;
+    Darwin*)    openssl enc -d -aes-256-cbc -in ${ENC_DATA_FILE} -out ${DEC_DATA_FILE} -kfile ${KEY_FILE} 2>&1;;
+esac
+
+
 echo "[SHELL] decrypted dataset file"
 
 shred -u ${KEY_FILE} 2>&1
