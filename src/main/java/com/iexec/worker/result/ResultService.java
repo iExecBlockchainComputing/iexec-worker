@@ -184,7 +184,8 @@ public class ResultService {
 
             if (deterministFilePath.toFile().exists()) {
                 byte[] content = Files.readAllBytes(deterministFilePath);
-                hash = bytesToString(Hash.sha256(content));
+                // if determinism.iexec file is already a byte32, no need to hash it again
+                hash = bytesToString(BytesUtils.isByte32(content) ? content : Hash.sha256(content));
                 log.info("The determinist file exists and its hash has been computed [chainTaskId:{}, hash:{}]", chainTaskId, hash);
                 return hash;
             } else {
