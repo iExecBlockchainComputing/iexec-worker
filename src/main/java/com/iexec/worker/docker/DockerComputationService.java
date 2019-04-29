@@ -2,19 +2,10 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.result.ResultService;
-import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.Date;
 
@@ -24,6 +15,7 @@ import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
 @Service
 public class DockerComputationService {
 
+    private static final String DATASET_FILENAME = "DATASET_FILENAME";
     private static final String TEE_DOCKER_ENV_CHAIN_TASKID = "TASKID";
     private static final String TEE_DOCKER_ENV_WORKER_ADDRESS = "WORKER";
 
@@ -36,7 +28,7 @@ public class DockerComputationService {
         this.configurationService = configurationService;
     }
 
-    public String dockerRunAndGetLogs(AvailableReplicateModel replicateModel) {
+    public String dockerRunAndGetLogs(AvailableReplicateModel replicateModel, String datasetFilename) {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
         String image = replicateModel.getAppUri();
         //TODO: check image equals image:tag
@@ -52,9 +44,11 @@ public class DockerComputationService {
         if (replicateModel.isTrustedExecution()) {
             containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
                     TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
-                    TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress());
+                    TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress(),
+                    DATASET_FILENAME + "=" + datasetFilename);
         } else {
-            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume);
+            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
+                    DATASET_FILENAME + "=" + datasetFilename);
         }
 
         stdout = startComputationAndGetLogs(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());

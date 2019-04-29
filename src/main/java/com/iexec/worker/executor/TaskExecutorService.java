@@ -172,7 +172,8 @@ public class TaskExecutorService {
         }
 
         // compute
-        stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel);
+        String datasetFilename = datasetService.getDatasetFilename(replicateModel.getDatasetUri());
+        stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel, datasetFilename);
 
         if (stdout.isEmpty()) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);

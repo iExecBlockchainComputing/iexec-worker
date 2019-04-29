@@ -3,13 +3,11 @@ package com.iexec.worker.executor;
 import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOADED;
 import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOAD_FAILED;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
@@ -134,7 +132,7 @@ public class TaskExecutorServiceTests {
         Mockito.verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
         Mockito.verify(dockerComputationService, Mockito.times(1))
-                .dockerRunAndGetLogs(any());
+                .dockerRunAndGetLogs(any(), any());
     }
 
     @Test
@@ -159,7 +157,7 @@ public class TaskExecutorServiceTests {
                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
         Mockito.verify(dockerComputationService, Mockito.times(1))
-                .dockerRunAndGetLogs(any());
+                .dockerRunAndGetLogs(any(), any());
     }
 
     @Test
@@ -184,7 +182,7 @@ public class TaskExecutorServiceTests {
                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
         Mockito.verify(dockerComputationService, Mockito.times(0))
-                .dockerRunAndGetLogs(any());
+                .dockerRunAndGetLogs(any(), any());
     }
 
     AvailableReplicateModel getStubReplicateModel(String enclaveChallenge) {
