@@ -89,9 +89,9 @@ public class DatasetService {
 
             BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
             String line;
-    
+
             while ((line = in.readLine()) != null) { log.info(line); }
-    
+
             pr.waitFor();
             in.close();
         } catch (Exception e) {
@@ -100,4 +100,9 @@ public class DatasetService {
             e.printStackTrace();
         }
     }
+
+    public String getDatasetFilename(String datasetUri) {
+        return Paths.get(datasetUri).getFileName().toString();
+    }
+
 }
