@@ -70,7 +70,7 @@ public class RevealServiceTests {
                         .build());
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isTrue();
@@ -101,7 +101,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -132,7 +132,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -163,7 +163,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -194,7 +194,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -225,7 +225,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -254,7 +254,7 @@ public class RevealServiceTests {
                         .resultSeal(Hash.sha3("Dummy contribution seal"))
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -311,7 +311,7 @@ public class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn("");
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn("");
         when(credentialsService.getCredentials()).thenReturn(credentials);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
@@ -320,7 +320,7 @@ public class RevealServiceTests {
     @Test
     public void shouldNotRevealWithEmptyDeterministHash() throws Exception {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn("");
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn("");
         assertThat(revealService.reveal(chainTaskId)).isEqualTo(Optional.empty());
     }
 
@@ -329,7 +329,7 @@ public class RevealServiceTests {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new Exception());
         revealService.reveal(chainTaskId);
     }
@@ -339,7 +339,7 @@ public class RevealServiceTests {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        when(resultService.getDeterministHashFromFile(chainTaskId)).thenReturn(deterministHash);
+        when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         IexecHubABILegacy.TaskRevealEventResponse response = new IexecHubABILegacy.TaskRevealEventResponse();
 
         // 0x200 in hexa = 512 in decimal

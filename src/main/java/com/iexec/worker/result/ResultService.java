@@ -88,7 +88,7 @@ public class ResultService {
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(replicateModel.getAppUri())
                 .cmd(replicateModel.getCmd())
-                .deterministHash(getDeterministHashFromFile(chainTaskId))
+                .deterministHash(getDeterministHashForTask(chainTaskId))
                 .datasetUri(replicateModel.getDatasetUri())
                 .build();
 
@@ -176,32 +176,49 @@ public class ResultService {
         return Arrays.asList(chainTaskIdFolders);
     }
 
-    public String getDeterministHashFromFile(String chainTaskId) {
+    public String getDeterministHashForTask(String chainTaskId) {
         String hash = "";
         try {
             String deterministFilePathName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + DETERMINIST_FILE_NAME;
             Path deterministFilePath = Paths.get(deterministFilePathName);
 
             if (deterministFilePath.toFile().exists()) {
-                byte[] content = Files.readAllBytes(deterministFilePath);
-                // if determinism.iexec file is already a byte32, no need to hash it again
-                hash = bytesToString(BytesUtils.isByte32(content) ? content : Hash.sha256(content));
+                hash = getHashFromDeterministIexecFile(deterministFilePath);
                 log.info("The determinist file exists and its hash has been computed [chainTaskId:{}, hash:{}]", chainTaskId, hash);
                 return hash;
-            } else {
-                log.info("No determinist file exists [chainTaskId:{}]", chainTaskId);
             }
 
+            log.info("No determinist file exists, the hash of the result file will be used instead [chainTaskId:{}]", chainTaskId);
             String resultFilePathName = getResultZipFilePath(chainTaskId);
             byte[] content = Files.readAllBytes(Paths.get(resultFilePathName));
             hash = bytesToString(Hash.sha256(content));
-            log.info("The hash of the result file will be used instead [chainTaskId:{}, hash:{}]", chainTaskId, hash);
+            log.info("Hash of the result file [chainTaskId:{}, hash:{}]", chainTaskId, hash);
         } catch (IOException e) {
-            e.printStackTrace();
-            log.error("Failed to getDeterministHashFromFile [chainTaskId:{}]", chainTaskId);
+            log.error("Failed to getDeterministHashForTask [chainTaskId:{}]", chainTaskId);
+            log.error("Exception [exception:{}]", e.getMessage());
         }
 
         return hash;
+    }
+
+    /** This method is to compute the hash of the determinist.iexec file
+     * if the file is a text and if it is a byte32, no need to hash it
+     * if the file is a text and if it is NOT a byte32, it is hashed using sha256
+     * if the file is NOT a text, it is hashed using sha256
+     */
+    private String getHashFromDeterministIexecFile(Path deterministFilePath) throws IOException {
+        try (Scanner scanner = new Scanner(deterministFilePath.toFile())) {
+            // command to put the content of the whole file into string (\Z is the end of the string anchor)
+            // This ultimately makes the input have one actual token, which is the entire file
+            String contentFile = scanner.useDelimiter("\\Z").next();
+            byte[] content = BytesUtils.stringToBytes(contentFile);
+
+            // if determinism.iexec file is already a byte32, no need to hash it again
+            return bytesToString(BytesUtils.isByte32(content) ? content : Hash.sha256(content));
+
+        } catch (Exception e) {
+            return bytesToString(Hash.sha256(Files.readAllBytes(deterministFilePath)));
+        }
     }
 
     public String getCallbackDataFromFile(String chainTaskId) {

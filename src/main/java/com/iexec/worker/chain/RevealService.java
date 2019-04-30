@@ -47,7 +47,7 @@ public class RevealService {
 
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
-        String deterministHash = resultService.getDeterministHashFromFile(chainTaskId);
+        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
         if (!deterministHash.isEmpty()) {
             isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, deterministHash));
 
@@ -78,7 +78,7 @@ public class RevealService {
 
     // returns the ChainReceipt of the reveal if successful, null otherwise
     public Optional<ChainReceipt> reveal(String chainTaskId) {
-        String deterministHash = resultService.getDeterministHashFromFile(chainTaskId);
+        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
 
         if (deterministHash.isEmpty()) {
             return Optional.empty();
