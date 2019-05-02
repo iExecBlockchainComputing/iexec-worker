@@ -56,7 +56,7 @@ public class CustomDockerClient {
                     .appendBinds(
                             HostConfig.Bind.from(inputMountpoint)
                                     .to(FileHelper.SLASH_IEXEC_IN)
-                                    .readOnly(true)
+                                    .readOnly(false)
                                     .build(),
                             HostConfig.Bind.from(outputMountpoint)
                                     .to(FileHelper.SLASH_IEXEC_OUT)
