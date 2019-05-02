@@ -33,6 +33,26 @@ public class ResultServiceTests {
     }
 
     @Test
+    public void shouldGetContentOfDeterministFileSinceByte32(){
+        String chainTaskId = "bytes32";
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
+        String hash = resultService.getDeterministHashForTask(chainTaskId);
+        // should be equal to the content of the file since it is a byte32
+        assertThat(hash).isEqualTo("0xda9a34f3846cc4434eb31ad870aaf47c8a123225732db003c0c19f3c3f6faa01");
+    }
+
+    @Test
+    public void shouldGetHashOfDeterministFileSinceNotByte32(){
+        String chainTaskId = "notBytes32";
+        when(configurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
+        String hash = resultService.getDeterministHashForTask(chainTaskId);
+        // should not be equal to the content of the file since it is not a byte32
+        assertThat(hash).isNotEqualTo("dummyRandomString");
+    }
+
+    @Test
     public void shouldGetEnclaveSignature() throws IOException {
         String chainTaskId = "1234";
         String rExpected = "0x253554311f2793b72785a45eff4cbbe04c45d2e5a4d89057dfbc721e69b61d39";

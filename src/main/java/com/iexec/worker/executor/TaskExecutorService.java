@@ -189,7 +189,7 @@ public class TaskExecutorService {
     @Async
     public void contribute(ContributionAuthorization contribAuth) {
         String chainTaskId = contribAuth.getChainTaskId();
-        String deterministHash = resultService.getDeterministHashFromFile(chainTaskId);
+        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
         Optional<Signature> oEnclaveSignature = resultService.getEnclaveSignatureFromFile(chainTaskId);
 
         if (deterministHash.isEmpty()) {
