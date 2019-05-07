@@ -98,10 +98,9 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         if (contributeEvent != null && contributeEvent.log != null &&
-                (!contributeEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
-                        || isStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED, this::isContributionStatusValidOnChain))) {
-            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]",
-                    chainTaskId, resultHash, contributeReceipt.getGasUsed());
+                isStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED, this::isContributionStatusValidOnChain)) {
+            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, resultHash, contributeReceipt.getGasUsed(), contributeEvent.log);
             return contributeEvent;
         }
 
@@ -144,10 +143,9 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         if (revealEvent != null && revealEvent.log != null &&
-                (!revealEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
-                        || isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain))) {
-            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
-                    chainTaskId, resultDigest, revealReceipt.getGasUsed());
+                isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain)) {
+            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, resultDigest, revealReceipt.getGasUsed(), revealEvent.log);
             return revealEvent;
         }
 
