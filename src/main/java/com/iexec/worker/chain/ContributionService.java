@@ -79,7 +79,7 @@ public class ContributionService {
     }
 
     private boolean isTaskActiveToContribute(ChainTask chainTask) {
-        return chainTask.getStatus().equals(ChainTaskStatus.ACTIVE);
+        return iexecHubService.isChainTaskActiveWhenNodeNotSync(chainTask.getChainTaskId());
     }
 
     private boolean isBeforeContributionDeadlineToContribute(ChainTask chainTask) {

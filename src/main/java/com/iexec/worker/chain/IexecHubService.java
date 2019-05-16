@@ -10,17 +10,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Function;
 
 import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
@@ -173,10 +172,88 @@ public class IexecHubService extends IexecHubAbstractService {
         return web3jService.getLatestBlockNumber();
     }
 
+    public long getMaxWaitingTimeWhenNotSync() {
+        return web3jService.getMaxWaitingTimeWhenPendingReceipt();
+    }
+
     private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainStatus chainContributionStatus) {
         if (chainContributionStatus instanceof ChainContributionStatus) {
             Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
             return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
+        }
+        return false;
+    }
+
+    private boolean isBlochainReadTrueWhenNodeNotSync(String chainTaskId, Function<String, Boolean> booleanBlockhainReadFunction) {
+        long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
+        long startTime = System.currentTimeMillis();
+
+        for(long duration = 0L; duration < maxWaitingTime; duration = System.currentTimeMillis() - startTime) {
+            try {
+                if (booleanBlockhainReadFunction.apply(chainTaskId)) {
+                    return true;
+                }
+
+                Thread.sleep(500L);
+            } catch (InterruptedException e) {
+                log.error("Error in checking the latest block number [chainTaskId:{}, maxWaitingTime:{}]",
+                        chainTaskId, maxWaitingTime);
+            }
+        }
+
+        return false;
+    }
+
+    boolean isChainTaskActiveWhenNodeNotSync(String chainTaskId) {
+        boolean isChainTaskStatusActive = isBlochainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskActive);
+        if (!isChainTaskStatusActive){
+            log.error("ChainTask status is still not in 'active' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
+        }
+        return isChainTaskStatusActive;
+    }
+
+    boolean isChainTaskRevealingWhenNodeNotSync(String chainTaskId) {
+        boolean isChainTaskStatusRevealing = isBlochainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskRevealing);
+        if (!isChainTaskStatusRevealing){
+            log.error("ChainTask status is still not in 'revealing' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
+        }
+        return isChainTaskStatusRevealing;
+    }
+
+    private Boolean isChainTaskActive(String chainTaskId){
+        Optional<ChainTask> chainTask = getChainTask(chainTaskId);
+        if (chainTask.isPresent()){
+            switch (chainTask.get().getStatus()){
+                case UNSET:
+                    break;//Could happen if node not synchronized. Should wait.
+                case ACTIVE:
+                    return true;
+                case REVEALING:
+                    return  false;
+                case COMPLETED:
+                    return false;
+                case FAILLED:
+                    return false;
+            }
+        }
+        return false;
+    }
+
+    private Boolean isChainTaskRevealing(String chainTaskId){
+        Optional<ChainTask> chainTask = getChainTask(chainTaskId);
+        if (chainTask.isPresent()){
+            switch (chainTask.get().getStatus()){
+                case UNSET:
+                    break;//Should not happen
+                case ACTIVE:
+                    break;//Could happen if node not synchronized. Should wait.
+                case REVEALING:
+                    return  true;
+                case COMPLETED:
+                    return false;
+                case FAILLED:
+                    return false;
+            }
         }
         return false;
     }
