@@ -184,13 +184,13 @@ public class IexecHubService extends IexecHubAbstractService {
         return false;
     }
 
-    private boolean isBlochainReadTrueWhenNodeNotSync(String chainTaskId, Function<String, Boolean> booleanBlockhainReadFunction) {
+    private boolean isBlockchainReadTrueWhenNodeNotSync(String chainTaskId, Function<String, Boolean> booleanBlockchainReadFunction) {
         long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
         long startTime = System.currentTimeMillis();
 
         for(long duration = 0L; duration < maxWaitingTime; duration = System.currentTimeMillis() - startTime) {
             try {
-                if (booleanBlockhainReadFunction.apply(chainTaskId)) {
+                if (booleanBlockchainReadFunction.apply(chainTaskId)) {
                     return true;
                 }
 
@@ -205,7 +205,7 @@ public class IexecHubService extends IexecHubAbstractService {
     }
 
     boolean isChainTaskActiveWhenNodeNotSync(String chainTaskId) {
-        boolean isChainTaskStatusActive = isBlochainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskActive);
+        boolean isChainTaskStatusActive = isBlockchainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskActive);
         if (!isChainTaskStatusActive){
             log.error("ChainTask status is still not in 'active' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
         }
@@ -213,7 +213,7 @@ public class IexecHubService extends IexecHubAbstractService {
     }
 
     boolean isChainTaskRevealingWhenNodeNotSync(String chainTaskId) {
-        boolean isChainTaskStatusRevealing = isBlochainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskRevealing);
+        boolean isChainTaskStatusRevealing = isBlockchainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskRevealing);
         if (!isChainTaskStatusRevealing){
             log.error("ChainTask status is still not in 'revealing' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
         }
