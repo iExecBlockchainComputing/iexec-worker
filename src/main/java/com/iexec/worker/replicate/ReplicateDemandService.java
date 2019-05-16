@@ -45,9 +45,15 @@ public class ReplicateDemandService {
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     public void askForReplicate() {
         // check if the worker can run a task or not
-        long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
-        if (!taskExecutorService.canAcceptMoreReplicates() && lastAvailableBlockNumber == 0) {
+        if (!taskExecutorService.canAcceptMoreReplicates()) {
             log.info("The worker is already full, it can't accept more tasks");
+            return;
+        }
+
+        long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
+        if (lastAvailableBlockNumber == 0) {
+            log.info("Can't askForReplicate, your blockchain node seams unsync [lastAvailableBlockNumber:{}]",
+                    lastAvailableBlockNumber);
             return;
         }
 
