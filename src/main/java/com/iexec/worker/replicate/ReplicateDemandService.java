@@ -52,7 +52,7 @@ public class ReplicateDemandService {
 
         long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         if (lastAvailableBlockNumber == 0) {
-            log.info("Can't askForReplicate, your blockchain node seams unsync [lastAvailableBlockNumber:{}]",
+            log.error("Can't askForReplicate, your blockchain node seams unsync [lastAvailableBlockNumber:{}]",
                     lastAvailableBlockNumber);
             return;
         }
