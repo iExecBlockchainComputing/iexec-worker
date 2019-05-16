@@ -229,6 +229,12 @@ public class TaskExecutorService {
             return;
         }
 
+        if (oChainReceipt.get().getBlockNumber() == 0) {
+            log.warn("The blocknumber of the receipt is equal to 0, the CONTRIBUTED status will not be " +
+                            "sent to the core [chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED,
                 ReplicateDetails.builder().chainReceipt(oChainReceipt.get()).build());
     }
@@ -253,6 +259,12 @@ public class TaskExecutorService {
             ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
             customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED,
                     ReplicateDetails.builder().chainReceipt(chainReceipt).build());
+            return;
+        }
+
+        if (optionalChainReceipt.get().getBlockNumber() == 0) {
+            log.warn("The blocknumber of the receipt is equal to 0, the REVEALED status will not be " +
+                    "sent to the core [chainTaskId:{}]", chainTaskId);
             return;
         }
 
