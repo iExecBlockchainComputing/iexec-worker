@@ -9,6 +9,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,8 +88,11 @@ public class Application implements CommandLineRunner {
 
         if (!publicConfiguration.getRequiredWorkerVersion().isEmpty() &&
                 !versionService.getVersion().equals(publicConfiguration.getRequiredWorkerVersion())) {
-            log.error("Bad version, please upgrade your iexec-worker [current:{}, required:{}]",
+
+            String message = String.format("Bad version! please upgrade your iexec-worker [current:%s, required:%s]",
                     versionService.getVersion(), publicConfiguration.getRequiredWorkerVersion());
+
+            LoggingUtils.printHighlightedMessage(message);
             System.exit(0);
         }
 
