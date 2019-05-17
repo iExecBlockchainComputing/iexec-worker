@@ -56,7 +56,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -72,6 +71,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isTrue();
     }
@@ -88,7 +88,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.COMPLETED)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -103,6 +102,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(false);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -119,7 +119,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), -1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -134,6 +133,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -150,7 +150,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), -1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -165,6 +164,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -181,7 +181,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(Hash.sha3("different hash value"))
                         .build());
@@ -196,6 +195,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -212,7 +212,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -227,6 +226,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -241,7 +241,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -256,6 +255,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -276,12 +276,13 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(contributionValue)
                         .build());
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(Optional.empty());
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
+
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
@@ -298,7 +299,6 @@ public class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .status(ChainTaskStatus.REVEALING)
                         .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
                         .consensusValue(contributionValue)
                         .build());
@@ -313,6 +313,7 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn("");
         when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
