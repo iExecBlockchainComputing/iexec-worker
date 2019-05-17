@@ -245,6 +245,7 @@ public class TaskExecutorService {
         if (!revealService.canReveal(chainTaskId)) {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
+            return;
         }
 
         if (!revealService.hasEnoughGas()) {
