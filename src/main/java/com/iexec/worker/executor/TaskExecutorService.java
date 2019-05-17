@@ -18,6 +18,7 @@ import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.utils.LoggingUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -216,6 +217,9 @@ public class TaskExecutorService {
 
         if (!contributionService.hasEnoughGas()) {
             customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
+            String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
+                    contribAuth.getWorkerWallet());
+            LoggingUtils.printHighlightedMessage(noEnoughGas);
             System.exit(0);
         }
 
@@ -250,6 +254,10 @@ public class TaskExecutorService {
 
         if (!revealService.hasEnoughGas()) {
             customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
+            customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
+            String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
+                    workerConfigurationService.getWorkerWalletAddress());
+            LoggingUtils.printHighlightedMessage(noEnoughGas);
             System.exit(0);
         }
 
