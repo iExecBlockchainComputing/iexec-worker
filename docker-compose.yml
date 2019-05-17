@@ -1,0 +1,26 @@
+version: '3.4'
+
+
+networks:
+  iexec-net:
+    external: true
+
+services:
+  worker:
+    image: nexus.iex.ec/iexec-worker:${WORKER_VERSION}
+    container_name: worker
+    environment:
+      - IEXEC_CORE_HOST=core
+      - IEXEC_CORE_PORT=18090
+      - IEXEC_WORKER_NAME=worker
+      - IEXEC_WORKER_WALLET_PATH=/iexec-wallets/encrypted-wallet_worker1.json
+      - IEXEC_WORKER_RESULT_BASE_DIR=/tmp/iexec-worker
+    ports:
+      - 18091:18091
+    volumes:
+      - ./src/main/resources/wallet/encrypted-wallet_worker1.json:/iexec-wallets/encrypted-wallet_worker1.json
+      - /tmp/iexec-worker/worker:/tmp/iexec-worker/worker
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: on-failure
+    networks:
+      - iexec-net
