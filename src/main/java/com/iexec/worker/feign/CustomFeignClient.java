@@ -107,19 +107,21 @@ public class CustomFeignClient {
     }
 
     public List<InterruptedReplicateModel> getInterruptedReplicates(long lastAvailableBlockNumber) {
+        List<InterruptedReplicateModel> interruptedReplicates = null;
+
         try {
-            return replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
+            interruptedReplicates = replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
-            if (e.status() == 0) {
-                log.error("Failed to getInterruptedReplicates, will retry [instance:{}]", coreURL);
-                sleep();
-                return getInterruptedReplicates(lastAvailableBlockNumber);
-            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (e.status() == HttpStatus.UNAUTHORIZED.value()) {
                 generateNewToken();
-                return getInterruptedReplicates(lastAvailableBlockNumber);
+                interruptedReplicates = replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
+            } else {
+                log.error("Failed to get interrupted replicates [instance:{}]", coreURL);
+                e.printStackTrace();
             }
         }
-        return null;
+
+        return interruptedReplicates != null ? interruptedReplicates : Collections.emptyList();
     }
 
     public List<String> getTasksInProgress() {
@@ -139,17 +141,21 @@ public class CustomFeignClient {
     }
 
     public Optional<ContributionAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
+        ContributionAuthorization contributionAuth = null;
+
         try {
-            return Optional.ofNullable(replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken()));
+            contributionAuth = replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
-            if (e.status() == 0) {
-                log.error("Failed to getAvailableReplicate [instance:{}]", coreURL);
-            } else if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (e.status() == HttpStatus.UNAUTHORIZED.value()) {
                 generateNewToken();
-                return Optional.of(replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken()));
+                contributionAuth = replicateClient.getAvailableReplicate(lastAvailableBlockNumber, getToken());
+            } else {
+                log.error("Failed to get an available replicate [instance:{}]", coreURL);
+                e.printStackTrace();
             }
         }
-        return Optional.empty();
+
+        return contributionAuth == null ? Optional.empty() : Optional.of(contributionAuth);
     }
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
