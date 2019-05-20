@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -107,7 +108,7 @@ public class CustomFeignClient {
     }
 
     public List<InterruptedReplicateModel> getInterruptedReplicates(long lastAvailableBlockNumber) {
-        List<InterruptedReplicateModel> interruptedReplicates = null;
+        List<InterruptedReplicateModel> interruptedReplicates = new ArrayList<>();
 
         try {
             interruptedReplicates = replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
@@ -121,7 +122,7 @@ public class CustomFeignClient {
             }
         }
 
-        return interruptedReplicates != null ? interruptedReplicates : Collections.emptyList();
+        return interruptedReplicates;
     }
 
     public List<String> getTasksInProgress() {
