@@ -57,7 +57,7 @@ public class AmnesiaRecoveryService {
         List<String> recoveredChainTaskIds = new ArrayList<>();
 
         if (interruptedReplicates == null || interruptedReplicates.isEmpty()) {
-            log.info("no interrupted tasks to recover");
+            log.info("No interrupted tasks to recover");
             return Collections.emptyList();
         }
 
