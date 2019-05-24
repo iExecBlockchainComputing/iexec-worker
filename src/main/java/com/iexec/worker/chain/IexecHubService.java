@@ -204,28 +204,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return false;
     }
 
-    boolean isChainTaskActiveWhenNodeNotSync(String chainTaskId) {
-        boolean isChainTaskStatusActive = isBlockchainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskActive);
-        if (!isChainTaskStatusActive){
-            log.error("ChainTask status is still not in 'active' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
-        }
-        return isChainTaskStatusActive;
-    }
-
-    boolean isChainTaskRevealingWhenNodeNotSync(String chainTaskId, long consensusReachedBlockNumber) {
-        boolean isChainTaskStatusRevealing = false;
-
-        if (web3jService.isBlockAvailable(consensusReachedBlockNumber)) {
-            isChainTaskStatusRevealing = isChainTaskRevealing(chainTaskId);
-        }
-
-        if (!isChainTaskStatusRevealing){
-            log.error("ChainTask status is still not in 'revealing' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
-        }
-        return isChainTaskStatusRevealing;
-    }
-
-    private Boolean isChainTaskActive(String chainTaskId){
+    Boolean isChainTaskActive(String chainTaskId){
         Optional<ChainTask> chainTask = getChainTask(chainTaskId);
         if (chainTask.isPresent()){
             switch (chainTask.get().getStatus()){
@@ -244,7 +223,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return false;
     }
 
-    private Boolean isChainTaskRevealing(String chainTaskId){
+    public Boolean isChainTaskRevealing(String chainTaskId){
         Optional<ChainTask> chainTask = getChainTask(chainTaskId);
         if (chainTask.isPresent()){
             switch (chainTask.get().getStatus()){

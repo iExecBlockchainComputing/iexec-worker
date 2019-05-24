@@ -3,7 +3,6 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
-import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.result.ResultService;
@@ -71,9 +70,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isTrue();
+        assertThat(revealService.canReveal(chainTaskId)).isTrue();
     }
 
     @Test
@@ -102,9 +101,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(false);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(false);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -133,9 +132,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -164,9 +163,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -195,9 +194,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -226,9 +225,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -255,9 +254,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(deterministHash);
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -265,7 +264,7 @@ public class RevealServiceTests {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -281,10 +280,10 @@ public class RevealServiceTests {
                         .build());
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(Optional.empty());
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
@@ -313,9 +312,9 @@ public class RevealServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
         when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn("");
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId, 1)).thenReturn(true);
+        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
-        assertThat(revealService.canReveal(chainTaskId, 1)).isFalse();
+        assertThat(revealService.canReveal(chainTaskId)).isFalse();
     }
 
     @Test
