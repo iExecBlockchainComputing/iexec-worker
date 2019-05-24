@@ -249,7 +249,7 @@ public class TaskExecutorService {
     @Async
     public void reveal(String chainTaskId, long consensusBlock) {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
-        if (web3jService.isBlockAvailable(consensusBlock)) {
+        if (!web3jService.isBlockAvailable(consensusBlock)) {
             log.warn("Sync issues before canReveal (latestBlock before consensusBlock) [chainTaskId:{}, latestBlock:{}, " +
                     "consensusBlock:{}]", chainTaskId, web3jService.getLatestBlockNumber(), consensusBlock);
             return;
