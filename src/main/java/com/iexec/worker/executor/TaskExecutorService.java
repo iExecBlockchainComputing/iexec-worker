@@ -244,9 +244,9 @@ public class TaskExecutorService {
     }
 
     @Async
-    public void reveal(String chainTaskId) {
+    public void reveal(String chainTaskId, long consensusReachedBlockNumber) {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
-        if (!revealService.canReveal(chainTaskId)) {
+        if (!revealService.canReveal(chainTaskId, consensusReachedBlockNumber)) {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
             return;

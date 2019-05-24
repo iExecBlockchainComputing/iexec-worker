@@ -191,7 +191,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     break;
 
                 case PLEASE_REVEAL:
-                    taskExecutorService.reveal(chainTaskId);
+                    taskExecutorService.reveal(chainTaskId, notif.getBlockNumber());
                     break;
 
                 case PLEASE_UPLOAD:

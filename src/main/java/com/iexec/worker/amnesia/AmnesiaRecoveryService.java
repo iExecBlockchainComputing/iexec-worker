@@ -178,7 +178,7 @@ public class AmnesiaRecoveryService {
         }
 
         resultService.saveResultInfo(chainTaskId, replicateModel);
-        taskExecutorService.reveal(chainTaskId);
+        taskExecutorService.reveal(chainTaskId, iexecHubService.getLatestBlockNumber());
         return true;
     }
 
