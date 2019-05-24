@@ -204,16 +204,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return false;
     }
 
-    boolean isChainTaskActiveWhenNodeNotSync(String chainTaskId) {
-        boolean isChainTaskStatusActive = isBlockchainReadTrueWhenNodeNotSync(chainTaskId, this::isChainTaskActive);
-        if (!isChainTaskStatusActive){
-            log.error("ChainTask status is still not in 'active' stage after maxWaitingTime [chainTaskId:{}]", chainTaskId);
-        }
-        return isChainTaskStatusActive;
-    }
-
-
-    private Boolean isChainTaskActive(String chainTaskId){
+    Boolean isChainTaskActive(String chainTaskId){
         Optional<ChainTask> chainTask = getChainTask(chainTaskId);
         if (chainTask.isPresent()){
             switch (chainTask.get().getStatus()){

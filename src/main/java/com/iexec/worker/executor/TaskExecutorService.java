@@ -206,6 +206,15 @@ public class TaskExecutorService {
             enclaveSignature = contributionService.getEnclaveSignature(contribAuth, deterministHash, oEnclaveSignature.get());
         }
 
+        /* TODO: add coreLatestBlock in contribAuth
+        long coreLatestBlock = contribAuth.getCoreLastBlock();
+        if (web3jService.isBlockAvailable(coreLatestBlock)) {
+            log.warn("Sync issues before canContribute (workerLatestBlock before coreLatestBlock) [chainTaskId:{}, workerLatestBlock:{}, " +
+                    "coreLatestBlock:{}]", chainTaskId, web3jService.getLatestBlockNumber(), coreLatestBlock);
+            return;
+        }
+        */
+
         Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
         if (!canContributeStatus.isPresent()) {
             log.error("canContributeStatus should not be empty (getChainTask issue) [chainTaskId:{}]", chainTaskId);
