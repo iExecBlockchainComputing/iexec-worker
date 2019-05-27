@@ -30,15 +30,17 @@ public class RevealService {
 
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
+            log.error("Task couldn't be retrieved [chainTaskId:{}]", chainTaskId);
             return false;
         }
         ChainTask chainTask = optionalChainTask.get();
 
-        boolean isChainTaskRevealing = iexecHubService.isChainTaskRevealingWhenNodeNotSync(chainTaskId);
+        boolean isChainTaskRevealing = iexecHubService.isChainTaskRevealing(chainTaskId);
         boolean isRevealDeadlineReached = chainTask.getRevealDeadline() < new Date().getTime();
 
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
         if (!optionalContribution.isPresent()) {
+            log.error("Contribution couldn't be retrieved [chainTaskId:{}]", chainTaskId);
             return false;
         }
         ChainContribution chainContribution = optionalContribution.get();
@@ -65,7 +67,7 @@ public class RevealService {
             log.info("All the conditions are valid for the reveal to happen [chainTaskId:{}]", chainTaskId);
         } else {
             log.warn("One or more conditions are not met for the reveal to happen [chainTaskId:{}, " +
-                            "isChainTaskRevealingWhenNodeNotSync:{}, isRevealDeadlineReached:{}, " +
+                            "isChainTaskRevealing:{}, isRevealDeadlineReached:{}, " +
                             "isChainContributionStatusContributed:{}, isContributionResultHashConsensusValue:{}, " +
                             "isContributionResultHashCorrect:{}, isContributionResultSealCorrect:{}]", chainTaskId,
                     isChainTaskRevealing, isRevealDeadlineReached,

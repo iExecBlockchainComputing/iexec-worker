@@ -161,7 +161,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(taskExecutorService, Mockito.times(0))
-                .reveal(CHAIN_TASK_ID);
+                .reveal(CHAIN_TASK_ID, blockNumber);
     }
 
     @Test
@@ -179,7 +179,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
 
         Mockito.verify(taskExecutorService, Mockito.times(1))
-                .reveal(CHAIN_TASK_ID);
+                .reveal(CHAIN_TASK_ID, blockNumber);
     }
 
     @Test

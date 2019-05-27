@@ -122,7 +122,7 @@ public class AmnesiaRecoveryService {
             case REVEAL:
                 subscriptionService.subscribeToTopic(chainTaskId);
                 resultService.saveResultInfo(chainTaskId, replicateModel);
-                taskExecutorService.reveal(chainTaskId);
+                taskExecutorService.reveal(chainTaskId, iexecHubService.getLatestBlockNumber());
                 break;
 
             case UPLOAD_RESULT:

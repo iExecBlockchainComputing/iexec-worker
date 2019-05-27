@@ -12,6 +12,7 @@ import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.chain.Web3jService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
@@ -51,6 +52,7 @@ public class TaskExecutorService {
     private WorkerConfigurationService workerConfigurationService;
     private IexecHubService iexecHubService;
     private SmsService smsService;
+    private Web3jService web3jService;
 
     // internal variables
     private int maxNbExecutions;
@@ -64,17 +66,18 @@ public class TaskExecutorService {
                                RevealService revealService,
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
-                               SmsService smsService) {
+                               SmsService smsService,
+                               Web3jService web3jService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
         this.revealService = revealService;
-        this.customFeignClient = customFeignClient;
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
+        this.web3jService = web3jService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
@@ -244,8 +247,14 @@ public class TaskExecutorService {
     }
 
     @Async
-    public void reveal(String chainTaskId) {
+    public void reveal(String chainTaskId, long consensusBlock) {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
+        if (!web3jService.isBlockAvailable(consensusBlock)) {
+            log.warn("Sync issues before canReveal (latestBlock before consensusBlock) [chainTaskId:{}, latestBlock:{}, " +
+                    "consensusBlock:{}]", chainTaskId, web3jService.getLatestBlockNumber(), consensusBlock);
+            return;
+        }
+
         if (!revealService.canReveal(chainTaskId)) {
             log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
