@@ -185,12 +185,10 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             switch (type) {
                 case PLEASE_CONTRIBUTE:
                     ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
-                    Optional<AvailableReplicateModel> replicateModel =
-                            replicateService.contributionAuthToReplicate(contribAuth);
-                    if (replicateModel.isPresent()){
-                        taskExecutorService.tryToContribute(contribAuth, replicateModel.get());
+                    if (contribAuth != null){
+                        taskExecutorService.tryToContribute(contribAuth);
                     } else {
-                        log.error("Empty AvailableReplicateModel for PLEASE_CONTRIBUTE[chainTaskId:{}]", chainTaskId);
+                        log.error("Empty contribAuth for PLEASE_CONTRIBUTE [chainTaskId:{}]", chainTaskId);
                     }
                     break;
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
