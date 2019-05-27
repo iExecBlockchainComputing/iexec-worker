@@ -52,7 +52,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldNotRecoverSinceNothingToRecover() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.emptyList());
 
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
@@ -66,7 +66,7 @@ public class AmnesiaRecoveryServiceTests {
         when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.WAIT));
 
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
@@ -78,7 +78,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldRecoverByComputingAgainWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.CONTRIBUTE));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
@@ -96,7 +96,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldRecoverByContributingWhenResultFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.CONTRIBUTE));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
@@ -114,7 +114,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldAbortSinceConsensusReached() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.ABORT_CONSENSUS_REACHED));
         when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -132,7 +132,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldAbortSinceContributionTimeout() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.ABORT_CONTRIBUTION_TIMEOUT));
         when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
@@ -150,7 +150,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldNotRecoverByRevealingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.REVEAL));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
@@ -167,7 +167,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldRecoverByRevealingWhenResultFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.REVEAL));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
@@ -185,7 +185,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldNotRecoverByUploadingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.UPLOAD_RESULT));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
@@ -202,7 +202,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldRecoverByUploadingWhenResultFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.UPLOAD_RESULT));
         when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
                 .thenReturn(getStubModel());
@@ -220,7 +220,7 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldCompleteTask() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getInterruptedReplicates(blockNumber))
+        when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.COMPLETE));
 
         when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);

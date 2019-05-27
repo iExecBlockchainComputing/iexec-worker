@@ -1,8 +1,12 @@
 package com.iexec.worker.replicate;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.notification.TaskNotificationExtra;
+import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
@@ -73,13 +77,15 @@ public class ReplicateDemandService {
             return;
         }
 
-        Optional<AvailableReplicateModel> oReplicateModel =
-                replicateService.contributionAuthToReplicate(contributionAuth);
-
-        if (!oReplicateModel.isPresent()) return;
-
         subscriptionService.subscribeToTopic(chainTaskId);
-        
-        taskExecutorService.addReplicate(oReplicateModel.get());
+
+        TaskNotification taskNotification = TaskNotification.builder()
+                .chainTaskId(chainTaskId)
+                .workersAddress(Collections.emptyList())
+                .taskNotificationType(TaskNotificationType.PLEASE_CONTRIBUTE)
+                .taskNotificationExtra(TaskNotificationExtra.builder().contributionAuthorization(contributionAuth).build())
+                .build();
+
+        subscriptionService.handleTaskNotification(taskNotification);
     }
 }

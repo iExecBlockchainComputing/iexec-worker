@@ -349,4 +349,16 @@ public class ResultService {
 
         return resultRepoService.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
     }
+
+
+    public boolean isResultAvailable(String chainTaskId) {
+        boolean isResultZipFound = isResultZipFound(chainTaskId);
+        boolean isResultFolderFound = isResultFolderFound(chainTaskId);
+
+        if (!isResultZipFound && !isResultFolderFound) return false;
+
+        if (!isResultZipFound) zipResultFolder(chainTaskId);
+
+        return true;
+    }
 }

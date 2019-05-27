@@ -1,10 +1,13 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.executor.TaskExecutorService;
+import com.iexec.worker.replicate.ReplicateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
@@ -24,10 +27,7 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -39,6 +39,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private final int corePort;
     private final String workerWalletAddress;
     private RestTemplate restTemplate;
+    private ReplicateService replicateService;
     // external services
     private TaskExecutorService taskExecutorService;
 
@@ -51,13 +52,15 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
                                TaskExecutorService taskExecutorService,
-                               RestTemplate restTemplate) {
+                               RestTemplate restTemplate,
+                               ReplicateService replicateService) {
         this.taskExecutorService = taskExecutorService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.restTemplate = restTemplate;
+        this.replicateService = replicateService;
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
         url = "http://" + coreHost + ":" + corePort + "/connect";
@@ -180,18 +183,27 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             String chainTaskId = notif.getChainTaskId();
 
             switch (type) {
+                case PLEASE_CONTRIBUTE:
+                    ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
+                    Optional<AvailableReplicateModel> replicateModel =
+                            replicateService.contributionAuthToReplicate(contribAuth);
+                    if (replicateModel.isPresent()){
+                        taskExecutorService.tryToContribute(contribAuth, replicateModel.get());
+                    } else {
+                        log.error("Empty AvailableReplicateModel for PLEASE_CONTRIBUTE[chainTaskId:{}]", chainTaskId);
+                    }
+                    break;
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortContributionTimeout(chainTaskId);
                     break;
-
                 case PLEASE_ABORT_CONSENSUS_REACHED:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortConsensusReached(chainTaskId);
                     break;
 
                 case PLEASE_REVEAL:
-                    taskExecutorService.reveal(chainTaskId, notif.getBlockNumber());
+                    taskExecutorService.reveal(chainTaskId, notif.getTaskNotificationExtra().getBlockNumber());
                     break;
 
                 case PLEASE_UPLOAD:
@@ -208,6 +220,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             }
         }
     }
+
+
+
 
     private String getTaskTopicName(String chainTaskId) {
         return "/topic/task/" + chainTaskId;

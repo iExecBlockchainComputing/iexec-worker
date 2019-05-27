@@ -3,14 +3,13 @@ package com.iexec.worker.feign;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
-import com.iexec.common.disconnection.InterruptedReplicateModel;
+import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
-
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -107,15 +106,15 @@ public class CustomFeignClient {
         }
     }
 
-    public List<InterruptedReplicateModel> getInterruptedReplicates(long lastAvailableBlockNumber) {
-        List<InterruptedReplicateModel> interruptedReplicates = new ArrayList<>();
+    public List<TaskNotification> getMissedTaskNotifications(long lastAvailableBlockNumber) {
+        List<TaskNotification> interruptedReplicates = new ArrayList<>();
 
         try {
-            interruptedReplicates = replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
+            interruptedReplicates = replicateClient.getMissedTaskNotifications(lastAvailableBlockNumber, getToken());
         } catch (FeignException e) {
             if (e.status() == HttpStatus.UNAUTHORIZED.value()) {
                 generateNewToken();
-                interruptedReplicates = replicateClient.getInterruptedReplicates(lastAvailableBlockNumber, getToken());
+                interruptedReplicates = replicateClient.getMissedTaskNotifications(lastAvailableBlockNumber, getToken());
             } else {
                 log.error("Failed to get interrupted replicates [instance:{}]", coreURL);
                 e.printStackTrace();

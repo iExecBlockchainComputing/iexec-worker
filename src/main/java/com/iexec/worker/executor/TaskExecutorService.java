@@ -104,6 +104,22 @@ public class TaskExecutorService {
                 });
     }
 
+
+    public void tryToContribute(ContributionAuthorization contributionAuth,
+                                AvailableReplicateModel replicateModel) {
+
+        String chainTaskId = contributionAuth.getChainTaskId();
+        boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
+
+        if (!isResultAvailable) {
+            log.info("Result not found, will restart task from RUNNING [chainTaskId:{}]", chainTaskId);
+            addReplicate(replicateModel);
+        } else {
+            log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
+            contribute(contributionAuth);
+        }
+    }
+
     @Async
     private String compute(AvailableReplicateModel replicateModel) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
