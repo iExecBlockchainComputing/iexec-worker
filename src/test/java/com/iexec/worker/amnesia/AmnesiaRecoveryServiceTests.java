@@ -63,9 +63,12 @@ public class AmnesiaRecoveryServiceTests {
     @Test
     public void shouldRecoverByWaiting() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
+        when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
+                .thenReturn(getStubModel());
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.WAIT));
-        
+
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isNotEmpty();
@@ -113,6 +116,9 @@ public class AmnesiaRecoveryServiceTests {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.ABORT_CONSENSUS_REACHED));
+        when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
+        when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
+                .thenReturn(getStubModel());
         
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
 
@@ -127,9 +133,11 @@ public class AmnesiaRecoveryServiceTests {
     public void shouldAbortSinceContributionTimeout() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
-                .thenReturn(getStubInterruptedReplicateList(
-                        RecoveryAction.ABORT_CONTRIBUTION_TIMEOUT));
-        
+                .thenReturn(getStubInterruptedReplicateList(RecoveryAction.ABORT_CONTRIBUTION_TIMEOUT));
+        when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
+        when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
+                .thenReturn(getStubModel());
+
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isNotEmpty();
@@ -214,7 +222,11 @@ public class AmnesiaRecoveryServiceTests {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customFeignClient.getInterruptedReplicates(blockNumber))
                 .thenReturn(getStubInterruptedReplicateList(RecoveryAction.COMPLETE));
-        
+
+        when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
+        when(replicateService.retrieveAvailableReplicateModelFromContribAuth(any()))
+                .thenReturn(getStubModel());        
+
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isNotEmpty();
