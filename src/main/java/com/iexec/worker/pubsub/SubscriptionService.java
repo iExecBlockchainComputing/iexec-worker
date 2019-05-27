@@ -171,7 +171,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
-    private void handleTaskNotification(TaskNotification notif) {
+    public void handleTaskNotification(TaskNotification notif) {
         if (notif.getWorkersAddress().contains(workerWalletAddress)
                 || notif.getWorkersAddress().isEmpty()) {
             log.info("Received notification [notification:{}]", notif);
@@ -198,7 +198,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     taskExecutorService.uploadResult(chainTaskId);
                     break;
 
-                case COMPLETED:
+                case PLEASE_COMPLETE:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.completeTask(chainTaskId);
                     break;

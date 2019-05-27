@@ -1,27 +1,26 @@
 package com.iexec.worker.amnesia;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.disconnection.InterruptedReplicateModel;
-import com.iexec.common.disconnection.RecoveryAction;
+import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateService;
 import com.iexec.worker.result.ResultService;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 
-/* 
+/*
  * This service is used to remind the worker of possible interrupted works
  * after a restart and how to deal with each interruption
  */
@@ -64,16 +63,16 @@ public class AmnesiaRecoveryService {
         for (InterruptedReplicateModel interruptedReplicate : interruptedReplicates) {
 
             ContributionAuthorization contributionAuth = interruptedReplicate.getContributionAuthorization();
-            RecoveryAction recoveryAction = interruptedReplicate.getRecoveryAction();
+            TaskNotificationType taskNotificationType = interruptedReplicate.getTaskNotificationType();
             String chainTaskId = contributionAuth.getChainTaskId();
             boolean isResultAvailable = isResultAvailable(chainTaskId);
 
-            log.info("Recovering interrupted task [chainTaskId:{}, recoveryAction:{}]",
-                    chainTaskId, recoveryAction);
+            log.info("Recovering interrupted task [chainTaskId:{}, taskNotificationType:{}]",
+                    chainTaskId, taskNotificationType);
 
-            if (!isResultAvailable && recoveryAction != RecoveryAction.CONTRIBUTE) {
+            if (!isResultAvailable && taskNotificationType != TaskNotificationType.PLEASE_CONTRIBUTE) {
                 log.error("Could not recover task, result not found [chainTaskId:{}, RecoveryAction:{}]",
-                        chainTaskId, recoveryAction);
+                        chainTaskId, taskNotificationType);
                 continue;
             }
 
@@ -82,7 +81,7 @@ public class AmnesiaRecoveryService {
 
             if (!oReplicateModel.isPresent()) {
                 log.error("Could not recover task, no replicateModel retrieved [chainTaskId:{}, RecoveryAction:{}]",
-                        chainTaskId, recoveryAction);
+                        chainTaskId, taskNotificationType);
                 continue;
             }
 
@@ -100,44 +99,56 @@ public class AmnesiaRecoveryService {
         ContributionAuthorization contributionAuth = interruptedReplicate.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
 
-        switch (interruptedReplicate.getRecoveryAction()) {
-            case WAIT:
-                subscriptionService.subscribeToTopic(chainTaskId);
-                resultService.saveResultInfo(chainTaskId, replicateModel);
-                break;
+        subscriptionService.subscribeToTopic(chainTaskId);
+        resultService.saveResultInfo(chainTaskId, replicateModel);
 
-            case CONTRIBUTE:
-                subscriptionService.subscribeToTopic(chainTaskId);
+        TaskNotification taskNotification = null;
+
+        switch (interruptedReplicate.getTaskNotificationType()) {
+            case PLEASE_CONTRIBUTE:
                 recoverReplicateByContributing(contributionAuth, replicateModel);
                 break;
-
-            case ABORT_CONSENSUS_REACHED:
-                taskExecutorService.abortConsensusReached(chainTaskId);
+            case PLEASE_ABORT_CONSENSUS_REACHED:
+                taskNotification = TaskNotification.builder()
+                        .chainTaskId(chainTaskId)
+                        .taskNotificationType(TaskNotificationType.PLEASE_ABORT_CONSENSUS_REACHED)
+                        .build();
+                break;
+            case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
+                taskNotification = TaskNotification.builder()
+                        .chainTaskId(chainTaskId)
+                        .taskNotificationType(TaskNotificationType.PLEASE_ABORT_CONTRIBUTION_TIMEOUT)
+                        .build();
                 break;
 
-            case ABORT_CONTRIBUTION_TIMEOUT:
-                taskExecutorService.abortContributionTimeout(chainTaskId);
+            case PLEASE_REVEAL:
+                taskNotification = TaskNotification.builder()
+                        .chainTaskId(chainTaskId)
+                        .taskNotificationType(TaskNotificationType.PLEASE_REVEAL)
+                        .blockNumber(iexecHubService.getLatestBlockNumber())
+                        .build();
                 break;
-
-            case REVEAL:
-                subscriptionService.subscribeToTopic(chainTaskId);
-                resultService.saveResultInfo(chainTaskId, replicateModel);
-                taskExecutorService.reveal(chainTaskId, iexecHubService.getLatestBlockNumber());
+            case PLEASE_UPLOAD:
+                taskNotification = TaskNotification.builder()
+                        .chainTaskId(chainTaskId)
+                        .taskNotificationType(TaskNotificationType.PLEASE_UPLOAD)
+                        .build();
                 break;
-
-            case UPLOAD_RESULT:
-                subscriptionService.subscribeToTopic(chainTaskId);
-                resultService.saveResultInfo(chainTaskId, replicateModel);
-                taskExecutorService.uploadResult(chainTaskId);
+            case PLEASE_COMPLETE:
+                taskNotification = TaskNotification.builder()
+                        .chainTaskId(chainTaskId)
+                        .taskNotificationType(TaskNotificationType.PLEASE_COMPLETE)
+                        .build();
                 break;
-
-            case COMPLETE:
-                taskExecutorService.completeTask(chainTaskId);
-                break;
-
             default:
                 break;
         }
+
+        if (taskNotification != null) {
+            subscriptionService.handleTaskNotification(taskNotification);
+        }
+
+
     }
 
     private boolean isResultAvailable(String chainTaskId) {
