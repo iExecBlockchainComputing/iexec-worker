@@ -8,9 +8,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import com.iexec.worker.replicate.ReplicateService;
 import com.iexec.worker.result.ResultService;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -18,21 +16,20 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
-import static org.assertj.core.api.Java6Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import static org.assertj.core.api.Java6Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 
 public class AmnesiaRecoveryServiceTests {
 
     @Mock private CustomFeignClient customFeignClient;
     @Mock private SubscriptionService subscriptionService;
-    @Mock private ReplicateService replicateService;
     @Mock private ResultService resultService;
     @Mock private TaskExecutorService taskExecutorService;
     @Mock private IexecHubService iexecHubService;

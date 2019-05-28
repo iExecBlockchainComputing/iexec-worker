@@ -3,11 +3,9 @@ package com.iexec.worker.pubsub;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.executor.TaskExecutorService;
-import com.iexec.worker.replicate.ReplicateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
@@ -27,7 +25,10 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -39,7 +40,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private final int corePort;
     private final String workerWalletAddress;
     private RestTemplate restTemplate;
-    private ReplicateService replicateService;
     // external services
     private TaskExecutorService taskExecutorService;
 
@@ -52,15 +52,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
                                TaskExecutorService taskExecutorService,
-                               RestTemplate restTemplate,
-                               ReplicateService replicateService) {
+                               RestTemplate restTemplate) {
         this.taskExecutorService = taskExecutorService;
 
         this.coreHost = coreConfigurationService.getHost();
         this.corePort = coreConfigurationService.getPort();
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.restTemplate = restTemplate;
-        this.replicateService = replicateService;
 
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
         url = "http://" + coreHost + ":" + corePort + "/connect";

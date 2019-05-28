@@ -3,12 +3,10 @@ package com.iexec.worker.amnesia;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import com.iexec.worker.replicate.ReplicateService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,22 +27,16 @@ public class AmnesiaRecoveryService {
 
     private CustomFeignClient customFeignClient;
     private SubscriptionService subscriptionService;
-    private ReplicateService replicateService;
     private ResultService resultService;
-    private TaskExecutorService taskExecutorService;
     private IexecHubService iexecHubService;
 
     public AmnesiaRecoveryService(CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
-                                  ReplicateService replicateService,
                                   ResultService resultService,
-                                  TaskExecutorService taskExecutorService,
                                   IexecHubService iexecHubService) {
         this.customFeignClient = customFeignClient;
         this.subscriptionService = subscriptionService;
-        this.replicateService = replicateService;
         this.resultService = resultService;
-        this.taskExecutorService = taskExecutorService;
         this.iexecHubService = iexecHubService;
     }
 
@@ -75,29 +67,28 @@ public class AmnesiaRecoveryService {
                 continue;
             }
 
-            Optional<AvailableReplicateModel> oReplicateModel =
-                    replicateService.retrieveAvailableReplicateModelFromContribAuth(contributionAuth);
+            Optional<TaskDescription> optionalTaskDescription = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
-            if (!oReplicateModel.isPresent()) {
+            if (!optionalTaskDescription.isPresent()) {
                 log.error("Could not recover task, no replicateModel retrieved [chainTaskId:{}, RecoveryAction:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
             }
 
-            AvailableReplicateModel replicateModel = oReplicateModel.get();
-            recoverReplicate(missedTaskNotification, replicateModel);
+            TaskDescription taskDescription = optionalTaskDescription.get();
+            recoverTask(missedTaskNotification, taskDescription);
             recoveredChainTaskIds.add(chainTaskId);
         }
 
         return recoveredChainTaskIds;
     }
 
-    public void recoverReplicate(TaskNotification taskNotification,
-                                 AvailableReplicateModel replicateModel) {
+    public void recoverTask(TaskNotification taskNotification,
+                            TaskDescription taskDescription) {
         String chainTaskId = taskNotification.getChainTaskId();
 
         subscriptionService.subscribeToTopic(chainTaskId);
-        resultService.saveResultInfo(chainTaskId, replicateModel);
+        resultService.saveResultInfo(chainTaskId, taskDescription);
         subscriptionService.handleTaskNotification(taskNotification);
     }
 

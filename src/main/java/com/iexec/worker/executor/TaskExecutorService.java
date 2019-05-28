@@ -3,10 +3,10 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
@@ -17,13 +17,10 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
-import com.iexec.worker.replicate.ReplicateService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.LoggingUtils;
-
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -54,11 +51,11 @@ public class TaskExecutorService {
     private IexecHubService iexecHubService;
     private SmsService smsService;
     private Web3jService web3jService;
-    private ReplicateService replicateService;
 
     // internal variables
     private int maxNbExecutions;
     private ThreadPoolExecutor executor;
+    private String corePublicAddress;
 
     public TaskExecutorService(DatasetService datasetService,
                                DockerComputationService dockerComputationService,
@@ -69,8 +66,7 @@ public class TaskExecutorService {
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
                                SmsService smsService,
-                               Web3jService web3jService,
-                               ReplicateService replicateService) {
+                               Web3jService web3jService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -81,10 +77,10 @@ public class TaskExecutorService {
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
         this.web3jService = web3jService;
-        this.replicateService = replicateService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
+        corePublicAddress = customFeignClient.getPublicConfiguration().getSchedulerPublicAddress();
     }
 
     public boolean canAcceptMoreReplicates() {
@@ -95,11 +91,10 @@ public class TaskExecutorService {
 
         String chainTaskId = contributionAuth.getChainTaskId();
 
-        Optional<AvailableReplicateModel> replicateModel =
-                replicateService.contributionAuthToReplicate(contributionAuth);
+        Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         return CompletableFuture.supplyAsync(() -> compute(contributionAuth), executor)
-                .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel.get(), stdout))
+                .thenApply(stdout -> resultService.saveResult(chainTaskId, taskDescriptionFromChain.get(), stdout))
                 .thenAccept(isSaved -> {
                     if (isSaved) contribute(contributionAuth);
                 })
@@ -115,6 +110,13 @@ public class TaskExecutorService {
     public void tryToContribute(ContributionAuthorization contributionAuth) {
 
         String chainTaskId = contributionAuth.getChainTaskId();
+
+        if (!contributionService.isContributionAuthorizationValid(contributionAuth, corePublicAddress)) {
+            log.error("The contribution contribAuth is NOT valid, the task will not be performed"
+                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contributionAuth);
+            return;
+        }
+
         boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
 
         if (!isResultAvailable) {
@@ -142,20 +144,19 @@ public class TaskExecutorService {
             throw new UnsupportedOperationException("Task needs TEE, I don't support it");
         }
 
-        Optional<AvailableReplicateModel> optionalAvailableReplicateModel =
-                replicateService.contributionAuthToReplicate(contributionAuth);
+        Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
-        if (!optionalAvailableReplicateModel.isPresent()){
+        if (!taskDescriptionFromChain.isPresent()){
             stdout = "AvailableReplicateModel not found";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
 
-        AvailableReplicateModel availableReplicateModel = optionalAvailableReplicateModel.get();
+        TaskDescription taskDescription = taskDescriptionFromChain.get();
 
         // check app type
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
-        if (!availableReplicateModel.getAppType().equals(DappType.DOCKER)) {
+        if (!taskDescription.getAppType().equals(DappType.DOCKER)) {
             stdout = "Application is not of type Docker";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
@@ -163,10 +164,10 @@ public class TaskExecutorService {
 
         // pull app
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, availableReplicateModel.getAppUri());
+        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, taskDescription.getAppUri());
         if (!isAppDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-            stdout = "Failed to pull application image, URI:" + availableReplicateModel.getAppUri();
+            stdout = "Failed to pull application image, URI:" + taskDescription.getAppUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
@@ -175,10 +176,10 @@ public class TaskExecutorService {
 
         // pull data
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, availableReplicateModel.getDatasetUri());
+        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
         if (!isDatasetDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            stdout = "Failed to pull dataset, URI:" + availableReplicateModel.getDatasetUri();
+            stdout = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
@@ -197,19 +198,19 @@ public class TaskExecutorService {
         boolean isDatasetDecrypted = false;
 
         if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, availableReplicateModel.getDatasetUri());
+            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to decrypt dataset, URI:" + availableReplicateModel.getDatasetUri();
+            stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
 
         // compute
-        String datasetFilename = datasetService.getDatasetFilename(availableReplicateModel.getDatasetUri());
-        stdout = dockerComputationService.dockerRunAndGetLogs(availableReplicateModel, datasetFilename);
+        String datasetFilename = datasetService.getDatasetFilename(taskDescription.getDatasetUri());
+        stdout = dockerComputationService.dockerRunAndGetLogs(taskDescription, datasetFilename);
 
         if (stdout.isEmpty()) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);

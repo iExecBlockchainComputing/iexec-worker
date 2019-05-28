@@ -1,11 +1,11 @@
 package com.iexec.worker.result;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.security.Signature;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -13,7 +13,6 @@ import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
@@ -62,11 +61,11 @@ public class ResultService {
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
-    public boolean saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
+    public boolean saveResult(String chainTaskId, TaskDescription taskDescription, String stdout) {
         try {
             saveStdoutFileInResultFolder(chainTaskId, stdout);
             zipResultFolder(chainTaskId);
-            saveResultInfo(chainTaskId, replicateModel);
+            saveResultInfo(chainTaskId, taskDescription);
             return true;
         } catch (Exception e) {
             return false;
@@ -84,12 +83,12 @@ public class ResultService {
         log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
     }
 
-    public void saveResultInfo(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
         ResultInfo resultInfo = ResultInfo.builder()
-                .image(replicateModel.getAppUri())
-                .cmd(replicateModel.getCmd())
+                .image(taskDescription.getAppUri())
+                .cmd(taskDescription.getCmd())
                 .deterministHash(getDeterministHashForTask(chainTaskId))
-                .datasetUri(replicateModel.getDatasetUri())
+                .datasetUri(taskDescription.getDatasetUri())
                 .build();
 
         resultInfoMap.put(chainTaskId, resultInfo);
