@@ -28,6 +28,10 @@ public class DockerComputationService {
         this.configurationService = configurationService;
     }
 
+    public boolean dockerPull(String chainTaskId, String image) {
+        return dockerClient.pullImage(chainTaskId, image);
+    }
+
     public String dockerRunAndGetLogs(AvailableReplicateModel replicateModel, String datasetFilename) {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
         String image = replicateModel.getAppUri();
