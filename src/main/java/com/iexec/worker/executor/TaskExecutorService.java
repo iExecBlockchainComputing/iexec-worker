@@ -143,12 +143,6 @@ public class TaskExecutorService {
             throw new IllegalArgumentException("Task not initialized onchain yet");
         }
 
-        // if (TeeEnabled && no Tee supported) => return;
-        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
-        if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
-            throw new UnsupportedOperationException("Task needs TEE, I don't support it");
-        }
-
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         if (!taskDescriptionFromChain.isPresent()){
@@ -158,6 +152,12 @@ public class TaskExecutorService {
         }
 
         TaskDescription taskDescription = taskDescriptionFromChain.get();
+
+        // if (TeeEnabled && no Tee supported) => return;
+        boolean doesTaskNeedTee = taskDescription.isTrustedExecution();
+        if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
+            throw new UnsupportedOperationException("Task needs TEE, I don't support it");
+        }
 
         // check app type
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
