@@ -76,20 +76,14 @@ public class AmnesiaRecoveryService {
             }
 
             TaskDescription taskDescription = optionalTaskDescription.get();
-            recoverTask(missedTaskNotification, taskDescription);
+
+            subscriptionService.subscribeToTopic(chainTaskId);
+            resultService.saveResultInfo(chainTaskId, taskDescription);
+            subscriptionService.handleTaskNotification(missedTaskNotification);
+
             recoveredChainTaskIds.add(chainTaskId);
         }
 
         return recoveredChainTaskIds;
     }
-
-    public void recoverTask(TaskNotification taskNotification,
-                            TaskDescription taskDescription) {
-        String chainTaskId = taskNotification.getChainTaskId();
-
-        subscriptionService.subscribeToTopic(chainTaskId);
-        resultService.saveResultInfo(chainTaskId, taskDescription);
-        subscriptionService.handleTaskNotification(taskNotification);
-    }
-
 }

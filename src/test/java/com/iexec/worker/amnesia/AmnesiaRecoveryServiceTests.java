@@ -31,13 +31,11 @@ public class AmnesiaRecoveryServiceTests {
     @Mock
     private CustomFeignClient customFeignClient;
     @Mock
-    private SubscriptionService subscriptionService;
-    @Mock
     private ResultService resultService;
     @Mock
-    private TaskExecutorService taskExecutorService;
-    @Mock
     private IexecHubService iexecHubService;
+    @Mock
+    private SubscriptionService subscriptionService;
 
     @InjectMocks
     AmnesiaRecoveryService amnesiaRecoveryService;
@@ -63,93 +61,28 @@ public class AmnesiaRecoveryServiceTests {
     }
 
     @Test
-    public void shouldRecoverByWaiting() {
+    public void shouldNotRecoverSinceCannotGetTaskDescriptionFromChain() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
         when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_WAIT));
-
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
-
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldRecoverByComputingAgainWhenResultNotFound() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_CONTRIBUTE));
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
-        when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
-
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
-
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
-
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .addReplicate(any(ContributionAuthorization.class));
-    }
-
-    @Test
-    public void shouldRecoverByContributingWhenResultFound() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_CONTRIBUTE));
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+                .thenReturn(Collections.singletonList(notif));
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
 
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
 
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
+        assertThat(recovered).isEmpty();
 
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .contribute(getStubAuth());
-    }
-
-    @Test
-    public void shouldAbortSinceConsensusReached() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_ABORT_CONSENSUS_REACHED));
-        when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
-        // when(subscriptionService.handleTaskNotification(any())).
-
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
-
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
-
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .abortConsensusReached(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldAbortSinceContributionTimeout() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_ABORT_CONTRIBUTION_TIMEOUT));
-        when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
-
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
-
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
-
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .abortContributionTimeout(CHAIN_TASK_ID);
+        Mockito.verify(subscriptionService, Mockito.times(0))
+                .handleTaskNotification(notif);
     }
 
     @Test
     public void shouldNotRecoverByRevealingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
         when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_REVEAL));
+                .thenReturn(Collections.singletonList(notif));
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
@@ -157,32 +90,16 @@ public class AmnesiaRecoveryServiceTests {
 
         assertThat(recovered).isEmpty();
 
-        Mockito.verify(taskExecutorService, Mockito.times(0))
-                .reveal(CHAIN_TASK_ID, blockNumber);
-    }
-
-    @Test
-    public void shouldRecoverByRevealingWhenResultFound() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_REVEAL));
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
-        when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(true);
-
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
-
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
-
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .reveal(CHAIN_TASK_ID, blockNumber);
+        Mockito.verify(subscriptionService, Mockito.times(0))
+                .handleTaskNotification(notif);
     }
 
     @Test
     public void shouldNotRecoverByUploadingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_UPLOAD);
         when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_UPLOAD));
+                .thenReturn(Collections.singletonList(notif));
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
@@ -190,34 +107,18 @@ public class AmnesiaRecoveryServiceTests {
 
         assertThat(recovered).isEmpty();
 
-        Mockito.verify(taskExecutorService, Mockito.times(0))
-                .uploadResult(CHAIN_TASK_ID);
+        Mockito.verify(subscriptionService, Mockito.times(0))
+                .handleTaskNotification(notif);
     }
 
+    // The notification type does not matter here since it is handled on the subscription service
     @Test
-    public void shouldRecoverByUploadingWhenResultFound() {
+    public void shouldNotificationPassedToSubscriptionService() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_COMPLETE);
         when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_UPLOAD));
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
-        when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(true);
-
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
-
-        assertThat(recovered).isNotEmpty();
-        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
-
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .uploadResult(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldCompleteTask() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
-                .thenReturn(getStubInterruptedTasks(TaskNotificationType.PLEASE_COMPLETE));
-
-        when(resultService.isResultZipFound(CHAIN_TASK_ID)).thenReturn(true);
+                .thenReturn(Collections.singletonList(notif));
+        when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
 
         List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
@@ -225,12 +126,12 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isNotEmpty();
         assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1))
-                .completeTask(CHAIN_TASK_ID);
+        Mockito.verify(subscriptionService, Mockito.times(1))
+                .handleTaskNotification(notif);
     }
 
-    List<TaskNotification> getStubInterruptedTasks(TaskNotificationType notificationType) {
-        TaskNotification interruptedReplicate = TaskNotification.builder()
+    private TaskNotification getStubInterruptedTask(TaskNotificationType notificationType) {
+        return TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(notificationType)
                 .taskNotificationExtra(TaskNotificationExtra.builder()
@@ -238,16 +139,15 @@ public class AmnesiaRecoveryServiceTests {
                         .build())
                 .build();
 
-        return Collections.singletonList(interruptedReplicate);
     }
 
-    ContributionAuthorization getStubAuth() {
+    private ContributionAuthorization getStubAuth() {
         return ContributionAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
     }
 
-    Optional<TaskDescription> getStubModel() {
+    private Optional<TaskDescription> getStubModel() {
         return Optional.of(TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build());
