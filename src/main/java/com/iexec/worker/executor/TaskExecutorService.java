@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -80,6 +81,10 @@ public class TaskExecutorService {
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
+    }
+
+    @PostConstruct
+    public void initIt() {
         corePublicAddress = customFeignClient.getPublicConfiguration().getSchedulerPublicAddress();
     }
 
