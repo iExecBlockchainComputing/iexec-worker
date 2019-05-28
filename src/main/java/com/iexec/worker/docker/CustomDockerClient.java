@@ -21,110 +21,96 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CustomDockerClient {
 
     private static final String EXITED = "exited";
-    private static final String DOCKER_BASE_VOLUME_NAME = "iexec-worker";
 
     private DefaultDockerClient docker;
-    private WorkerConfigurationService configurationService;
-
     private Map<String, String> taskToContainerId;
 
-    public CustomDockerClient(WorkerConfigurationService configurationService) throws DockerCertificateException {
-        this.configurationService = configurationService;
+    public CustomDockerClient() throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
         taskToContainerId = new ConcurrentHashMap<>();
     }
 
-    private static HostConfig getHostConfig(String hostBaseVolume) {
-        if (hostBaseVolume != null && !hostBaseVolume.isEmpty()) {
-            String outputMountpoint = hostBaseVolume + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
-            String inputMountpoint = hostBaseVolume + FileHelper.SLASH_INPUT;
-            FileHelper.createFolder(inputMountpoint);
-            FileHelper.createFolder(outputMountpoint);
-
-            boolean isInputMountpointSet = new File(inputMountpoint).exists();
-            boolean isOutputMountpointSet = new File(outputMountpoint).exists();
-
-            if (!(isInputMountpointSet && isOutputMountpointSet)) {
-                log.error("inputMountpoint or outputMountpoint doesn't exists [isInputMountpointSet:{}, " +
-                        "isOutputMountpointSet:{}]", isInputMountpointSet, isOutputMountpointSet);
-                return null;
-            }
-
-            return HostConfig.builder()
-                    .appendBinds(
-                            HostConfig.Bind.from(inputMountpoint)
-                                    .to(FileHelper.SLASH_IEXEC_IN)
-                                    .readOnly(false)
-                                    .build(),
-                            HostConfig.Bind.from(outputMountpoint)
-                                    .to(FileHelper.SLASH_IEXEC_OUT)
-                                    .readOnly(false)
-                                    .build()
-                    )
-                    .build();
-        }
-        return null;
-    }
-
-    private static ContainerConfig.Builder getContainerConfigBuilder(String imageWithTag, String cmd, String hostBaseVolume) {
+    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String hostBaseVolume, String... env) {
         HostConfig hostConfig = getHostConfig(hostBaseVolume);
 
-        if (imageWithTag.isEmpty() || hostConfig == null) {
-            return null;
-        }
-        ContainerConfig.Builder builder = ContainerConfig.builder()
+        if (imageWithTag.isEmpty() || hostConfig == null) return null;
+
+        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder()
                 .image(imageWithTag)
                 .hostConfig(hostConfig);
-        if (cmd == null || cmd.isEmpty()) {
-            return builder;
-        } else {
-            return builder.cmd(cmd);
-        }
+
+        if (cmd != null && !cmd.isEmpty()) containerConfigBuilder.cmd(cmd);
+        
+        return containerConfigBuilder.env(env).build();
     }
 
-    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String hostBaseVolume, String... env) {
-        ContainerConfig.Builder containerConfigBuilder = getContainerConfigBuilder(imageWithTag, cmd, hostBaseVolume);
-        if (containerConfigBuilder != null) {
-            return containerConfigBuilder.env(env).build();
+    private static HostConfig getHostConfig(String hostBaseVolume) {
+        if (hostBaseVolume == null || hostBaseVolume.isEmpty()) return null;
+
+        String outputMountpoint = hostBaseVolume + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
+        String inputMountpoint = hostBaseVolume + FileHelper.SLASH_INPUT;
+
+        FileHelper.createFolder(inputMountpoint);
+        FileHelper.createFolder(outputMountpoint);
+
+        boolean isInputMountpointSet = new File(inputMountpoint).exists();
+        boolean isOutputMountpointSet = new File(outputMountpoint).exists();
+
+        if (!(isInputMountpointSet && isOutputMountpointSet)) {
+            log.error("inputMountpoint or outputMountpoint doesn't exists [isInputMountpointSet:{}, " +
+                    "isOutputMountpointSet:{}]", isInputMountpointSet, isOutputMountpointSet);
+            return null;
         }
-        return null;
+
+        HostConfig.Bind inputBind = HostConfig.Bind.from(inputMountpoint)
+                .to(FileHelper.SLASH_IEXEC_IN)
+                .readOnly(false)
+                .build();
+
+        HostConfig.Bind outputBind = HostConfig.Bind.from(outputMountpoint)
+                .to(FileHelper.SLASH_IEXEC_OUT)
+                .readOnly(false)
+                .build();
+
+        return HostConfig.builder()
+                .appendBinds(inputBind, outputBind)
+                .build();
     }
 
-    boolean pullImage(String taskId, String image) {
+    boolean pullImage(String chainTaskId, String image) {
+        log.info("Image pull started [chainTaskId:{}, image:{}]", chainTaskId, image);
+
         try {
-            log.info("Image pull started [taskId:{}, image:{}]",
-                    taskId, image);
             docker.pull(image);
-            log.info("Image pull completed [taskId:{}, image:{}]",
-                    taskId, image);
-            return true;
         } catch (DockerException | InterruptedException e) {
-            log.error("Image pull failed [taskId:{}, image:{}]", taskId, image);
+            log.error("Image pull failed [chainTaskId:{}, image:{}]", chainTaskId, image);
+            e.printStackTrace();
+            return false;
         }
-        return false;
+
+        log.info("Image pull completed [chainTaskId:{}, image:{}]", chainTaskId, image);
+        return true;
     }
 
     boolean isImagePulled(String image) {
         try {
             return !docker.inspectImage(image).id().isEmpty();
         } catch (DockerException | InterruptedException e) {
-            log.error("isImagePulled failed [image:{}]", image);
+            log.error("Failed to check if image was pulled [image:{}]", image);
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     String getContainerId(String taskId) {
-        if (taskToContainerId.containsKey(taskId)) {
-            return taskToContainerId.get(taskId);
-        }
-        return "";
+        return taskToContainerId.containsKey(taskId) ? taskToContainerId.get(taskId) : "";
     }
 
     String startContainer(String taskId, ContainerConfig containerConfig) {
         String containerId = "";
-        if (containerConfig == null) {
-            return containerId;
-        }
+
+        if (containerConfig == null) return containerId;
+
         try {
             ContainerCreation creation = docker.createContainer(containerConfig);
             containerId = creation.id();
