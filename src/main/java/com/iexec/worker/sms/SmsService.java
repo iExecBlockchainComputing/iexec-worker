@@ -5,11 +5,13 @@ import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.sms.SmsSecret;
-import com.iexec.common.sms.SmsSecretRequest;
-import com.iexec.common.sms.SmsSecretRequestBody;
-import com.iexec.common.sms.SmsSecretResponse;
-import com.iexec.common.sms.TaskSecrets;
+import com.iexec.common.sms.secrets.SmsSecret;
+import com.iexec.common.sms.SmsRequest;
+import com.iexec.common.sms.SmsRequestData;
+import com.iexec.common.sms.secrets.SmsSecretResponse;
+import com.iexec.common.sms.secrets.TaskSecrets;
+import com.iexec.common.sms.tee.SmsSecureSessionResponse;
+import com.iexec.common.sms.tee.SmsSecureSessionResponse.SmsSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
@@ -47,31 +49,41 @@ public class SmsService {
         this.workerConfigurationService = workerConfigurationService;
     }
 
+    @Retryable(value = FeignException.class)
     public boolean fetchTaskSecrets(ContributionAuthorization contributionAuth) {
-        String hash = HashUtils.concatenateAndHash(contributionAuth.getWorkerWallet(),
-                contributionAuth.getChainTaskId(), contributionAuth.getEnclaveChallenge());
+        String chainTaskId = contributionAuth.getChainTaskId();
+        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        Sign.SignatureData workerSignature = Sign.signPrefixedMessage(
-                BytesUtils.stringToBytes(hash), credentialsService.getCredentials().getEcKeyPair());
+        SmsSecretResponse smsResponse = smsClient.getTaskSecrets(smsRequest);
 
-        SmsSecretRequestBody smsSecretRequestBody = SmsSecretRequestBody.builder()
-                .chainTaskId(contributionAuth.getChainTaskId())
-                .workerAddress(contributionAuth.getWorkerWallet())
-                .enclaveChallenge(contributionAuth.getEnclaveChallenge())
-                .coreSignature(contributionAuth.getSignature().getValue())
-                .workerSignature(new Signature(workerSignature).getValue())
-                .build();
-
-        Optional<TaskSecrets> oTaskSecrets = getTaskSecrets(smsSecretRequestBody);
-
-        if (!oTaskSecrets.isPresent()) {
-            log.error("Could not call SMS to get secrets, aborting [chainTaskId:{}]",
-                    contributionAuth.getChainTaskId());
+        if (smsResponse == null) {
+            log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        saveSecrets(contributionAuth.getChainTaskId(), oTaskSecrets.get());
+        if (!smsResponse.isOk()) {
+            log.error("An error occurred while getting task secrets [chainTaskId:{}, errorMessage:{}]",
+                    chainTaskId, smsResponse.getErrorMessage());
+            return false;
+        }
+
+        TaskSecrets taskSecrets = smsResponse.getData().getSecrets();
+
+        if (taskSecrets == null) {
+            log.error("Received null secrets object from SMS [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
+        saveSecrets(chainTaskId, taskSecrets);
         return true;
+    }
+
+    @Recover
+    private boolean fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
+                contributionAuth.getChainTaskId());
+        e.printStackTrace();
+        return false;
     }
 
     public void saveSecrets(String chainTaskId, TaskSecrets taskSecrets) {
