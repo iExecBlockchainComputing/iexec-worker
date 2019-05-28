@@ -1,6 +1,5 @@
 package com.iexec.worker.docker;
 
-import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
@@ -8,7 +7,6 @@ import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.HostConfig;
-import com.spotify.docker.client.messages.Volume;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -170,7 +168,6 @@ public class CustomDockerClient {
         }
         return isExecutionDone;
     }
-
 
     String getContainerLogs(String taskId) {
         String containerId = getContainerId(taskId);
