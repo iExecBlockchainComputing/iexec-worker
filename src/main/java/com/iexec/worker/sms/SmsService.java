@@ -115,25 +115,55 @@ public class SmsService {
     }
 
     @Retryable(value = FeignException.class)
-    public Optional<TaskSecrets> getTaskSecrets(SmsSecretRequestBody smsSecretRequestBody) {
-        SmsSecretRequest smsSecretRequest = new SmsSecretRequest(smsSecretRequestBody);
-        SmsSecretResponse smsSecretResponse = smsClient.getTaskSecrets(smsSecretRequest);
+    public Optional<SmsSecureSession> generateTaskSecureSession(ContributionAuthorization contributionAuth) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        if (!smsSecretResponse.isOk()) {
-            log.error("An error occured while getting task secrets [chainTaskId:{}, erroMsg:{}]",
-                    smsSecretRequestBody.getChainTaskId(), smsSecretResponse.getErrorMessage());
+        SmsSecureSessionResponse smsResponse = smsClient.generateSecureSession(smsRequest);
+
+        if (smsResponse == null) {
+            log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
 
-        return Optional.of(smsSecretResponse.getData().getSecrets());
+        if (!smsResponse.isOk()) {
+            log.error("An error occurred while generating secure session [chainTaskId:{}, errorMessage:{}]",
+                    chainTaskId, smsResponse.getErrorMessage());
+            return Optional.empty();
+        }
+
+        if (smsResponse.getData() == null) {
+            log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        return Optional.of(smsResponse.getData());
     }
 
     @Recover
-    private Optional<TaskSecrets> getTaskSecrets(FeignException e, SmsSecretRequestBody smsSecretRequestBody) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
-                smsSecretRequestBody.getChainTaskId());
+    private Optional<SmsSecureSession> generateTaskSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
+        log.error("Failed to generate secure session [chainTaskId:{}, attempts:3]",
+                contributionAuth.getChainTaskId());
         e.printStackTrace();
         return Optional.empty();
+    }
+
+    public SmsRequest buildSmsRequest(ContributionAuthorization contributionAuth) {
+        String hash = HashUtils.concatenateAndHash(contributionAuth.getWorkerWallet(),
+                contributionAuth.getChainTaskId(), contributionAuth.getEnclaveChallenge());
+
+        Sign.SignatureData workerSignature = Sign.signPrefixedMessage(
+                BytesUtils.stringToBytes(hash), credentialsService.getCredentials().getEcKeyPair());
+
+        SmsRequestData smsRequestData = SmsRequestData.builder()
+            .chainTaskId(contributionAuth.getChainTaskId())
+            .workerAddress(contributionAuth.getWorkerWallet())
+            .enclaveChallenge(contributionAuth.getEnclaveChallenge())
+            .coreSignature(contributionAuth.getSignature().getValue())
+            .workerSignature(new Signature(workerSignature).getValue())
+            .build();
+
+        return new SmsRequest(smsRequestData);
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {
