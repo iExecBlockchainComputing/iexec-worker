@@ -56,32 +56,18 @@ public class DockerComputationService {
         return stdout;
     }
 
-    public boolean dockerPull(String chainTaskId, String image) {
-        return dockerClient.pullImage(chainTaskId, image);
-    }
-
     private String startComputationAndGetLogs(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
         String stdout = "";
         String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
 
-        if (containerId.isEmpty()) {
-            return stdout;
-        }
+        if (containerId.isEmpty()) return stdout;
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
-        stdout = waitForComputationAndGetLogs(chainTaskId, executionTimeoutDate);
-        dockerClient.removeContainer(chainTaskId);
+        boolean executionDone = dockerClient.waitContainer(chainTaskId, executionTimeoutDate);
 
+        stdout = executionDone ? dockerClient.getContainerLogs(chainTaskId) : "Computation failed";
+
+        dockerClient.removeContainer(chainTaskId);
         return stdout;
     }
-
-    private String waitForComputationAndGetLogs(String chainTaskId, Date executionTimeoutDate) {
-        boolean executionDone = dockerClient.waitContainer(chainTaskId, executionTimeoutDate);
-        if (executionDone) {
-            return dockerClient.getContainerLogs(chainTaskId);
-        } else {
-            return "Computation failed";
-        }
-    }
-
 }
