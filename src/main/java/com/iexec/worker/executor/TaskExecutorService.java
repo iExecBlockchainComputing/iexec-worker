@@ -7,7 +7,6 @@ import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
-import com.iexec.common.sms.tee.SmsSecureSessionResponse.SmsSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
@@ -19,8 +18,8 @@ import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.LoggingUtils;
+import com.netflix.util.Pair;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,8 +51,8 @@ public class TaskExecutorService {
     private RevealService revealService;
     private WorkerConfigurationService workerConfigurationService;
     private IexecHubService iexecHubService;
-    private SmsService smsService;
     private Web3jService web3jService;
+    private ComputationService computationService;
 
     // internal variables
     private int maxNbExecutions;
@@ -67,8 +66,8 @@ public class TaskExecutorService {
                                RevealService revealService,
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
-                               SmsService smsService,
-                               Web3jService web3jService) {
+                               Web3jService web3jService,
+                               ComputationService computationService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -77,8 +76,8 @@ public class TaskExecutorService {
         this.revealService = revealService;
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
-        this.smsService = smsService;
         this.web3jService = web3jService;
+        this.computationService = computationService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
@@ -109,7 +108,6 @@ public class TaskExecutorService {
     private String compute(AvailableReplicateModel replicateModel) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
-        SmsSecureSession smsSecureSession = null;
         String stdout = "";
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
