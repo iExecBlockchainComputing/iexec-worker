@@ -164,56 +164,6 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, pair.first());
         return pair.second();
-
-        // // when tee workflow: generate secure session
-        // if (doesTaskNeedTee) {
-        //     Optional<SmsSecureSession> oSmsSecureSession = smsService.generateTaskSecureSession(contributionAuth);
-        //     if (!oSmsSecureSession.isPresent()) {
-        //         // ############################## tee failed #############################
-        //         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-        //         stdout = "Could not generate secure session for tee computation";
-        //         log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-        //         return stdout;
-        //     }
-        //     smsSecureSession = oSmsSecureSession.get();
-        // }
-
-        // // when non-tee workflow: fetch task secrets from SMS
-        // if (!doesTaskNeedTee) {
-        //     boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
-        //     if (!isFetched) {
-        //         log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
-        //     }
-        // }
-
-        // // decrypt data
-        // boolean isDatasetDecryptionNeeded = !doesTaskNeedTee && datasetService.isDatasetDecryptionNeeded(chainTaskId);
-        // boolean isDatasetDecrypted = false;
-
-        // if (isDatasetDecryptionNeeded) {
-        //     isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
-        // }
-
-        // if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
-        //     customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-        //     stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
-        //     log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-        //     return stdout;
-        // }
-
-        // // compute
-        // String datasetFilename = datasetService.getDatasetFilename(replicateModel.getDatasetUri());
-        // stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel, datasetFilename);
-
-        // if (stdout.isEmpty()) {
-        //     customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-        //     stdout = "Failed to start computation";
-        //     log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-        //     return stdout;
-        // }
-
-        // customFeignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-        // return stdout;
     }
 
     @Async
