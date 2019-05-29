@@ -36,12 +36,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
-    private final String coreHost;
-    private final int corePort;
-    private final String workerWalletAddress;
     private RestTemplate restTemplate;
     // external services
     private TaskExecutorService taskExecutorService;
+    private CoreConfigurationService coreConfigurationService;
+    private WorkerConfigurationService workerConfigurationService;
 
     // internal components
     private StompSession session;
@@ -54,22 +53,23 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                                TaskExecutorService taskExecutorService,
                                RestTemplate restTemplate) {
         this.taskExecutorService = taskExecutorService;
-
-        this.coreHost = coreConfigurationService.getHost();
-        this.corePort = coreConfigurationService.getPort();
-        this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.restTemplate = restTemplate;
-
+        this.coreConfigurationService = coreConfigurationService;
+        this.workerConfigurationService = workerConfigurationService;
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
-        url = "http://" + coreHost + ":" + corePort + "/connect";
+
     }
 
     @PostConstruct
-    private void run() {
+    void init() {
+        String coreHost = coreConfigurationService.getHost();
+        int corePort = coreConfigurationService.getPort();
+        this.url = "http://" + coreHost + ":" + corePort + "/connect";
+
         this.restartStomp();
     }
 
-    private void restartStomp() {
+    void restartStomp() {
         log.info("Starting STOMP");
         if (isConnectEndpointUp()) {
             WebSocketClient webSocketClient = new StandardWebSocketClient();
@@ -90,7 +90,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         if (checkConnectionEntity.getStatusCode().is2xxSuccessful()) {
             return true;
         }
-        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:]", url, checkConnectionEntity.getStatusCode());
+        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:{}]", url, checkConnectionEntity.getStatusCode());
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -173,7 +173,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     public void handleTaskNotification(TaskNotification notif) {
-        if (notif.getWorkersAddress().contains(workerWalletAddress)
+        if (notif.getWorkersAddress().contains(workerConfigurationService.getWorkerWalletAddress())
                 || notif.getWorkersAddress().isEmpty()) {
             log.info("Received notification [notification:{}]", notif);
 
