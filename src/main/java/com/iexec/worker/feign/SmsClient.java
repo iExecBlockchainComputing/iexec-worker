@@ -20,6 +20,6 @@ public interface SmsClient {
     @PostMapping("/secure")
     SmsSecretResponse getTaskSecrets(@RequestBody SmsRequest smsRequest) throws FeignException;
 
-    @PostMapping("/securesession/generate")
+    @PostMapping("/secure")
     SmsSecureSessionResponse generateSecureSession(@RequestBody SmsRequest smsRequest) throws FeignException;
 }
