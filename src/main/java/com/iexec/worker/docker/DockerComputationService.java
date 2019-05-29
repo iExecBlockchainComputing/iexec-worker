@@ -3,7 +3,6 @@ package com.iexec.worker.docker;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.spotify.docker.client.messages.ContainerConfig;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -11,7 +10,7 @@ import java.util.Date;
 
 import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
 
-@Slf4j
+
 @Service
 public class DockerComputationService {
 
