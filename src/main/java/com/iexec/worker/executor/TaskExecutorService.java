@@ -152,63 +152,68 @@ public class TaskExecutorService {
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
+
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
 
-        // ############################## tee started #############################
-        // when tee workflow: generate secure session
+        Pair<ReplicateStatus, String> pair = null;
         if (doesTaskNeedTee) {
-            Optional<SmsSecureSession> oSmsSecureSession = smsService.generateTaskSecureSession(contributionAuth);
-            if (!oSmsSecureSession.isPresent()) {
-                // ############################## tee failed #############################
-                customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-                stdout = "Could not generate secure session for tee computation";
-                log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-                return stdout;
-            }
-            // ############################## tee success #############################
-            smsSecureSession = oSmsSecureSession.get();
+            pair = computationService.runComputationWithTee(replicateModel);
+        } else {
+            pair = computationService.runComputationWithoutTee(replicateModel);
         }
 
-        // when non-tee workflow: fetch task secrets from SMS
-        if (!doesTaskNeedTee) {
-            boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
-            if (!isFetched) {
-                log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
-            }
-        }
+        customFeignClient.updateReplicateStatus(chainTaskId, pair.first());
+        return pair.second();
 
-        // ############################## decryption started #############################
-        // decrypt data
-        boolean isDatasetDecryptionNeeded = !doesTaskNeedTee && datasetService.isDatasetDecryptionNeeded(chainTaskId);
-        boolean isDatasetDecrypted = false;
+        // // when tee workflow: generate secure session
+        // if (doesTaskNeedTee) {
+        //     Optional<SmsSecureSession> oSmsSecureSession = smsService.generateTaskSecureSession(contributionAuth);
+        //     if (!oSmsSecureSession.isPresent()) {
+        //         // ############################## tee failed #############################
+        //         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
+        //         stdout = "Could not generate secure session for tee computation";
+        //         log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+        //         return stdout;
+        //     }
+        //     smsSecureSession = oSmsSecureSession.get();
+        // }
 
-        if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
-        }
+        // // when non-tee workflow: fetch task secrets from SMS
+        // if (!doesTaskNeedTee) {
+        //     boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
+        //     if (!isFetched) {
+        //         log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
+        //     }
+        // }
 
-        if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
-            // ############################## tee failed #############################
-            customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
-        }
+        // // decrypt data
+        // boolean isDatasetDecryptionNeeded = !doesTaskNeedTee && datasetService.isDatasetDecryptionNeeded(chainTaskId);
+        // boolean isDatasetDecrypted = false;
 
-        // ############################## tee success #############################
+        // if (isDatasetDecryptionNeeded) {
+        //     isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
+        // }
 
-        // compute
-        String datasetFilename = datasetService.getDatasetFilename(replicateModel.getDatasetUri());
-        stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel, datasetFilename);
+        // if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
+        //     customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
+        //     stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
+        //     log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+        //     return stdout;
+        // }
 
-        if (stdout.isEmpty()) {
-            customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to start computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
-        }
+        // // compute
+        // String datasetFilename = datasetService.getDatasetFilename(replicateModel.getDatasetUri());
+        // stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel, datasetFilename);
 
-        customFeignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-        return stdout;
+        // if (stdout.isEmpty()) {
+        //     customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
+        //     stdout = "Failed to start computation";
+        //     log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+        //     return stdout;
+        // }
+
+        // customFeignClient.updateReplicateStatus(chainTaskId, COMPUTED);
+        // return stdout;
     }
 
     @Async
