@@ -87,20 +87,29 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public CompletableFuture<Void> addReplicate(AvailableReplicateModel replicateModel) {
+    public CompletableFuture<Boolean> addReplicate(AvailableReplicateModel replicateModel) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
 
+        // if task needs TEE && TEE not supported => stop;
+        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
+        if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
+            log.error("Task needs TEE, I don't support it [chainTaskId:{}]", chainTaskId);
+            return CompletableFuture.completedFuture(false);
+        }        
+
+        // if task is not initialized onChain => stop
+        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
+            log.error("Task not initialized onChain [chainTaskId:{}]", chainTaskId);
+            return CompletableFuture.completedFuture(false);
+        }
+
         return CompletableFuture.supplyAsync(() -> compute(replicateModel), executor)
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
-                .thenAccept(isSaved -> {
-                    if (isSaved) contribute(contributionAuth);
-                })
+                .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth); })
                 .handle((res, err) -> {
-                    if (err != null) {
-                        err.printStackTrace();
-                    }
-                    return res;
+                    if (err != null) err.printStackTrace();
+                    return err == null;
                 });
     }
 
@@ -109,17 +118,6 @@ public class TaskExecutorService {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
         String stdout = "";
-
-        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.error("Task not initialized onchain [ChainTaskId:{}]", chainTaskId);
-            throw new IllegalArgumentException("Task not initialized onchain");
-        }
-
-        // if task needs TEE && TEE not supported => stop;
-        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
-        if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
-            throw new UnsupportedOperationException("Task needs TEE, I don't support it");
-        }
 
         // check app type
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
