@@ -7,6 +7,7 @@ import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
+import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
@@ -19,7 +20,8 @@ import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.utils.LoggingUtils;
-import com.netflix.util.Pair;
+// import com.netflix.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -92,8 +94,9 @@ public class TaskExecutorService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         // if task needs TEE && TEE not supported => stop;
-        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
-        if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
+        // boolean isTeeTask = TeeUtils.isTrustedExecutionTag(contributionAuth.getEnclaveChallenge());
+        boolean isTeeTask = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
+        if (isTeeTask && !workerConfigurationService.isTeeEnabled()) {
             log.error("Task needs TEE, I don't support it [chainTaskId:{}]", chainTaskId);
             return CompletableFuture.completedFuture(false);
         }        
@@ -104,7 +107,7 @@ public class TaskExecutorService {
             return CompletableFuture.completedFuture(false);
         }
 
-        return CompletableFuture.supplyAsync(() -> compute(replicateModel), executor)
+        return CompletableFuture.supplyAsync(() -> compute(replicateModel, isTeeTask), executor)
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
                 .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth); })
                 .handle((res, err) -> {
@@ -114,7 +117,7 @@ public class TaskExecutorService {
     }
 
     @Async
-    private String compute(AvailableReplicateModel replicateModel) {
+    private String compute(AvailableReplicateModel replicateModel, boolean isTeeTask) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
         String stdout = "";
@@ -150,18 +153,19 @@ public class TaskExecutorService {
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
-
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
 
         Pair<ReplicateStatus, String> pair = null;
-        if (doesTaskNeedTee) {
-            pair = computationService.runComputationWithTee(replicateModel);
+        if (isTeeTask) {
+            pair = computationService.runTeeComputation(replicateModel);
         } else {
-            pair = computationService.runComputationWithoutTee(replicateModel);
+            pair = computationService.runNonTeeComputation(replicateModel);
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, pair.first());
-        return pair.second();
+        if (pair == null) pair = Pair.of(COMPUTE_FAILED, "Error while computing");
+
+        customFeignClient.updateReplicateStatus(chainTaskId, pair.getLeft());
+        return pair.getRight();
     }
 
     @Async
