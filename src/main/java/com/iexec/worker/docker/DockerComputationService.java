@@ -59,6 +59,19 @@ public class DockerComputationService {
         return stdout;
     }
 
+    public String dockerRunAndGetLogs(ContainerConfig containerConfig, String chainTaskId, long maxExecutionTime) {
+        //TODO: check image equals image:tag
+        String stdout = "";
+
+        if (!dockerClient.isImagePulled(containerConfig.image())) {
+            return stdout;
+        }
+
+        stdout = startComputationAndGetLogs(chainTaskId, containerConfig, maxExecutionTime);
+
+        return stdout;
+    }
+
     private String startComputationAndGetLogs(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
         String stdout = "";
         String containerId = dockerClient.startContainer(chainTaskId, containerConfig);
