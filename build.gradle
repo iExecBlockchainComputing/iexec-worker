@@ -51,8 +51,8 @@ dependencyManagement {
 
 dependencies {
     // iexec
-    compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    //compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    // compile "com.iexec.common:iexec-common:$iexecCommonVersion"
+    compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
     compile "org.springframework.boot:spring-boot-starter"
@@ -76,6 +76,9 @@ dependencies {
 
     // multiaddresses (IPFS)
     compile 'com.github.multiformats:java-multiaddr:1.3.1'
+
+    // apache commons.lang3
+    compile 'org.apache.commons:commons-lang3:3.6'
 
     // package cloud
     deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"
