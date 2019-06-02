@@ -65,7 +65,7 @@ public class TaskExecutorServiceTests {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -78,7 +78,7 @@ public class TaskExecutorServiceTests {
                 .thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -91,7 +91,7 @@ public class TaskExecutorServiceTests {
                 .thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -104,7 +104,7 @@ public class TaskExecutorServiceTests {
                 .thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
 
-        CompletableFuture<Void> future =
+        CompletableFuture<Boolean> future =
                 taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
         future.join();
 
@@ -123,7 +123,7 @@ public class TaskExecutorServiceTests {
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(modelStub);
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -147,7 +147,7 @@ public class TaskExecutorServiceTests {
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(datasetService.decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(modelStub);
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -172,7 +172,7 @@ public class TaskExecutorServiceTests {
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(datasetService.decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(modelStub);
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
