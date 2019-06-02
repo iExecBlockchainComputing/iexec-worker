@@ -26,11 +26,15 @@ public class FileHelper {
     }
 
     public static File createFileWithContent(String filePath, String data) {
+        return createFileWithContent(filePath, data.getBytes());
+    }
+
+    public static File createFileWithContent(String filePath, byte[] data) {
         String directoryPath = new File(filePath).getParent();
 
         if (createFolder(directoryPath)) {
             try {
-                Files.write(Paths.get(filePath), data.getBytes());
+                Files.write(Paths.get(filePath), data);
                 log.debug("File created [filePath:{}]", filePath);
                 return new File(filePath);
             } catch (IOException e) {
