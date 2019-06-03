@@ -1,6 +1,6 @@
 package com.iexec.worker.docker;
 
-import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.spotify.docker.client.messages.ContainerConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +28,9 @@ public class DockerComputationService {
         this.configurationService = configurationService;
     }
 
-    public String dockerRunAndGetLogs(AvailableReplicateModel replicateModel, String datasetFilename) {
-        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
-        String image = replicateModel.getAppUri();
+    public String dockerRunAndGetLogs(TaskDescription taskDescription, String datasetFilename) {
+        String chainTaskId = taskDescription.getChainTaskId();
+        String image = taskDescription.getAppUri();
         //TODO: check image equals image:tag
         String stdout = "";
 
@@ -41,17 +41,17 @@ public class DockerComputationService {
         String hostBaseVolume = configurationService.getTaskBaseDir(chainTaskId);
         ContainerConfig containerConfig;
 
-        if (replicateModel.isTrustedExecution()) {
-            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
+        if (taskDescription.isTrustedExecution()) {
+            containerConfig = getContainerConfig(image, taskDescription.getCmd(), hostBaseVolume,
                     TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
                     TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress(),
                     DATASET_FILENAME + "=" + datasetFilename);
         } else {
-            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
+            containerConfig = getContainerConfig(image, taskDescription.getCmd(), hostBaseVolume,
                     DATASET_FILENAME + "=" + datasetFilename);
         }
 
-        stdout = startComputationAndGetLogs(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());
+        stdout = startComputationAndGetLogs(chainTaskId, containerConfig, taskDescription.getMaxExecutionTime());
 
         return stdout;
     }

@@ -1,5 +1,6 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.config.CoreConfigurationService;
@@ -171,7 +172,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
-    private void handleTaskNotification(TaskNotification notif) {
+    public void handleTaskNotification(TaskNotification notif) {
         if (notif.getWorkersAddress().contains(workerWalletAddress)
                 || notif.getWorkersAddress().isEmpty()) {
             log.info("Received notification [notification:{}]", notif);
@@ -180,25 +181,32 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             String chainTaskId = notif.getChainTaskId();
 
             switch (type) {
+                case PLEASE_CONTRIBUTE:
+                    ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
+                    if (contribAuth != null){
+                        taskExecutorService.tryToContribute(contribAuth);
+                    } else {
+                        log.error("Empty contribAuth for PLEASE_CONTRIBUTE [chainTaskId:{}]", chainTaskId);
+                    }
+                    break;
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortContributionTimeout(chainTaskId);
                     break;
-
                 case PLEASE_ABORT_CONSENSUS_REACHED:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortConsensusReached(chainTaskId);
                     break;
 
                 case PLEASE_REVEAL:
-                    taskExecutorService.reveal(chainTaskId, notif.getBlockNumber());
+                    taskExecutorService.reveal(chainTaskId, notif.getTaskNotificationExtra().getBlockNumber());
                     break;
 
                 case PLEASE_UPLOAD:
                     taskExecutorService.uploadResult(chainTaskId);
                     break;
 
-                case COMPLETED:
+                case PLEASE_COMPLETE:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.completeTask(chainTaskId);
                     break;
@@ -208,6 +216,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             }
         }
     }
+
+
+
 
     private String getTaskTopicName(String chainTaskId) {
         return "/topic/task/" + chainTaskId;

@@ -3,16 +3,16 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
-import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.chain.Web3jService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
@@ -20,12 +20,11 @@ import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.LoggingUtils;
-
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -53,11 +52,14 @@ public class TaskExecutorService {
     private IexecHubService iexecHubService;
     private SmsService smsService;
     private Web3jService web3jService;
+    private PublicConfigurationService publicConfigurationService;
 
     // internal variables
     private int maxNbExecutions;
     private ThreadPoolExecutor executor;
+    private String corePublicAddress;
 
+    //TODO make this fat constructor lose weight
     public TaskExecutorService(DatasetService datasetService,
                                DockerComputationService dockerComputationService,
                                ResultService resultService,
@@ -67,7 +69,8 @@ public class TaskExecutorService {
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
                                SmsService smsService,
-                               Web3jService web3jService) {
+                               Web3jService web3jService,
+                               PublicConfigurationService publicConfigurationService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -78,21 +81,29 @@ public class TaskExecutorService {
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
         this.web3jService = web3jService;
+        this.publicConfigurationService = publicConfigurationService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
+    }
+
+    @PostConstruct
+    public void initIt() {
+        corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
     }
 
     public boolean canAcceptMoreReplicates() {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public CompletableFuture<Void> addReplicate(AvailableReplicateModel replicateModel) {
-        ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
+    public CompletableFuture<Void> addReplicate(ContributionAuthorization contributionAuth) {
+
         String chainTaskId = contributionAuth.getChainTaskId();
 
-        return CompletableFuture.supplyAsync(() -> compute(replicateModel), executor)
-                .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
+        Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+
+        return CompletableFuture.supplyAsync(() -> compute(contributionAuth), executor)
+                .thenApply(stdout -> resultService.saveResult(chainTaskId, taskDescriptionFromChain.get(), stdout))
                 .thenAccept(isSaved -> {
                     if (isSaved) contribute(contributionAuth);
                 })
@@ -104,9 +115,30 @@ public class TaskExecutorService {
                 });
     }
 
+
+    public void tryToContribute(ContributionAuthorization contributionAuth) {
+
+        String chainTaskId = contributionAuth.getChainTaskId();
+
+        if (!contributionService.isContributionAuthorizationValid(contributionAuth, corePublicAddress)) {
+            log.error("The contribution contribAuth is NOT valid, the task will not be performed"
+                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contributionAuth);
+            return;
+        }
+
+        boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
+
+        if (!isResultAvailable) {
+            log.info("Result not found, will restart task from RUNNING [chainTaskId:{}]", chainTaskId);
+            addReplicate(contributionAuth);
+        } else {
+            log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
+            contribute(contributionAuth);
+        }
+    }
+
     @Async
-    private String compute(AvailableReplicateModel replicateModel) {
-        ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
+    private String compute(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         String stdout = "";
 
@@ -115,15 +147,25 @@ public class TaskExecutorService {
             throw new IllegalArgumentException("Task not initialized onchain yet");
         }
 
+        Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+
+        if (!taskDescriptionFromChain.isPresent()) {
+            stdout = "AvailableReplicateModel not found";
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return stdout;
+        }
+
+        TaskDescription taskDescription = taskDescriptionFromChain.get();
+
         // if (TeeEnabled && no Tee supported) => return;
-        boolean doesTaskNeedTee = !contributionAuth.getEnclaveChallenge().equals(BytesUtils.EMPTY_ADDRESS);
+        boolean doesTaskNeedTee = taskDescription.isTrustedExecution();
         if (doesTaskNeedTee && !workerConfigurationService.isTeeEnabled()) {
             throw new UnsupportedOperationException("Task needs TEE, I don't support it");
         }
 
         // check app type
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
-        if (!replicateModel.getAppType().equals(DappType.DOCKER)) {
+        if (!taskDescription.getAppType().equals(DappType.DOCKER)) {
             stdout = "Application is not of type Docker";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
@@ -131,10 +173,10 @@ public class TaskExecutorService {
 
         // pull app
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
+        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, taskDescription.getAppUri());
         if (!isAppDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-            stdout = "Failed to pull application image, URI:" + replicateModel.getAppUri();
+            stdout = "Failed to pull application image, URI:" + taskDescription.getAppUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
@@ -143,10 +185,10 @@ public class TaskExecutorService {
 
         // pull data
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, replicateModel.getDatasetUri());
+        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
         if (!isDatasetDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            stdout = "Failed to pull dataset, URI:" + replicateModel.getDatasetUri();
+            stdout = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
@@ -165,19 +207,19 @@ public class TaskExecutorService {
         boolean isDatasetDecrypted = false;
 
         if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
+            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
+            stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
         }
 
         // compute
-        String datasetFilename = datasetService.getDatasetFilename(replicateModel.getDatasetUri());
-        stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel, datasetFilename);
+        String datasetFilename = datasetService.getDatasetFilename(taskDescription.getDatasetUri());
+        stdout = dockerComputationService.dockerRunAndGetLogs(taskDescription, datasetFilename);
 
         if (stdout.isEmpty()) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
@@ -238,7 +280,7 @@ public class TaskExecutorService {
 
         if (oChainReceipt.get().getBlockNumber() == 0) {
             log.warn("The blocknumber of the receipt is equal to 0, the CONTRIBUTED status will not be " +
-                            "sent to the core [chainTaskId:{}]", chainTaskId);
+                    "sent to the core [chainTaskId:{}]", chainTaskId);
             return;
         }
 

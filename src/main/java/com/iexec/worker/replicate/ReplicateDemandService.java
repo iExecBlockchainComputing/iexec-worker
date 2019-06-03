@@ -1,19 +1,21 @@
 package com.iexec.worker.replicate;
 
-import java.util.Optional;
-
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.replicate.AvailableReplicateModel;
+import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.notification.TaskNotificationExtra;
+import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+import java.util.Optional;
 
 
 @Slf4j
@@ -24,7 +26,6 @@ public class ReplicateDemandService {
     private TaskExecutorService taskExecutorService;
     private IexecHubService iexecHubService;
     private SubscriptionService subscriptionService;
-    private ReplicateService replicateService;
     private ContributionService contributionService;
 
     @Autowired
@@ -32,13 +33,11 @@ public class ReplicateDemandService {
                                   IexecHubService iexecHubService,
                                   CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
-                                  ReplicateService replicateService,
                                   ContributionService contributionService) {
         this.customFeignClient = customFeignClient;
         this.taskExecutorService = taskExecutorService;
         this.iexecHubService = iexecHubService;
         this.subscriptionService = subscriptionService;
-        this.replicateService = replicateService;
         this.contributionService = contributionService;
     }
 
@@ -73,13 +72,15 @@ public class ReplicateDemandService {
             return;
         }
 
-        Optional<AvailableReplicateModel> oReplicateModel =
-                replicateService.contributionAuthToReplicate(contributionAuth);
-
-        if (!oReplicateModel.isPresent()) return;
-
         subscriptionService.subscribeToTopic(chainTaskId);
-        
-        taskExecutorService.addReplicate(oReplicateModel.get());
+
+        TaskNotification taskNotification = TaskNotification.builder()
+                .chainTaskId(chainTaskId)
+                .workersAddress(Collections.emptyList())
+                .taskNotificationType(TaskNotificationType.PLEASE_CONTRIBUTE)
+                .taskNotificationExtra(TaskNotificationExtra.builder().contributionAuthorization(contributionAuth).build())
+                .build();
+
+        subscriptionService.handleTaskNotification(taskNotification);
     }
 }
