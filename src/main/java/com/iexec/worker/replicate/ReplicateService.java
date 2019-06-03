@@ -82,7 +82,7 @@ public class ReplicateService {
                 .appUri(BytesUtils.hexStringToAscii(chainDeal.getChainApp().getUri()))
                 .cmd(chainDeal.getParams().get(chainTask.getIdx()))
                 .maxExecutionTime(chainDeal.getChainCategory().getMaxExecutionTime())
-                .isTrustedExecution(TeeUtils.isTrustedExecutionTag(chainDeal.getTag()))
+                .isTrustedExecution(TeeUtils.isTeeTag(chainDeal.getTag()))
                 .datasetUri(datasetURI)
                 .build());
     }
