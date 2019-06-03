@@ -47,10 +47,6 @@ public class SconeTeeService {
         this.publicConfigurationService = publicConfigurationService;
     }
 
-    public void buildSconeEnv() {
-        
-    }
-
     public ContainerConfig buildSconeContainerConfig(String secureSessionId, AvailableReplicateModel replicateModel) {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
         String appUri = replicateModel.getAppUri();
@@ -91,7 +87,6 @@ public class SconeTeeService {
         if (!oSmsSecureSession.isPresent()) return "";
 
         SmsSecureSession smsSecureSession = oSmsSecureSession.get();
-        log.info("smsSecureSession: {}", smsSecureSession);
 
         String fspfFilePath = workerConfigurationService.getTaskOutputDir(chainTaskId)
                 + File.separator + FSPF_FILENAME;
