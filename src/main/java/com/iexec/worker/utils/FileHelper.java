@@ -147,4 +147,8 @@ public class FileHelper {
             return false;
         }
     }
+
+    public static String getFilenameFromUri(String uri) {
+        return Paths.get(uri).getFileName().toString();
+    }
 }

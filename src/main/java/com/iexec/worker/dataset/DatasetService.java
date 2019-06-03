@@ -100,9 +100,4 @@ public class DatasetService {
             e.printStackTrace();
         }
     }
-
-    public String getDatasetFilename(String datasetUri) {
-        return Paths.get(datasetUri).getFileName().toString();
-    }
-
 }
