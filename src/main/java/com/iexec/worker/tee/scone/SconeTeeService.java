@@ -54,7 +54,7 @@ public class SconeTeeService {
 
         // get host config
         String hostBaseVolume = workerConfigurationService.getTaskBaseDir(chainTaskId);
-        HostConfig hostConfig = CustomDockerClient.getHostConfig(hostBaseVolume);
+        HostConfig hostConfig = CustomDockerClient.getSgxHostConfig(hostBaseVolume);
 
         if (appUri.isEmpty() || hostConfig == null) return null;
 

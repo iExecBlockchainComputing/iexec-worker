@@ -6,6 +6,7 @@ import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
+import com.spotify.docker.client.messages.Device;
 import com.spotify.docker.client.messages.HostConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PreDestroy;
 import java.io.File;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -45,6 +47,24 @@ public class CustomDockerClient {
     }
 
     public static HostConfig getHostConfig(String hostBaseVolume) {
+        HostConfig.Builder hostConfigBuilder = getCommonHostConfig(hostBaseVolume);
+        return hostConfigBuilder != null ? hostConfigBuilder.build() : null;
+    }
+
+    public static HostConfig getSgxHostConfig(String hostBaseVolume) {
+        HostConfig.Builder hostConfigBuilder = getCommonHostConfig(hostBaseVolume);
+
+        if (hostConfigBuilder == null) return null;
+
+        Device device = Device.builder()
+                .pathOnHost("/dev/isgx")
+                .pathInContainer("/dev/isgx")
+                .build();
+
+        return hostConfigBuilder.devices(device).build();
+    }
+
+    public static HostConfig.Builder getCommonHostConfig(String hostBaseVolume) {
         if (hostBaseVolume == null || hostBaseVolume.isEmpty()) return null;
 
         String outputMountpoint = hostBaseVolume + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
@@ -72,9 +92,7 @@ public class CustomDockerClient {
                 .readOnly(false)
                 .build();
 
-        return HostConfig.builder()
-                .appendBinds(inputBind, outputBind)
-                .build();
+        return HostConfig.builder().appendBinds(inputBind, outputBind);
     }
 
     boolean pullImage(String chainTaskId, String image) {
