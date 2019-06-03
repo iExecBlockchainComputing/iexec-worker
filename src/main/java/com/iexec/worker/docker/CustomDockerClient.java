@@ -141,6 +141,7 @@ public class CustomDockerClient {
         } catch (DockerException | InterruptedException e) {
             log.error("Computation failed to start[taskId:{}, image:{}, cmd:{}]",
                     taskId, containerConfig.image(), containerConfig.cmd());
+            e.printStackTrace();
             removeContainer(taskId);
             containerId = "";
         }
