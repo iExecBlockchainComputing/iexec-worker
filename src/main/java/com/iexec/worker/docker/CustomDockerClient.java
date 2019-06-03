@@ -44,7 +44,7 @@ public class CustomDockerClient {
         return containerConfigBuilder.env(env).build();
     }
 
-    private static HostConfig getHostConfig(String hostBaseVolume) {
+    public static HostConfig getHostConfig(String hostBaseVolume) {
         if (hostBaseVolume == null || hostBaseVolume.isEmpty()) return null;
 
         String outputMountpoint = hostBaseVolume + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
