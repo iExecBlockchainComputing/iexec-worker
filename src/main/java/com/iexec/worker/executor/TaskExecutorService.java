@@ -7,12 +7,12 @@ import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.chain.Web3jService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.DockerComputationService;
@@ -52,12 +52,14 @@ public class TaskExecutorService {
     private IexecHubService iexecHubService;
     private SmsService smsService;
     private Web3jService web3jService;
+    private PublicConfigurationService publicConfigurationService;
 
     // internal variables
     private int maxNbExecutions;
     private ThreadPoolExecutor executor;
     private String corePublicAddress;
 
+    //TODO make this fat constructor lose weight
     public TaskExecutorService(DatasetService datasetService,
                                DockerComputationService dockerComputationService,
                                ResultService resultService,
@@ -67,7 +69,8 @@ public class TaskExecutorService {
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
                                SmsService smsService,
-                               Web3jService web3jService) {
+                               Web3jService web3jService,
+                               PublicConfigurationService publicConfigurationService) {
         this.datasetService = datasetService;
         this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
@@ -78,6 +81,7 @@ public class TaskExecutorService {
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
         this.web3jService = web3jService;
+        this.publicConfigurationService = publicConfigurationService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
@@ -85,7 +89,7 @@ public class TaskExecutorService {
 
     @PostConstruct
     public void initIt() {
-        corePublicAddress = customFeignClient.getPublicConfiguration().getSchedulerPublicAddress();
+        corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
     }
 
     public boolean canAcceptMoreReplicates() {
@@ -145,7 +149,7 @@ public class TaskExecutorService {
 
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
-        if (!taskDescriptionFromChain.isPresent()){
+        if (!taskDescriptionFromChain.isPresent()) {
             stdout = "AvailableReplicateModel not found";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return stdout;
@@ -276,7 +280,7 @@ public class TaskExecutorService {
 
         if (oChainReceipt.get().getBlockNumber() == 0) {
             log.warn("The blocknumber of the receipt is equal to 0, the CONTRIBUTED status will not be " +
-                            "sent to the core [chainTaskId:{}]", chainTaskId);
+                    "sent to the core [chainTaskId:{}]", chainTaskId);
             return;
         }
 

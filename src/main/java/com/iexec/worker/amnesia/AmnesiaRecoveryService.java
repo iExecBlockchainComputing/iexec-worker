@@ -52,17 +52,15 @@ public class AmnesiaRecoveryService {
         }
 
         for (TaskNotification missedTaskNotification : missedTaskNotifications) {
-
-            ContributionAuthorization contributionAuth = missedTaskNotification.getTaskNotificationExtra().getContributionAuthorization();
             TaskNotificationType taskNotificationType = missedTaskNotification.getTaskNotificationType();
-            String chainTaskId = contributionAuth.getChainTaskId();
+            String chainTaskId = missedTaskNotification.getChainTaskId();
             boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
 
             log.info("Recovering interrupted task [chainTaskId:{}, taskNotificationType:{}]",
                     chainTaskId, taskNotificationType);
 
             if (!isResultAvailable && taskNotificationType != TaskNotificationType.PLEASE_CONTRIBUTE) {
-                log.error("Could not recover task, result not found [chainTaskId:{}, RecoveryAction:{}]",
+                log.error("Could not recover task, result not found [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
             }
@@ -70,7 +68,7 @@ public class AmnesiaRecoveryService {
             Optional<TaskDescription> optionalTaskDescription = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
             if (!optionalTaskDescription.isPresent()) {
-                log.error("Could not recover task, no replicateModel retrieved [chainTaskId:{}, RecoveryAction:{}]",
+                log.error("Could not recover task, no TaskDescription retrieved [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
             }
