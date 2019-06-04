@@ -6,7 +6,6 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.executor.TaskExecutorService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
