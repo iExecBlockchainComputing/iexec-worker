@@ -28,13 +28,20 @@ public class PingService {
         String sessionId = feignClient.ping();
         String currentSessionId = coreConfigurationService.getCoreSessionId();
         if (currentSessionId == null || currentSessionId.isEmpty()){
+            log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
             coreConfigurationService.setCoreSessionId(sessionId);
+            return;
+        }
+
+        if(sessionId != null && sessionId.equals("")){
+            log.warn("The worker cannot ping the core!");
             return;
         }
 
         if (sessionId != null && !sessionId.equalsIgnoreCase(currentSessionId)){
             // need to reconnect to the core by restarting the worker
-            log.warn("Scheduler seems to have restarted, the worker will restart now!");
+            log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]", currentSessionId, sessionId);
+            log.warn("The worker will restart now!");
             restartService.restartApp();
         }
     }
