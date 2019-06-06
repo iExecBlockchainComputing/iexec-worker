@@ -34,7 +34,8 @@ public class PingService {
 
         if (sessionId != null && !sessionId.equalsIgnoreCase(currentSessionId)){
             // need to reconnect to the core by restarting the worker
-            log.warn("Scheduler seems to have restarted, the worker will restart now!");
+            log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]", currentSessionId, sessionId);
+            log.warn("The worker will restart now!");
             restartService.restartApp();
         }
     }
