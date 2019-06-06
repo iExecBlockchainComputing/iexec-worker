@@ -28,7 +28,13 @@ public class PingService {
         String sessionId = feignClient.ping();
         String currentSessionId = coreConfigurationService.getCoreSessionId();
         if (currentSessionId == null || currentSessionId.isEmpty()){
+            log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
             coreConfigurationService.setCoreSessionId(sessionId);
+            return;
+        }
+
+        if(sessionId != null && sessionId.equals("")){
+            log.warn("The worker cannot ping the core!");
             return;
         }
 
