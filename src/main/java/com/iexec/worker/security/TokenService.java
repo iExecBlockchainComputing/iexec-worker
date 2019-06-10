@@ -22,7 +22,6 @@ public class TokenService {
 
     public TokenService(CredentialsService credentialsService,
                         WorkerClient workerClient) {
-
         this.credentialsService = credentialsService;
         this.workerClient = workerClient;
         expireToken();
