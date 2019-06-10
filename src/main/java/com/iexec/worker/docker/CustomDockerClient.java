@@ -59,6 +59,7 @@ public class CustomDockerClient {
         Device device = Device.builder()
                 .pathOnHost("/dev/isgx")
                 .pathInContainer("/dev/isgx")
+                .cgroupPermissions("rwm")
                 .build();
 
         return hostConfigBuilder.devices(device).build();
