@@ -126,14 +126,6 @@ public class TaskExecutorService {
             return;
         }
 
-        // TODO: not sure if this is needed !
-        // if contribution deadline is passed then no need to contribute
-        if (contributionService.isContributionDeadlineReached(chainTaskId)) {
-            log.error("The contribution deadline has been already reached, no more contributions are allowed [chain]"
-                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contributionAuth);
-            return;
-        }
-
         boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
 
         if (!isResultAvailable) {
@@ -280,11 +272,11 @@ public class TaskExecutorService {
     private String checkContributionAbility(String chainTaskId) {
         String errorMessage = "";
 
-        Optional<ReplicateStatus> statusBeforeDownloadApp = contributionService.getCanContributeStatus(chainTaskId);
-        if(statusBeforeDownloadApp.isPresent() && !statusBeforeDownloadApp.get().equals(CAN_CONTRIBUTE)) {
+        Optional<ReplicateStatus> contributionStatus = contributionService.getCanContributeStatus(chainTaskId);
+        if(contributionStatus.isPresent() && !contributionStatus.get().equals(CAN_CONTRIBUTE)) {
             errorMessage = "The worker cannot contribute";
-            log.error(errorMessage + " [chainTaskId:{}, replicateStatus:{}]", chainTaskId, statusBeforeDownloadApp.get());
-            customFeignClient.updateReplicateStatus(chainTaskId, statusBeforeDownloadApp.get());
+            log.error(errorMessage + " [chainTaskId:{}, replicateStatus:{}]", chainTaskId, contributionStatus.get());
+            customFeignClient.updateReplicateStatus(chainTaskId, contributionStatus.get());
             return errorMessage;
         }
 
