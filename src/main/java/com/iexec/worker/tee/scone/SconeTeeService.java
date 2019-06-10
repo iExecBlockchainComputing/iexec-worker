@@ -88,10 +88,8 @@ public class SconeTeeService {
 
         SmsSecureSession smsSecureSession = oSmsSecureSession.get();
 
-        String fspfFilePath = workerConfigurationService.getTaskOutputDir(chainTaskId)
-                + File.separator + FSPF_FILENAME;
-
-        String beneficiaryKeyFilePath = workerConfigurationService.getTaskOutputDir(chainTaskId)
+        String fspfFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId) + File.separator + FSPF_FILENAME;
+        String beneficiaryKeyFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + BENEFICIARY_KEY_FILENAME;
 
         byte[] fspfBytes = Base64.getDecoder().decode(smsSecureSession.getOutputFspf());

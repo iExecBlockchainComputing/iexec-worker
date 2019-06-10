@@ -66,6 +66,11 @@ public class WorkerConfigurationService {
         return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
     }
 
+    public String getTaskIexecOutDir(String chainTaskId) {
+        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT
+                + FileHelper.SLASH_IEXEC_OUT;
+    }
+
     public String getOS() {
         return System.getProperty("os.name").trim();
     }
