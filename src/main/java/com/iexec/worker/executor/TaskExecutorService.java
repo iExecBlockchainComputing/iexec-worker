@@ -140,7 +140,7 @@ public class TaskExecutorService {
     @Async
     private String compute(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
-        String stdout = "";
+        String message = "";
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
             log.error("Task not initialized onchain yet [ChainTaskId:{}]", chainTaskId);
@@ -150,9 +150,9 @@ public class TaskExecutorService {
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         if (!taskDescriptionFromChain.isPresent()) {
-            stdout = "AvailableReplicateModel not found";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
+            message = "AvailableReplicateModel not found";
+            log.error(message + " [chainTaskId:{}]", chainTaskId);
+            return message;
         }
 
         TaskDescription taskDescription = taskDescriptionFromChain.get();
@@ -166,33 +166,23 @@ public class TaskExecutorService {
         // check app type
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
         if (!taskDescription.getAppType().equals(DappType.DOCKER)) {
-            stdout = "Application is not of type Docker";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
+            message = "Application is not of type Docker";
+            log.error(message + " [chainTaskId:{}]", chainTaskId);
+            return message;
         }
 
-        // pull app
-        customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, taskDescription.getAppUri());
-        if (!isAppDownloaded) {
-            customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-            stdout = "Failed to pull application image, URI:" + taskDescription.getAppUri();
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
+        // Try to downloadApp
+        String errorDwnlApp = tryToDownloadApp(taskDescription);
+        if (!errorDwnlApp.isEmpty()) {
+            return errorDwnlApp;
         }
-
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
 
-        // pull data
-        customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
-        if (!isDatasetDownloaded) {
-            customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            stdout = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
+        // Try to downloadData
+        String errorDwnlData = tryToDownloadData(taskDescription);
+        if (!errorDwnlData.isEmpty()) {
+            return errorDwnlData;
         }
-
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
 
         boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
@@ -212,24 +202,85 @@ public class TaskExecutorService {
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
+            message = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
+            log.error(message + " [chainTaskId:{}]", chainTaskId);
+            return message;
+        }
+
+        String error = checkContributionAbility(chainTaskId);
+        if (!error.isEmpty()) {
+            return error;
         }
 
         // compute
         String datasetFilename = datasetService.getDatasetFilename(taskDescription.getDatasetUri());
-        stdout = dockerComputationService.dockerRunAndGetLogs(taskDescription, datasetFilename);
+        message = dockerComputationService.dockerRunAndGetLogs(taskDescription, datasetFilename);
 
-        if (stdout.isEmpty()) {
+        if (message.isEmpty()) {
             customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-            stdout = "Failed to start computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return stdout;
+            message = "Failed to start computation";
+            log.error(message + " [chainTaskId:{}]", chainTaskId);
+            return message;
         }
 
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTED);
-        return stdout;
+        return message;
+    }
+
+    private String tryToDownloadApp(TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
+
+        String error = checkContributionAbility(chainTaskId);
+        if (!error.isEmpty()) {
+            return error;
+        }
+
+        // pull app
+        customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
+        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, taskDescription.getAppUri());
+        if (!isAppDownloaded) {
+            customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
+            String errorMessage = "Failed to pull application image, URI:" + taskDescription.getAppUri();
+            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+            return errorMessage;
+        }
+
+        return "";
+    }
+
+    private String tryToDownloadData(TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
+
+        String error = checkContributionAbility(chainTaskId);
+        if (!error.isEmpty()) {
+            return error;
+        }
+
+        // pull data
+        customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
+        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
+        if (!isDatasetDownloaded) {
+            customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
+            String errorMessage = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
+            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+            return errorMessage;
+        }
+
+        return "";
+    }
+
+    private String checkContributionAbility(String chainTaskId) {
+        String errorMessage = "";
+
+        Optional<ReplicateStatus> contributionStatus = contributionService.getCanContributeStatus(chainTaskId);
+        if(contributionStatus.isPresent() && !contributionStatus.get().equals(CAN_CONTRIBUTE)) {
+            errorMessage = "The worker cannot contribute";
+            log.error(errorMessage + " [chainTaskId:{}, replicateStatus:{}]", chainTaskId, contributionStatus.get());
+            customFeignClient.updateReplicateStatus(chainTaskId, contributionStatus.get());
+            return errorMessage;
+        }
+
+        return errorMessage;
     }
 
     @Async
