@@ -20,7 +20,7 @@ wallet:
 scone:
   las:
     host: ${IEXEC_SCONE_LAS_HOST:sgx-server.iex.ec}
-    port: ${IEXEC_SCONE_LAS_PORT:18765}
+    port: ${IEXEC_SCONE_LAS_PORT:18766}
 
 decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
 encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
