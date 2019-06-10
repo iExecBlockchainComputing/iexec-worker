@@ -22,7 +22,7 @@ public class PingService {
         this.restartService = restartService;
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
         log.debug("Send ping to scheduler");
         String sessionId = feignClient.ping();
