@@ -6,14 +6,12 @@ import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.Volume;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.File;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,7 +64,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldCreateContainerConfig() {
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("image:tag", "cmd", "/tmp/worker-test");
+                .buildContainerConfig("image:tag", "cmd", "/tmp/worker-test");
         assertThat(containerConfig.image()).isEqualTo("image:tag");
         assertThat(containerConfig.cmd().get(0)).isEqualTo("cmd");
     }
@@ -76,14 +74,14 @@ public class CustomDockerClientTests {
         when(configurationService.getWorkerName()).thenReturn("worker1");
 
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("", "cmd", "/tmp/worker-test");
+                .buildContainerConfig("", "cmd", "/tmp/worker-test");
         assertThat(containerConfig).isNull();
     }
 
     @Test
     public void shouldNotCreateContainerConfigWithoutHostConfig() {
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("", "cmd", null);
+                .buildContainerConfig("", "cmd", null);
         assertThat(containerConfig).isNull();
     }
 
@@ -91,7 +89,7 @@ public class CustomDockerClientTests {
     public void shouldStartContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
+                .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isNotNull();
         assertThat(containerId).isNotEmpty();
@@ -103,7 +101,7 @@ public class CustomDockerClientTests {
     public void shouldStopComputingIfTooLong() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "aceace", "/tmp/worker-test");//long computation
+                .buildContainerConfig("iexechub/vanityeth:latest", "aceace", "/tmp/worker-test");//long computation
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isNotNull();
         assertThat(containerId).isNotEmpty();
@@ -116,7 +114,7 @@ public class CustomDockerClientTests {
     public void shouldNotStartContainerWithoutImage() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("", "a", "/tmp/worker-test");
+                .buildContainerConfig("", "a", "/tmp/worker-test");
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isEmpty();
     }
@@ -125,7 +123,7 @@ public class CustomDockerClientTests {
     public void shouldWaitForContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
+                .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
         customDockerClient.startContainer("taskId", containerConfig);
         boolean executionDone = customDockerClient.waitContainer("taskId", maxExecutionTime);
         assertThat(executionDone).isTrue();
@@ -141,7 +139,7 @@ public class CustomDockerClientTests {
     public void shouldRemoveStoppedContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
+                .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
         customDockerClient.startContainer("taskId", containerConfig);
         customDockerClient.waitContainer("taskId", maxExecutionTime);
 
@@ -153,7 +151,7 @@ public class CustomDockerClientTests {
     public void shouldNotRemoveRunningContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = CustomDockerClient
-                .getContainerConfig("iexechub/vanityeth:latest", "ac", "/tmp/worker-test");
+                .buildContainerConfig("iexechub/vanityeth:latest", "ac", "/tmp/worker-test");
         customDockerClient.startContainer("taskId", containerConfig);
 
         boolean containerRemoved = customDockerClient.removeContainer("taskId");
