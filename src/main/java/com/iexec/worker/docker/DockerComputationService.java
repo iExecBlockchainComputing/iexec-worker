@@ -8,15 +8,13 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Date;
 
-import static com.iexec.worker.docker.CustomDockerClient.getContainerConfig;
+import static com.iexec.worker.docker.CustomDockerClient.buildContainerConfig;
 
 
 @Service
 public class DockerComputationService {
 
     private static final String DATASET_FILENAME = "DATASET_FILENAME";
-    private static final String TEE_DOCKER_ENV_CHAIN_TASKID = "TASKID";
-    private static final String TEE_DOCKER_ENV_WORKER_ADDRESS = "WORKER";
 
     private final CustomDockerClient dockerClient;
     private final WorkerConfigurationService configurationService;
@@ -42,24 +40,15 @@ public class DockerComputationService {
         }
 
         String hostBaseVolume = configurationService.getTaskBaseDir(chainTaskId);
-        ContainerConfig containerConfig;
-
-        if (replicateModel.isTrustedExecution()) {
-            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
-                    TEE_DOCKER_ENV_CHAIN_TASKID + "=" + chainTaskId,
-                    TEE_DOCKER_ENV_WORKER_ADDRESS + "=" + configurationService.getWorkerWalletAddress(),
-                    DATASET_FILENAME + "=" + datasetFilename);
-        } else {
-            containerConfig = getContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
-                    DATASET_FILENAME + "=" + datasetFilename);
-        }
+        ContainerConfig containerConfig = buildContainerConfig(image, replicateModel.getCmd(), hostBaseVolume,
+                DATASET_FILENAME + "=" + datasetFilename);
 
         stdout = startComputationAndGetLogs(chainTaskId, containerConfig, replicateModel.getMaxExecutionTime());
 
         return stdout;
     }
 
-    public String dockerRunAndGetLogs(ContainerConfig containerConfig, String chainTaskId, long maxExecutionTime) {
+    public String dockerRunAndGetLogs(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
         //TODO: check image equals image:tag
         String stdout = "";
 
@@ -68,7 +57,6 @@ public class DockerComputationService {
         }
 
         stdout = startComputationAndGetLogs(chainTaskId, containerConfig, maxExecutionTime);
-
         return stdout;
     }
 

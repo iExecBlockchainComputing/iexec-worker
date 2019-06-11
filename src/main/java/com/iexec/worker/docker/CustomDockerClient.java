@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PreDestroy;
 import java.io.File;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,7 +31,7 @@ public class CustomDockerClient {
         taskToContainerId = new ConcurrentHashMap<>();
     }
 
-    static ContainerConfig getContainerConfig(String imageWithTag, String cmd, String hostBaseVolume, String... env) {
+    public static ContainerConfig buildContainerConfig(String imageWithTag, String cmd, String hostBaseVolume, String... env) {
         HostConfig hostConfig = getHostConfig(hostBaseVolume);
 
         if (imageWithTag.isEmpty() || hostConfig == null) return null;
