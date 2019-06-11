@@ -47,7 +47,7 @@ public class SconeTeeService {
         this.publicConfigurationService = publicConfigurationService;
     }
 
-    public ContainerConfig buildSconeContainerConfig(String secureSessionId, AvailableReplicateModel replicateModel) {
+    public ContainerConfig buildSconeContainerConfig(String sconeConfigId, AvailableReplicateModel replicateModel) {
         String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
         String appUri = replicateModel.getAppUri();
         String cmd = replicateModel.getCmd();
@@ -62,7 +62,7 @@ public class SconeTeeService {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfiguration.getURL())
                 .sconeCasAddress(publicConfigurationService.getSconeCasURL())
-                .sconeConfigId(secureSessionId + "/app")
+                .sconeConfigId(sconeConfigId)
                 .build();
 
         String datasetFilename = FileHelper.getFilenameFromUri(replicateModel.getDatasetUri());

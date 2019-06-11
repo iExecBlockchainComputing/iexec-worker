@@ -42,7 +42,7 @@ public class ComputationService {
     public Pair<ReplicateStatus, String> runTeeComputation(AvailableReplicateModel replicateModel) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
-        String stdout;
+        String stdout = "";
 
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
 
@@ -52,15 +52,19 @@ public class ComputationService {
             return Pair.of(COMPUTE_FAILED, stdout);
         }
 
-        ContainerConfig teeContainerConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId, replicateModel);
+        ContainerConfig sconeAppConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId + "/app", replicateModel);
+        ContainerConfig sconeEncrypterConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId + "/encryption", replicateModel);
 
-        stdout = dockerComputationService.dockerRunAndGetLogs(teeContainerConfig, chainTaskId, replicateModel.getMaxExecutionTime());
+        stdout = dockerComputationService.dockerRunAndGetLogs(chainTaskId, sconeAppConfig, replicateModel.getMaxExecutionTime());
 
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return Pair.of(COMPUTE_FAILED, stdout);
         }
+
+        // encrypt result
+        stdout += dockerComputationService.dockerRunAndGetLogs(chainTaskId, sconeEncrypterConfig, replicateModel.getMaxExecutionTime());
 
         return Pair.of(COMPUTED, stdout);
     }
