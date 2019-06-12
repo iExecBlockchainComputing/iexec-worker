@@ -20,6 +20,7 @@ public class FileHelper {
     public static final String SLASH_IEXEC_IN = File.separator + "iexec_in";
     public static final String SLASH_OUTPUT = File.separator + "output";
     public static final String SLASH_INPUT = File.separator + "input";
+    public static final String SLASH_SCONE = File.separator + "scone";
 
     private FileHelper() {
         throw new UnsupportedOperationException();
