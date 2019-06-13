@@ -8,10 +8,10 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.sms.secrets.SmsSecret;
 import com.iexec.common.sms.SmsRequest;
 import com.iexec.common.sms.SmsRequestData;
+import com.iexec.common.sms.scone.SconeSecureSessionResponse;
+import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.common.sms.secrets.TaskSecrets;
-import com.iexec.common.sms.tee.SmsSecureSessionResponse;
-import com.iexec.common.sms.tee.SmsSecureSessionResponse.SmsSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
@@ -87,39 +87,56 @@ public class SmsService {
     }
 
     public void saveSecrets(String chainTaskId, TaskSecrets taskSecrets) {
-
         SmsSecret datasetSecret = taskSecrets.getDatasetSecret();
         SmsSecret beneficiarySecret = taskSecrets.getBeneficiarySecret();
         SmsSecret enclaveSecret = taskSecrets.getEnclaveSecret();
 
-        if (datasetSecret != null && datasetSecret.getSecret() != null) {
+        if (datasetSecret != null && datasetSecret.getSecret() != null && !datasetSecret.getSecret().isEmpty()) {
             FileHelper.createFileWithContent(getDatasetSecretFilePath(chainTaskId), datasetSecret.getSecret() + "\n");
-            log.info("Downloaded dataset secret [chainTaskId:{}]", chainTaskId);
+            log.info("Saved dataset secret [chainTaskId:{}]", chainTaskId);
         } else {
-            log.info("No dataset secret found for this task [chainTaskId:{}]", chainTaskId);
+            log.info("No dataset secret for this task [chainTaskId:{}]", chainTaskId);
         }
 
-        if (beneficiarySecret != null && beneficiarySecret.getSecret() != null) {
+        if (beneficiarySecret != null && beneficiarySecret.getSecret() != null && !beneficiarySecret.getSecret().isEmpty()) {
             FileHelper.createFileWithContent(getBeneficiarySecretFilePath(chainTaskId), beneficiarySecret.getSecret());
-            log.info("Downloaded beneficiary secret [chainTaskId:{}]", chainTaskId);
+            log.info("Saved beneficiary secret [chainTaskId:{}]", chainTaskId);
         } else {
-            log.info("No beneficiary secret found for this task [chainTaskId:{}]", chainTaskId);
+            log.info("No beneficiary secret for this task [chainTaskId:{}]", chainTaskId);
         }
 
-        if (enclaveSecret != null && enclaveSecret.getSecret() != null) {
+        if (enclaveSecret != null && enclaveSecret.getSecret() != null && !enclaveSecret.getSecret().isEmpty()) {
             FileHelper.createFileWithContent(getEnclaveSecretFilePath(chainTaskId), enclaveSecret.getSecret());
-            log.info("Downloaded enclave secret [chainTaskId:{}]", chainTaskId);
+            log.info("Saved enclave secret [chainTaskId:{}]", chainTaskId);
         } else {
-            log.info("No enclave secret found for this task [chainTaskId:{}]", chainTaskId);
+            log.info("No enclave secret for this task [chainTaskId:{}]", chainTaskId);
         }
     }
 
+    public String getDatasetSecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/input/dataset.secret
+        return workerConfigurationService.getTaskInputDir(chainTaskId)
+                + File.separator + DATASET_SECRET_FILENAME;
+    }
+
+    public String getBeneficiarySecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/beneficiary.secret
+        return workerConfigurationService.getTaskBaseDir(chainTaskId)
+                + File.separator + BENEFICIARY_SECRET_FILENAME;
+    }
+
+    public String getEnclaveSecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/enclave.secret
+        return workerConfigurationService.getTaskBaseDir(chainTaskId)
+                + File.separator + ENCLAVE_SECRET_FILENAME;
+    }
+
     @Retryable(value = FeignException.class)
-    public Optional<SmsSecureSession> generateTaskSecureSession(ContributionAuthorization contributionAuth) {
+    public Optional<SconeSecureSession> getSconeSecureSession(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        SmsSecureSessionResponse smsResponse = smsClient.generateSecureSession(smsRequest);
+        SconeSecureSessionResponse smsResponse = smsClient.generateSecureSession(smsRequest);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);
@@ -141,7 +158,7 @@ public class SmsService {
     }
 
     @Recover
-    private Optional<SmsSecureSession> generateTaskSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
+    private Optional<SconeSecureSession> getSconeSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
         log.error("Failed to generate secure session [chainTaskId:{}, attempts:3]",
                 contributionAuth.getChainTaskId());
         e.printStackTrace();
@@ -164,23 +181,5 @@ public class SmsService {
             .build();
 
         return new SmsRequest(smsRequestData);
-    }
-
-    public String getDatasetSecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/input/dataset.secret
-        return workerConfigurationService.getTaskInputDir(chainTaskId)
-                + File.separator + DATASET_SECRET_FILENAME;
-    }
-
-    public String getBeneficiarySecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/beneficiary.secret
-        return workerConfigurationService.getTaskBaseDir(chainTaskId)
-                + File.separator + BENEFICIARY_SECRET_FILENAME;
-    }
-
-    public String getEnclaveSecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/enclave.secret
-        return workerConfigurationService.getTaskBaseDir(chainTaskId)
-                + File.separator + ENCLAVE_SECRET_FILENAME;
     }
 }
