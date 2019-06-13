@@ -31,17 +31,20 @@ public class SconeTeeService {
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
 
     private SmsService smsService;
+    private CustomDockerClient customDockerClient;
     private SconeLasConfiguration sconeLasConfiguration;
     private WorkerConfigurationService workerConfigurationService;
     private PublicConfigurationService publicConfigurationService;
 
 
     public SconeTeeService(SmsService smsService,
+                           CustomDockerClient customDockerClient,
                            SconeLasConfiguration sconeLasConfiguration,
                            WorkerConfigurationService workerConfigurationService,
                            PublicConfigurationService publicConfigurationService) {
 
         this.smsService = smsService;
+        this.customDockerClient = customDockerClient;
         this.sconeLasConfiguration = sconeLasConfiguration;
         this.workerConfigurationService = workerConfigurationService;
         this.publicConfigurationService = publicConfigurationService;
@@ -54,7 +57,7 @@ public class SconeTeeService {
 
         // get host config
         String hostBaseVolume = workerConfigurationService.getTaskBaseDir(chainTaskId);
-        HostConfig hostConfig = CustomDockerClient.getSgxHostConfig(hostBaseVolume);
+        HostConfig hostConfig = customDockerClient.getSconeHostConfig(hostBaseVolume);
 
         if (appUri.isEmpty() || hostConfig == null) return null;
 
