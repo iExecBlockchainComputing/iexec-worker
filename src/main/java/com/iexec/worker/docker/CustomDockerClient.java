@@ -219,8 +219,6 @@ public class CustomDockerClient {
         if (isTimeout) {
             log.warn("Container reached timeout, stopping [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
             stopContainer(containerId);
-        // } else {
-        //     log.info("Computation completed [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
         }
     }
 
