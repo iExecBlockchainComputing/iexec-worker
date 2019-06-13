@@ -3,27 +3,18 @@ package com.iexec.worker.tee.scone;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.replicate.AvailableReplicateModel;
-import com.iexec.common.sms.tee.SmsSecureSessionResponse.SmsSecureSession;
-import com.iexec.common.tee.scone.SconeConfig;
+import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
-import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.HostConfig;
 
 import org.springframework.stereotype.Service;
 
-import lombok.extern.slf4j.Slf4j;
 
-
-@Slf4j
 @Service
 public class SconeTeeService {
 
@@ -31,20 +22,17 @@ public class SconeTeeService {
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
 
     private SmsService smsService;
-    private CustomDockerClient customDockerClient;
     private SconeLasConfiguration sconeLasConfiguration;
     private WorkerConfigurationService workerConfigurationService;
     private PublicConfigurationService publicConfigurationService;
 
 
     public SconeTeeService(SmsService smsService,
-                           CustomDockerClient customDockerClient,
                            SconeLasConfiguration sconeLasConfiguration,
                            WorkerConfigurationService workerConfigurationService,
                            PublicConfigurationService publicConfigurationService) {
 
         this.smsService = smsService;
-        this.customDockerClient = customDockerClient;
         this.sconeLasConfiguration = sconeLasConfiguration;
         this.workerConfigurationService = workerConfigurationService;
         this.publicConfigurationService = publicConfigurationService;
@@ -54,13 +42,13 @@ public class SconeTeeService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         // generate secure session
-        Optional<SmsSecureSession> oSmsSecureSession = smsService.generateTaskSecureSession(contributionAuth);
+        Optional<SconeSecureSession> oSmsSecureSession = smsService.getSconeSecureSession(contributionAuth);
 
         if (!oSmsSecureSession.isPresent()) return "";
 
-        SmsSecureSession smsSecureSession = oSmsSecureSession.get();
+        SconeSecureSession smsSecureSession = oSmsSecureSession.get();
 
-        String fspfFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId) + File.separator + FSPF_FILENAME;
+        String fspfFilePath = workerConfigurationService.getTaskSconeDir(chainTaskId) + File.separator + FSPF_FILENAME;
         String beneficiaryKeyFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + BENEFICIARY_KEY_FILENAME;
 
