@@ -18,6 +18,7 @@ import javax.annotation.PreDestroy;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 
 
 @Slf4j
@@ -34,7 +35,36 @@ public class CustomDockerClient {
         this.workerConfigurationService = workerConfigurationService;
     }
 
-    public HostConfig getHostConfig(String chainTaskId) {
+    public ContainerConfig buildContainerConfig(String chainTaskId, String imageUri, String cmd, List<String> env) {
+        if (imageUri == null || imageUri.isEmpty()) return null;
+
+        HostConfig hostConfig = getHostConfig(chainTaskId);
+        if (hostConfig == null) return null;
+
+        return buildCommonContainerConfig(hostConfig, imageUri, cmd, env);
+    }
+
+    public ContainerConfig buildSconeContainerConfig(String chainTaskId, String imageUri, String cmd, List<String> env) {
+        if (imageUri == null || imageUri.isEmpty()) return null;
+
+        HostConfig hostConfig = getSconeHostConfig(chainTaskId);
+        if (hostConfig == null) return null;
+
+        return buildCommonContainerConfig(hostConfig, imageUri, cmd, env);
+    }
+
+    private ContainerConfig buildCommonContainerConfig(HostConfig hostConfig, String imageUri, String cmd, List<String> env) {
+        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
+
+        if (cmd != null && !cmd.isEmpty()) containerConfigBuilder.cmd(cmd);
+
+        return containerConfigBuilder.image(imageUri)
+                .hostConfig(hostConfig)
+                .env(env)
+                .build();
+    }
+
+    private HostConfig getHostConfig(String chainTaskId) {
         HostConfig.Bind inputBind = createInputBind(chainTaskId);
         HostConfig.Bind outputBind = createOutputBind(chainTaskId);
 
@@ -45,7 +75,7 @@ public class CustomDockerClient {
                 .build();
     }
 
-    public HostConfig getSconeHostConfig(String chainTaskId) {
+    private HostConfig getSconeHostConfig(String chainTaskId) {
         HostConfig.Bind inputBind = createInputBind(chainTaskId);
         HostConfig.Bind outputBind = createOutputBind(chainTaskId);
         HostConfig.Bind sconeBind = createSconeBind(chainTaskId);
@@ -95,25 +125,6 @@ public class CustomDockerClient {
                 .build();
     }
 
-    public ContainerConfig buildContainerConfig(String chainTaskId, String imageUri, String cmd, String... env) {
-        if (imageUri == null || imageUri.isEmpty()) return null;
-        HostConfig hostConfig = getHostConfig(chainTaskId);
-        return buildContainerConfig(hostConfig, imageUri, cmd, env);
-    }
-
-    public ContainerConfig buildContainerConfig(HostConfig hostConfig, String imageUri, String cmd, String... env) {
-        if (hostConfig == null || imageUri == null || imageUri.isEmpty()) return null;
-
-        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
-
-        if (cmd != null && !cmd.isEmpty()) containerConfigBuilder.cmd(cmd);
-
-        return containerConfigBuilder.image(imageUri)
-                .hostConfig(hostConfig)
-                .env(env)
-                .build();
-    }
-
     public boolean pullImage(String chainTaskId, String image) {
         log.info("Image pull started [chainTaskId:{}, image:{}]", chainTaskId, image);
 
@@ -143,6 +154,11 @@ public class CustomDockerClient {
      * This creates a container, starts it and returns its logs
      */
     public String dockerRun(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
+        if (containerConfig == null) {
+            log.error("Could not run computation, container config is null [chainTaskId:{}]", chainTaskId);
+            return "";
+        }
+
         log.info("Running computation [chainTaskId:{}, image:{}, cmd:{}]",
                 chainTaskId, containerConfig.image(), containerConfig.cmd());
 
