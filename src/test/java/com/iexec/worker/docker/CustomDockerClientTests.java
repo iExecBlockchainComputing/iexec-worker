@@ -19,9 +19,7 @@ import static org.mockito.Mockito.when;
 
 public class CustomDockerClientTests {
 
-
-    @Mock
-    private WorkerConfigurationService configurationService;
+    @Mock private WorkerConfigurationService configurationService;
 
     @InjectMocks
     private CustomDockerClient customDockerClient;
@@ -63,7 +61,7 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldCreateContainerConfig() {
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("image:tag", "cmd", "/tmp/worker-test");
         assertThat(containerConfig.image()).isEqualTo("image:tag");
         assertThat(containerConfig.cmd().get(0)).isEqualTo("cmd");
@@ -73,14 +71,14 @@ public class CustomDockerClientTests {
     public void shouldNotCreateContainerConfigWithoutImage() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
 
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("", "cmd", "/tmp/worker-test");
         assertThat(containerConfig).isNull();
     }
 
     @Test
     public void shouldNotCreateContainerConfigWithoutHostConfig() {
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("", "cmd", null);
         assertThat(containerConfig).isNull();
     }
@@ -88,7 +86,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldStartContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isNotNull();
@@ -100,7 +98,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldStopComputingIfTooLong() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "aceace", "/tmp/worker-test");//long computation
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isNotNull();
@@ -113,7 +111,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldNotStartContainerWithoutImage() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("", "a", "/tmp/worker-test");
         String containerId = customDockerClient.startContainer("taskId", containerConfig);
         assertThat(containerId).isEmpty();
@@ -122,7 +120,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldWaitForContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
         customDockerClient.startContainer("taskId", containerConfig);
         boolean executionDone = customDockerClient.waitContainer("taskId", maxExecutionTime);
@@ -138,7 +136,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldRemoveStoppedContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
         customDockerClient.startContainer("taskId", containerConfig);
         customDockerClient.waitContainer("taskId", maxExecutionTime);
@@ -150,7 +148,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldNotRemoveRunningContainer() {
         when(configurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = CustomDockerClient
+        ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "ac", "/tmp/worker-test");
         customDockerClient.startContainer("taskId", containerConfig);
 
