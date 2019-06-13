@@ -15,7 +15,6 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.chain.Web3jService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -44,7 +43,6 @@ public class TaskExecutorService {
 
     // external services
     private DatasetService datasetService;
-    private DockerComputationService dockerComputationService;
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
@@ -59,7 +57,6 @@ public class TaskExecutorService {
     private ThreadPoolExecutor executor;
 
     public TaskExecutorService(DatasetService datasetService,
-                               DockerComputationService dockerComputationService,
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
@@ -69,7 +66,6 @@ public class TaskExecutorService {
                                Web3jService web3jService,
                                ComputationService computationService) {
         this.datasetService = datasetService;
-        this.dockerComputationService = dockerComputationService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
@@ -130,7 +126,7 @@ public class TaskExecutorService {
 
         // pull app
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-        boolean isAppDownloaded = dockerComputationService.dockerPull(chainTaskId, replicateModel.getAppUri());
+        boolean isAppDownloaded = computationService.downloadApp(chainTaskId, replicateModel.getAppUri());
         if (!isAppDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
             stdout = "Failed to pull application image, URI:" + replicateModel.getAppUri();

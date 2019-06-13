@@ -20,7 +20,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.DockerComputationService;
+import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.feign.ResultRepoClient;
 import com.iexec.worker.result.ResultService;
@@ -36,7 +36,8 @@ import org.mockito.MockitoAnnotations;
 public class TaskExecutorServiceTests {
 
     @Mock private DatasetService datasetService;
-    @Mock private DockerComputationService dockerComputationService;
+    @Mock private ComputationService computationService;
+    @Mock private CustomDockerClient customDockerClient;
     @Mock private ResultService resultService;
     @Mock private ContributionService contributionService;
     @Mock private CustomFeignClient customFeignClient;
@@ -59,6 +60,8 @@ public class TaskExecutorServiceTests {
     public void init() {
         MockitoAnnotations.initMocks(this);
     }
+
+    // compute() tests
 
     @Test
     public void shouldNotComputeWhenTaskNotInitializedOnchain() {
@@ -118,7 +121,7 @@ public class TaskExecutorServiceTests {
 
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(dockerComputationService.dockerPull(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
+        when(computationService.downloadApp(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
         when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
@@ -131,8 +134,8 @@ public class TaskExecutorServiceTests {
 
         Mockito.verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
-        Mockito.verify(dockerComputationService, Mockito.times(1))
-                .dockerRunAndGetLogs(any(), any());
+        Mockito.verify(computationService, Mockito.times(1))
+                .runNonTeeComputation(any());
     }
 
     @Test
@@ -141,7 +144,7 @@ public class TaskExecutorServiceTests {
 
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(dockerComputationService.dockerPull(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
+        when(computationService.downloadApp(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
         when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
@@ -156,8 +159,8 @@ public class TaskExecutorServiceTests {
         Mockito.verify(datasetService, Mockito.times(1))
                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
-        Mockito.verify(dockerComputationService, Mockito.times(1))
-                .dockerRunAndGetLogs(any(), any());
+        Mockito.verify(computationService, Mockito.times(1))
+                .runNonTeeComputation(any());
     }
 
     @Test
@@ -166,7 +169,7 @@ public class TaskExecutorServiceTests {
 
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(dockerComputationService.dockerPull(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
+        when(computationService.downloadApp(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
         when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
@@ -181,8 +184,8 @@ public class TaskExecutorServiceTests {
         Mockito.verify(datasetService, Mockito.times(1))
                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
-        Mockito.verify(dockerComputationService, Mockito.times(0))
-                .dockerRunAndGetLogs(any(), any());
+        Mockito.verify(computationService, Mockito.times(0))
+                .runNonTeeComputation(any());
     }
 
     AvailableReplicateModel getStubReplicateModel(String enclaveChallenge) {
@@ -200,6 +203,8 @@ public class TaskExecutorServiceTests {
                 .enclaveChallenge(enclaveChallenge)
                 .build();
     }
+
+    // uploadResult() tests
 
     @Test
     public void shouldNotEncryptResult() {
