@@ -18,8 +18,7 @@ import javax.annotation.PreDestroy;
 
 import java.time.Instant;
 import java.util.Date;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
 
 @Slf4j
 @Service
@@ -28,12 +27,10 @@ public class CustomDockerClient {
     private static final String EXITED = "exited";
 
     private DefaultDockerClient docker;
-    private Map<String, String> taskToContainerId;
     private WorkerConfigurationService workerConfigurationService;
 
     public CustomDockerClient(WorkerConfigurationService workerConfigurationService) throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
-        taskToContainerId = new ConcurrentHashMap<>();
         this.workerConfigurationService = workerConfigurationService;
     }
 
@@ -142,10 +139,6 @@ public class CustomDockerClient {
         }
     }
 
-    // String getContainerId(String taskId) {
-    //     return taskToContainerId.containsKey(taskId) ? taskToContainerId.get(taskId) : "";
-    // }
-
     /**
      * This creates a container, starts it and returns its logs
      */
@@ -222,14 +215,6 @@ public class CustomDockerClient {
             isTimeout = isAfterTimeout(executionTimeoutDate);
         }
 
-        // while (!isContainerExited(containerId) && !isAfterTimeout(executionTimeoutDate)) {
-        //     log.info("Running computation [chainTaskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
-        //             chainTaskId, containerId, getContainerStatus(containerId),
-        //             isContainerExited(containerId), isAfterTimeout(executionTimeoutDate));
-        //             // chainTaskId, containerId, getContainerStatus(containerId), isComputed, isTimeout);
-        //     WaitUtils.sleep(1000);
-        // }
-
         if (isTimeout) {
             log.warn("Container reached timeout, stopping [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
             stopContainer(containerId);
@@ -275,6 +260,7 @@ public class CustomDockerClient {
             docker.removeContainer(containerId);
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to remove container [containerId:{}]", containerId);
+            e.printStackTrace();
             return false;
         }
 
