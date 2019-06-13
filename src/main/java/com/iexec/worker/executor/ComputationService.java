@@ -5,7 +5,6 @@ import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.docker.DockerComputationService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
@@ -28,26 +27,27 @@ public class ComputationService {
     private SmsService smsService;
     private DatasetService datasetService;
     private CustomDockerClient customDockerClient;
-    private DockerComputationService dockerComputationService;
     private SconeTeeService sconeTeeService;
 
     public ComputationService(SmsService smsService,
                               DatasetService datasetService,
                               CustomDockerClient customDockerClient,
-                              DockerComputationService dockerComputationService,
                               SconeTeeService sconeTeeService) {
 
         this.smsService = smsService;
         this.datasetService = datasetService;
         this.customDockerClient = customDockerClient;
-        this.dockerComputationService = dockerComputationService;
         this.sconeTeeService = sconeTeeService;
     }
 
+    public boolean downloadApp(String chainTaskId, String appUri) {
+        return customDockerClient.pullImage(chainTaskId, appUri);
+    }
 
     public Pair<ReplicateStatus, String> runTeeComputation(AvailableReplicateModel replicateModel) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
+        long maxExecutionTime = replicateModel.getMaxExecutionTime();
         String stdout = "";
 
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
@@ -61,7 +61,8 @@ public class ComputationService {
         ContainerConfig sconeAppConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId + "/app", replicateModel);
         ContainerConfig sconeEncrypterConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId + "/encryption", replicateModel);
 
-        stdout = dockerComputationService.dockerRunAndGetLogs(chainTaskId, sconeAppConfig, replicateModel.getMaxExecutionTime());
+        // run computation
+        stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
 
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
@@ -70,7 +71,7 @@ public class ComputationService {
         }
 
         // encrypt result
-        stdout += dockerComputationService.dockerRunAndGetLogs(chainTaskId, sconeEncrypterConfig, replicateModel.getMaxExecutionTime());
+        stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
 
         return Pair.of(COMPUTED, stdout);
     }
@@ -107,7 +108,6 @@ public class ComputationService {
         String datasetFilename = FileHelper.getFilenameFromUri(replicateModel.getDatasetUri());
         String env = DATASET_FILENAME + "=" + datasetFilename;
 
-        // stdout = dockerComputationService.dockerRunAndGetLogs(replicateModel, datasetFilename);
         ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, cmd, env);
 
         if (!customDockerClient.isImagePulled(imageUri)) {
