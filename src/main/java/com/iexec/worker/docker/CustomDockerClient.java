@@ -114,7 +114,7 @@ public class CustomDockerClient {
                 .build();
     }
 
-    boolean pullImage(String chainTaskId, String image) {
+    public boolean pullImage(String chainTaskId, String image) {
         log.info("Image pull started [chainTaskId:{}, image:{}]", chainTaskId, image);
 
         try {
@@ -143,7 +143,7 @@ public class CustomDockerClient {
      * This creates a container, starts it and returns its logs
      */
     public String dockerRun(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
-        log.info("Running container [chainTaskId:{}, image:{}, cmd:{}]",
+        log.info("Running computation [chainTaskId:{}, image:{}, cmd:{}]",
                 chainTaskId, containerConfig.image(), containerConfig.cmd());
 
         // docker create
@@ -157,9 +157,10 @@ public class CustomDockerClient {
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(chainTaskId, containerId, executionTimeoutDate);
+        log.info("Computation completed [chainTaskId:{}]", chainTaskId);
 
         // docker logs
-        String stdout = getContainerLogs(chainTaskId);
+        String stdout = getContainerLogs(containerId);
 
         removeContainer(containerId);
         return stdout;
@@ -207,10 +208,10 @@ public class CustomDockerClient {
         boolean isTimeout = false;
 
         while (!isComputed && !isTimeout) {
-            log.info("Running computation [chainTaskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
+            log.info("Computing [chainTaskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
                     chainTaskId, containerId, getContainerStatus(containerId), isComputed, isTimeout);
 
-            WaitUtils.sleep(1000);
+            WaitUtils.sleep(1);
             isComputed = isContainerExited(containerId);
             isTimeout = isAfterTimeout(executionTimeoutDate);
         }
@@ -218,8 +219,8 @@ public class CustomDockerClient {
         if (isTimeout) {
             log.warn("Container reached timeout, stopping [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
             stopContainer(containerId);
-        } else {
-            log.info("Computation completed [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
+        // } else {
+        //     log.info("Computation completed [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
         }
     }
 
@@ -254,7 +255,7 @@ public class CustomDockerClient {
         return stdout;
     }
 
-    boolean removeContainer(String containerId) {
+    private boolean removeContainer(String containerId) {
         log.debug("Removing container [containerId:{}]", containerId);
         try {
             docker.removeContainer(containerId);
