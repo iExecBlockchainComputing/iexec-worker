@@ -17,6 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 
 @Slf4j
 @Service
@@ -47,8 +51,17 @@ public class ComputationService {
     public Pair<ReplicateStatus, String> runTeeComputation(AvailableReplicateModel replicateModel) {
         ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
         String chainTaskId = contributionAuth.getChainTaskId();
+        String imageUri = replicateModel.getAppUri();
+        String datasetUri = replicateModel.getDatasetUri();
+        String cmd = replicateModel.getCmd();
         long maxExecutionTime = replicateModel.getMaxExecutionTime();
         String stdout = "";
+
+        if (!customDockerClient.isImagePulled(imageUri)) {
+            stdout = "Application image not found, URI:" + imageUri;
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return Pair.of(COMPUTE_FAILED, stdout);
+        }
 
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
 
@@ -58,9 +71,17 @@ public class ComputationService {
             return Pair.of(COMPUTE_FAILED, stdout);
         }
 
-        ContainerConfig sconeAppConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId + "/app", replicateModel);
-        ContainerConfig sconeEncrypterConfig = sconeTeeService.buildSconeContainerConfig(secureSessionId + "/encryption", replicateModel);
+        ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app");
+        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption");
 
+        String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
+        String datasetEnv = DATASET_FILENAME + "=" + datasetFilename;
+        sconeAppEnv.add(datasetEnv);
+        sconeEncrypterEnv.add(datasetEnv);
+
+        ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeAppEnv);
+        ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeEncrypterEnv);
+        
         // run computation
         stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
 
@@ -72,7 +93,6 @@ public class ComputationService {
 
         // encrypt result
         stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
-
         return Pair.of(COMPUTED, stdout);
     }
 
@@ -83,6 +103,12 @@ public class ComputationService {
         String cmd = replicateModel.getCmd();
         long maxExecutionTime = replicateModel.getMaxExecutionTime();
         String stdout = "";
+
+        if (!customDockerClient.isImagePulled(imageUri)) {
+            stdout = "Application image not found, URI:" + imageUri;
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return Pair.of(COMPUTE_FAILED, stdout);
+        }
 
         // fetch task secrets from SMS
         boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
@@ -106,16 +132,9 @@ public class ComputationService {
 
         // compute
         String datasetFilename = FileHelper.getFilenameFromUri(replicateModel.getDatasetUri());
-        String env = DATASET_FILENAME + "=" + datasetFilename;
+        List<String> env = Arrays.asList(DATASET_FILENAME + "=" + datasetFilename);
 
         ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, cmd, env);
-
-        if (!customDockerClient.isImagePulled(imageUri)) {
-            stdout = "Application image not found, URI:" + imageUri;
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
-        }
-
         stdout = customDockerClient.dockerRun(chainTaskId, containerConfig, maxExecutionTime);
 
         if (stdout.isEmpty()) {

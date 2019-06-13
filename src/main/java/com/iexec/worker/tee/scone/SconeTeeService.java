@@ -50,37 +50,6 @@ public class SconeTeeService {
         this.publicConfigurationService = publicConfigurationService;
     }
 
-    public ContainerConfig buildSconeContainerConfig(String sconeConfigId, AvailableReplicateModel replicateModel) {
-        String chainTaskId = replicateModel.getContributionAuthorization().getChainTaskId();
-        String appUri = replicateModel.getAppUri();
-        String cmd = replicateModel.getCmd();
-
-        // get host config
-        String hostBaseVolume = workerConfigurationService.getTaskBaseDir(chainTaskId);
-        HostConfig hostConfig = customDockerClient.getSconeHostConfig(hostBaseVolume);
-
-        if (appUri.isEmpty() || hostConfig == null) return null;
-
-        // build tee container config
-        SconeConfig sconeConfig = SconeConfig.builder()
-                .sconeLasAddress(sconeLasConfiguration.getURL())
-                .sconeCasAddress(publicConfigurationService.getSconeCasURL())
-                .sconeConfigId(sconeConfigId)
-                .build();
-
-        String datasetFilename = FileHelper.getFilenameFromUri(replicateModel.getDatasetUri());
-        List<String> dockerEnvVariables = new ArrayList<>(sconeConfig.toDockerEnv());
-        dockerEnvVariables.add("DATASET_FILENAME=" + datasetFilename);
-
-        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder()
-                .image(appUri)
-                .hostConfig(hostConfig);
-
-        if (cmd != null && !cmd.isEmpty()) containerConfigBuilder.cmd(cmd);
-
-        return containerConfigBuilder.env(dockerEnvVariables).build();
-    }
-
     public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
 
@@ -95,11 +64,21 @@ public class SconeTeeService {
         String beneficiaryKeyFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + BENEFICIARY_KEY_FILENAME;
 
-        byte[] fspfBytes = Base64.getDecoder().decode(smsSecureSession.getOutputFspf());
+        byte[] fspfBytes = Base64.getDecoder().decode(smsSecureSession.getSconeVolumeFspf());
 
         FileHelper.createFileWithContent(fspfFilePath, fspfBytes);
         FileHelper.createFileWithContent(beneficiaryKeyFilePath, smsSecureSession.getBeneficiaryKey());
 
         return smsSecureSession.getSessionId();
+    }
+
+    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId) {
+        SconeConfig sconeConfig = SconeConfig.builder()
+                .sconeLasAddress(sconeLasConfiguration.getURL())
+                .sconeCasAddress(publicConfigurationService.getSconeCasURL())
+                .sconeConfigId(sconeConfigId)
+                .build();
+
+        return sconeConfig.toDockerEnv();
     }
 }
