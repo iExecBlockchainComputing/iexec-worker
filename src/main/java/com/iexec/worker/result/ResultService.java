@@ -1,15 +1,12 @@
 package com.iexec.worker.result;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
-import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +37,6 @@ public class ResultService {
     private String scriptFilePath;
 
     private static final String DETERMINIST_FILE_NAME = "determinism.iexec";
-    private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
 
@@ -242,34 +238,6 @@ public class ResultService {
         }
 
         return hexaString;
-    }
-
-    public Optional<Signature> getEnclaveSignatureFromFile(String chainTaskId) {
-        String executionEnclaveSignatureFileName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
-        Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
-
-        if (!executionEnclaveSignatureFilePath.toFile().exists()) {
-            log.info("TeeSignature file doesn't exist [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        ObjectMapper mapper = new ObjectMapper();
-        TeeSignature teeSignature = null;
-        try {
-            teeSignature = mapper.readValue(executionEnclaveSignatureFilePath.toFile(), TeeSignature.class);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        if (teeSignature == null) {
-            log.info("TeeSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        Signature sign = teeSignature.getSign();
-        log.info("TeeSignature file exists [chainTaskId:{}, r:{}, sign:{}, v:{}]",
-                chainTaskId, sign.getR(), sign.getS(), sign.getV());
-        return Optional.of(sign);
     }
 
     public boolean isResultEncryptionNeeded(String chainTaskId) {
