@@ -1,14 +1,14 @@
 package com.iexec.worker.feign;
 
-import com.iexec.common.replicate.ReplicateDetails;
-import java.util.List;
-
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.disconnection.InterruptedReplicateModel;
+import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @FeignClient(name = "ReplicateClient", url = "http://${core.host}:${core.port}")
@@ -21,7 +21,7 @@ public interface ReplicateClient {
     ) throws FeignException;
 
     @GetMapping("/replicates/interrupted")
-    List<InterruptedReplicateModel> getInterruptedReplicates(
+    List<TaskNotification> getMissedTaskNotifications(
             @RequestParam(name = "blockNumber") long blockNumber,
             @RequestHeader("Authorization") String bearerToken
     ) throws FeignException;

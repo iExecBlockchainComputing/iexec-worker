@@ -1,8 +1,8 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.sms.SmsService;
@@ -48,13 +48,13 @@ public class ComputationService {
         return customDockerClient.pullImage(chainTaskId, appUri);
     }
 
-    public Pair<ReplicateStatus, String> runTeeComputation(AvailableReplicateModel replicateModel) {
-        ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
+    public Pair<ReplicateStatus, String> runTeeComputation(TaskDescription taskDescription,
+                                                           ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
-        String imageUri = replicateModel.getAppUri();
-        String datasetUri = replicateModel.getDatasetUri();
-        String cmd = replicateModel.getCmd();
-        long maxExecutionTime = replicateModel.getMaxExecutionTime();
+        String imageUri = taskDescription.getAppUri();
+        String datasetUri = taskDescription.getDatasetUri();
+        String cmd = taskDescription.getCmd();
+        long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String stdout = "";
 
         if (!customDockerClient.isImagePulled(imageUri)) {
@@ -96,12 +96,12 @@ public class ComputationService {
         return Pair.of(COMPUTED, stdout);
     }
 
-    public Pair<ReplicateStatus, String> runNonTeeComputation(AvailableReplicateModel replicateModel) {
-        ContributionAuthorization contributionAuth = replicateModel.getContributionAuthorization();
-        String chainTaskId = contributionAuth.getChainTaskId();
-        String imageUri = replicateModel.getAppUri();
-        String cmd = replicateModel.getCmd();
-        long maxExecutionTime = replicateModel.getMaxExecutionTime();
+    public Pair<ReplicateStatus, String> runNonTeeComputation(TaskDescription taskDescription,
+                                                              ContributionAuthorization contributionAuth) {
+        String chainTaskId = taskDescription.getChainTaskId();
+        String imageUri = taskDescription.getAppUri();
+        String cmd = taskDescription.getCmd();
+        long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String stdout = "";
 
         if (!customDockerClient.isImagePulled(imageUri)) {
@@ -121,17 +121,17 @@ public class ComputationService {
         boolean isDatasetDecrypted = false;
 
         if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, replicateModel.getDatasetUri());
+            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
-            stdout = "Failed to decrypt dataset, URI:" + replicateModel.getDatasetUri();
+            stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
             return Pair.of(COMPUTE_FAILED, stdout);
         }
 
         // compute
-        String datasetFilename = FileHelper.getFilenameFromUri(replicateModel.getDatasetUri());
+        String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
         List<String> env = Arrays.asList(DATASET_FILENAME + "=" + datasetFilename);
 
         ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, cmd, env);

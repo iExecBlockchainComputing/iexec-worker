@@ -118,4 +118,13 @@ public class ContributionService {
     public boolean hasEnoughGas() {
         return iexecHubService.hasEnoughGas();
     }
+
+    public boolean isContributionDeadlineReached(String chainTaskId) {
+        Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
+        if (!oTask.isPresent()) {
+            return true;
+        }
+        ChainTask task = oTask.get();
+        return isBeforeContributionDeadlineToContribute(task);
+    }
 }
