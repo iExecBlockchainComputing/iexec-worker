@@ -183,7 +183,6 @@ public class TaskExecutorService {
         if (!errorDwnlData.isEmpty()) {
             return errorDwnlData;
         }
-
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
 
