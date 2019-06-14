@@ -82,8 +82,7 @@ public class TaskExecutorServiceTests {
                         .build());
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -96,8 +95,7 @@ public class TaskExecutorServiceTests {
                 .thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -111,8 +109,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubReplicateModel(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -126,9 +123,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future =
-                taskExecutorService.addReplicate(getStubReplicateModel(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -141,15 +136,15 @@ public class TaskExecutorServiceTests {
 
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(computationService.downloadApp(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
+        when(computationService.downloadApp(CHAIN_TASK_ID, task.getAppUri())).thenReturn(true);
+        when(datasetService.downloadDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -158,7 +153,7 @@ public class TaskExecutorServiceTests {
         Mockito.verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
 
         Mockito.verify(computationService, Mockito.times(1))
-                .runNonTeeComputation(any());
+                .runNonTeeComputation(any(), any());
     }
 
     @Test
@@ -175,8 +170,8 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -186,7 +181,7 @@ public class TaskExecutorServiceTests {
                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
         Mockito.verify(computationService, Mockito.times(1))
-                .runNonTeeComputation(any());
+                .runNonTeeComputation(any(), any());
     }
 
     @Test
@@ -203,8 +198,8 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -214,7 +209,7 @@ public class TaskExecutorServiceTests {
                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
 
         Mockito.verify(computationService, Mockito.times(0))
-                .runNonTeeComputation(any());
+                .runNonTeeComputation(any(), any());
     }
 
     @Test
