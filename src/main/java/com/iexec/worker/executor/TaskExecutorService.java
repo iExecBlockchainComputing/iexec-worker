@@ -17,6 +17,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -51,6 +52,7 @@ public class TaskExecutorService {
     private IexecHubService iexecHubService;
     private Web3jService web3jService;
     private ComputationService computationService;
+    private SconeTeeService sconeTeeService;
 
     // internal variables
     private int maxNbExecutions;
@@ -64,7 +66,8 @@ public class TaskExecutorService {
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
                                Web3jService web3jService,
-                               ComputationService computationService) {
+                               ComputationService computationService,
+                               SconeTeeService sconeTeeService) {
         this.datasetService = datasetService;
         this.resultService = resultService;
         this.contributionService = contributionService;
@@ -74,6 +77,7 @@ public class TaskExecutorService {
         this.iexecHubService = iexecHubService;
         this.web3jService = web3jService;
         this.computationService = computationService;
+        this.sconeTeeService = sconeTeeService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
@@ -103,7 +107,7 @@ public class TaskExecutorService {
 
         return CompletableFuture.supplyAsync(() -> compute(replicateModel, isTeeTask), executor)
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, replicateModel, stdout))
-                .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth); })
+                .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth, isTeeTask); })
                 .handle((res, err) -> {
                     if (err != null) err.printStackTrace();
                     return err == null;
@@ -163,32 +167,50 @@ public class TaskExecutorService {
     }
 
     @Async
-    public void contribute(ContributionAuthorization contribAuth) {
+    public void contribute(ContributionAuthorization contribAuth, boolean isTeeTask) {
         String chainTaskId = contribAuth.getChainTaskId();
-        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
-        Optional<Signature> oEnclaveSignature = resultService.getEnclaveSignatureFromFile(chainTaskId);
 
+        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
         if (deterministHash.isEmpty()) {
+            log.error("Cannot contribute, determinism hash is empty [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId,
+                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
             return;
         }
 
         Signature enclaveSignature = SignatureUtils.emptySignature();
 
-        if (oEnclaveSignature.isPresent()) {
-            enclaveSignature = contributionService.getEnclaveSignature(contribAuth, deterministHash, oEnclaveSignature.get());
+        if (isTeeTask) {
+
+            Optional<Signature> oSconeEnclaveSignature = sconeTeeService.getSconeEnclaveSignatureFromFile(chainTaskId);
+            if (!oSconeEnclaveSignature.isPresent()) {
+                log.error("Cannot contribute, could not get enclave signature [chainTaskId:{}]", chainTaskId);
+                customFeignClient.updateReplicateStatus(chainTaskId,
+                        ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+                return;
+            }
+
+            enclaveSignature = oSconeEnclaveSignature.get();
+
+            boolean isValid = sconeTeeService.isEnclaveSignatureValid(chainTaskId, deterministHash,
+                    enclaveSignature, contribAuth.getEnclaveChallenge());
+
+            if (!isValid) {
+                log.error("Cannot contribute, enclave signature is not valid [chainTaskId:{}]", chainTaskId);
+                customFeignClient.updateReplicateStatus(chainTaskId,
+                        ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+                return;
+            }
         }
 
-        Optional<ReplicateStatus> canContributeStatus = contributionService.getCanContributeStatus(chainTaskId);
-        if (!canContributeStatus.isPresent()) {
-            log.error("canContributeStatus should not be empty (getChainTask issue) [chainTaskId:{}]", chainTaskId);
+        Optional<ReplicateStatus> oCannotContributeStatus = contributionService.getCannotContributeStatus(chainTaskId);
+        if (oCannotContributeStatus.isPresent()) {
+            log.error("Cannot contribute [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
+            customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
             return;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, canContributeStatus.get());
-        if (!canContributeStatus.get().equals(CAN_CONTRIBUTE) & enclaveSignature != null) {
-            log.warn("Cant contribute [chainTaskId:{}, status:{}]", chainTaskId, canContributeStatus.get());
-            return;
-        }
+        customFeignClient.updateReplicateStatus(chainTaskId, ReplicateStatus.CAN_CONTRIBUTE);
 
         if (!contributionService.hasEnoughGas()) {
             customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
