@@ -104,7 +104,7 @@ public class TaskExecutorService {
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         // don't compute if task needs TEE && TEE not supported;
-        boolean isTeeTask = TeeUtils.isTeeTag(contributionAuth.getEnclaveChallenge());
+        boolean isTeeTask = TeeUtils.isTeeChallenge(contributionAuth.getEnclaveChallenge());
         if (isTeeTask && !workerConfigurationService.isTeeEnabled()) {
             log.error("Task needs TEE, I don't support it [chainTaskId:{}]", chainTaskId);
             return CompletableFuture.completedFuture(false);
@@ -143,7 +143,7 @@ public class TaskExecutorService {
             addReplicate(contributionAuth);
         } else {
             log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
-            boolean isTeeTask = TeeUtils.isTeeTag(contributionAuth.getEnclaveChallenge());
+            boolean isTeeTask = TeeUtils.isTeeChallenge(contributionAuth.getEnclaveChallenge());
             contribute(contributionAuth, isTeeTask);
         }
     }
