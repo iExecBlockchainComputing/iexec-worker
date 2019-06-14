@@ -1,12 +1,19 @@
 package com.iexec.worker.tee.scone;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.security.Signature;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
+import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.HashUtils;
+import com.iexec.common.utils.SignatureUtils;
+import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.sms.SmsService;
@@ -14,12 +21,16 @@ import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
 
+
+@Slf4j
 @Service
 public class SconeTeeService {
 
     private static final String FSPF_FILENAME = "volume.fspf";
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
+    private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
 
     private SmsService smsService;
     private SconeLasConfiguration sconeLasConfiguration;
@@ -42,22 +53,22 @@ public class SconeTeeService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         // generate secure session
-        Optional<SconeSecureSession> oSmsSecureSession = smsService.getSconeSecureSession(contributionAuth);
+        Optional<SconeSecureSession> oSconeSecureSession = smsService.getSconeSecureSession(contributionAuth);
 
-        if (!oSmsSecureSession.isPresent()) return "";
+        if (!oSconeSecureSession.isPresent()) return "";
 
-        SconeSecureSession smsSecureSession = oSmsSecureSession.get();
+        SconeSecureSession sconeSecureSession = oSconeSecureSession.get();
 
         String fspfFilePath = workerConfigurationService.getTaskSconeDir(chainTaskId) + File.separator + FSPF_FILENAME;
         String beneficiaryKeyFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + BENEFICIARY_KEY_FILENAME;
 
-        byte[] fspfBytes = Base64.getDecoder().decode(smsSecureSession.getSconeVolumeFspf());
+        byte[] fspfBytes = Base64.getDecoder().decode(sconeSecureSession.getSconeVolumeFspf());
 
         FileHelper.createFileWithContent(fspfFilePath, fspfBytes);
-        FileHelper.createFileWithContent(beneficiaryKeyFilePath, smsSecureSession.getBeneficiaryKey());
+        FileHelper.createFileWithContent(beneficiaryKeyFilePath, sconeSecureSession.getBeneficiaryKey());
 
-        return smsSecureSession.getSessionId();
+        return sconeSecureSession.getSessionId();
     }
 
     public ArrayList<String> buildSconeDockerEnv(String sconeConfigId) {
@@ -68,5 +79,50 @@ public class SconeTeeService {
                 .build();
 
         return sconeConfig.toDockerEnv();
+    }
+
+    public Optional<Signature> getSconeEnclaveSignatureFromFile(String chainTaskId) {
+        String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+                + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
+
+        File enclaveSignatureFile = new File(enclaveSignatureFilePath);
+
+        if (!enclaveSignatureFile.exists()) {
+            log.error("Scone enclave signature file not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
+                    chainTaskId, enclaveSignatureFilePath);
+            return Optional.empty();
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        SconeEnclaveSignature sconeEnclaveSignature = null;
+        try {
+            sconeEnclaveSignature = mapper.readValue(enclaveSignatureFile, SconeEnclaveSignature.class);
+        } catch (IOException e) {
+            log.error("Scone enclave signature file found but failed to parse it [chainTaskId:{}]", chainTaskId);
+            e.printStackTrace();
+            return Optional.empty();
+        }
+
+        if (sconeEnclaveSignature == null) {
+            log.error("Scone enclave signature file found but parsed to null [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        String signatureString = sconeEnclaveSignature.getSignature();
+
+        log.info("Scone enclave signature retrieved successfully [chainTaskId:{}, signature:{}]",
+                chainTaskId, signatureString);
+
+        return Optional.of(new Signature(signatureString));
+    }
+
+    public boolean isEnclaveSignatureValid(String chainTaskId, String deterministHash, Signature enclaveSignature, String signerAddress) {
+        String walletAddress = workerConfigurationService.getWorkerWalletAddress();
+
+        String resultHash = ContributionService.computeResultHash(chainTaskId, deterministHash);
+        String resultSeal = ContributionService.computeResultSeal(walletAddress, chainTaskId, deterministHash);
+
+        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
+        return SignatureUtils.isSignatureValid(message, enclaveSignature, signerAddress);
     }
 }
