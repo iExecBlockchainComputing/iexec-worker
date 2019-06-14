@@ -165,6 +165,6 @@ public class AmnesiaRecoveryService {
         }
 
         resultService.saveResultInfo(chainTaskId, replicateModel);
-        taskExecutorService.contribute(contributionAuth);
+        taskExecutorService.contribute(contributionAuth, false);
     }
 }
