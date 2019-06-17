@@ -82,6 +82,17 @@ public class SconeTeeService {
     }
 
     public Optional<Signature> getSconeEnclaveSignatureFromFile(String chainTaskId) {
+        Optional<SconeEnclaveSignature> sconeEnclaveSignatureInfos =
+                readSconeEnclaveSignatureFile(chainTaskId);
+
+        if (!sconeEnclaveSignatureInfos.isPresent()) return Optional.empty();
+
+        Signature enclaveSignature = new Signature(sconeEnclaveSignatureInfos.get().getSignature());
+
+        return Optional.of(enclaveSignature);
+    }
+
+    private Optional<SconeEnclaveSignature> readSconeEnclaveSignatureFile(String chainTaskId) {
         String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
 
@@ -104,16 +115,14 @@ public class SconeTeeService {
         }
 
         if (sconeEnclaveSignature == null) {
-            log.error("Scone enclave signature file found but parsed to null [chainTaskId:{}]", chainTaskId);
+            log.error("Scone enclave signature file found but was parsed to null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
 
-        String signatureString = sconeEnclaveSignature.getSignature();
-
         log.info("Scone enclave signature retrieved successfully [chainTaskId:{}, signature:{}]",
-                chainTaskId, signatureString);
+                chainTaskId, sconeEnclaveSignature.getSignature());
 
-        return Optional.of(new Signature(signatureString));
+        return Optional.of(sconeEnclaveSignature);
     }
 
     public boolean isEnclaveSignatureValid(String chainTaskId, String deterministHash, Signature enclaveSignature, String signerAddress) {

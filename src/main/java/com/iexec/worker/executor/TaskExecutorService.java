@@ -156,7 +156,7 @@ public class TaskExecutorService {
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         if (!taskDescriptionFromChain.isPresent()) {
-            message = "TaskDescription not found";
+            message = "TaskDescription not found onChain";
             log.error(message + " [chainTaskId:{}]", chainTaskId);
             return message;
         }
@@ -249,11 +249,11 @@ public class TaskExecutorService {
     private String checkContributionAbility(String chainTaskId) {
         String errorMessage = "";
 
-        Optional<ReplicateStatus> contributionStatus = contributionService.getCanContributeStatus(chainTaskId);
-        if(contributionStatus.isPresent() && !contributionStatus.get().equals(CAN_CONTRIBUTE)) {
+        Optional<ReplicateStatus> oCannotContributeStatus = contributionService.getCannotContributeStatus(chainTaskId);
+        if (oCannotContributeStatus.isPresent()) {
             errorMessage = "The worker cannot contribute";
-            log.error(errorMessage + " [chainTaskId:{}, replicateStatus:{}]", chainTaskId, contributionStatus.get());
-            customFeignClient.updateReplicateStatus(chainTaskId, contributionStatus.get());
+            log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
+            customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
             return errorMessage;
         }
 
@@ -272,30 +272,17 @@ public class TaskExecutorService {
             return;
         }
 
-        Signature enclaveSignature = SignatureUtils.emptySignature();
+        Optional<Signature> oEnclaveSignature = getTaskEnclaveSignatureIfValid(chainTaskId, isTeeTask,
+                contribAuth.getEnclaveChallenge(), deterministHash);
 
-        if (isTeeTask) {
-
-            Optional<Signature> oSconeEnclaveSignature = sconeTeeService.getSconeEnclaveSignatureFromFile(chainTaskId);
-            if (!oSconeEnclaveSignature.isPresent()) {
-                log.error("Cannot contribute, could not get enclave signature [chainTaskId:{}]", chainTaskId);
-                customFeignClient.updateReplicateStatus(chainTaskId,
-                        ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
-                return;
-            }
-
-            enclaveSignature = oSconeEnclaveSignature.get();
-
-            boolean isValid = sconeTeeService.isEnclaveSignatureValid(chainTaskId, deterministHash,
-                    enclaveSignature, contribAuth.getEnclaveChallenge());
-
-            if (!isValid) {
-                log.error("Cannot contribute, enclave signature is not valid [chainTaskId:{}]", chainTaskId);
-                customFeignClient.updateReplicateStatus(chainTaskId,
-                        ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
-                return;
-            }
+        if (!oEnclaveSignature.isPresent()) {
+            log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId,
+                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+            return;
         }
+
+        Signature enclaveSignature = oEnclaveSignature.get();
 
         Optional<ReplicateStatus> oCannotContributeStatus = contributionService.getCannotContributeStatus(chainTaskId);
         if (oCannotContributeStatus.isPresent()) {
@@ -432,5 +419,31 @@ public class TaskExecutorService {
     public void completeTask(String chainTaskId) {
         resultService.removeResult(chainTaskId);
         customFeignClient.updateReplicateStatus(chainTaskId, COMPLETED);
+    }
+
+    private Optional<Signature> getTaskEnclaveSignatureIfValid(String chainTaskId, boolean isTeeTask,
+                                                               String enclaveChallenge, String deterministHash) {
+
+        if (!isTeeTask) return Optional.of(SignatureUtils.emptySignature());
+
+        Optional<Signature> oSconeEnclaveSignature = sconeTeeService.getSconeEnclaveSignatureFromFile(chainTaskId);
+        if (!oSconeEnclaveSignature.isPresent()) {
+            log.error("Could not read scone enclave signature [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        Signature enclaveSignature = oSconeEnclaveSignature.get();
+        log.debug("Got scone enclave signature from enclaveSig.iexec file [chainTaskId:{}, signature:{}]",
+                chainTaskId, enclaveSignature);
+
+        boolean isValid = sconeTeeService.isEnclaveSignatureValid(chainTaskId, deterministHash,
+                enclaveSignature, enclaveChallenge);
+
+        if (!isValid) {
+            log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        return Optional.of(enclaveSignature);
     }
 }
