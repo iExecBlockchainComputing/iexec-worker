@@ -323,9 +323,7 @@ public class TaskExecutorService {
 
         Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribAuth, deterministHash, enclaveSignature);
         if (!oChainReceipt.isPresent()) {
-            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
-            customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED,
-                    ReplicateDetails.builder().chainReceipt(chainReceipt).build());
+            log.warn("The chain receipt of the contribution is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
             return;
         }
 
@@ -367,9 +365,7 @@ public class TaskExecutorService {
 
         Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
         if (!optionalChainReceipt.isPresent()) {
-            ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
-            customFeignClient.updateReplicateStatus(chainTaskId, REVEAL_FAILED,
-                    ReplicateDetails.builder().chainReceipt(chainReceipt).build());
+            log.warn("The chain receipt of the reveal is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
             return;
         }
 
