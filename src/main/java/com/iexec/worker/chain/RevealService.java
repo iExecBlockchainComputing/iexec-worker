@@ -17,13 +17,16 @@ public class RevealService {
     private IexecHubService iexecHubService;
     private ResultService resultService;
     private CredentialsService credentialsService;
+    private Web3jService web3jService;
 
     public RevealService(IexecHubService iexecHubService,
                          ResultService resultService,
-                         CredentialsService credentialsService) {
+                         CredentialsService credentialsService,
+                         Web3jService web3jService) {
         this.iexecHubService = iexecHubService;
         this.resultService = resultService;
         this.credentialsService = credentialsService;
+        this.web3jService = web3jService;
     }
 
     public boolean canReveal(String chainTaskId) {
@@ -76,6 +79,14 @@ public class RevealService {
         }
 
         return ret;
+    }
+
+    public boolean isConsensusBlockReached(String chainTaskId, long consensusBlock) {
+        if (web3jService.isBlockAvailable(consensusBlock)) return true;
+
+        log.warn("Sync issues, consensus block not reached yet [chainTaskId:{}, latestBlock:{}, consensusBlock:{}]",
+                chainTaskId, web3jService.getLatestBlockNumber(), consensusBlock);
+        return false;
     }
 
     // returns the ChainReceipt of the reveal if successful, null otherwise
