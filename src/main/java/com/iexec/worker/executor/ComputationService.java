@@ -81,7 +81,7 @@ public class ComputationService {
 
         ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeAppEnv);
         ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeEncrypterEnv);
-        
+
         // run computation
         stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
 
