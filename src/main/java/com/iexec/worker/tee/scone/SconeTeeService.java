@@ -13,7 +13,6 @@ import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
-import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.sms.SmsService;
@@ -92,7 +91,7 @@ public class SconeTeeService {
         return Optional.of(enclaveSignature);
     }
 
-    private Optional<SconeEnclaveSignature> readSconeEnclaveSignatureFile(String chainTaskId) {
+    public Optional<SconeEnclaveSignature> readSconeEnclaveSignatureFile(String chainTaskId) {
         String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
 
@@ -125,12 +124,8 @@ public class SconeTeeService {
         return Optional.of(sconeEnclaveSignature);
     }
 
-    public boolean isEnclaveSignatureValid(String chainTaskId, String deterministHash, Signature enclaveSignature, String signerAddress) {
-        String walletAddress = workerConfigurationService.getWorkerWalletAddress();
-
-        String resultHash = ContributionService.computeResultHash(chainTaskId, deterministHash);
-        String resultSeal = ContributionService.computeResultSeal(walletAddress, chainTaskId, deterministHash);
-
+    public boolean isEnclaveSignatureValid(String resultHash, String resultSeal,
+                                           Signature enclaveSignature, String signerAddress) {
         byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
         return SignatureUtils.isSignatureValid(message, enclaveSignature, signerAddress);
     }
