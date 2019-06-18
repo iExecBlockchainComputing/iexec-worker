@@ -1,37 +1,25 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
-import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.chain.Web3jService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
+import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
 
@@ -49,44 +37,24 @@ public class TaskExecutorHelperService {
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
-    private RevealService revealService;
     private WorkerConfigurationService workerConfigurationService;
-    private IexecHubService iexecHubService;
-    private Web3jService web3jService;
-    private PublicConfigurationService publicConfigurationService;
     private ComputationService computationService;
     private SconeTeeService sconeTeeService;
-
-    // internal variables
-    private int maxNbExecutions;
-    private ThreadPoolExecutor executor;
-    private String corePublicAddress;
 
     public TaskExecutorHelperService(DatasetService datasetService,
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
-                               RevealService revealService,
                                WorkerConfigurationService workerConfigurationService,
-                               IexecHubService iexecHubService,
-                               Web3jService web3jService,
                                ComputationService computationService,
-                               SconeTeeService sconeTeeService,
-                               PublicConfigurationService publicConfigurationService) {
+                               SconeTeeService sconeTeeService) {
         this.datasetService = datasetService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
-        this.revealService = revealService;
         this.workerConfigurationService = workerConfigurationService;
-        this.iexecHubService = iexecHubService;
-        this.web3jService = web3jService;
         this.computationService = computationService;
         this.sconeTeeService = sconeTeeService;
-        this.publicConfigurationService = publicConfigurationService;
-
-        maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
-        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
     }
 
     String checkAppType(String chainTaskId, DappType type) {

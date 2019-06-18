@@ -12,6 +12,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.CustomDockerClient;
+import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;

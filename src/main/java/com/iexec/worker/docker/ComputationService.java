@@ -1,4 +1,4 @@
-package com.iexec.worker.executor;
+package com.iexec.worker.docker;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.ReplicateStatus;

@@ -6,15 +6,14 @@ import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeTeeService;
 import org.apache.commons.lang3.tuple.Pair;
 
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +47,6 @@ public class TaskExecutorService {
     private IexecHubService iexecHubService;
     private PublicConfigurationService publicConfigurationService;
     private ComputationService computationService;
-    private SconeTeeService sconeTeeService;
 
     // internal variables
     private int maxNbExecutions;
@@ -64,7 +62,6 @@ public class TaskExecutorService {
                                WorkerConfigurationService workerConfigurationService,
                                IexecHubService iexecHubService,
                                ComputationService computationService,
-                               SconeTeeService sconeTeeService,
                                PublicConfigurationService publicConfigurationService) {
         this.taskExecutorHelperService = taskExecutorHelperService;
         this.resultService = resultService;
@@ -74,7 +71,6 @@ public class TaskExecutorService {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.computationService = computationService;
-        this.sconeTeeService = sconeTeeService;
         this.publicConfigurationService = publicConfigurationService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
