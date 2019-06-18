@@ -188,9 +188,10 @@ public class TaskExecutorService {
         String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId, isTeeTask);
         if (determinismHash.isEmpty()) return;
 
-        Optional<Signature> oEnclaveSignature = taskExecutorHelperService.getEnclaveSignature(chainTaskId,
+        Optional<Signature> oEnclaveSignature = taskExecutorHelperService.getVerifiedEnclaveSignature(chainTaskId,
                 isTeeTask, determinismHash, enclaveChallenge);
         if (!oEnclaveSignature.isPresent()) return;
+
         Signature enclaveSignature = oEnclaveSignature.get();
 
         String contributionAbilityError = taskExecutorHelperService.checkContributionAbility(chainTaskId);
@@ -233,7 +234,7 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALING);
 
-        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId);
+        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, determinismHash);
 
         boolean isValidChainReceipt = taskExecutorHelperService.isValidChainReceipt(chainTaskId, oChainReceipt);
         if (!isValidChainReceipt) return;

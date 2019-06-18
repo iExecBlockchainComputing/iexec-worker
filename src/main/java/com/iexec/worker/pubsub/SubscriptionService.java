@@ -179,7 +179,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
             TaskNotificationType type = notif.getTaskNotificationType();
             String chainTaskId = notif.getChainTaskId();
-            boolean isTeeTask = notif.getTaskNotificationExtra().isTeeTask();
+            boolean isTeeTask = notif.getTaskNotificationExtra() != null ?
+                    notif.getTaskNotificationExtra().isTeeTask() : false;
 
             switch (type) {
                 case PLEASE_CONTRIBUTE:

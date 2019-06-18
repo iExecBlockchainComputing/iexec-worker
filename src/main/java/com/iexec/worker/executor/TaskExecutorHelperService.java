@@ -145,7 +145,7 @@ public class TaskExecutorHelperService {
         return oSconeEnclaveSignatureFile.get().getResult();
     }
 
-    Optional<Signature> getEnclaveSignature(String chainTaskId, boolean isTeeTask,
+    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, boolean isTeeTask,
                                             String deterministHash, String signerAddress) {
 
         if (!isTeeTask) return Optional.of(SignatureUtils.emptySignature());

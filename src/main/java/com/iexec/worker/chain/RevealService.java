@@ -3,7 +3,6 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
-import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -15,16 +14,13 @@ import java.util.Optional;
 public class RevealService {
 
     private IexecHubService iexecHubService;
-    private ResultService resultService;
     private CredentialsService credentialsService;
     private Web3jService web3jService;
 
     public RevealService(IexecHubService iexecHubService,
-                         ResultService resultService,
                          CredentialsService credentialsService,
                          Web3jService web3jService) {
         this.iexecHubService = iexecHubService;
-        this.resultService = resultService;
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
     }
@@ -90,14 +86,13 @@ public class RevealService {
     }
 
     // returns the ChainReceipt of the reveal if successful, null otherwise
-    public Optional<ChainReceipt> reveal(String chainTaskId) {
-        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
+    public Optional<ChainReceipt> reveal(String chainTaskId, String determinismHash) {
 
-        if (deterministHash.isEmpty()) {
+        if (determinismHash.isEmpty()) {
             return Optional.empty();
         }
 
-        IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, deterministHash);
+        IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, determinismHash);
         if (revealResponse == null) {
             log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
