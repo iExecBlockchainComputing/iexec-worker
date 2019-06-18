@@ -103,8 +103,4 @@ public class RevealService {
 
         return Optional.of(chainReceipt);
     }
-
-    public boolean hasEnoughGas() {
-        return iexecHubService.hasEnoughGas();
-    }
 }
