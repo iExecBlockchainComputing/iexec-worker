@@ -98,13 +98,13 @@ public class TaskExecutorService {
 
         boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
 
-        if (!isResultAvailable) {
-            log.info("Result not found, will restart task from RUNNING [chainTaskId:{}]", chainTaskId);
-            addReplicate(contributionAuth, isTeeTask);
-        } else {
+        if (isResultAvailable) {
             log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
-            contribute(contributionAuth, isTeeTask);
+            contribute(contributionAuth, isTeeTask);    
+            return;
         }
+
+        addReplicate(contributionAuth, isTeeTask);
     }
 
     public CompletableFuture<Boolean> addReplicate(ContributionAuthorization contributionAuth, boolean isTeeTask) {
