@@ -31,10 +31,10 @@ public class SconeTeeService {
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
 
-    private SmsService smsService;
     private SconeLasConfiguration sconeLasConfiguration;
     private WorkerConfigurationService workerConfigurationService;
     private PublicConfigurationService publicConfigurationService;
+    private SmsService smsService;
 
 
     public SconeTeeService(SmsService smsService,
@@ -80,17 +80,6 @@ public class SconeTeeService {
         return sconeConfig.toDockerEnv();
     }
 
-    // public Optional<Signature> getSconeEnclaveSignatureFromFile(String chainTaskId) {
-    //     Optional<SconeEnclaveSignatureFile> sconeEnclaveSignatureInfos =
-    //             readSconeEnclaveSignatureFile(chainTaskId);
-
-    //     if (!sconeEnclaveSignatureInfos.isPresent()) return Optional.empty();
-
-    //     Signature enclaveSignature = new Signature(sconeEnclaveSignatureInfos.get().getSignature());
-
-    //     return Optional.of(enclaveSignature);
-    // }
-
     public Optional<SconeEnclaveSignatureFile> readSconeEnclaveSignatureFile(String chainTaskId) {
         String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
@@ -125,8 +114,8 @@ public class SconeTeeService {
     }
 
     public boolean isEnclaveSignatureValid(String resultHash, String resultSeal,
-                                           Signature enclaveSignature, String signerAddress) {
+                                           Signature enclaveSignature, String enclaveAddress) {
         byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
-        return SignatureUtils.isSignatureValid(message, enclaveSignature, signerAddress);
+        return SignatureUtils.isSignatureValid(message, enclaveSignature, enclaveAddress);
     }
 }

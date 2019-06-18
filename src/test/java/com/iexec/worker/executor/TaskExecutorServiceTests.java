@@ -83,7 +83,7 @@ public class TaskExecutorServiceTests {
                         .build());
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE), false);
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -96,7 +96,7 @@ public class TaskExecutorServiceTests {
                 .thenReturn(true);
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE), false);
         future.join();
 
         Mockito.verify(customFeignClient, never())
@@ -110,7 +110,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE), false);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -124,7 +124,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE), false);
         future.join();
 
         Mockito.verify(customFeignClient, Mockito.times(1))
@@ -144,7 +144,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE), false);
         // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
@@ -171,7 +171,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE), false);
         // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
@@ -199,7 +199,7 @@ public class TaskExecutorServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getStubTaskDescription()));
 
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE), false);
         // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
         future.join();
 
