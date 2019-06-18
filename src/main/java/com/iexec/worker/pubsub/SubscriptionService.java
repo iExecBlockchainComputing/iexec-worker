@@ -179,12 +179,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
             TaskNotificationType type = notif.getTaskNotificationType();
             String chainTaskId = notif.getChainTaskId();
+            boolean isTeeTask = notif.getTaskNotificationExtra().isTeeTask();
 
             switch (type) {
                 case PLEASE_CONTRIBUTE:
                     ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
                     if (contribAuth != null){
-                        taskExecutorService.tryToContribute(contribAuth);
+                        taskExecutorService.tryToContribute(contribAuth, isTeeTask);
                     } else {
                         log.error("Empty contribAuth for PLEASE_CONTRIBUTE [chainTaskId:{}]", chainTaskId);
                     }
@@ -199,7 +200,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                     break;
 
                 case PLEASE_REVEAL:
-                    taskExecutorService.reveal(chainTaskId, notif.getTaskNotificationExtra().getBlockNumber());
+                    taskExecutorService.reveal(chainTaskId, notif.getTaskNotificationExtra().getBlockNumber(), isTeeTask);
                     break;
 
                 case PLEASE_UPLOAD:
