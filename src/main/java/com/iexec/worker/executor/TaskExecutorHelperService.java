@@ -18,7 +18,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeEnclaveSignature;
+import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -62,7 +62,6 @@ public class TaskExecutorHelperService {
     private ThreadPoolExecutor executor;
     private String corePublicAddress;
 
-    //TODO make this fat constructor lose weight
     public TaskExecutorHelperService(DatasetService datasetService,
                                ResultService resultService,
                                ContributionService contributionService,
@@ -90,82 +89,92 @@ public class TaskExecutorHelperService {
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
     }
 
-    // Pair<TaskDescription, String> tryToGetTaskDescription(String chainTaskId) {
-    //     Optional<TaskDescription> oTaskDescription = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+    String checkAppType(String chainTaskId, DappType type) {
+        if (type.equals(DappType.DOCKER)) return "";
 
-    //     if (oTaskDescription.isPresent()) return Pair.of(oTaskDescription.get(), "");
+        String errorMessage = "Application is not of type Docker";
+        log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+        return errorMessage;
+    }
 
-    //     String errorMessage = "TaskDescription not found onChain";
-    //     log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-    //     return Pair.of(null, errorMessage);
-    // }
+    String tryToDownloadApp(TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
 
-    // String tryToDownloadApp(TaskDescription taskDescription) {
-    //     String chainTaskId = taskDescription.getChainTaskId();
+        String error = checkContributionAbility(chainTaskId);
+        if (!error.isEmpty()) return error;
 
-    //     String error = checkContributionAbility(chainTaskId);
-    //     if (!error.isEmpty()) {
-    //         return error;
-    //     }
+        // pull app
+        customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
+        boolean isAppDownloaded = computationService.downloadApp(chainTaskId, taskDescription.getAppUri());
+        if (!isAppDownloaded) {
+            customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
+            String errorMessage = "Failed to pull application image, URI:" + taskDescription.getAppUri();
+            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+            return errorMessage;
+        }
 
-    //     // pull app
-    //     customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-    //     boolean isAppDownloaded = computationService.downloadApp(chainTaskId, taskDescription.getAppUri());
-    //     if (!isAppDownloaded) {
-    //         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-    //         String errorMessage = "Failed to pull application image, URI:" + taskDescription.getAppUri();
-    //         log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-    //         return errorMessage;
-    //     }
+        return "";
+    }
 
-    //     return "";
-    // }
+    String tryToDownloadData(TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
 
-    // String tryToDownloadData(TaskDescription taskDescription) {
-    //     String chainTaskId = taskDescription.getChainTaskId();
+        String error = checkContributionAbility(chainTaskId);
+        if (!error.isEmpty()) return error;
 
-    //     String error = checkContributionAbility(chainTaskId);
-    //     if (!error.isEmpty()) {
-    //         return error;
-    //     }
+        // pull data
+        customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
+        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
+        if (!isDatasetDownloaded) {
+            customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
+            String errorMessage = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
+            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+            return errorMessage;
+        }
 
-    //     // pull data
-    //     customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-    //     boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
-    //     if (!isDatasetDownloaded) {
-    //         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-    //         String errorMessage = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
-    //         log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-    //         return errorMessage;
-    //     }
+        return "";
+    }
 
-    //     return "";
-    // }
+    String checkContributionAbility(String chainTaskId) {
+        Optional<ReplicateStatus> oCannotContributeStatus =
+                contributionService.getCannotContributeStatus(chainTaskId);
 
-    // String checkContributionAbility(String chainTaskId) {
-    //     String errorMessage = "";
+        if (!oCannotContributeStatus.isPresent()) return "";
 
-    //     Optional<ReplicateStatus> oCannotContributeStatus = contributionService.getCannotContributeStatus(chainTaskId);
-    //     if (oCannotContributeStatus.isPresent()) {
-    //         errorMessage = "The worker cannot contribute";
-    //         log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
-    //         customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
-    //         return errorMessage;
-    //     }
+        String errorMessage = "Cannot contribute";
+        log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
+        customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
+        return errorMessage;
+    }
 
-    //     return errorMessage;
-    // }
+    String getTaskDeterminismHash(String chainTaskId, boolean isTeeTask) {
+        return isTeeTask ? getTeeDeterminismHash(chainTaskId) : getNonTeeDeterminismHash(chainTaskId);
+    }
 
-    String getDeterministHash(String chainTaskId) {
-        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
-        if (deterministHash.isEmpty()) {
-            log.error("Cannot contribute, determinism hash is empty [chainTaskId:{}]", chainTaskId);
+    String getNonTeeDeterminismHash(String chainTaskId) {
+        String determinismHash = resultService.getDeterministHashForTask(chainTaskId);
+        if (determinismHash.isEmpty()) {
+            log.error("Determinism hash is empty [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
                     ReplicateStatus.CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
             return "";
         }
 
-        return deterministHash;
+        return determinismHash;
+    }
+
+    String getTeeDeterminismHash(String chainTaskId) {
+        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
+                sconeTeeService.readSconeEnclaveSignatureFile(chainTaskId);
+
+        if (!oSconeEnclaveSignatureFile.isPresent()) {
+            log.error("Could not get TEE determinism hash [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId,
+                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+            return "";
+        }
+
+        return oSconeEnclaveSignatureFile.get().getResult();
     }
 
     Optional<Signature> getEnclaveSignature(String chainTaskId, boolean isTeeTask,
@@ -173,8 +182,10 @@ public class TaskExecutorHelperService {
 
         if (!isTeeTask) return Optional.of(SignatureUtils.emptySignature());
 
-        Optional<SconeEnclaveSignature> oSconeEnclaveSignature = sconeTeeService.readSconeEnclaveSignatureFile(chainTaskId);
-        if (!oSconeEnclaveSignature.isPresent()) {
+        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
+                sconeTeeService.readSconeEnclaveSignatureFile(chainTaskId);
+
+        if (!oSconeEnclaveSignatureFile.isPresent()) {
             log.error("Cannot contribute, problem reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
             log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
@@ -182,13 +193,13 @@ public class TaskExecutorHelperService {
             return Optional.empty();
         }
 
-        SconeEnclaveSignature sconeEnclaveSignature = oSconeEnclaveSignature.get();
+        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = oSconeEnclaveSignatureFile.get();
         log.debug("EnclaveSig.iexec file content [chainTaskId:{}, enclaveSig.iexec:{}]",
-                chainTaskId, sconeEnclaveSignature);
+                chainTaskId, sconeEnclaveSignatureFile);
 
-        Signature enclaveSignature = new Signature(sconeEnclaveSignature.getSignature());
-        String resultHash = sconeEnclaveSignature.getResultHash();
-        String resultSeal = sconeEnclaveSignature.getResultSalt();
+        Signature enclaveSignature = new Signature(sconeEnclaveSignatureFile.getSignature());
+        String resultHash = sconeEnclaveSignatureFile.getResultHash();
+        String resultSeal = sconeEnclaveSignatureFile.getResultSalt();
 
         boolean isValid = sconeTeeService.isEnclaveSignatureValid(resultHash, resultSeal,
                 enclaveSignature, signerAddress);
@@ -204,16 +215,6 @@ public class TaskExecutorHelperService {
         return Optional.of(enclaveSignature);
     }
 
-    boolean shouldContribute(String chainTaskId) {
-        Optional<ReplicateStatus> oCannotContributeStatus = contributionService.getCannotContributeStatus(chainTaskId);
-
-        if (!oCannotContributeStatus.isPresent()) return true;
-
-        log.error("Cannot contribute [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
-        customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
-        return false;
-    }
-
     boolean checkGasBalance(String chainTaskId) {
         if (contributionService.hasEnoughGas()) return true;
 
@@ -224,18 +225,18 @@ public class TaskExecutorHelperService {
         return false;
     }
 
-    // boolean isValidChainReceipt(String chainTaskId, Optional<ChainReceipt> oChainReceipt) {
-    //     if (!oChainReceipt.isPresent()) {
-    //         ChainReceipt chainReceipt = new ChainReceipt(iexecHubService.getLatestBlockNumber(), "");
-    //         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTE_FAILED,
-    //                 ReplicateDetails.builder().chainReceipt(chainReceipt).build());
-    //         return;
-    //     }
+    boolean isValidChainReceipt(String chainTaskId, Optional<ChainReceipt> oChainReceipt) {
+        if (!oChainReceipt.isPresent()) {
+            log.warn("The chain receipt is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
 
-    //     if (oChainReceipt.get().getBlockNumber() == 0) {
-    //         log.warn("The blocknumber of the receipt is equal to 0, the CONTRIBUTED status will not be " +
-    //                 "sent to the core [chainTaskId:{}]", chainTaskId);
-    //         return;
-    //     }
-    // }
+        if (oChainReceipt.get().getBlockNumber() == 0) {
+            log.warn("The blockNumber of the receipt is equal to 0, status will not be "
+                    + "updated in the core [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
+        return true;
+    }
 }

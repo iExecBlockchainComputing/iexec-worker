@@ -2,7 +2,6 @@ package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
@@ -13,7 +12,6 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -42,7 +40,6 @@ public class TaskExecutorService {
 
     // external services
     private TaskExecutorHelperService taskExecutorHelperService;
-    private DatasetService datasetService;
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
@@ -60,7 +57,6 @@ public class TaskExecutorService {
 
     //TODO make this fat constructor lose weight
     public TaskExecutorService(TaskExecutorHelperService taskExecutorHelperService,
-                               DatasetService datasetService,
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
@@ -71,7 +67,6 @@ public class TaskExecutorService {
                                SconeTeeService sconeTeeService,
                                PublicConfigurationService publicConfigurationService) {
         this.taskExecutorHelperService = taskExecutorHelperService;
-        this.datasetService = datasetService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
@@ -95,13 +90,33 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public CompletableFuture<Boolean> addReplicate(ContributionAuthorization contributionAuth) {
+    public void tryToContribute(ContributionAuthorization contributionAuth, boolean isTeeTask) {
+
+        String chainTaskId = contributionAuth.getChainTaskId();
+
+        if (!contributionService.isContributionAuthorizationValid(contributionAuth, corePublicAddress)) {
+            log.error("The contribution contribAuth is NOT valid, the task will not be performed"
+                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contributionAuth);
+            return;
+        }
+
+        boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
+
+        if (!isResultAvailable) {
+            log.info("Result not found, will restart task from RUNNING [chainTaskId:{}]", chainTaskId);
+            addReplicate(contributionAuth, isTeeTask);
+        } else {
+            log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
+            contribute(contributionAuth, isTeeTask);
+        }
+    }
+
+    public CompletableFuture<Boolean> addReplicate(ContributionAuthorization contributionAuth, boolean isTeeTask) {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         // don't compute if task needs TEE && TEE not supported;
-        boolean isTeeTask = TeeUtils.isTeeChallenge(contributionAuth.getEnclaveChallenge());
         if (isTeeTask && !workerConfigurationService.isTeeEnabled()) {
             log.error("Task needs TEE, I don't support it [chainTaskId:{}]", chainTaskId);
             return CompletableFuture.completedFuture(false);
@@ -122,38 +137,14 @@ public class TaskExecutorService {
                 });
     }
 
-
-    public void tryToContribute(ContributionAuthorization contributionAuth) {
-
-        String chainTaskId = contributionAuth.getChainTaskId();
-
-        if (!contributionService.isContributionAuthorizationValid(contributionAuth, corePublicAddress)) {
-            log.error("The contribution contribAuth is NOT valid, the task will not be performed"
-                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contributionAuth);
-            return;
-        }
-
-        boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
-
-        if (!isResultAvailable) {
-            log.info("Result not found, will restart task from RUNNING [chainTaskId:{}]", chainTaskId);
-            addReplicate(contributionAuth);
-        } else {
-            log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
-            boolean isTeeTask = TeeUtils.isTeeChallenge(contributionAuth.getEnclaveChallenge());
-            contribute(contributionAuth, isTeeTask);
-        }
-    }
-
     @Async
     private String compute(ContributionAuthorization contributionAuth, boolean isTeeTask) {
         String chainTaskId = contributionAuth.getChainTaskId();
-        String message = "";
 
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         if (!taskDescriptionFromChain.isPresent()) {
-            message = "TaskDescription not found onChain";
+            String message = "TaskDescription not found onChain";
             log.error(message + " [chainTaskId:{}]", chainTaskId);
             return message;
         }
@@ -162,31 +153,24 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
 
         // check app type
-        if (!taskDescription.getAppType().equals(DappType.DOCKER)) {
-            message = "Application is not of type Docker";
-            log.error(message + " [chainTaskId:{}]", chainTaskId);
-            return message;
-        }
+        String appTypeError = taskExecutorHelperService.checkAppType(chainTaskId, taskDescription.getAppType());
+        if (!appTypeError.isEmpty()) return appTypeError;
 
-        // Try to downloadApp
-        String errorDwnlApp = tryToDownloadApp(taskDescription);
-        if (!errorDwnlApp.isEmpty()) {
-            return errorDwnlApp;
-        }
+        // try to download app
+        String appDownloadError = taskExecutorHelperService.tryToDownloadApp(taskDescription);
+        if (!appDownloadError.isEmpty()) return appDownloadError;
+
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
  
-        // Try to downloadData
-        String errorDwnlData = tryToDownloadData(taskDescription);
-        if (!errorDwnlData.isEmpty()) {
-            return errorDwnlData;
-        }
+        // try to download data
+        String dataDownloadError = taskExecutorHelperService.tryToDownloadData(taskDescription);
+        if (!dataDownloadError.isEmpty()) return dataDownloadError;
+
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
         customFeignClient.updateReplicateStatus(chainTaskId, COMPUTING);
 
-        String error = checkContributionAbility(chainTaskId);
-        if (!error.isEmpty()) {
-            return error;
-        }
+        String contributionAbilityError = taskExecutorHelperService.checkContributionAbility(chainTaskId);
+        if (!contributionAbilityError.isEmpty()) return contributionAbilityError;
 
         Pair<ReplicateStatus, String> pair = null;
         if (isTeeTask) {
@@ -195,82 +179,26 @@ public class TaskExecutorService {
             pair = computationService.runNonTeeComputation(taskDescription, contributionAuth);
         }
 
-        if (pair == null) pair = Pair.of(COMPUTE_FAILED, "Error while computing");
-
         customFeignClient.updateReplicateStatus(chainTaskId, pair.getLeft());
         return pair.getRight();
     }
 
-    private String tryToDownloadApp(TaskDescription taskDescription) {
-        String chainTaskId = taskDescription.getChainTaskId();
-
-        String error = checkContributionAbility(chainTaskId);
-        if (!error.isEmpty()) {
-            return error;
-        }
-
-        // pull app
-        customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADING);
-        boolean isAppDownloaded = computationService.downloadApp(chainTaskId, taskDescription.getAppUri());
-        if (!isAppDownloaded) {
-            customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOAD_FAILED);
-            String errorMessage = "Failed to pull application image, URI:" + taskDescription.getAppUri();
-            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-            return errorMessage;
-        }
-
-        return "";
-    }
-
-    private String tryToDownloadData(TaskDescription taskDescription) {
-        String chainTaskId = taskDescription.getChainTaskId();
-
-        String error = checkContributionAbility(chainTaskId);
-        if (!error.isEmpty()) {
-            return error;
-        }
-
-        // pull data
-        customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
-        if (!isDatasetDownloaded) {
-            customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            String errorMessage = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
-            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-            return errorMessage;
-        }
-
-        return "";
-    }
-
-    private String checkContributionAbility(String chainTaskId) {
-        String errorMessage = "";
-
-        Optional<ReplicateStatus> oCannotContributeStatus = contributionService.getCannotContributeStatus(chainTaskId);
-        if (oCannotContributeStatus.isPresent()) {
-            errorMessage = "The worker cannot contribute";
-            log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
-            customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
-            return errorMessage;
-        }
-
-        return errorMessage;
-    }
-
     @Async
-    public void contribute(ContributionAuthorization contribAuth, boolean isTeeTask) {
-        String chainTaskId = contribAuth.getChainTaskId();
-        String enclaveChallenge = contribAuth.getEnclaveChallenge();
+    public void contribute(ContributionAuthorization contributionAuth, boolean isTeeTask) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+        String enclaveChallenge = contributionAuth.getEnclaveChallenge();
+        log.info("Trying to contribute [chainTaskId:{}]", chainTaskId);
 
-        String deterministHash = taskExecutorHelperService.getDeterministHash(chainTaskId);
-        if (deterministHash.isEmpty()) return;
+        String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId, isTeeTask);
+        if (determinismHash.isEmpty()) return;
 
-        Optional<Signature> oEnclaveSignature =
-                taskExecutorHelperService.getEnclaveSignature(chainTaskId, isTeeTask, deterministHash, enclaveChallenge);
+        Optional<Signature> oEnclaveSignature = taskExecutorHelperService.getEnclaveSignature(chainTaskId,
+                isTeeTask, determinismHash, enclaveChallenge);
         if (!oEnclaveSignature.isPresent()) return;
+        Signature enclaveSignature = oEnclaveSignature.get();
 
-        boolean shouldContribute = taskExecutorHelperService.shouldContribute(chainTaskId);
-        if (!shouldContribute) return;
+        String contributionAbilityError = taskExecutorHelperService.checkContributionAbility(chainTaskId);
+        if (!contributionAbilityError.isEmpty()) return;
 
         customFeignClient.updateReplicateStatus(chainTaskId, ReplicateStatus.CAN_CONTRIBUTE);
 
@@ -279,37 +207,27 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTING);
 
-        Optional<ChainReceipt> oChainReceipt;
-        if (isTeeTask) {
-            String hash = sconeTeeService.readSconeEnclaveSignatureFile(chainTaskId).get().getResult();
-            oChainReceipt = contributionService.contribute(contribAuth, hash, oEnclaveSignature.get());
-        } else {
-            oChainReceipt = contributionService.contribute(contribAuth, deterministHash, oEnclaveSignature.get());
-        }
+        Optional<ChainReceipt> oChainReceipt =
+                contributionService.contribute(contributionAuth, determinismHash, enclaveSignature);
 
-        if (!oChainReceipt.isPresent()) {
-            log.warn("The chain receipt of the contribution is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
-            return;
-        }
-
-        if (oChainReceipt.get().getBlockNumber() == 0) {
-            log.warn("The blocknumber of the receipt is equal to 0, the CONTRIBUTED status will not be " +
-                    "sent to the core [chainTaskId:{}]", chainTaskId);
-            return;
-        }
+        boolean isValidChainReceipt = taskExecutorHelperService.isValidChainReceipt(chainTaskId, oChainReceipt);
+        if (!isValidChainReceipt) return;
 
         customFeignClient.updateReplicateStatus(chainTaskId, CONTRIBUTED,
                 ReplicateDetails.builder().chainReceipt(oChainReceipt.get()).build());
     }
 
     @Async
-    public void reveal(String chainTaskId, long consensusBlock) {
+    public void reveal(String chainTaskId, long consensusBlock, boolean isTeeTask) {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
+        String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId, isTeeTask);
+        if (determinismHash.isEmpty()) return;
 
-        if (!revealService.isConsensusBlockReached(chainTaskId, consensusBlock)) return;
+        boolean blockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
+        boolean canReveal = revealService.canReveal(chainTaskId, determinismHash);
 
-        if (!revealService.canReveal(chainTaskId)) {
-            log.warn("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
+        if (!blockReached || !canReveal) {
+            log.error("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
             return;
         }
@@ -319,20 +237,13 @@ public class TaskExecutorService {
 
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALING);
 
-        Optional<ChainReceipt> optionalChainReceipt = revealService.reveal(chainTaskId);
-        if (!optionalChainReceipt.isPresent()) {
-            log.warn("The chain receipt of the reveal is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
-            return;
-        }
+        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId);
 
-        if (optionalChainReceipt.get().getBlockNumber() == 0) {
-            log.warn("The blocknumber of the receipt is equal to 0, the REVEALED status will not be " +
-                    "sent to the core [chainTaskId:{}]", chainTaskId);
-            return;
-        }
+        boolean isValidChainReceipt = taskExecutorHelperService.isValidChainReceipt(chainTaskId, oChainReceipt);
+        if (!isValidChainReceipt) return;
 
         customFeignClient.updateReplicateStatus(chainTaskId, REVEALED,
-                ReplicateDetails.builder().chainReceipt(optionalChainReceipt.get()).build());
+                ReplicateDetails.builder().chainReceipt(oChainReceipt.get()).build());
     }
 
     @Async
