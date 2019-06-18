@@ -80,48 +80,48 @@ public class SconeTeeService {
         return sconeConfig.toDockerEnv();
     }
 
-    public Optional<Signature> getSconeEnclaveSignatureFromFile(String chainTaskId) {
-        Optional<SconeEnclaveSignature> sconeEnclaveSignatureInfos =
-                readSconeEnclaveSignatureFile(chainTaskId);
+    // public Optional<Signature> getSconeEnclaveSignatureFromFile(String chainTaskId) {
+    //     Optional<SconeEnclaveSignatureFile> sconeEnclaveSignatureInfos =
+    //             readSconeEnclaveSignatureFile(chainTaskId);
 
-        if (!sconeEnclaveSignatureInfos.isPresent()) return Optional.empty();
+    //     if (!sconeEnclaveSignatureInfos.isPresent()) return Optional.empty();
 
-        Signature enclaveSignature = new Signature(sconeEnclaveSignatureInfos.get().getSignature());
+    //     Signature enclaveSignature = new Signature(sconeEnclaveSignatureInfos.get().getSignature());
 
-        return Optional.of(enclaveSignature);
-    }
+    //     return Optional.of(enclaveSignature);
+    // }
 
-    public Optional<SconeEnclaveSignature> readSconeEnclaveSignatureFile(String chainTaskId) {
+    public Optional<SconeEnclaveSignatureFile> readSconeEnclaveSignatureFile(String chainTaskId) {
         String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
 
         File enclaveSignatureFile = new File(enclaveSignatureFilePath);
 
         if (!enclaveSignatureFile.exists()) {
-            log.error("Scone enclave signature file not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
+            log.error("EnclaveSig.iexec file not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
                     chainTaskId, enclaveSignatureFilePath);
             return Optional.empty();
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        SconeEnclaveSignature sconeEnclaveSignature = null;
+        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = null;
         try {
-            sconeEnclaveSignature = mapper.readValue(enclaveSignatureFile, SconeEnclaveSignature.class);
+            sconeEnclaveSignatureFile = mapper.readValue(enclaveSignatureFile, SconeEnclaveSignatureFile.class);
         } catch (IOException e) {
-            log.error("Scone enclave signature file found but failed to parse it [chainTaskId:{}]", chainTaskId);
+            log.error("EnclaveSig.iexec file found but failed to parse it [chainTaskId:{}]", chainTaskId);
             e.printStackTrace();
             return Optional.empty();
         }
 
-        if (sconeEnclaveSignature == null) {
-            log.error("Scone enclave signature file found but was parsed to null [chainTaskId:{}]", chainTaskId);
+        if (sconeEnclaveSignatureFile == null) {
+            log.error("EnclaveSig.iexec file found but was parsed to null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
 
-        log.info("Scone enclave signature retrieved successfully [chainTaskId:{}, signature:{}]",
-                chainTaskId, sconeEnclaveSignature.getSignature());
+        log.debug("Scone enclave signature retrieved successfully [chainTaskId:{}, signature:{}]",
+                chainTaskId, sconeEnclaveSignatureFile.getSignature());
 
-        return Optional.of(sconeEnclaveSignature);
+        return Optional.of(sconeEnclaveSignatureFile);
     }
 
     public boolean isEnclaveSignatureValid(String resultHash, String resultSeal,

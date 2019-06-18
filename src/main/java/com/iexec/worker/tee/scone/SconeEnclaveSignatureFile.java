@@ -6,7 +6,7 @@ import lombok.*;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SconeEnclaveSignature {
+public class SconeEnclaveSignatureFile {
 
     private String result;
     private String resultHash;
