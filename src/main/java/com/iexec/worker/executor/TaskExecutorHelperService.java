@@ -7,6 +7,7 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.ComputationService;
@@ -32,7 +33,6 @@ import static com.iexec.common.replicate.ReplicateStatus.*;
 @Service
 public class TaskExecutorHelperService {
 
-    // external services
     private DatasetService datasetService;
     private ResultService resultService;
     private ContributionService contributionService;
@@ -40,6 +40,7 @@ public class TaskExecutorHelperService {
     private WorkerConfigurationService workerConfigurationService;
     private ComputationService computationService;
     private SconeTeeService sconeTeeService;
+    private IexecHubService iexecHubService;
 
     public TaskExecutorHelperService(DatasetService datasetService,
                                ResultService resultService,
@@ -47,7 +48,8 @@ public class TaskExecutorHelperService {
                                CustomFeignClient customFeignClient,
                                WorkerConfigurationService workerConfigurationService,
                                ComputationService computationService,
-                               SconeTeeService sconeTeeService) {
+                               SconeTeeService sconeTeeService,
+                               IexecHubService iexecHubService) {
         this.datasetService = datasetService;
         this.resultService = resultService;
         this.contributionService = contributionService;
@@ -55,6 +57,7 @@ public class TaskExecutorHelperService {
         this.workerConfigurationService = workerConfigurationService;
         this.computationService = computationService;
         this.sconeTeeService = sconeTeeService;
+        this.iexecHubService = iexecHubService;
     }
 
     String checkAppType(String chainTaskId, DappType type) {
@@ -184,7 +187,7 @@ public class TaskExecutorHelperService {
     }
 
     boolean checkGasBalance(String chainTaskId) {
-        if (contributionService.hasEnoughGas()) return true;
+        if (iexecHubService.hasEnoughGas()) return true;
 
         customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
         String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
