@@ -29,7 +29,7 @@ public class RevealService {
         this.web3jService = web3jService;
     }
 
-    public boolean canReveal(String chainTaskId) {
+    public boolean canReveal(String chainTaskId, String determinismHash) {
 
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
@@ -52,13 +52,13 @@ public class RevealService {
 
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
-        String deterministHash = resultService.getDeterministHashForTask(chainTaskId);
-        if (!deterministHash.isEmpty()) {
-            isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, deterministHash));
+
+        if (!determinismHash.isEmpty()) {
+            isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, determinismHash));
 
             String walletAddress = credentialsService.getCredentials().getAddress();
             isContributionResultSealCorrect = chainContribution.getResultSeal().equals(
-                    HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash)
+                    HashUtils.concatenateAndHash(walletAddress, chainTaskId, determinismHash)
             );
         }
 
@@ -84,7 +84,7 @@ public class RevealService {
     public boolean isConsensusBlockReached(String chainTaskId, long consensusBlock) {
         if (web3jService.isBlockAvailable(consensusBlock)) return true;
 
-        log.warn("Sync issues, consensus block not reached yet [chainTaskId:{}, latestBlock:{}, consensusBlock:{}]",
+        log.warn("Chain sync issues, consensus block not reached yet [chainTaskId:{}, latestBlock:{}, consensusBlock:{}]",
                 chainTaskId, web3jService.getLatestBlockNumber(), consensusBlock);
         return false;
     }
