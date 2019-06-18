@@ -45,7 +45,7 @@ public class ContributionService {
 
         ChainTask chainTask = optionalChainTask.get();
 
-        if (!hasEnoughtStakeToContribute(chainTask)) {
+        if (!hasEnoughStakeToContribute(chainTask)) {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_STAKE_TOO_LOW);
         }
 
@@ -64,7 +64,7 @@ public class ContributionService {
         return Optional.empty();
     }
 
-    private boolean hasEnoughtStakeToContribute(ChainTask chainTask) {
+    private boolean hasEnoughStakeToContribute(ChainTask chainTask) {
         Optional<ChainAccount> optionalChainAccount = iexecHubService.getChainAccount();
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
         if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()) {
@@ -83,11 +83,25 @@ public class ContributionService {
 
     private boolean isContributionUnsetToContribute(ChainTask chainTask) {
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTask.getChainTaskId());
-        if (!optionalContribution.isPresent()) {
-            return false;
-        }
+        if (!optionalContribution.isPresent()) return false;
+
         ChainContribution chainContribution = optionalContribution.get();
         return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
+    }
+
+    public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
+        // create the hash that was used in the signature in the core
+        byte[] message = BytesUtils.stringToBytes(
+                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
+
+        return SignatureUtils.isSignatureValid(message, auth.getSignature(), signerAddress);
+    }
+
+    public boolean isContributionDeadlineReached(String chainTaskId) {
+        Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
+        if (!oTask.isPresent()) return true;
+
+        return isBeforeContributionDeadlineToContribute(oTask.get());
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
@@ -105,26 +119,5 @@ public class ContributionService {
                 iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);
-    }
-
-    public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
-        // create the hash that was used in the signature in the core
-        byte[] message = BytesUtils.stringToBytes(
-                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
-
-        return SignatureUtils.isSignatureValid(message, auth.getSignature(), signerAddress);
-    }
-
-    public boolean hasEnoughGas() {
-        return iexecHubService.hasEnoughGas();
-    }
-
-    public boolean isContributionDeadlineReached(String chainTaskId) {
-        Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-        if (!oTask.isPresent()) {
-            return true;
-        }
-        ChainTask task = oTask.get();
-        return isBeforeContributionDeadlineToContribute(task);
     }
 }
