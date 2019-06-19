@@ -1,12 +1,10 @@
 package com.iexec.worker.tee.scone;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Optional;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
@@ -20,10 +18,7 @@ import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.stereotype.Service;
 
-import lombok.extern.slf4j.Slf4j;
 
-
-@Slf4j
 @Service
 public class SconeTeeService {
 
