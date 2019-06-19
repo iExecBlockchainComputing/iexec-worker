@@ -118,14 +118,19 @@ public class TaskExecutorHelperService {
         return errorMessage;
     }
 
-    String getTaskDeterminismHash(String chainTaskId, boolean isTeeTask) {
-        return isTeeTask ? getTeeDeterminismHash(chainTaskId) : getNonTeeDeterminismHash(chainTaskId);
-    }
+    String getTaskDeterminismHash(String chainTaskId) {
+        String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
+        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
 
-    String getNonTeeDeterminismHash(String chainTaskId) {
-        String determinismHash = resultService.getDeterministHashForTask(chainTaskId);
+        if (isTeeTask && determinismHash.isEmpty()) {
+            log.error("Cannot continue, couldn't get TEE determinism hash [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId,
+                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+            return "";
+        }
+
         if (determinismHash.isEmpty()) {
-            log.error("Determinism hash is empty [chainTaskId:{}]", chainTaskId);
+            log.error("Cannot continue, couldn't get determinism hash [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
                     ReplicateStatus.CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
             return "";
@@ -134,30 +139,15 @@ public class TaskExecutorHelperService {
         return determinismHash;
     }
 
-    String getTeeDeterminismHash(String chainTaskId) {
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                sconeTeeService.readSconeEnclaveSignatureFile(chainTaskId);
-
-        if (!oSconeEnclaveSignatureFile.isPresent()) {
-            log.error("Could not get TEE determinism hash [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
-            return "";
-        }
-
-        return oSconeEnclaveSignatureFile.get().getResult();
-    }
-
-    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, boolean isTeeTask,
-                                            String deterministHash, String signerAddress) {
-
+    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String deterministHash, String signerAddress) {
+        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
         if (!isTeeTask) return Optional.of(SignatureUtils.emptySignature());
 
         Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                sconeTeeService.readSconeEnclaveSignatureFile(chainTaskId);
+                resultService.readSconeEnclaveSignatureFile(chainTaskId);
 
         if (!oSconeEnclaveSignatureFile.isPresent()) {
-            log.error("Cannot contribute, problem reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
+            log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
             log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
                     ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
@@ -165,9 +155,6 @@ public class TaskExecutorHelperService {
         }
 
         SconeEnclaveSignatureFile sconeEnclaveSignatureFile = oSconeEnclaveSignatureFile.get();
-        log.debug("EnclaveSig.iexec file content [chainTaskId:{}, enclaveSig.iexec:{}]",
-                chainTaskId, sconeEnclaveSignatureFile);
-
         Signature enclaveSignature = new Signature(sconeEnclaveSignatureFile.getSignature());
         String resultHash = sconeEnclaveSignatureFile.getResultHash();
         String resultSeal = sconeEnclaveSignatureFile.getResultSalt();

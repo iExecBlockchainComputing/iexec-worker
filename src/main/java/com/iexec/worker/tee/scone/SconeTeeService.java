@@ -29,7 +29,6 @@ public class SconeTeeService {
 
     private static final String FSPF_FILENAME = "volume.fspf";
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
-    private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
 
     private SconeLasConfiguration sconeLasConfiguration;
     private WorkerConfigurationService workerConfigurationService;
@@ -78,39 +77,6 @@ public class SconeTeeService {
                 .build();
 
         return sconeConfig.toDockerEnv();
-    }
-
-    public Optional<SconeEnclaveSignatureFile> readSconeEnclaveSignatureFile(String chainTaskId) {
-        String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
-                + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
-
-        File enclaveSignatureFile = new File(enclaveSignatureFilePath);
-
-        if (!enclaveSignatureFile.exists()) {
-            log.error("EnclaveSig.iexec file not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
-                    chainTaskId, enclaveSignatureFilePath);
-            return Optional.empty();
-        }
-
-        ObjectMapper mapper = new ObjectMapper();
-        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = null;
-        try {
-            sconeEnclaveSignatureFile = mapper.readValue(enclaveSignatureFile, SconeEnclaveSignatureFile.class);
-        } catch (IOException e) {
-            log.error("EnclaveSig.iexec file found but failed to parse it [chainTaskId:{}]", chainTaskId);
-            e.printStackTrace();
-            return Optional.empty();
-        }
-
-        if (sconeEnclaveSignatureFile == null) {
-            log.error("EnclaveSig.iexec file found but was parsed to null [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        log.debug("Scone enclave signature retrieved successfully [chainTaskId:{}, signature:{}]",
-                chainTaskId, sconeEnclaveSignatureFile.getSignature());
-
-        return Optional.of(sconeEnclaveSignatureFile);
     }
 
     public boolean isEnclaveSignatureValid(String resultHash, String resultSeal,
