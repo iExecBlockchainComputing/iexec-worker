@@ -23,6 +23,7 @@ import java.util.function.Function;
 import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
 import static com.iexec.common.utils.BytesUtils.stringToBytes;
+import static com.iexec.common.utils.BytesUtils.stringToBytes32;
 
 
 @Slf4j
@@ -120,7 +121,7 @@ public class IexecHubService extends IexecHubAbstractService {
         TransactionReceipt revealReceipt;
         RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
                 stringToBytes(chainTaskId),
-                stringToBytes(resultDigest));
+                stringToBytes32(resultDigest));
 
         log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
         try {

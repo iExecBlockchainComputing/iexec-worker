@@ -209,7 +209,7 @@ public class ResultService {
             byte[] content = BytesUtils.stringToBytes(contentFile);
 
             // if determinism.iexec file is already a byte32, no need to hash it again
-            return bytesToString(BytesUtils.isByte32(content) ? content : Hash.sha256(content));
+            return bytesToString(BytesUtils.isBytes32(content) ? content : Hash.sha256(content));
 
         } catch (Exception e) {
             return bytesToString(Hash.sha256(Files.readAllBytes(deterministFilePath)));

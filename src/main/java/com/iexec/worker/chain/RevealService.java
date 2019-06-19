@@ -85,7 +85,7 @@ public class RevealService {
         return false;
     }
 
-    // returns the ChainReceipt of the reveal if successful, null otherwise
+    // returns the ChainReceipt of the reveal if successful, empty otherwise
     public Optional<ChainReceipt> reveal(String chainTaskId, String determinismHash) {
 
         if (determinismHash.isEmpty()) {
