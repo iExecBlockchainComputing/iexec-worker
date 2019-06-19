@@ -4,7 +4,6 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.tee.TeeUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskExecutorService;
@@ -75,10 +74,8 @@ public class ReplicateDemandService {
 
         subscriptionService.subscribeToTopic(chainTaskId);
 
-        boolean isTeeTask = TeeUtils.isTeeChallenge(contributionAuth.getEnclaveChallenge());
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
                 .contributionAuthorization(contributionAuth)
-                .isTeeTask(isTeeTask)
                 .build();
 
         TaskNotification taskNotification = TaskNotification.builder()

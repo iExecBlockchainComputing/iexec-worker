@@ -86,7 +86,7 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public void tryToContribute(ContributionAuthorization contributionAuth, boolean isTeeTask) {
+    public void tryToContribute(ContributionAuthorization contributionAuth) {
 
         String chainTaskId = contributionAuth.getChainTaskId();
 
@@ -100,17 +100,20 @@ public class TaskExecutorService {
 
         if (isResultAvailable) {
             log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
-            contribute(contributionAuth, isTeeTask);    
+            contribute(contributionAuth);    
             return;
         }
 
-        addReplicate(contributionAuth, isTeeTask);
+        addReplicate(contributionAuth);
     }
 
-    public CompletableFuture<Boolean> addReplicate(ContributionAuthorization contributionAuth, boolean isTeeTask) {
+    public CompletableFuture<Boolean> addReplicate(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+        TaskDescription taskDescription = taskDescriptionFromChain.get();
+
+        boolean isTeeTask = taskDescription.isTeeTask();
 
         // don't compute if task needs TEE && TEE not supported;
         if (isTeeTask && !workerConfigurationService.isTeeEnabled()) {
@@ -124,9 +127,9 @@ public class TaskExecutorService {
             return CompletableFuture.completedFuture(false);
         }
 
-        return CompletableFuture.supplyAsync(() -> compute(contributionAuth, isTeeTask), executor)
-                .thenApply(stdout -> resultService.saveResult(chainTaskId, taskDescriptionFromChain.get(), stdout))
-                .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth, isTeeTask); })
+        return CompletableFuture.supplyAsync(() -> compute(contributionAuth), executor)
+                .thenApply(stdout -> resultService.saveResult(chainTaskId, taskDescription, stdout))
+                .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth); })
                 .handle((res, err) -> {
                     if (err != null) err.printStackTrace();
                     return err == null;
@@ -134,10 +137,11 @@ public class TaskExecutorService {
     }
 
     @Async
-    private String compute(ContributionAuthorization contributionAuth, boolean isTeeTask) {
+    private String compute(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
 
-        Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+        Optional<TaskDescription> taskDescriptionFromChain =
+                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
         if (!taskDescriptionFromChain.isPresent()) {
             String message = "TaskDescription not found onChain";
@@ -146,6 +150,8 @@ public class TaskExecutorService {
         }
 
         TaskDescription taskDescription = taskDescriptionFromChain.get();
+        boolean isTeeTask = taskDescription.isTeeTask();
+
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
 
         // check app type
@@ -180,16 +186,17 @@ public class TaskExecutorService {
     }
 
     @Async
-    public void contribute(ContributionAuthorization contributionAuth, boolean isTeeTask) {
+    public void contribute(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
+
         String enclaveChallenge = contributionAuth.getEnclaveChallenge();
         log.info("Trying to contribute [chainTaskId:{}]", chainTaskId);
 
-        String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId, isTeeTask);
+        String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId);
         if (determinismHash.isEmpty()) return;
 
         Optional<Signature> oEnclaveSignature = taskExecutorHelperService.getVerifiedEnclaveSignature(chainTaskId,
-                isTeeTask, determinismHash, enclaveChallenge);
+                determinismHash, enclaveChallenge);
         if (!oEnclaveSignature.isPresent()) return;
 
         Signature enclaveSignature = oEnclaveSignature.get();
@@ -215,9 +222,9 @@ public class TaskExecutorService {
     }
 
     @Async
-    public void reveal(String chainTaskId, long consensusBlock, boolean isTeeTask) {
+    public void reveal(String chainTaskId, long consensusBlock) {
         log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
-        String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId, isTeeTask);
+        String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId);
         if (determinismHash.isEmpty()) return;
 
         boolean blockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
