@@ -63,7 +63,7 @@ public class ResultServiceTests {
 
     @Test
     public void shouldReadSconeEnclaveSignatureFile(){
-        String chainTaskId = "tee";
+        String chainTaskId = "scone-tee";
         String expectedResult = "0xc746143d64ef1a1f9e280cee70e2866daad3116bfe0e7028a53e500b2c92a6d6";
         String expectedHash = "0x5ade3c39f9e83db590cbcb03fee7e0ba6c533fa3fb4e72f9320c3e641e38c31e";
         String expectedSeal = "0x5119fb3770cc545ff3ab0377842ebcd923a3cc02fc4390c285f5368e2b0f3742";
@@ -83,6 +83,34 @@ public class ResultServiceTests {
         assertThat(enclaveSignatureFile.getResultHash()).isEqualTo(expectedHash);
         assertThat(enclaveSignatureFile.getResultSalt()).isEqualTo(expectedSeal);
         assertThat(enclaveSignatureFile.getSignature()).isEqualTo(expectedSign);
+    }
+
+    @Test
+    public void shouldNotReadSconeEnclaveSignatureSinceFileCorrupted() {
+        String chainTaskId = "scone-tee-corrupted-file";
+
+        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
+        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
+
+        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
+                resultService.readSconeEnclaveSignatureFile(chainTaskId);
+
+        assertThat(oSconeEnclaveSignatureFile.isPresent()).isFalse();
+    }
+
+    @Test
+    public void shouldNotReadSconeEnclaveSignatureSinceFileMissing() {
+        String chainTaskId = "scone-tee";
+
+        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
+        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/fakeFolder");
+
+        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
+                resultService.readSconeEnclaveSignatureFile(chainTaskId);
+
+        assertThat(oSconeEnclaveSignatureFile.isPresent()).isFalse();
     }
 
     @Test
