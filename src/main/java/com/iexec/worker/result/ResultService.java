@@ -181,9 +181,10 @@ public class ResultService {
     public String getTaskDeterminismHash(String chainTaskId) {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
 
-        return isTeeTask
-           ?   getTeeDeterminismHash(chainTaskId)
-           :   getNonTeeDeterminismHash(chainTaskId);
+        if (!isTeeTask) return getNonTeeDeterminismHash(chainTaskId);
+
+        log.info("This is a TEE task, getting determinism hash from enclave output");
+        return getTeeDeterminismHash(chainTaskId);
     }
 
     private String getNonTeeDeterminismHash(String chainTaskId) {
