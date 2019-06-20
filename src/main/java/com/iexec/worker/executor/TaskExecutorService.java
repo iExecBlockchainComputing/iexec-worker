@@ -86,7 +86,7 @@ public class TaskExecutorService {
         return executor.getActiveCount() < maxNbExecutions;
     }
 
-    public void tryToContribute(ContributionAuthorization contributionAuth) {
+    public void computeOrContribute(ContributionAuthorization contributionAuth) {
 
         String chainTaskId = contributionAuth.getChainTaskId();
 
@@ -110,9 +110,22 @@ public class TaskExecutorService {
     public CompletableFuture<Boolean> addReplicate(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
 
-        Optional<TaskDescription> taskDescriptionFromChain = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
-        TaskDescription taskDescription = taskDescriptionFromChain.get();
+        // don't compute if task is not initialized onChain
+        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
+            log.error("Task not initialized onChain [chainTaskId:{}]", chainTaskId);
+            return CompletableFuture.completedFuture(false);
+        }        
 
+        Optional<TaskDescription> taskDescriptionFromChain =
+                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+
+        if (!taskDescriptionFromChain.isPresent()) {
+            log.error("Cannot compute, task description not found onChain [chainTaskId:{}]",
+                    chainTaskId);
+            return CompletableFuture.completedFuture(false);
+        }
+
+        TaskDescription taskDescription = taskDescriptionFromChain.get();
         boolean isTeeTask = taskDescription.isTeeTask();
 
         // don't compute if task needs TEE && TEE not supported;
@@ -121,13 +134,7 @@ public class TaskExecutorService {
             return CompletableFuture.completedFuture(false);
         }        
 
-        // don't compute if task is not initialized onChain
-        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.error("Task not initialized onChain [chainTaskId:{}]", chainTaskId);
-            return CompletableFuture.completedFuture(false);
-        }
-
-        return CompletableFuture.supplyAsync(() -> compute(contributionAuth), executor)
+        return CompletableFuture.supplyAsync(() -> compute(contributionAuth, taskDescription), executor)
                 .thenApply(stdout -> resultService.saveResult(chainTaskId, taskDescription, stdout))
                 .thenAccept(isSaved -> { if (isSaved) contribute(contributionAuth); })
                 .handle((res, err) -> {
@@ -136,20 +143,10 @@ public class TaskExecutorService {
                 });
     }
 
+    // TODO: keep just one onf the the two args - probably taskDescription
     @Async
-    private String compute(ContributionAuthorization contributionAuth) {
+    private String compute(ContributionAuthorization contributionAuth, TaskDescription taskDescription) {
         String chainTaskId = contributionAuth.getChainTaskId();
-
-        Optional<TaskDescription> taskDescriptionFromChain =
-                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
-
-        if (!taskDescriptionFromChain.isPresent()) {
-            String message = "TaskDescription not found onChain";
-            log.error(message + " [chainTaskId:{}]", chainTaskId);
-            return message;
-        }
-
-        TaskDescription taskDescription = taskDescriptionFromChain.get();
         boolean isTeeTask = taskDescription.isTeeTask();
 
         customFeignClient.updateReplicateStatus(chainTaskId, RUNNING);
@@ -165,7 +162,8 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
  
         // try to download data
-        String dataDownloadError = taskExecutorHelperService.tryToDownloadData(taskDescription);
+        String dataDownloadError = taskExecutorHelperService.tryToDownloadData(chainTaskId,
+                taskDescription.getDatasetUri());
         if (!dataDownloadError.isEmpty()) return dataDownloadError;
 
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);
@@ -173,6 +171,10 @@ public class TaskExecutorService {
 
         String contributionAbilityError = taskExecutorHelperService.checkContributionAbility(chainTaskId);
         if (!contributionAbilityError.isEmpty()) return contributionAbilityError;
+
+        String imageExistenceError = taskExecutorHelperService.checkIfAppImageExists(chainTaskId,
+                taskDescription.getAppUri());
+        if (!imageExistenceError.isEmpty()) return imageExistenceError;
 
         Pair<ReplicateStatus, String> pair = null;
         if (isTeeTask) {
@@ -227,10 +229,10 @@ public class TaskExecutorService {
         String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId);
         if (determinismHash.isEmpty()) return;
 
-        boolean blockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
+        boolean isBlockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
         boolean canReveal = revealService.canReveal(chainTaskId, determinismHash);
 
-        if (!blockReached || !canReveal) {
+        if (!isBlockReached || !canReveal) {
             log.error("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
             return;

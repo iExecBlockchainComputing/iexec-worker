@@ -184,7 +184,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                 case PLEASE_CONTRIBUTE:
                     ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
                     if (contribAuth != null){
-                        taskExecutorService.tryToContribute(contribAuth);
+                        taskExecutorService.computeOrContribute(contribAuth);
                     } else {
                         log.error("Empty contribAuth for PLEASE_CONTRIBUTE [chainTaskId:{}]", chainTaskId);
                     }
