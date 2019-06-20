@@ -78,7 +78,7 @@ public class SubscriptionServiceTests {
 
         subscriptionService.handleTaskNotification(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).tryToContribute(any(), false);
+        Mockito.verify(taskExecutorService, Mockito.times(1)).computeOrContribute(any());
     }
 
     @Test
@@ -102,7 +102,7 @@ public class SubscriptionServiceTests {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_REVEAL);
         subscriptionService.handleTaskNotification(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).reveal(eq(CHAIN_TASK_ID), anyLong(), false);
+        Mockito.verify(taskExecutorService, Mockito.times(1)).reveal(eq(CHAIN_TASK_ID), anyLong());
     }
 
     @Test
