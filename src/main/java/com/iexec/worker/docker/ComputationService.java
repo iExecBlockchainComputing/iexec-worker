@@ -57,12 +57,6 @@ public class ComputationService {
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String stdout = "";
 
-        if (!customDockerClient.isImagePulled(imageUri)) {
-            stdout = "Application image not found, URI:" + imageUri;
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
-        }
-
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
 
         if (secureSessionId.isEmpty()) {
@@ -103,12 +97,6 @@ public class ComputationService {
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String stdout = "";
-
-        if (!customDockerClient.isImagePulled(imageUri)) {
-            stdout = "Application image not found, URI:" + imageUri;
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
-        }
 
         // fetch task secrets from SMS
         boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);

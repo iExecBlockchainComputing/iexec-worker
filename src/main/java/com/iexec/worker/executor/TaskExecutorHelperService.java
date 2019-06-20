@@ -11,6 +11,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.ComputationService;
+import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
@@ -38,26 +39,29 @@ public class TaskExecutorHelperService {
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
     private WorkerConfigurationService workerConfigurationService;
-    private ComputationService computationService;
     private SconeTeeService sconeTeeService;
     private IexecHubService iexecHubService;
+    private CustomDockerClient customDockerClient;
+    private ComputationService computationService;
 
     public TaskExecutorHelperService(DatasetService datasetService,
                                ResultService resultService,
                                ContributionService contributionService,
                                CustomFeignClient customFeignClient,
                                WorkerConfigurationService workerConfigurationService,
-                               ComputationService computationService,
                                SconeTeeService sconeTeeService,
-                               IexecHubService iexecHubService) {
+                               IexecHubService iexecHubService,
+                               ComputationService computationService,
+                               CustomDockerClient customDockerClient) {
         this.datasetService = datasetService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
         this.workerConfigurationService = workerConfigurationService;
-        this.computationService = computationService;
         this.sconeTeeService = sconeTeeService;
         this.iexecHubService = iexecHubService;
+        this.computationService = computationService;
+        this.customDockerClient = customDockerClient;
     }
 
     String checkAppType(String chainTaskId, DappType type) {
@@ -87,18 +91,16 @@ public class TaskExecutorHelperService {
         return "";
     }
 
-    String tryToDownloadData(TaskDescription taskDescription) {
-        String chainTaskId = taskDescription.getChainTaskId();
-
+    String tryToDownloadData(String chainTaskId, String dataUri) {
         String error = checkContributionAbility(chainTaskId);
         if (!error.isEmpty()) return error;
 
         // pull data
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri());
+        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, dataUri);
         if (!isDatasetDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            String errorMessage = "Failed to pull dataset, URI:" + taskDescription.getDatasetUri();
+            String errorMessage = "Failed to pull dataset, URI:" + dataUri;
             log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
             return errorMessage;
         }
@@ -118,6 +120,15 @@ public class TaskExecutorHelperService {
         return errorMessage;
     }
 
+    String checkIfAppImageExists(String chainTaskId, String imageUri) {
+        if (customDockerClient.isImagePulled(imageUri)) return "";
+
+        String errorMessage = "Application image not found, URI:" + imageUri;
+        log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+        customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
+        return errorMessage;
+    }
+
     String getTaskDeterminismHash(String chainTaskId) {
         String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
@@ -125,14 +136,14 @@ public class TaskExecutorHelperService {
         if (isTeeTask && determinismHash.isEmpty()) {
             log.error("Cannot continue, couldn't get TEE determinism hash [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
-                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+                    CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
             return "";
         }
 
         if (determinismHash.isEmpty()) {
             log.error("Cannot continue, couldn't get determinism hash [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
-                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
+                    CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
             return "";
         }
 
@@ -150,7 +161,7 @@ public class TaskExecutorHelperService {
             log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
             log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
-                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+                    CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
             return Optional.empty();
         }
 
@@ -166,7 +177,7 @@ public class TaskExecutorHelperService {
             log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
             log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
-                    ReplicateStatus.CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+                    CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
             return Optional.empty();
         }
 
