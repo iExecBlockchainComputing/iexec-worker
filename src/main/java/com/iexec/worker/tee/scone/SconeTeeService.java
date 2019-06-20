@@ -18,7 +18,10 @@ import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
 
+
+@Slf4j
 @Service
 public class SconeTeeService {
 
@@ -44,24 +47,32 @@ public class SconeTeeService {
 
     public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
+        String fspfFilePath = workerConfigurationService.getTaskSconeDir(chainTaskId)
+                + File.separator + FSPF_FILENAME;
+        String beneficiaryKeyFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+                + File.separator + BENEFICIARY_KEY_FILENAME;
 
         // generate secure session
         Optional<SconeSecureSession> oSconeSecureSession = smsService.getSconeSecureSession(contributionAuth);
-
         if (!oSconeSecureSession.isPresent()) return "";
 
         SconeSecureSession sconeSecureSession = oSconeSecureSession.get();
 
-        String fspfFilePath = workerConfigurationService.getTaskSconeDir(chainTaskId) + File.separator + FSPF_FILENAME;
-        String beneficiaryKeyFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
-                + File.separator + BENEFICIARY_KEY_FILENAME;
-
         byte[] fspfBytes = Base64.getDecoder().decode(sconeSecureSession.getSconeVolumeFspf());
+        String sessionId = sconeSecureSession.getSessionId();
+        String beneficiaryKey = sconeSecureSession.getBeneficiaryKey();
 
-        FileHelper.createFileWithContent(fspfFilePath, fspfBytes);
-        FileHelper.createFileWithContent(beneficiaryKeyFilePath, sconeSecureSession.getBeneficiaryKey());
+        File fspfFile = FileHelper.createFileWithContent(fspfFilePath, fspfBytes);
+        File keyFile =  FileHelper.createFileWithContent(beneficiaryKeyFilePath,beneficiaryKey);
 
-        return sconeSecureSession.getSessionId();
+        if (!fspfFile.exists() || !keyFile.exists()) {
+            log.error("Problem writing scone secure session files "
+                    + "[chainTaskId:{}, sessionId:{}, fspfFileExists:{}, keyFileExists:{}]",
+                    chainTaskId, sessionId, fspfFile.exists(), keyFile.exists());
+            return "";
+        }
+
+        return sessionId;
     }
 
     public ArrayList<String> buildSconeDockerEnv(String sconeConfigId) {
