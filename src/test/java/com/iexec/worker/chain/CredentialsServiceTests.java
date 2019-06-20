@@ -22,12 +22,12 @@ public class CredentialsServiceTests {
     @Test(expected = FileNotFoundException.class)
     public void shouldThrowFileNotFoundException() throws IOException, CipherException {
         WalletDetails walletDetails = new WalletDetails("./dummy/path.json", "whatever");
-        CredentialsService service = new CredentialsService(walletDetails);
+        new CredentialsService(walletDetails);
     }
 
     @Test(expected = CipherException.class)
     public void shouldThrowCipherException() throws IOException, CipherException {
         WalletDetails walletDetails = new WalletDetails("./src/main/resources/wallet/encrypted-wallet_worker1.json", "wrongPassword");
-        CredentialsService service = new CredentialsService(walletDetails);
+        new CredentialsService(walletDetails);
     }
 }
