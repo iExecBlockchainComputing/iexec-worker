@@ -112,6 +112,12 @@ public class ComputationService {
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app");
         ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption");
 
+        if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
+            stdout = "Could not create scone docker environment";
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return Pair.of(COMPUTE_FAILED, stdout);
+        }
+
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
         String datasetEnv = DATASET_FILENAME + "=" + datasetFilename;
         sconeAppEnv.add(datasetEnv);
@@ -119,6 +125,12 @@ public class ComputationService {
 
         ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeAppEnv);
         ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeEncrypterEnv);
+
+        if (sconeAppConfig == null || sconeEncrypterConfig == null) {
+            stdout = "Could not build scone container config";
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return Pair.of(COMPUTE_FAILED, stdout);
+        }
 
         // run computation
         stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
@@ -130,7 +142,7 @@ public class ComputationService {
         }
 
         // encrypt result
-        stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
+        customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
         return Pair.of(COMPUTED, stdout);
     }
 }

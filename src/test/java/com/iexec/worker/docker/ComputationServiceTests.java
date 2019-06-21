@@ -24,6 +24,8 @@ import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
+
 
 public class ComputationServiceTests {
 
@@ -36,6 +38,7 @@ public class ComputationServiceTests {
     private ComputationService computationService;
 
     private static final String CHAIN_TASK_ID = "0xfoobar";
+    private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
     private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
 
     @Before
@@ -69,8 +72,10 @@ public class ComputationServiceTests {
         assertThat(computationService.downloadApp(CHAIN_TASK_ID, imageUri)).isTrue();
     }
 
+    // runNonTeeComputation()
+
     @Test
-    public void shouldComputeWithoutDecryptingDataset() {
+    public void shouldComputeNonTeeTaskWithoutDecryptingDataset() {
         TaskDescription task = getStubTaskDescription(false);
         ContainerConfig containerConfig = mock(ContainerConfig.class);
         String expectedStdout = "Computed successfully !";
@@ -91,7 +96,7 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldDecryptDatasetAndCompute() {
+    public void shouldDecryptDatasetAndComputeNonTeeTask() {
         TaskDescription task = getStubTaskDescription(false);
         ContainerConfig containerConfig = mock(ContainerConfig.class);
         String expectedStdout = "Computed successfully !";
@@ -113,7 +118,7 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldNotComputeSinceCouldnotDecryptDataset() {
+    public void shouldNotComputeNonTeeTaskSinceCouldnotDecryptDataset() {
         TaskDescription task = getStubTaskDescription(false);
         ContainerConfig containerConfig = mock(ContainerConfig.class);
         String expectedStdout = "Failed to decrypt dataset, URI:" + task.getDatasetUri();
@@ -132,5 +137,106 @@ public class ComputationServiceTests {
         assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
         assertThat(result.getRight()).isEqualTo(expectedStdout);
         verify(datasetService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+    }
+
+    // runTeeComputation
+
+    @Test
+    public void shouldComputeTeeTask() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        ContainerConfig containerConfig = mock(ContainerConfig.class);
+        String expectedStdout = "Computed successfully 1 !";
+        String awesomeSessionId = "awesomeSessionId";
+        ArrayList<String> stubSconeEnv = new ArrayList<>();
+        stubSconeEnv.add("fooBar");
+
+        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+                .thenReturn(awesomeSessionId);
+        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
+        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
+                .thenReturn(containerConfig);
+        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
+                .thenReturn(expectedStdout);
+
+        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+
+        assertThat(result.getLeft()).isEqualTo(COMPUTED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+    }
+
+    @Test
+    public void shouldNotComputeTeeTaskSinceFailedToCreateSconeSession() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        String expectedStdout = "Could not generate scone secure session for tee computation";
+
+        when(sconeTeeService.createSconeSecureSession(contributionAuth)).thenReturn("");
+
+        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+
+        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+    }
+
+    @Test
+    public void shouldNotComputeTeeTaskSinceFailedToBuildSconeDockerEnv() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        String expectedStdout = "Could not create scone docker environment";
+        String awesomeSessionId = "awesomeSessionId";
+
+        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+                .thenReturn(awesomeSessionId);
+        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(new ArrayList<>());
+
+        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+
+        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+    }
+
+    @Test
+    public void shouldNotComputeTeeTaskSinceFailedToBuildSconeContainerConfig() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        String expectedStdout = "Could not build scone container config";
+        String awesomeSessionId = "awesomeSessionId";
+        ArrayList<String> stubSconeEnv = new ArrayList<>();
+        stubSconeEnv.add("fooBar");
+
+        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+                .thenReturn(awesomeSessionId);
+        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
+        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any())).thenReturn(null);
+
+        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+
+        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+    }
+
+    @Test
+    public void shouldNotComputeTeeTaskSinceFirstRunFailed() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        ContainerConfig containerConfig = mock(ContainerConfig.class);
+        String expectedStdout = "Failed to start computation";
+        String awesomeSessionId = "awesomeSessionId";
+        ArrayList<String> stubSconeEnv = new ArrayList<>();
+        stubSconeEnv.add("fooBar");
+
+        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+                .thenReturn(awesomeSessionId);
+        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
+        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
+                .thenReturn(containerConfig);
+        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
+                .thenReturn("");
+
+        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+
+        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
     }
 }
