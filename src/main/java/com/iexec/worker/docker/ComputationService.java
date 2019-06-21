@@ -48,48 +48,6 @@ public class ComputationService {
         return customDockerClient.pullImage(chainTaskId, appUri);
     }
 
-    public Pair<ReplicateStatus, String> runTeeComputation(TaskDescription taskDescription,
-                                                           ContributionAuthorization contributionAuth) {
-        String chainTaskId = contributionAuth.getChainTaskId();
-        String imageUri = taskDescription.getAppUri();
-        String datasetUri = taskDescription.getDatasetUri();
-        String cmd = taskDescription.getCmd();
-        long maxExecutionTime = taskDescription.getMaxExecutionTime();
-        String stdout = "";
-
-        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
-
-        if (secureSessionId.isEmpty()) {
-            stdout = "Could not generate scone secure session for tee computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
-        }
-
-        ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app");
-        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption");
-
-        String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        String datasetEnv = DATASET_FILENAME + "=" + datasetFilename;
-        sconeAppEnv.add(datasetEnv);
-        sconeEncrypterEnv.add(datasetEnv);
-
-        ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeAppEnv);
-        ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeEncrypterEnv);
-
-        // run computation
-        stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
-
-        if (stdout.isEmpty()) {
-            stdout = "Failed to start computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
-        }
-
-        // encrypt result
-        stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
-        return Pair.of(COMPUTED, stdout);
-    }
-
     public Pair<ReplicateStatus, String> runNonTeeComputation(TaskDescription taskDescription,
                                                               ContributionAuthorization contributionAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
@@ -132,5 +90,47 @@ public class ComputationService {
         }
 
         return Pair.of(COMPUTED, stdout);        
+    }
+
+    public Pair<ReplicateStatus, String> runTeeComputation(TaskDescription taskDescription,
+                                                           ContributionAuthorization contributionAuth) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+        String imageUri = taskDescription.getAppUri();
+        String datasetUri = taskDescription.getDatasetUri();
+        String cmd = taskDescription.getCmd();
+        long maxExecutionTime = taskDescription.getMaxExecutionTime();
+        String stdout = "";
+
+        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+
+        if (secureSessionId.isEmpty()) {
+            stdout = "Could not generate scone secure session for tee computation";
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return Pair.of(COMPUTE_FAILED, stdout);
+        }
+
+        ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app");
+        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption");
+
+        String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
+        String datasetEnv = DATASET_FILENAME + "=" + datasetFilename;
+        sconeAppEnv.add(datasetEnv);
+        sconeEncrypterEnv.add(datasetEnv);
+
+        ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeAppEnv);
+        ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, cmd, sconeEncrypterEnv);
+
+        // run computation
+        stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
+
+        if (stdout.isEmpty()) {
+            stdout = "Failed to start computation";
+            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            return Pair.of(COMPUTE_FAILED, stdout);
+        }
+
+        // encrypt result
+        stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
+        return Pair.of(COMPUTED, stdout);
     }
 }
