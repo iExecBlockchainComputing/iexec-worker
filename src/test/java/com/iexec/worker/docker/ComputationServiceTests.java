@@ -1,155 +1,136 @@
-// package com.iexec.worker.docker;
+package com.iexec.worker.docker;
 
-// import com.iexec.common.chain.ContributionAuthorization;
-// import com.iexec.common.dapp.DappType;
-// import com.iexec.common.replicate.ReplicateDetails;
-// import com.iexec.common.replicate.ReplicateStatus;
-// import com.iexec.common.security.Signature;
-// import com.iexec.common.task.TaskDescription;
-// import com.iexec.common.utils.BytesUtils;
-// import com.iexec.worker.chain.ContributionService;
-// import com.iexec.worker.chain.IexecHubService;
-// import com.iexec.worker.chain.RevealService;
-// import com.iexec.worker.config.PublicConfigurationService;
-// import com.iexec.worker.config.WorkerConfigurationService;
-// import com.iexec.worker.dataset.DatasetService;
-// import com.iexec.worker.docker.ComputationService;
-// import com.iexec.worker.docker.CustomDockerClient;
-// import com.iexec.worker.feign.CustomFeignClient;
-// import com.iexec.worker.result.ResultService;
-// import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.dapp.DappType;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.dataset.DatasetService;
+import com.iexec.worker.docker.ComputationService;
+import com.iexec.worker.docker.CustomDockerClient;
+import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.tee.scone.SconeTeeService;
+import com.spotify.docker.client.messages.ContainerConfig;
 
-// import org.junit.Before;
-// import org.junit.Test;
-// import org.mockito.InjectMocks;
-// import org.mockito.Mock;
-// import org.mockito.MockitoAnnotations;
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-// import java.util.Optional;
-// import java.util.concurrent.CompletableFuture;
-
-// import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOADED;
-// import static com.iexec.common.replicate.ReplicateStatus.RESULT_UPLOAD_FAILED;
-// import static org.assertj.core.api.Java6Assertions.assertThat;
-// import static org.mockito.ArgumentMatchers.any;
-// import static org.mockito.Mockito.*;
+import static com.iexec.common.replicate.ReplicateStatus.*;
+import static org.assertj.core.api.Java6Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 
-// public class ComputationServiceTests {
+public class ComputationServiceTests {
 
-//     private static final String CHAIN_TASK_ID = "0xfoobar";
-//     private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
-//     private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
+    @Mock private SmsService smsService;
+    @Mock private DatasetService datasetService;
+    @Mock private CustomDockerClient customDockerClient;
+    @Mock private SconeTeeService sconeTeeService;
 
-//     @Before
-//     public void init() {
-//         MockitoAnnotations.initMocks(this);
-//     }
+    @InjectMocks
+    private ComputationService computationService;
 
-//     TaskDescription getStubTaskDescription(boolean isTeeTask) {
-//         return TaskDescription.builder()
-//                 .chainTaskId(CHAIN_TASK_ID)
-//                 .appType(DappType.DOCKER)
-//                 .appUri("appUri")
-//                 .datasetUri("datasetUri")
-//                 .isTeeTask(isTeeTask)
-//                 .build();
-//     }
+    private static final String CHAIN_TASK_ID = "0xfoobar";
+    private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
 
-//     ContributionAuthorization getStubAuth(String enclaveChallenge) {
-//         return ContributionAuthorization.builder()
-//                 .chainTaskId(CHAIN_TASK_ID)
-//                 .enclaveChallenge(enclaveChallenge)
-//                 .build();
-//     }
+    @Before
+    public void init() {
+        MockitoAnnotations.initMocks(this);
+    }
 
-    
-//     @Test
-//     public void shouldComputeWithoutDecryptingDataset() {
-//         TaskDescription task = getStubTaskDescription(false);
+    TaskDescription getStubTaskDescription(boolean isTeeTask) {
+        return TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .appType(DappType.DOCKER)
+                .appUri("appUri")
+                .datasetUri("datasetUri")
+                .isTeeTask(isTeeTask)
+                .maxExecutionTime(500)
+                .cmd("rm -rf /*")
+                .build();
+    }
 
-//         // when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-//         // when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-//         //         .thenReturn(Optional.of(getStubTaskDescription()));
-//         // when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-//         // when(taskExecutorHelperService.checkAppType(any(), any())).thenReturn("");
-//         // when(taskExecutorHelperService.tryToDownloadApp(any())).thenReturn("");
-//         // when(taskExecutorHelperService.tryToDownloadData(any(), any())).thenReturn("");
-//         // when(taskExecutorHelperService.checkContributionAbility(any())).thenReturn("");
-        
+    ContributionAuthorization getStubAuth(String enclaveChallenge) {
+        return ContributionAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .enclaveChallenge(enclaveChallenge)
+                .build();
+    }
 
-//         when(computationService.downloadApp(CHAIN_TASK_ID, task.getAppUri())).thenReturn(true);
-//         when(datasetService.downloadDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
-//         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-//         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
+    @Test
+    public void shouldDownloadApp() {
+        String imageUri = "imageUri";
+        when(customDockerClient.pullImage(CHAIN_TASK_ID, imageUri)).thenReturn(true);
+        assertThat(computationService.downloadApp(CHAIN_TASK_ID, imageUri)).isTrue();
+    }
 
-//         CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-//         // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
-//         future.join();
+    @Test
+    public void shouldComputeWithoutDecryptingDataset() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContainerConfig containerConfig = mock(ContainerConfig.class);
+        String expectedStdout = "Computed successfully !";
 
-//         Mockito.verify(customFeignClient, Mockito.times(1))
-//                 .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
+        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
+                .thenReturn(containerConfig);
+        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
+                .thenReturn(expectedStdout);
 
-//         Mockito.verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+        Pair<ReplicateStatus, String> result = computationService.runNonTeeComputation(task,
+                getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-//         Mockito.verify(computationService, Mockito.times(1))
-//                 .runNonTeeComputation(any(), any());
-//     }
+        assertThat(result.getLeft()).isEqualTo(COMPUTED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+    }
 
-//     @Test
-//     public void shouldEncryptDatasetAndCompute() {
-//         TaskDescription modelStub = getStubTaskDescription();
+    @Test
+    public void shouldDecryptDatasetAndCompute() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContainerConfig containerConfig = mock(ContainerConfig.class);
+        String expectedStdout = "Computed successfully !";
 
-//         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-//         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-//         when(computationService.downloadApp(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
-//         when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
-//         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-//         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-//         when(datasetService.decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
-//         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-//                 .thenReturn(Optional.of(getStubTaskDescription()));
+        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(datasetService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
+        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
+                .thenReturn(containerConfig);
+        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
+                .thenReturn(expectedStdout);
 
-//         CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE), false);
-//         // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
-//         future.join();
+        Pair<ReplicateStatus, String> result = computationService.runNonTeeComputation(task,
+                getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-//         Mockito.verify(customFeignClient, Mockito.times(1))
-//                 .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+        assertThat(result.getLeft()).isEqualTo(COMPUTED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        verify(datasetService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+    }
 
-//         Mockito.verify(datasetService, Mockito.times(1))
-//                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
+    @Test
+    public void shouldNotComputeSinceCouldnotDecryptDataset() {
+        TaskDescription task = getStubTaskDescription(false);
+        ContainerConfig containerConfig = mock(ContainerConfig.class);
+        String expectedStdout = "Failed to decrypt dataset, URI:" + task.getDatasetUri();
 
-//         Mockito.verify(computationService, Mockito.times(1))
-//                 .runNonTeeComputation(any(), any());
-//     }
+        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(datasetService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
+        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
+                .thenReturn(containerConfig);
+        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
+                .thenReturn(expectedStdout);
 
-//     @Test
-//     public void shouldNotComputeSinceCouldnotDecryptDataset() {
-//         TaskDescription modelStub = getStubTaskDescription();
+        Pair<ReplicateStatus, String> result = computationService.runNonTeeComputation(task,
+                getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-//         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-//         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-//         when(computationService.downloadApp(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
-//         when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
-//         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-//         when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-//         when(datasetService.decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(false);
-//         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-//                 .thenReturn(Optional.of(getStubTaskDescription()));
-
-//         CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE), false);
-//         // CompletableFuture<Boolean> future = taskExecutorService.addReplicate(modelStub);
-//         future.join();
-
-//         Mockito.verify(customFeignClient, Mockito.times(1))
-//                 .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-
-//         Mockito.verify(datasetService, Mockito.times(1))
-//                 .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
-
-//         Mockito.verify(computationService, Mockito.times(0))
-//                 .runNonTeeComputation(any(), any());
-//     }
-
-// }
+        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
+        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        verify(datasetService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+    }
+}
