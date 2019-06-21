@@ -12,12 +12,9 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.sms.SmsService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -180,7 +177,7 @@ public class TaskExecutorServiceTests {
         Signature enclaveSignature = new Signature();
 
         when(taskExecutorHelperService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
-        when(taskExecutorHelperService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, hash, NO_TEE_ENCLAVE_CHALLENGE))
+        when(taskExecutorHelperService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, NO_TEE_ENCLAVE_CHALLENGE))
                 .thenReturn(Optional.of(new Signature()));
         when(taskExecutorHelperService.checkContributionAbility(CHAIN_TASK_ID)).thenReturn("");
         when(taskExecutorHelperService.checkGasBalance(CHAIN_TASK_ID)).thenReturn(true);

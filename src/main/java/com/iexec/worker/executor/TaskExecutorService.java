@@ -197,8 +197,7 @@ public class TaskExecutorService {
         String determinismHash = taskExecutorHelperService.getTaskDeterminismHash(chainTaskId);
         if (determinismHash.isEmpty()) return;
 
-        Optional<Signature> oEnclaveSignature = taskExecutorHelperService.getVerifiedEnclaveSignature(chainTaskId,
-                determinismHash, enclaveChallenge);
+        Optional<Signature> oEnclaveSignature = taskExecutorHelperService.getVerifiedEnclaveSignature(chainTaskId, enclaveChallenge);
         if (!oEnclaveSignature.isPresent()) return;
 
         Signature enclaveSignature = oEnclaveSignature.get();

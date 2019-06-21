@@ -150,7 +150,7 @@ public class TaskExecutorHelperService {
         return determinismHash;
     }
 
-    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String deterministHash, String signerAddress) {
+    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String signerAddress) {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
         if (!isTeeTask) return Optional.of(SignatureUtils.emptySignature());
 
