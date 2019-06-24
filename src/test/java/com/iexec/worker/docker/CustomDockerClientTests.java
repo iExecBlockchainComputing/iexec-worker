@@ -2,8 +2,6 @@ package com.iexec.worker.docker;
 
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.exceptions.DockerCertificateException;
-import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.Device;
 
@@ -16,9 +14,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
-import java.time.Instant;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
