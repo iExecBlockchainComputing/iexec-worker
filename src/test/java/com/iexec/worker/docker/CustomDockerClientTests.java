@@ -6,13 +6,23 @@ import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ContainerConfig;
+import com.spotify.docker.client.messages.Device;
+
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -20,7 +30,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+
+@Slf4j
 public class CustomDockerClientTests {
+    // @ClassRule public static final TemporaryFolder tempFolder = new TemporaryFolder();
 
     @Mock private DefaultDockerClient docker;
     @Mock private WorkerConfigurationService workerConfigurationService;
@@ -28,64 +41,171 @@ public class CustomDockerClientTests {
     @InjectMocks
     private CustomDockerClient customDockerClient;
 
-    private DockerClient baseDockerClient;
-    private Date maxExecutionTime;
+    private static final String TEST_WORKER = "./src/test/resources/tmp/test-worker";
+    private static final String CHAIN_TASK_ID = "docker";
+    private static String DOCKER_TMP_FOLDER = "";
+    private static final long SECOND = 1000;
+    private static final long MAX_EXECUTION_TIME = 10 * SECOND;
 
-    private static final String CHAIN_TASK_ID = "0xfoobar";
     private static final String IMAGE_URI = "image:tag";
     private static final String CMD = "cmd";
-    private static final List<String> env = Arrays.asList("FOO=bar");
+    private static final List<String> ENV = Arrays.asList("FOO=bar");
 
-    private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
-    // private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
+    private static final String SGX_DEVICE_PATH = "/dev/isgx";
+    private static final String SGX_DEVICE_PERMISSIONS = "rwm";
+
+    private static final String ALPINE_LATEST = "alpine:latest";
+    private static final String ALPINE_BLABLA = "alpine:blabla";
+    private static final String BLABLA_LATEST = "blabla:latest";
+    private static final String HELLO_WORLD = "hello-world";
+
+    @BeforeClass
+    public static void beforeClass() {
+        // try {
+        //     DOCKER_TMP_FOLDER = tempFolder.newFolder(CHAIN_TASK_ID).getAbsolutePath();
+        // } catch (Exception e) {
+        //     log.error("couldn't create tmp folder");
+        //     e.printStackTrace();
+        // }
+
+        DOCKER_TMP_FOLDER = new File(TEST_WORKER + CHAIN_TASK_ID).getAbsolutePath();
+    }
 
     @Before
     public void beforeEach() throws DockerCertificateException, DockerException, InterruptedException {
         MockitoAnnotations.initMocks(this);
-        baseDockerClient = DefaultDockerClient.fromEnv().build();
         // baseDockerClient.pull("iexechub/vanityeth:latest");
-        maxExecutionTime = new Date(30 * 1000);
+        // maxExecutionTime = new Date().getTime() + 30 * SECOND;
     }
+
+    public String getDockerInput() { return DOCKER_TMP_FOLDER + "/input"; }
+    public String getDockerOutput() { return DOCKER_TMP_FOLDER + "/output"; }
+    public String getDockerIexecOut() { return getDockerOutput() + "/iexec_out"; }
+    public String getDockerScone() { return DOCKER_TMP_FOLDER + "/scone"; }
+
+    // buildContainerConfig()
 
     @Test
     public void shouldBuildContainerConfig() {
-        ContainerConfig containerConfig = customDockerClient
-                .buildContainerConfig(CHAIN_TASK_ID, IMAGE_URI, CMD, env);
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerIexecOut());
+
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+                IMAGE_URI, CMD, ENV);
+
         assertThat(containerConfig.image()).isEqualTo(IMAGE_URI);
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
+        assertThat(containerConfig.env()).isEqualTo(ENV);
+
+        String inputBind = containerConfig.hostConfig().binds().get(0);
+        String outputBind = containerConfig.hostConfig().binds().get(1);
+
+        assertThat(inputBind).isEqualTo(getDockerInput() + ":/iexec_in");
+        assertThat(outputBind).isEqualTo(getDockerIexecOut() + ":/iexec_out");
     }
 
     @Test
     public void shouldNotBuildContainerConfigWithoutImage() {
-        when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerIexecOut());
 
-        ContainerConfig containerConfig = customDockerClient
-                .buildContainerConfig("", "cmd", "/tmp/worker-test");
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+                "", CMD, ENV);
+
         assertThat(containerConfig).isNull();
     }
 
     @Test
     public void shouldNotBuildContainerConfigWithoutHostConfig() {
-        ContainerConfig containerConfig = customDockerClient
-                .buildContainerConfig("", "cmd", null);
+        // this causes hostConfig to be null
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("");
+
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+                IMAGE_URI, CMD, ENV);
+
+        assertThat(containerConfig).isNull();
+    }
+
+    // buildSconeContainerConfig()
+
+    @Test
+    public void shouldBuildSconeContainerConfig() {
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerIexecOut());
+        when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerScone());
+
+        ContainerConfig containerConfig = customDockerClient.buildSconeContainerConfig(CHAIN_TASK_ID,
+                IMAGE_URI, CMD, ENV);
+
+        assertThat(containerConfig.image()).isEqualTo(IMAGE_URI);
+        assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
+        assertThat(containerConfig.env()).isEqualTo(ENV);
+
+        Device sgxDevice = containerConfig.hostConfig().devices().get(0);
+        assertThat(sgxDevice.pathOnHost()).isEqualTo(SGX_DEVICE_PATH);
+        assertThat(sgxDevice.pathInContainer()).isEqualTo(SGX_DEVICE_PATH);
+        assertThat(sgxDevice.cgroupPermissions()).isEqualTo(SGX_DEVICE_PERMISSIONS);
+    }
+
+    @Test
+    public void shouldNotBuildSconeContainerConfigWithoutImage() {
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerIexecOut());
+        when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerScone());
+
+        ContainerConfig containerConfig = customDockerClient.buildSconeContainerConfig(CHAIN_TASK_ID,
+                "", CMD, ENV);
+
         assertThat(containerConfig).isNull();
     }
 
     @Test
+    public void shouldNotBuildSconeContainerConfigWithoutHostConfig() {
+        // this causes hostConfig to be null
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("");
+        when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID)).thenReturn("");
+
+        ContainerConfig containerConfig = customDockerClient.buildSconeContainerConfig(CHAIN_TASK_ID,
+                IMAGE_URI, CMD, ENV);
+
+        assertThat(containerConfig).isNull();
+    }
+
+    // pullImage()
+
+    @Test
     public void shouldPullImage() {
-        boolean imagePulled = customDockerClient.pullImage("taskId", "alpine:latest");
+        boolean imagePulled = customDockerClient.pullImage(CHAIN_TASK_ID, ALPINE_LATEST);
         assertThat(imagePulled).isTrue();
     }
 
     @Test
+    public void shouldNotPullImageWithWrongName() {
+        boolean imagePulled = customDockerClient.pullImage(CHAIN_TASK_ID, BLABLA_LATEST);
+        assertThat(imagePulled).isFalse();
+    }
+
+    @Test
     public void shouldNotPullImageWithWrongTag() {
-        boolean imagePulled = customDockerClient.pullImage("taskId", "alpine:blabla");
+        boolean imagePulled = customDockerClient.pullImage(CHAIN_TASK_ID, ALPINE_BLABLA);
         assertThat(imagePulled).isFalse();
     }
 
     @Test
     public void shouldNotPullImageWithoutImageName() {
-        boolean imagePulled = customDockerClient.pullImage("taskId", "");
+        boolean imagePulled = customDockerClient.pullImage(CHAIN_TASK_ID, "");
         assertThat(imagePulled).isFalse();
     }
 
@@ -93,8 +213,43 @@ public class CustomDockerClientTests {
     @Ignore
     @Test
     public void shouldPullLatestImageWithoutTag() {
-        boolean imagePulled = customDockerClient.pullImage("taskId", "hello-world");
+        boolean imagePulled = customDockerClient.pullImage(CHAIN_TASK_ID, HELLO_WORLD);
         assertThat(imagePulled).isTrue();
+    }
+
+    // isImagePulled()
+
+    @Test
+    public void shouldIsImagePulledReturnTrue() {
+        boolean pullResult = customDockerClient.pullImage(CHAIN_TASK_ID, ALPINE_LATEST);
+        boolean isImagePulled = customDockerClient.isImagePulled(ALPINE_LATEST);
+        assertThat(pullResult).isTrue();
+        assertThat(isImagePulled).isTrue();
+    }
+
+    @Test
+    public void shouldIsImagePulledReturnFalse() {
+        boolean pullResult = customDockerClient.pullImage(CHAIN_TASK_ID, ALPINE_BLABLA);
+        boolean isImagePulled = customDockerClient.isImagePulled(ALPINE_BLABLA);
+        assertThat(pullResult).isFalse();
+        assertThat(isImagePulled).isFalse();
+    }
+
+    // dockerRun()
+
+    @Test
+    public void shouldRunContainerAndGetLogs() {
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerIexecOut());
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+                HELLO_WORLD, "", ENV);
+
+        String stdout = customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, MAX_EXECUTION_TIME);
+
+        assertThat(stdout).contains("Hello from Docker!");
+        assertThat(stdout).contains("This message shows that your installation appears to be working correctly");
     }
 
     @Test
@@ -102,24 +257,35 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
+        String containerId = customDockerClient.startContainer(CHAIN_TASK_ID, containerConfig);
         assertThat(containerId).isNotNull();
         assertThat(containerId).isNotEmpty();
-        customDockerClient.waitContainer("taskId", maxExecutionTime);
-        customDockerClient.removeContainer("taskId");
+        customDockerClient.waitContainer(CHAIN_TASK_ID, maxExecutionTime);
+        customDockerClient.removeContainer(CHAIN_TASK_ID);
     }
 
     @Test
     public void shouldStopComputingIfTooLong() {
-        when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
-        ContainerConfig containerConfig = customDockerClient
-                .buildContainerConfig("iexechub/vanityeth:latest", "aceace", "/tmp/worker-test");//long computation
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerIexecOut());
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+                HELLO_WORLD, "sleep 30", ENV);
+
+        String stdout = customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, MAX_EXECUTION_TIME);
+
+        assertThat(stdout).contains("Hello from Docker!");
+        assertThat(stdout).contains("This message shows that your installation appears to be working correctly");
+
+
+
+        String containerId = customDockerClient.startContainer(CHAIN_TASK_ID, containerConfig);
         assertThat(containerId).isNotNull();
         assertThat(containerId).isNotEmpty();
         maxExecutionTime = new Date(1000);//1 sec
-        customDockerClient.waitContainer("taskId", maxExecutionTime);
-        customDockerClient.removeContainer("taskId");
+        customDockerClient.waitContainer(CHAIN_TASK_ID, maxExecutionTime);
+        customDockerClient.removeContainer(CHAIN_TASK_ID);
     }
 
     @Test
@@ -127,7 +293,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("", "a", "/tmp/worker-test");
-        String containerId = customDockerClient.startContainer("taskId", containerConfig);
+        String containerId = customDockerClient.startContainer(CHAIN_TASK_ID, containerConfig);
         assertThat(containerId).isEmpty();
     }
 
@@ -136,10 +302,10 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
-        customDockerClient.startContainer("taskId", containerConfig);
-        boolean executionDone = customDockerClient.waitContainer("taskId", maxExecutionTime);
+        customDockerClient.startContainer(CHAIN_TASK_ID, containerConfig);
+        boolean executionDone = customDockerClient.waitContainer(CHAIN_TASK_ID, maxExecutionTime);
         assertThat(executionDone).isTrue();
-        customDockerClient.removeContainer("taskId");
+        customDockerClient.removeContainer(CHAIN_TASK_ID);
     }
 
     @Test
@@ -152,10 +318,10 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "a", "/tmp/worker-test");
-        customDockerClient.startContainer("taskId", containerConfig);
-        customDockerClient.waitContainer("taskId", maxExecutionTime);
+        customDockerClient.startContainer(CHAIN_TASK_ID, containerConfig);
+        customDockerClient.waitContainer(CHAIN_TASK_ID, maxExecutionTime);
 
-        boolean containerRemoved = customDockerClient.removeContainer("taskId");
+        boolean containerRemoved = customDockerClient.removeContainer(CHAIN_TASK_ID);
         assertThat(containerRemoved).isTrue();
     }
 
@@ -164,12 +330,12 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getWorkerName()).thenReturn("worker1");
         ContainerConfig containerConfig = customDockerClient
                 .buildContainerConfig("iexechub/vanityeth:latest", "ac", "/tmp/worker-test");
-        customDockerClient.startContainer("taskId", containerConfig);
+        customDockerClient.startContainer(CHAIN_TASK_ID, containerConfig);
 
-        boolean containerRemoved = customDockerClient.removeContainer("taskId");
+        boolean containerRemoved = customDockerClient.removeContainer(CHAIN_TASK_ID);
         assertThat(containerRemoved).isFalse();
-        customDockerClient.waitContainer("taskId", maxExecutionTime);
-        customDockerClient.removeContainer("taskId");
+        customDockerClient.waitContainer(CHAIN_TASK_ID, maxExecutionTime);
+        customDockerClient.removeContainer(CHAIN_TASK_ID);
     }
 
     @Test
@@ -180,7 +346,7 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldGetLogsOfBadTaskId() {
-        String dockerLogs = customDockerClient.getContainerLogs("taskId");
+        String dockerLogs = customDockerClient.getContainerLogs(CHAIN_TASK_ID);
         assertThat(dockerLogs).isEqualTo("Failed to get logs of computation");
     }
 

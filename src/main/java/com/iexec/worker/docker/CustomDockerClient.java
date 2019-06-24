@@ -151,7 +151,7 @@ public class CustomDockerClient {
     }
 
     /**
-     * This creates a container, starts it and returns its logs
+     * This creates a container, starts, waits then stops it, and returns its logs
      */
     public String dockerRun(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
         if (containerConfig == null) {
@@ -174,6 +174,9 @@ public class CustomDockerClient {
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(chainTaskId, containerId, executionTimeoutDate);
         log.info("Computation completed [chainTaskId:{}]", chainTaskId);
+
+        // docker stop
+        stopContainer(containerId);
 
         // docker logs
         String stdout = getContainerLogs(containerId);
@@ -234,7 +237,6 @@ public class CustomDockerClient {
 
         if (isTimeout) {
             log.warn("Container reached timeout, stopping [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
-            stopContainer(containerId);
         }
     }
 
