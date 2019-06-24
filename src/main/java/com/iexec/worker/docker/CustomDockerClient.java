@@ -35,28 +35,28 @@ public class CustomDockerClient {
         this.workerConfigurationService = workerConfigurationService;
     }
 
-    public ContainerConfig buildContainerConfig(String chainTaskId, String imageUri, String cmd, List<String> env) {
+    public ContainerConfig buildContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
         if (imageUri == null || imageUri.isEmpty()) return null;
 
         HostConfig hostConfig = getHostConfig(chainTaskId);
         if (hostConfig == null) return null;
 
-        return buildCommonContainerConfig(hostConfig, imageUri, cmd, env);
+        return buildCommonContainerConfig(hostConfig, imageUri, env, cmd);
     }
 
-    public ContainerConfig buildSconeContainerConfig(String chainTaskId, String imageUri, String cmd, List<String> env) {
+    public ContainerConfig buildSconeContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
         if (imageUri == null || imageUri.isEmpty()) return null;
 
         HostConfig hostConfig = getSconeHostConfig(chainTaskId);
         if (hostConfig == null) return null;
 
-        return buildCommonContainerConfig(hostConfig, imageUri, cmd, env);
+        return buildCommonContainerConfig(hostConfig, imageUri, env, cmd);
     }
 
-    private ContainerConfig buildCommonContainerConfig(HostConfig hostConfig, String imageUri, String cmd, List<String> env) {
+    private ContainerConfig buildCommonContainerConfig(HostConfig hostConfig, String imageUri, List<String> env, String... cmd) {
         ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
 
-        if (cmd != null && !cmd.isEmpty()) containerConfigBuilder.cmd(cmd);
+        if (cmd != null && cmd.length != 0) containerConfigBuilder.cmd(cmd);
 
         return containerConfigBuilder.image(imageUri)
                 .hostConfig(hostConfig)
@@ -173,20 +173,25 @@ public class CustomDockerClient {
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(chainTaskId, containerId, executionTimeoutDate);
-        log.info("Computation completed [chainTaskId:{}]", chainTaskId);
 
         // docker stop
         stopContainer(containerId);
 
+        log.info("Computation completed [chainTaskId:{}]", chainTaskId);
+
         // docker logs
         String stdout = getContainerLogs(containerId);
 
+        // docker rm
         removeContainer(containerId);
         return stdout;
     }
 
-    private String createContainer(String chainTaskId, ContainerConfig containerConfig) {
+    public String createContainer(String chainTaskId, ContainerConfig containerConfig) {
         log.debug("Creating container [chainTaskId:{}]", chainTaskId);
+
+        if (containerConfig == null) return "";
+
         ContainerCreation containerCreation;
 
         try {
@@ -206,7 +211,7 @@ public class CustomDockerClient {
         return containerCreation.id() != null ? containerCreation.id() : "";
     }
 
-    private boolean startContainer(String containerId) {
+    public boolean startContainer(String containerId) {
         log.debug("Starting container [containerId:{}]", containerId);
 
         try {
@@ -222,9 +227,11 @@ public class CustomDockerClient {
         return true;
     }
 
-    private void waitContainer(String chainTaskId, String containerId, Date executionTimeoutDate) {
+    public void waitContainer(String chainTaskId, String containerId, Date executionTimeoutDate) {
         boolean isComputed = false;
         boolean isTimeout = false;
+
+        if (containerId == null || containerId.isEmpty()) return;
 
         while (!isComputed && !isTimeout) {
             log.info("Computing [chainTaskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
@@ -240,7 +247,7 @@ public class CustomDockerClient {
         }
     }
 
-    private boolean stopContainer(String containerId) {
+    public boolean stopContainer(String containerId) {
         log.debug("Stopping container [containerId:{}]", containerId);
 
         try {
@@ -255,7 +262,7 @@ public class CustomDockerClient {
         return true;
     }
 
-    private String getContainerLogs(String containerId) {
+    public String getContainerLogs(String containerId) {
         log.debug("Getting container logs [containerId:{}]", containerId);
         String stdout = "";
 
@@ -271,7 +278,7 @@ public class CustomDockerClient {
         return stdout;
     }
 
-    private boolean removeContainer(String containerId) {
+    public boolean removeContainer(String containerId) {
         log.debug("Removing container [containerId:{}]", containerId);
         try {
             docker.removeContainer(containerId);
@@ -285,7 +292,7 @@ public class CustomDockerClient {
         return true;
     }
 
-    private boolean isContainerExited(String containerId) {
+    public boolean isContainerExited(String containerId) {
         return getContainerStatus(containerId).equals(EXITED);
     }
 
