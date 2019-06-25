@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SconeTeeService {
 
+    // metadata file used by scone enclave. It contains the hash and encryption key
+    // for each file in the protected filesystem regions.
     private static final String FSPF_FILENAME = "volume.fspf";
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
 
