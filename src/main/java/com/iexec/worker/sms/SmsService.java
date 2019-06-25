@@ -54,20 +54,9 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        SmsSecretResponse smsResponse = smsClient.getTaskSecrets(smsRequest);
-
-        if (smsResponse == null) {
-            log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        if (!smsResponse.isOk()) {
-            log.error("An error occurred while getting task secrets [chainTaskId:{}, errorMessage:{}]",
-                    chainTaskId, smsResponse.getErrorMessage());
-            return false;
-        }
-
-        TaskSecrets taskSecrets = smsResponse.getData().getSecrets();
+        Optional<TaskSecrets> oTaskSecrets = getTaskSecrets(chainTaskId, smsRequest);
+        if (!oTaskSecrets.isPresent()) return false;
+        TaskSecrets taskSecrets = oTaskSecrets.get();
 
         if (taskSecrets == null) {
             log.error("Received null secrets object from SMS [chainTaskId:{}]", chainTaskId);
@@ -84,6 +73,23 @@ public class SmsService {
                 contributionAuth.getChainTaskId());
         e.printStackTrace();
         return false;
+    }
+
+    private Optional<TaskSecrets> getTaskSecrets(String chainTaskId, SmsRequest smsRequest) {
+        SmsSecretResponse smsResponse = smsClient.getTaskSecretsFromSms(smsRequest);
+
+        if (smsResponse == null) {
+            log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        if (!smsResponse.isOk()) {
+            log.error("An error occurred while getting task secrets [chainTaskId:{}, errorMessage:{}]",
+                    chainTaskId, smsResponse.getErrorMessage());
+            return Optional.empty();
+        }
+
+        return Optional.of(smsResponse.getData().getSecrets());
     }
 
     public void saveSecrets(String chainTaskId, TaskSecrets taskSecrets) {

@@ -18,7 +18,7 @@ import feign.FeignException;
 public interface SmsClient {
 
     @PostMapping("/secure")
-    SmsSecretResponse getTaskSecrets(@RequestBody SmsRequest smsRequest) throws FeignException;
+    SmsSecretResponse getTaskSecretsFromSms(@RequestBody SmsRequest smsRequest) throws FeignException;
 
     @PostMapping("/secure")
     SconeSecureSessionResponse generateSecureSession(@RequestBody SmsRequest smsRequest) throws FeignException;
