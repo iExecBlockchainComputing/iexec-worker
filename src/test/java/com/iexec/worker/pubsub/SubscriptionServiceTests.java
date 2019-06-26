@@ -78,7 +78,7 @@ public class SubscriptionServiceTests {
 
         subscriptionService.handleTaskNotification(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).tryToContribute(any());
+        Mockito.verify(taskExecutorService, Mockito.times(1)).computeOrContribute(any());
     }
 
     @Test

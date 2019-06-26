@@ -1,25 +1,24 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.DockerComputationService;
+import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.sms.SmsService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
@@ -32,14 +31,16 @@ import static org.mockito.Mockito.*;
 
 public class TaskExecutorServiceTests {
 
-    @Mock private DatasetService datasetService;
-    @Mock private DockerComputationService dockerComputationService;
+    @Mock private TaskExecutorHelperService taskExecutorHelperService;
     @Mock private ResultService resultService;
     @Mock private ContributionService contributionService;
     @Mock private CustomFeignClient customFeignClient;
+    @Mock private RevealService revealService;
     @Mock private WorkerConfigurationService workerConfigurationService;
-    @Mock private SmsService smsService;
     @Mock private IexecHubService iexecHubService;
+    @Mock private PublicConfigurationService publicConfigurationService;
+    @Mock private ComputationService computationService;
+
 
     @InjectMocks
     private TaskExecutorService taskExecutorService;
@@ -47,19 +48,19 @@ public class TaskExecutorServiceTests {
     private static final String CHAIN_TASK_ID = "0xfoobar";
     private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
     private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
-    private static final String CORE_PUBLIC_ADDRESS = "public.address.fr";
 
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
     }
 
-    TaskDescription getStubTaskDescription() {
+    TaskDescription getStubTaskDescription(boolean isTeeTask) {
         return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .appType(DappType.DOCKER)
                 .appUri("appUri")
                 .datasetUri("datasetUri")
+                .isTeeTask(isTeeTask)
                 .build();
     }
 
@@ -70,147 +71,146 @@ public class TaskExecutorServiceTests {
                 .build();
     }
 
+    // addReplicate()
+
     @Test
-    public void shouldNotComputeWhenTaskNotInitializedOnchain() {
+    public void shouldNotAddReplicateWhenTaskNotInitializedOnchain() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(false);
-        when(customFeignClient.getPublicConfiguration())
-                .thenReturn(PublicConfiguration.builder()
-                        .schedulerPublicAddress(CORE_PUBLIC_ADDRESS)
-                        .build());
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.of(getStubTaskDescription()));
-
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        Mockito.verify(customFeignClient, never())
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-    }
-
-    @Test
-    public void shouldNotComputeWhenTeeRequiredButNotSupported() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
-                .thenReturn(true);
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        Mockito.verify(customFeignClient, never())
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-    }
-
-    @Test
-    public void shouldComputeTaskWhithNoTeeRequired() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription()));
+                .thenReturn(Optional.of(getStubTaskDescription(false)));
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
         future.join();
 
-        Mockito.verify(customFeignClient, Mockito.times(1))
+        verify(customFeignClient, never())
                 .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+    }
+
+    @Test
+    public void shouldNotAddReplicateWhenTeeRequiredButNotSupported() {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getStubTaskDescription(true)));
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
+
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        future.join();
+
+        verify(customFeignClient, never())
+                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+    }
+
+    @Test
+    public void shouldAddReplicateWithNoTeeRequired() {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getStubTaskDescription(false)));
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
+
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        future.join();
+
+        verify(customFeignClient, times(1))
+                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+    }
+
+    @Test
+    public void shouldAddReplicateWithTeeRequired() {
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getStubTaskDescription(true)));
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
+
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        future.join();
+
+        verify(customFeignClient, times(1))
+                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+    }
+
+    // compute()
+
+    @Test
+    public void shouldComputeNonTeeTask() {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getStubTaskDescription(false)));
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
+        when(taskExecutorHelperService.checkAppType(any(), any())).thenReturn("");
+        when(taskExecutorHelperService.tryToDownloadApp(any())).thenReturn("");
+        when(taskExecutorHelperService.tryToDownloadData(any(), any())).thenReturn("");
+        when(taskExecutorHelperService.checkContributionAbility(any())).thenReturn("");
+        when(taskExecutorHelperService.checkIfAppImageExists(any(), any())).thenReturn("");
+
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        future.join();
+
+        verify(computationService, times(1))
+                .runNonTeeComputation(any(), any());
     }
 
     @Test
     public void shouldComputeTeeTask() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getStubTaskDescription(true)));
         when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription()));
+        when(taskExecutorHelperService.checkAppType(any(), any())).thenReturn("");
+        when(taskExecutorHelperService.tryToDownloadApp(any())).thenReturn("");
+        when(taskExecutorHelperService.tryToDownloadData(any(), any())).thenReturn("");
+        when(taskExecutorHelperService.checkContributionAbility(any())).thenReturn("");
+        when(taskExecutorHelperService.checkIfAppImageExists(any(), any())).thenReturn("");
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
+        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
         future.join();
 
-        Mockito.verify(customFeignClient, Mockito.times(1))
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
+        verify(computationService, times(1))
+                .runTeeComputation(any(), any());
     }
 
+    // contribute()
+
     @Test
-    public void shouldComputeWithoutDecryptingDataset() {
-        TaskDescription task = getStubTaskDescription();
+    public void shouldContribute() {
+        ContributionAuthorization contributionAuth = getStubAuth(NO_TEE_ENCLAVE_CHALLENGE);
+        String hash = "hash";
+        Signature enclaveSignature = new Signature();
 
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(dockerComputationService.dockerPull(CHAIN_TASK_ID, task.getAppUri())).thenReturn(true);
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription()));
+        when(taskExecutorHelperService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
+        when(taskExecutorHelperService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, NO_TEE_ENCLAVE_CHALLENGE))
+                .thenReturn(Optional.of(new Signature()));
+        when(taskExecutorHelperService.checkContributionAbility(CHAIN_TASK_ID)).thenReturn("");
+        when(taskExecutorHelperService.checkGasBalance(CHAIN_TASK_ID)).thenReturn(true);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        future.join();
+        taskExecutorService.contribute(contributionAuth);
 
-        Mockito.verify(customFeignClient, Mockito.times(1))
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-
-        Mockito.verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
-
-        Mockito.verify(dockerComputationService, Mockito.times(1))
-                .dockerRunAndGetLogs(any(), any());
+        verify(contributionService, times(1)).contribute(contributionAuth, hash, enclaveSignature);
     }
 
+    // reveal()
+
     @Test
-    public void shouldEncryptDatasetAndCompute() {
-        TaskDescription modelStub = getStubTaskDescription();
+    public void shouldReveal() {
+        String hash = "hash";
+        long consensusBlock = 55;
 
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(dockerComputationService.dockerPull(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(datasetService.decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription()));
+        when(taskExecutorHelperService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
+        when(revealService.canReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
+        when(taskExecutorHelperService.checkGasBalance(CHAIN_TASK_ID)).thenReturn(true);
 
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        future.join();
+        taskExecutorService.reveal(CHAIN_TASK_ID, consensusBlock);
 
-        Mockito.verify(customFeignClient, Mockito.times(1))
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-
-        Mockito.verify(datasetService, Mockito.times(1))
-                .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
-
-        Mockito.verify(dockerComputationService, Mockito.times(1))
-                .dockerRunAndGetLogs(any(), any());
+        verify(revealService, times(1)).reveal(CHAIN_TASK_ID, hash);
     }
 
-    @Test
-    public void shouldNotComputeSinceCouldnotDecryptDataset() {
-        TaskDescription modelStub = getStubTaskDescription();
-
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(dockerComputationService.dockerPull(CHAIN_TASK_ID, modelStub.getAppUri())).thenReturn(true);
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(true);
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(datasetService.decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri())).thenReturn(false);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription()));
-
-        CompletableFuture<Void> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        Mockito.verify(customFeignClient, Mockito.times(1))
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-
-        Mockito.verify(datasetService, Mockito.times(1))
-                .decryptDataset(CHAIN_TASK_ID, modelStub.getDatasetUri());
-
-        Mockito.verify(dockerComputationService, Mockito.times(0))
-                .dockerRunAndGetLogs(any(), any());
-    }
+    // uploadResult()
 
     @Test
-    public void shouldNotEncryptResult() {
+    public void shouldUploadResultWithoutEncrypting() {
         ReplicateDetails details = ReplicateDetails.builder()
         .resultLink("resultUri")
-        .chainCallbackData("calbackData")
+        .chainCallbackData("callbackData")
         .build();
 
         when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
@@ -223,10 +223,10 @@ public class TaskExecutorServiceTests {
     }
 
     @Test
-    public void shouldEncryptResult() {
+    public void shouldEncryptAndUploadResult() {
         ReplicateDetails details = ReplicateDetails.builder()
         .resultLink("resultUri")
-        .chainCallbackData("calbackData")
+        .chainCallbackData("callbackData")
         .build();
 
         when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
@@ -236,7 +236,7 @@ public class TaskExecutorServiceTests {
 
         taskExecutorService.uploadResult(CHAIN_TASK_ID);
 
-        verify(resultService, Mockito.times(1)).encryptResult(CHAIN_TASK_ID);
+        verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
     }
 
     @Test
@@ -254,7 +254,7 @@ public class TaskExecutorServiceTests {
         String chainTaskId = "chainTaskId";
         ReplicateDetails details = ReplicateDetails.builder()
                 .resultLink("resultUri")
-                .chainCallbackData("calbackData")
+                .chainCallbackData("callbackData")
                 .build();
 
         when(resultService.isResultEncryptionNeeded(chainTaskId)).thenReturn(false);
@@ -263,18 +263,18 @@ public class TaskExecutorServiceTests {
 
         taskExecutorService.uploadResult(chainTaskId);
 
-        Mockito.verify(customFeignClient, Mockito.times(0))
+        verify(customFeignClient, never())
                 .updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-        Mockito.verify(customFeignClient, Mockito.times(1))
+        verify(customFeignClient, times(1))
                 .updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
     }
 
     @Test
-    public void shouldNotUpdateReplicateAfterUploadResultSinceEmptyUri() {
+    public void shouldNotUpdateReplicateAfterUploadingResultSinceEmptyUri() {
         String chainTaskId = "chainTaskId";
         ReplicateDetails details = ReplicateDetails.builder()
                 .resultLink("")
-                .chainCallbackData("calbackData")
+                .chainCallbackData("callbackData")
                 .build();
 
         when(resultService.isResultEncryptionNeeded(chainTaskId)).thenReturn(false);
@@ -283,9 +283,9 @@ public class TaskExecutorServiceTests {
 
         taskExecutorService.uploadResult(chainTaskId);
 
-        Mockito.verify(customFeignClient, Mockito.times(1))
+        verify(customFeignClient, times(1))
                 .updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-        Mockito.verify(customFeignClient, Mockito.times(0))
+        verify(customFeignClient, times(0))
                 .updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
     }
 }

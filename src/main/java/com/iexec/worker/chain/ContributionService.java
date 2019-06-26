@@ -10,15 +10,10 @@ import com.iexec.common.utils.SignatureUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Keys;
-import org.web3j.crypto.Sign;
 
-import java.math.BigInteger;
-import java.security.SignatureException;
 import java.util.Date;
 import java.util.Optional;
 
-import static com.iexec.common.utils.BytesUtils.*;
 
 @Slf4j
 @Service
@@ -42,14 +37,15 @@ public class ContributionService {
         return iexecHubService.getChainTask(chainTaskId).isPresent();
     }
 
-    public Optional<ReplicateStatus> getCanContributeStatus(String chainTaskId) {
+    public Optional<ReplicateStatus> getCannotContributeStatus(String chainTaskId) {
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
-            return Optional.empty();
+            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CHAIN_UNREACHABLE);
         }
+
         ChainTask chainTask = optionalChainTask.get();
 
-        if (!hasEnoughtStakeToContribute(chainTask)) {
+        if (!hasEnoughStakeToContribute(chainTask)) {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_STAKE_TOO_LOW);
         }
 
@@ -65,11 +61,10 @@ public class ContributionService {
             return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CONTRIBUTION_ALREADY_SET);
         }
 
-        return Optional.of(ReplicateStatus.CAN_CONTRIBUTE);
+        return Optional.empty();
     }
 
-
-    private boolean hasEnoughtStakeToContribute(ChainTask chainTask) {
+    private boolean hasEnoughStakeToContribute(ChainTask chainTask) {
         Optional<ChainAccount> optionalChainAccount = iexecHubService.getChainAccount();
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
         if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()) {
@@ -88,42 +83,25 @@ public class ContributionService {
 
     private boolean isContributionUnsetToContribute(ChainTask chainTask) {
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTask.getChainTaskId());
-        if (!optionalContribution.isPresent()) {
-            return false;
-        }
+        if (!optionalContribution.isPresent()) return false;
+
         ChainContribution chainContribution = optionalContribution.get();
         return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
     }
 
-    /*
-     * If TEE tag missing :              return empty enclaveSignature
-     * If TEE tag present :              return proper enclaveSignature
-     * If TEE tag present but problem :  return null
-     * */
-    public Signature getEnclaveSignature(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
+    public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
+        // create the hash that was used in the signature in the core
+        byte[] message = BytesUtils.stringToBytes(
+                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
 
-        if (contribAuth.getEnclaveChallenge().equals(EMPTY_ADDRESS) || contribAuth.getEnclaveChallenge().isEmpty()) {
-            return SignatureUtils.emptySignature();
-        }
+        return SignatureUtils.isSignatureValid(message, auth.getSignature(), signerAddress);
+    }
 
-        if (enclaveSignature == null ) {
-            log.info("Can't contribute (enclaveChalenge is set but enclaveSignature missing) [chainTaskId:{]", contribAuth.getChainTaskId());
-            return null;
-        }
+    public boolean isContributionDeadlineReached(String chainTaskId) {
+        Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
+        if (!oTask.isPresent()) return true;
 
-        String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
-        String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
-        boolean isEnclaveSignatureValid = isEnclaveSignatureValid(resultHash, resultSeal,
-                enclaveSignature, contribAuth.getEnclaveChallenge());
-
-        if (!isEnclaveSignatureValid) {
-            log.error("Can't contribute (enclaveChalenge is set but enclaveSignature not valid) [chainTaskId:{}, " +
-                    "isEnclaveSignatureValid:{}]", contribAuth.getChainTaskId(), isEnclaveSignatureValid);
-            return null;
-        }
-
-        return enclaveSignature;
-
+        return !isBeforeContributionDeadlineToContribute(oTask.get());
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
@@ -141,48 +119,5 @@ public class ContributionService {
                 iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);
-    }
-
-    public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
-        // create the hash that was used in the signature in the core
-        byte[] message = BytesUtils.stringToBytes(
-                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
-
-        return isSignatureValid(message, auth.getSignature(), signerAddress);
-    }
-
-    public boolean isEnclaveSignatureValid(String resultHash, String resultSeal, Signature enclaveSignature, String signerAddress) {
-        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
-
-        return isSignatureValid(message, enclaveSignature, signerAddress);
-    }
-
-    private boolean isSignatureValid(byte[] message, Signature sign, String signerAddress) {
-        try {
-            Sign.SignatureData signatureData = new Sign.SignatureData(sign.getV(), sign.getR(), sign.getS());
-
-            BigInteger publicKey = Sign.signedPrefixedMessageToKey(message, signatureData);
-            if (publicKey != null) {
-                String addressRecovered = "0x" + Keys.getAddress(publicKey);
-                return addressRecovered.equalsIgnoreCase(signerAddress);
-            }
-
-        } catch (SignatureException e) {
-            log.error("Signature exception [exception:{}]", e.toString());
-        }
-        return false;
-    }
-
-    public boolean hasEnoughGas() {
-        return iexecHubService.hasEnoughGas();
-    }
-
-    public boolean isContributionDeadlineReached(String chainTaskId) {
-        Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-        if (!oTask.isPresent()) {
-            return true;
-        }
-        ChainTask task = oTask.get();
-        return isBeforeContributionDeadlineToContribute(task);
     }
 }

@@ -74,11 +74,15 @@ public class ReplicateDemandService {
 
         subscriptionService.subscribeToTopic(chainTaskId);
 
+        TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
+                .contributionAuthorization(contributionAuth)
+                .build();
+
         TaskNotification taskNotification = TaskNotification.builder()
                 .chainTaskId(chainTaskId)
                 .workersAddress(Collections.emptyList())
                 .taskNotificationType(TaskNotificationType.PLEASE_CONTRIBUTE)
-                .taskNotificationExtra(TaskNotificationExtra.builder().contributionAuthorization(contributionAuth).build())
+                .taskNotificationExtra(notificationExtra)
                 .build();
 
         subscriptionService.handleTaskNotification(taskNotification);

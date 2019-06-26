@@ -9,7 +9,6 @@ import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
@@ -32,7 +31,6 @@ public class IexecHubService extends IexecHubAbstractService {
 
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
-    private final Web3j web3j;
     private Web3jService web3jService;
 
     @Autowired
@@ -41,7 +39,6 @@ public class IexecHubService extends IexecHubAbstractService {
                            PublicConfigurationService publicConfigurationService) {
         super(credentialsService.getCredentials(), web3jService, publicConfigurationService.getIexecHubAddress());
         this.credentialsService = credentialsService;
-        this.web3j = web3jService.getWeb3j();
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }

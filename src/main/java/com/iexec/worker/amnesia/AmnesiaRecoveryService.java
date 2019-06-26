@@ -1,6 +1,5 @@
 package com.iexec.worker.amnesia;
 
-import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.task.TaskDescription;
