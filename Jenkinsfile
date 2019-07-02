@@ -8,12 +8,8 @@ pipeline {
 
         stage('Test') {
             steps {
-                 withCredentials([
-                    string(credentialsId: 'ADDRESS_SONAR', variable: 'address_sonar'),
-                    string(credentialsId: 'SONAR_WORKER_TOKEN', variable: 'worker_token')]){
-                    sh './gradlew clean test sonarqube -Dsonar.projectKey=iexec-worker -Dsonar.host.url=$address_sonar -Dsonar.login=$worker_token --refresh-dependencies --no-daemon'
-                 }
-                 junit 'build/test-results/**/*.xml'
+                 sh './gradlew clean test --refresh-dependencies --no-daemon'
+                 junit 'build/test-results/test/*.xml'
             }
         }
 
