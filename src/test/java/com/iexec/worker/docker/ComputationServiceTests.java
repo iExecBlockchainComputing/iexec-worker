@@ -146,7 +146,8 @@ public class ComputationServiceTests {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
         ContainerConfig containerConfig = mock(ContainerConfig.class);
-        String expectedStdout = "Computed successfully 1 !";
+        String expectedStdout1 = "Computed successfully 1 !";
+        String expectedStdout2 = "Computed successfully 1 !";
         String awesomeSessionId = "awesomeSessionId";
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
@@ -157,12 +158,13 @@ public class ComputationServiceTests {
         when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
-                .thenReturn(expectedStdout);
+                .thenReturn(expectedStdout1)
+                .thenReturn(expectedStdout2);
 
         Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
 
         assertThat(result.getLeft()).isEqualTo(COMPUTED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(result.getRight()).isEqualTo(expectedStdout1 + expectedStdout2);
     }
 
     @Test

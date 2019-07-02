@@ -142,7 +142,7 @@ public class ComputationService {
         }
 
         // encrypt result
-        customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
+        stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
         return Pair.of(COMPUTED, stdout);
     }
 }
