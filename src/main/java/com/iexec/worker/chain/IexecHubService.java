@@ -9,18 +9,16 @@ import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Function;
 
 import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
@@ -33,7 +31,6 @@ public class IexecHubService extends IexecHubAbstractService {
 
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
-    private final Web3j web3j;
     private Web3jService web3jService;
 
     @Autowired
@@ -42,7 +39,6 @@ public class IexecHubService extends IexecHubAbstractService {
                            PublicConfigurationService publicConfigurationService) {
         super(credentialsService.getCredentials(), web3jService, publicConfigurationService.getIexecHubAddress());
         this.credentialsService = credentialsService;
-        this.web3j = web3jService.getWeb3j();
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
@@ -98,10 +94,9 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         if (contributeEvent != null && contributeEvent.log != null &&
-                (!contributeEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
-                        || isStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED, this::isContributionStatusValidOnChain))) {
-            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}]",
-                    chainTaskId, resultHash, contributeReceipt.getGasUsed());
+                isStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED, this::isContributionStatusValidOnChain)) {
+            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, resultHash, contributeReceipt.getGasUsed(), contributeEvent.log);
             return contributeEvent;
         }
 
@@ -144,10 +139,9 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         if (revealEvent != null && revealEvent.log != null &&
-                (!revealEvent.log.getType().equals(PENDING_RECEIPT_STATUS)
-                        || isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain))) {
-            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}]",
-                    chainTaskId, resultDigest, revealReceipt.getGasUsed());
+                isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain)) {
+            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, resultDigest, revealReceipt.getGasUsed(), revealEvent.log);
             return revealEvent;
         }
 
@@ -175,10 +169,72 @@ public class IexecHubService extends IexecHubAbstractService {
         return web3jService.getLatestBlockNumber();
     }
 
+    public long getMaxWaitingTimeWhenNotSync() {
+        return web3jService.getMaxWaitingTimeWhenPendingReceipt();
+    }
+
     private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainStatus chainContributionStatus) {
         if (chainContributionStatus instanceof ChainContributionStatus) {
             Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
             return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
+        }
+        return false;
+    }
+
+    private boolean isBlockchainReadTrueWhenNodeNotSync(String chainTaskId, Function<String, Boolean> booleanBlockchainReadFunction) {
+        long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
+        long startTime = System.currentTimeMillis();
+
+        for(long duration = 0L; duration < maxWaitingTime; duration = System.currentTimeMillis() - startTime) {
+            try {
+                if (booleanBlockchainReadFunction.apply(chainTaskId)) {
+                    return true;
+                }
+
+                Thread.sleep(500L);
+            } catch (InterruptedException e) {
+                log.error("Error in checking the latest block number [chainTaskId:{}, maxWaitingTime:{}]",
+                        chainTaskId, maxWaitingTime);
+            }
+        }
+
+        return false;
+    }
+
+    Boolean isChainTaskActive(String chainTaskId){
+        Optional<ChainTask> chainTask = getChainTask(chainTaskId);
+        if (chainTask.isPresent()){
+            switch (chainTask.get().getStatus()){
+                case UNSET:
+                    break;//Could happen if node not synchronized. Should wait.
+                case ACTIVE:
+                    return true;
+                case REVEALING:
+                    return  false;
+                case COMPLETED:
+                    return false;
+                case FAILLED:
+                    return false;
+            }
+        }
+        return false;
+    }
+
+    public Boolean isChainTaskRevealing(String chainTaskId){
+        Optional<ChainTask> chainTask = getChainTask(chainTaskId);
+        if (chainTask.isPresent()){
+            switch (chainTask.get().getStatus()){
+                case UNSET:
+                    break;//Should not happen
+                case ACTIVE:
+                    break;//Could happen if node not synchronized. Should wait.
+                case REVEALING:
+                    return  true;
+                case COMPLETED:
+                    return false;
+                case FAILLED:
+                    return false;
+            }
         }
         return false;
     }

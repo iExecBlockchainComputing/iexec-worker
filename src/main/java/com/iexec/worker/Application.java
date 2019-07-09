@@ -10,6 +10,7 @@ import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,13 +87,17 @@ public class Application implements CommandLineRunner {
 
         if (!publicConfiguration.getRequiredWorkerVersion().isEmpty() &&
                 !versionService.getVersion().equals(publicConfiguration.getRequiredWorkerVersion())) {
-            log.error("Bad version, please upgrade your iexec-worker [current:{}, required:{}]",
+
+            String badVersion = String.format("Bad version! please upgrade your iexec-worker [current:%s, required:%s]",
                     versionService.getVersion(), publicConfiguration.getRequiredWorkerVersion());
+
+            LoggingUtils.printHighlightedMessage(badVersion);
             System.exit(0);
         }
 
         if (!iexecHubService.hasEnoughGas()) {
-            log.error("No enough gas, please refill your wallet!");
+            String noEnoughGas = String.format("No enough gas! please refill your wallet [walletAddress:%s]", workerAddress);
+            LoggingUtils.printHighlightedMessage(noEnoughGas);
             System.exit(0);
         }
 

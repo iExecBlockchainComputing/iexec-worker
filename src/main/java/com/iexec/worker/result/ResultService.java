@@ -1,18 +1,19 @@
 package com.iexec.worker.result;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iexec.common.replicate.AvailableReplicateModel;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
-import com.iexec.common.security.Signature;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.security.TeeSignature;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
@@ -34,14 +35,18 @@ import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 @Service
 public class ResultService {
 
+    @Value("${encryptFilePath}")
+    private String scriptFilePath;
+
     private static final String DETERMINIST_FILE_NAME = "determinism.iexec";
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
 
-    private WorkerConfigurationService configurationService;
+    private WorkerConfigurationService workerConfigurationService;
     private ResultRepoService resultRepoService;
     private CredentialsService credentialsService;
+    private IexecHubService iexecHubService;
     private SmsService smsService;
 
     private Map<String, ResultInfo> resultInfoMap;
@@ -49,19 +54,21 @@ public class ResultService {
     public ResultService(WorkerConfigurationService configurationService,
                          ResultRepoService resultRepoService,
                          CredentialsService credentialsService,
+                         IexecHubService iexecHubService,
                          SmsService smsService) {
-        this.configurationService = configurationService;
+        this.workerConfigurationService = configurationService;
         this.resultRepoService = resultRepoService;
         this.credentialsService = credentialsService;
+        this.iexecHubService = iexecHubService;
         this.smsService = smsService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
-    public boolean saveResult(String chainTaskId, AvailableReplicateModel replicateModel, String stdout) {
+    public boolean saveResult(String chainTaskId, TaskDescription taskDescription, String stdout) {
         try {
             saveStdoutFileInResultFolder(chainTaskId, stdout);
             zipResultFolder(chainTaskId);
-            saveResultInfo(chainTaskId, replicateModel);
+            saveResultInfo(chainTaskId, taskDescription);
             return true;
         } catch (Exception e) {
             return false;
@@ -79,12 +86,12 @@ public class ResultService {
         log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
     }
 
-    public void saveResultInfo(String chainTaskId, AvailableReplicateModel replicateModel) {
+    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
         ResultInfo resultInfo = ResultInfo.builder()
-                .image(replicateModel.getAppUri())
-                .cmd(replicateModel.getCmd())
-                .deterministHash(getDeterministHashFromFile(chainTaskId))
-                .datasetUri(replicateModel.getDatasetUri())
+                .image(taskDescription.getAppUri())
+                .cmd(taskDescription.getCmd())
+                .deterministHash(getTaskDeterminismHash(chainTaskId))
+                .datasetUri(taskDescription.getDatasetUri())
                 .build();
 
         resultInfoMap.put(chainTaskId, resultInfo);
@@ -118,11 +125,11 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId) {
-        return configurationService.getTaskOutputDir(chainTaskId);
+        return workerConfigurationService.getTaskOutputDir(chainTaskId);
     }
 
     public String getEncryptedResultFilePath(String chainTaskId) {
-        return configurationService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        return workerConfigurationService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
     }
 
     public boolean isResultZipFound(String chainTaskId) {
@@ -162,7 +169,7 @@ public class ResultService {
     }
 
     public List<String> getAllChainTaskIdsInResultFolder() {
-        File resultsFolder = new File(configurationService.getWorkerBaseDir());
+        File resultsFolder = new File(workerConfigurationService.getWorkerBaseDir());
         String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
 
         if (chainTaskIdFolders == null || chainTaskIdFolders.length == 0) {
@@ -171,37 +178,119 @@ public class ResultService {
         return Arrays.asList(chainTaskIdFolders);
     }
 
-    public String getDeterministHashFromFile(String chainTaskId) {
-        String hash = "";
-        try {
-            String deterministFilePathName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + DETERMINIST_FILE_NAME;
-            Path deterministFilePath = Paths.get(deterministFilePathName);
+    public String getTaskDeterminismHash(String chainTaskId) {
+        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
 
-            if (deterministFilePath.toFile().exists()) {
-                byte[] content = Files.readAllBytes(deterministFilePath);
-                hash = bytesToString(Hash.sha256(content));
-                log.info("The determinist file exists and its hash has been computed [chainTaskId:{}, hash:{}]", chainTaskId, hash);
+        if (!isTeeTask) return getNonTeeDeterminismHash(chainTaskId);
+
+        log.info("This is a TEE task, getting determinism hash from enclave output");
+        return getTeeDeterminismHash(chainTaskId);
+    }
+
+    private String getNonTeeDeterminismHash(String chainTaskId) {
+        String hash = "";
+        String filePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+                + File.separator + DETERMINIST_FILE_NAME;
+
+        Path determinismFilePath = Paths.get(filePath);
+
+        try {
+            if (determinismFilePath.toFile().exists()) {
+                hash = getHashFromDeterminismIexecFile(determinismFilePath);
+                log.info("Determinism file found and its hash has been computed "
+                        + "[chainTaskId:{}, hash:{}]", chainTaskId, hash);
                 return hash;
-            } else {
-                log.info("No determinist file exists [chainTaskId:{}]", chainTaskId);
             }
 
+            log.info("Determinism file not found, the hash of the result file will be used instead "
+                    + "[chainTaskId:{}]", chainTaskId);
             String resultFilePathName = getResultZipFilePath(chainTaskId);
             byte[] content = Files.readAllBytes(Paths.get(resultFilePathName));
             hash = bytesToString(Hash.sha256(content));
-            log.info("The hash of the result file will be used instead [chainTaskId:{}, hash:{}]", chainTaskId, hash);
         } catch (IOException e) {
+            log.error("Failed to compute determinism hash [chainTaskId:{}]", chainTaskId);
             e.printStackTrace();
-            log.error("Failed to getDeterministHashFromFile [chainTaskId:{}]", chainTaskId);
+            return "";
         }
 
+        log.info("Computed hash of the result file [chainTaskId:{}, hash:{}]", chainTaskId, hash);
         return hash;
+    }
+
+    /** This method is to compute the hash of the determinist.iexec file
+     * if the file is a text and if it is a byte32, no need to hash it
+     * if the file is a text and if it is NOT a byte32, it is hashed using sha256
+     * if the file is NOT a text, it is hashed using sha256
+     */
+    private String getHashFromDeterminismIexecFile(Path deterministFilePath) throws IOException {
+        try (Scanner scanner = new Scanner(deterministFilePath.toFile())) {
+            // command to put the content of the whole file into string (\Z is the end of the string anchor)
+            // This ultimately makes the input have one actual token, which is the entire file
+            String contentFile = scanner.useDelimiter("\\Z").next();
+            byte[] content = BytesUtils.stringToBytes(contentFile);
+
+            // if determinism.iexec file is already a byte32, no need to hash it again
+            return bytesToString(BytesUtils.isBytes32(content) ? content : Hash.sha256(content));
+
+        } catch (Exception e) {
+            return bytesToString(Hash.sha256(Files.readAllBytes(deterministFilePath)));
+        }
+    }
+
+    private String getTeeDeterminismHash(String chainTaskId) {
+        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
+                readSconeEnclaveSignatureFile(chainTaskId);
+
+        if (!oSconeEnclaveSignatureFile.isPresent()) {
+            log.error("Could not get TEE determinism hash [chainTaskId:{}]", chainTaskId);
+            return "";
+        }
+
+        String hash = oSconeEnclaveSignatureFile.get().getResult();
+        log.info("Enclave signature file found, result hash retrieved successfully "
+                + "[chainTaskId:{}, hash:{}]", chainTaskId, hash);
+        return hash;
+    }
+
+    public Optional<SconeEnclaveSignatureFile> readSconeEnclaveSignatureFile(String chainTaskId) {
+        String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+                + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
+
+        File enclaveSignatureFile = new File(enclaveSignatureFilePath);
+
+        if (!enclaveSignatureFile.exists()) {
+            log.error("File enclaveSig.iexec not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
+                    chainTaskId, enclaveSignatureFilePath);
+            return Optional.empty();
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = null;
+        try {
+            sconeEnclaveSignatureFile = mapper.readValue(enclaveSignatureFile, SconeEnclaveSignatureFile.class);
+        } catch (IOException e) {
+            log.error("File enclaveSig.iexec found but failed to parse it [chainTaskId:{}]", chainTaskId);
+            e.printStackTrace();
+            return Optional.empty();
+        }
+
+        if (sconeEnclaveSignatureFile == null) {
+            log.error("File enclaveSig.iexec found but was parsed to null [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        log.debug("Content of enclaveSig.iexec file [chainTaskId:{}, sconeEnclaveSignatureFile:{}]",
+                chainTaskId, sconeEnclaveSignatureFile);
+
+        return Optional.of(sconeEnclaveSignatureFile);
     }
 
     public String getCallbackDataFromFile(String chainTaskId) {
         String hexaString = "";
         try {
-            String callbackFilePathName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + CALLBACK_FILE_NAME;
+            String callbackFilePathName = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+                    + File.separator + CALLBACK_FILE_NAME;
+
             Path callbackFilePath = Paths.get(callbackFilePathName);
 
             if (callbackFilePath.toFile().exists()) {
@@ -221,34 +310,6 @@ public class ResultService {
         return hexaString;
     }
 
-    public Optional<Signature> getEnclaveSignatureFromFile(String chainTaskId) {
-        String executionEnclaveSignatureFileName = getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
-        Path executionEnclaveSignatureFilePath = Paths.get(executionEnclaveSignatureFileName);
-
-        if (!executionEnclaveSignatureFilePath.toFile().exists()) {
-            log.info("TeeSignature file doesn't exist [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        ObjectMapper mapper = new ObjectMapper();
-        TeeSignature teeSignature = null;
-        try {
-            teeSignature = mapper.readValue(executionEnclaveSignatureFilePath.toFile(), TeeSignature.class);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        if (teeSignature == null) {
-            log.info("TeeSignature file exits but parsing failed [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        Signature sign = teeSignature.getSign();
-        log.info("TeeSignature file exists [chainTaskId:{}, r:{}, sign:{}, v:{}]",
-                chainTaskId, sign.getR(), sign.getS(), sign.getV());
-        return Optional.of(sign);
-    }
-
     public boolean isResultEncryptionNeeded(String chainTaskId) {
         String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
 
@@ -263,7 +324,7 @@ public class ResultService {
     public boolean encryptResult(String chainTaskId) {
         String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
         String resultZipFilePath = getResultZipFilePath(chainTaskId);
-        String taskOutputDir = configurationService.getTaskOutputDir(chainTaskId);
+        String taskOutputDir = workerConfigurationService.getTaskOutputDir(chainTaskId);
 
         log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
                 resultZipFilePath, beneficiarySecretFilePath);
@@ -283,11 +344,12 @@ public class ResultService {
     }
 
     private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
-        String cmd = String.format("./encrypt-result.sh --root-dir=%s --result-file=%s --key-file=%s",
+        String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
                 taskOutputDir, resultZipFilePath, publicKeyFilePath);
 
+        String cmd = this.scriptFilePath + " " + options;
+
         ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-        pb.directory(new File("./src/main/resources/"));
 
         try {
             Process pr = pb.start();
@@ -317,12 +379,24 @@ public class ResultService {
 
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                configurationService.getWorkerWalletAddress(), ecKeyPair);
+                workerConfigurationService.getWorkerWalletAddress(), ecKeyPair);
 
         if (authorizationToken.isEmpty()) {
             return "";
         }
 
         return resultRepoService.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+    }
+
+
+    public boolean isResultAvailable(String chainTaskId) {
+        boolean isResultZipFound = isResultZipFound(chainTaskId);
+        boolean isResultFolderFound = isResultFolderFound(chainTaskId);
+
+        if (!isResultZipFound && !isResultFolderFound) return false;
+
+        if (!isResultZipFound) zipResultFolder(chainTaskId);
+
+        return true;
     }
 }

@@ -37,7 +37,7 @@ public class FileHelperTests {
         Constructor<FileHelper> clazz = FileHelper.class.getDeclaredConstructor();
         clazz.setAccessible(true);
         // calling the private constructor
-        FileHelper u = clazz.newInstance();
+        clazz.newInstance();
     }
 
 

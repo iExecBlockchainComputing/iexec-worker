@@ -30,8 +30,8 @@ public interface WorkerClient {
     List<String> getCurrentTasks(@RequestHeader("Authorization") String bearerToken) throws FeignException;
 
     @PostMapping("/workers/login")
-    String login(@RequestParam(name = "walletAddress") String walletAddress,
-                 @RequestBody Signature authorization) throws FeignException;
+    String getAccessToken(@RequestParam(name = "walletAddress") String walletAddress,
+                          @RequestBody Signature authorization) throws FeignException;
 
     @GetMapping("/workers/challenge")
     String getChallenge(@RequestParam(name = "walletAddress") String walletAddress) throws FeignException;

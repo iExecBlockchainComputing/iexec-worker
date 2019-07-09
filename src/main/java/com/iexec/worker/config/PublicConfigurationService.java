@@ -44,4 +44,8 @@ public class PublicConfigurationService {
     public String getSmsURL() {
         return publicConfiguration.getSmsURL();
     }
+
+    public String getSconeCasURL() {
+        return publicConfiguration.getSconeCasURL();
+    }
 }

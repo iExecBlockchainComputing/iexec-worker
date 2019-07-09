@@ -1,7 +1,7 @@
 package com.iexec.worker.feign;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.disconnection.InterruptedReplicateModel;
+import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import feign.FeignException;
@@ -23,7 +23,7 @@ public interface ReplicateClient {
     ) throws FeignException;
 
     @GetMapping("/replicates/interrupted")
-    List<InterruptedReplicateModel> getInterruptedReplicates(
+    List<TaskNotification> getMissedTaskNotifications(
             @RequestParam(name = "blockNumber") long blockNumber,
             @RequestHeader("Authorization") String bearerToken
     ) throws FeignException;

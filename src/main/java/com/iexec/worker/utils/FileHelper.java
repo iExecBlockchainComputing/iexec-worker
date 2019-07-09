@@ -20,26 +20,33 @@ public class FileHelper {
     public static final String SLASH_IEXEC_IN = File.separator + "iexec_in";
     public static final String SLASH_OUTPUT = File.separator + "output";
     public static final String SLASH_INPUT = File.separator + "input";
+    public static final String SLASH_SCONE = File.separator + "scone";
 
     private FileHelper() {
         throw new UnsupportedOperationException();
     }
 
     public static File createFileWithContent(String filePath, String data) {
-        String directoryPath = new File(filePath).getParent();
+        return createFileWithContent(filePath, data.getBytes());
+    }
 
-        if (createFolder(directoryPath)) {
-            try {
-                Files.write(Paths.get(filePath), data.getBytes());
-                log.debug("File created [filePath:{}]", filePath);
-                return new File(filePath);
-            } catch (IOException e) {
-                log.error("Failed to create file [filePath:{}]", filePath);
-            }
-        } else {
-            log.error("Failed to create base directory [directoryPath:{}]", directoryPath);
+    public static File createFileWithContent(String filePath, byte[] data) {
+        String parentDirectoryPath = new File(filePath).getParent();
+        boolean isParentFolderCreated = createFolder(parentDirectoryPath);
+
+        if (!isParentFolderCreated) {
+            log.error("Failed to create base directory [parentDirectoryPath:{}]", parentDirectoryPath);
+            return null;
         }
-        return null;
+
+        try {
+            Files.write(Paths.get(filePath), data);
+            log.debug("File created [filePath:{}]", filePath);
+            return new File(filePath);
+        } catch (IOException e) {
+            log.error("Failed to create file [filePath:{}]", filePath);
+            return null;
+        }
     }
 
     public static boolean downloadFileInDirectory(String fileUri, String directoryPath) {
@@ -75,11 +82,7 @@ public class FileHelper {
 
     public static boolean createFolder(String folderPath) {
         File baseDirectory = new File(folderPath);
-        if (!baseDirectory.exists()) {
-            return baseDirectory.mkdirs();
-        } else {
-            return true;
-        }
+        return baseDirectory.exists() ? true : baseDirectory.mkdirs();
     }
 
     public static boolean deleteFile(String filePath) {
@@ -144,5 +147,9 @@ public class FileHelper {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public static String getFilenameFromUri(String uri) {
+        return Paths.get(uri).getFileName().toString();
     }
 }

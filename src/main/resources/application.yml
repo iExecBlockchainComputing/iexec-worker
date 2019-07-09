@@ -4,9 +4,10 @@ server:
 http:
   client:
     ssl:
-      #required for dev (keystore of core here for easy maintainance but otherwise should be a truststore with core-cert.pem inside)
-      trust-store: /home/james/iexecdev/iexec-worker/src/main/resources/ssl-keystore-dev.p12
-      trust-store-password: whatever
+      #truststore required for dev (keystore of core here for easy maintainance but otherwise should be a truststore with core-cert.pem inside)
+      trust-store: ${IEXEC_WORKER_SSL_TRUSTSTORE:./src/main/resources/ssl-keystore-dev.p12}
+      trust-store-password: ${IEXEC_WORKER_SSL_TRUSTSTORE_PASSWORD:whatever}
+      #a keystore will be required too if we decide to add endpoint hooks
 
 core:
   protocol: ${IEXEC_CORE_PROTOCOL:https}
@@ -16,13 +17,22 @@ core:
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
   workerBaseDir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
-  gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.0} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
+  gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
   gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
   teeEnabled: ${IEXEC_TEE_ENABLED:false}
   overrideBlockchainNodeAddress: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
+
 wallet:
   encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
+
+scone:
+  las:
+    host: ${IEXEC_SCONE_LAS_HOST:localhost}
+    port: ${IEXEC_SCONE_LAS_PORT:18766}
+
+decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
+encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
 
 management:
   endpoint:

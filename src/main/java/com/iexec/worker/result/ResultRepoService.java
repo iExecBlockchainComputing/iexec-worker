@@ -4,11 +4,10 @@ import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.feign.ResultRepoClient;
-
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
@@ -31,7 +30,7 @@ public class ResultRepoService {
 
     @Retryable(value = FeignException.class)
     public Optional<Eip712Challenge> getChallenge() {
-            return Optional.of(resultRepoClient.getChallenge(publicConfigurationService.getChainId()));
+        return Optional.of(resultRepoClient.getChallenge(publicConfigurationService.getChainId()));
     }
 
     @Recover
@@ -41,11 +40,13 @@ public class ResultRepoService {
         return Optional.empty();
     }
 
-    @Retryable(value = FeignException.class)
+    @Retryable(value = FeignException.class,
+            maxAttempts = 5,
+            backoff = @Backoff(delay = 3000))
     public String uploadResult(String authorizationToken, ResultModel resultModel) {
         ResponseEntity<String> responseEntity =
                 resultRepoClient.uploadResult(authorizationToken, resultModel);
-        
+
         return responseEntity.getStatusCode().is2xxSuccessful()
                 ? responseEntity.getBody()
                 : "";
@@ -53,7 +54,7 @@ public class ResultRepoService {
 
     @Recover
     public String uploadResult(FeignException e, String authorizationToken, ResultModel resultModel) {
-        log.error("Failed to upload result [attempts:3]");
+        log.error("Failed to upload result [attempts:5]");
         e.printStackTrace();
         return "";
     }

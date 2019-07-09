@@ -5,11 +5,13 @@ import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.sms.SmsSecret;
-import com.iexec.common.sms.SmsSecretRequest;
-import com.iexec.common.sms.SmsSecretRequestBody;
-import com.iexec.common.sms.SmsSecretResponse;
-import com.iexec.common.sms.TaskSecrets;
+import com.iexec.common.sms.secrets.SmsSecret;
+import com.iexec.common.sms.SmsRequest;
+import com.iexec.common.sms.SmsRequestData;
+import com.iexec.common.sms.scone.SconeSecureSessionResponse;
+import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
+import com.iexec.common.sms.secrets.SmsSecretResponse;
+import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
@@ -47,76 +49,74 @@ public class SmsService {
         this.workerConfigurationService = workerConfigurationService;
     }
 
+    @Retryable(value = FeignException.class)
     public boolean fetchTaskSecrets(ContributionAuthorization contributionAuth) {
-        String hash = HashUtils.concatenateAndHash(contributionAuth.getWorkerWallet(),
-                contributionAuth.getChainTaskId(), contributionAuth.getEnclaveChallenge());
+        String chainTaskId = contributionAuth.getChainTaskId();
+        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        Sign.SignatureData workerSignature = Sign.signPrefixedMessage(
-                BytesUtils.stringToBytes(hash), credentialsService.getCredentials().getEcKeyPair());
+        Optional<TaskSecrets> oTaskSecrets = getTaskSecrets(chainTaskId, smsRequest);
+        if (!oTaskSecrets.isPresent()) return false;
+        TaskSecrets taskSecrets = oTaskSecrets.get();
 
-        SmsSecretRequestBody smsSecretRequestBody = SmsSecretRequestBody.builder()
-                .chainTaskId(contributionAuth.getChainTaskId())
-                .workerAddress(contributionAuth.getWorkerWallet())
-                .enclaveChallenge(contributionAuth.getEnclaveChallenge())
-                .coreSignature(contributionAuth.getSignature().getValue())
-                .workerSignature(new Signature(workerSignature).getValue())
-                .build();
-
-        Optional<TaskSecrets> oTaskSecrets = getTaskSecrets(smsSecretRequestBody);
-
-        if (!oTaskSecrets.isPresent()) {
+        if (taskSecrets == null) {
+            log.error("Received null secrets object from SMS [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        saveSecrets(contributionAuth.getChainTaskId(), oTaskSecrets.get());
+        saveSecrets(chainTaskId, taskSecrets);
         return true;
     }
 
-    public void saveSecrets(String chainTaskId, TaskSecrets taskSecrets) {
+    @Recover
+    private boolean fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
+                contributionAuth.getChainTaskId());
+        e.printStackTrace();
+        return false;
+    }
 
+    private Optional<TaskSecrets> getTaskSecrets(String chainTaskId, SmsRequest smsRequest) {
+        SmsSecretResponse smsResponse = smsClient.getTaskSecretsFromSms(smsRequest);
+
+        if (smsResponse == null) {
+            log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        if (!smsResponse.isOk()) {
+            log.error("An error occurred while getting task secrets [chainTaskId:{}, errorMessage:{}]",
+                    chainTaskId, smsResponse.getErrorMessage());
+            return Optional.empty();
+        }
+
+        return Optional.of(smsResponse.getData().getSecrets());
+    }
+
+    public void saveSecrets(String chainTaskId, TaskSecrets taskSecrets) {
         SmsSecret datasetSecret = taskSecrets.getDatasetSecret();
         SmsSecret beneficiarySecret = taskSecrets.getBeneficiarySecret();
         SmsSecret enclaveSecret = taskSecrets.getEnclaveSecret();
 
-        if (datasetSecret != null && datasetSecret.getSecret() != null) {
+        if (datasetSecret != null && datasetSecret.getSecret() != null && !datasetSecret.getSecret().isEmpty()) {
             FileHelper.createFileWithContent(getDatasetSecretFilePath(chainTaskId), datasetSecret.getSecret() + "\n");
+            log.info("Saved dataset secret [chainTaskId:{}]", chainTaskId);
         } else {
-            log.info("No dataset secret found for this task [chainTaskId:{}]", chainTaskId);
+            log.info("No dataset secret for this task [chainTaskId:{}]", chainTaskId);
         }
 
-        if (beneficiarySecret != null && beneficiarySecret.getSecret() != null) {
+        if (beneficiarySecret != null && beneficiarySecret.getSecret() != null && !beneficiarySecret.getSecret().isEmpty()) {
             FileHelper.createFileWithContent(getBeneficiarySecretFilePath(chainTaskId), beneficiarySecret.getSecret());
+            log.info("Saved beneficiary secret [chainTaskId:{}]", chainTaskId);
         } else {
-            log.info("No beneficiary secret found for this task [chainTaskId:{}]", chainTaskId);
+            log.info("No beneficiary secret for this task [chainTaskId:{}]", chainTaskId);
         }
 
-        if (enclaveSecret != null && enclaveSecret.getSecret() != null) {
+        if (enclaveSecret != null && enclaveSecret.getSecret() != null && !enclaveSecret.getSecret().isEmpty()) {
             FileHelper.createFileWithContent(getEnclaveSecretFilePath(chainTaskId), enclaveSecret.getSecret());
+            log.info("Saved enclave secret [chainTaskId:{}]", chainTaskId);
         } else {
-            log.info("No enclave secret found for this task [chainTaskId:{}]", chainTaskId);
+            log.info("No enclave secret for this task [chainTaskId:{}]", chainTaskId);
         }
-    }
-
-    @Retryable(value = FeignException.class)
-    public Optional<TaskSecrets> getTaskSecrets(SmsSecretRequestBody smsSecretRequestBody) {
-        SmsSecretRequest smsSecretRequest = new SmsSecretRequest(smsSecretRequestBody);
-        SmsSecretResponse smsSecretResponse = smsClient.getTaskSecrets(smsSecretRequest);
-
-        if (!smsSecretResponse.isOk()) {
-            log.error("An error occured while getting task secrets [chainTaskId:{}, erroMsg:{}]",
-                    smsSecretRequestBody.getChainTaskId(), smsSecretResponse.getErrorMessage());
-            return Optional.empty();
-        }
-
-        return Optional.of(smsSecretResponse.getData().getSecrets());
-    }
-
-    @Recover
-    private Optional<TaskSecrets> getTaskSecrets(FeignException e, SmsSecretRequestBody smsSecretRequestBody) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
-                smsSecretRequestBody.getChainTaskId());
-        e.printStackTrace();
-        return Optional.empty();
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {
@@ -135,5 +135,57 @@ public class SmsService {
         // /worker-base-dir/chainTaskId/enclave.secret
         return workerConfigurationService.getTaskBaseDir(chainTaskId)
                 + File.separator + ENCLAVE_SECRET_FILENAME;
+    }
+
+    @Retryable(value = FeignException.class)
+    public Optional<SconeSecureSession> getSconeSecureSession(ContributionAuthorization contributionAuth) {
+        String chainTaskId = contributionAuth.getChainTaskId();
+        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
+
+        SconeSecureSessionResponse smsResponse = smsClient.generateSecureSession(smsRequest);
+
+        if (smsResponse == null) {
+            log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        if (!smsResponse.isOk()) {
+            log.error("An error occurred while generating secure session [chainTaskId:{}, errorMessage:{}]",
+                    chainTaskId, smsResponse.getErrorMessage());
+            return Optional.empty();
+        }
+
+        if (smsResponse.getData() == null) {
+            log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        return Optional.of(smsResponse.getData());
+    }
+
+    @Recover
+    private Optional<SconeSecureSession> getSconeSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
+        log.error("Failed to generate secure session [chainTaskId:{}, attempts:3]",
+                contributionAuth.getChainTaskId());
+        e.printStackTrace();
+        return Optional.empty();
+    }
+
+    public SmsRequest buildSmsRequest(ContributionAuthorization contributionAuth) {
+        String hash = HashUtils.concatenateAndHash(contributionAuth.getWorkerWallet(),
+                contributionAuth.getChainTaskId(), contributionAuth.getEnclaveChallenge());
+
+        Sign.SignatureData workerSignature = Sign.signPrefixedMessage(
+                BytesUtils.stringToBytes(hash), credentialsService.getCredentials().getEcKeyPair());
+
+        SmsRequestData smsRequestData = SmsRequestData.builder()
+            .chainTaskId(contributionAuth.getChainTaskId())
+            .workerAddress(contributionAuth.getWorkerWallet())
+            .enclaveChallenge(contributionAuth.getEnclaveChallenge())
+            .coreSignature(contributionAuth.getSignature().getValue())
+            .workerSignature(new Signature(workerSignature).getValue())
+            .build();
+
+        return new SmsRequest(smsRequestData);
     }
 }

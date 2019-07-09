@@ -1,5 +1,6 @@
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.config.CoreConfigurationService;
@@ -35,31 +36,32 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
 
-    private final String workerWalletAddress;
     private RestTemplate restTemplate;
     // external services
     private TaskExecutorService taskExecutorService;
+    private CoreConfigurationService coreConfigurationService;
+    private WorkerConfigurationService workerConfigurationService;
 
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
-    private WebSocketStompClient stompClient;
     private String url;
 
-    public SubscriptionService(CoreConfigurationService coreConfService,
+    public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
                                TaskExecutorService taskExecutorService,
                                RestTemplate restTemplate) {
         this.taskExecutorService = taskExecutorService;
-        this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.restTemplate = restTemplate;
-
+        this.coreConfigurationService = coreConfigurationService;
+        this.workerConfigurationService = workerConfigurationService;
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
-        url = coreConfService.getUrl() + "/connect";
+
     }
 
     @PostConstruct
-    private void run() {
+    void init() {
+        this.url = coreConfigurationService.getUrl() + "/connect";
         this.restartStomp();
     }
 
@@ -70,11 +72,11 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
                     new RestTemplateXhrTransport(restTemplate));
             SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-            this.stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
-            this.stompClient.setAutoStartup(true);
-            this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-            this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-            this.stompClient.connect(url, this);
+            WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
+            stompClient.setAutoStartup(true);
+            stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+            stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
+            stompClient.connect(url, this);
             log.info("Started STOMP");
         }
     }
@@ -84,7 +86,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         if (checkConnectionEntity.getStatusCode().is2xxSuccessful()) {
             return true;
         }
-        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:]", url, checkConnectionEntity.getStatusCode());
+        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:{}]", url, checkConnectionEntity.getStatusCode());
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -166,8 +168,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
-    private void handleTaskNotification(TaskNotification notif) {
-        if (notif.getWorkersAddress().contains(workerWalletAddress)
+    public void handleTaskNotification(TaskNotification notif) {
+        if (notif.getWorkersAddress().contains(workerConfigurationService.getWorkerWalletAddress())
                 || notif.getWorkersAddress().isEmpty()) {
             log.info("Received notification [notification:{}]", notif);
 
@@ -175,25 +177,32 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             String chainTaskId = notif.getChainTaskId();
 
             switch (type) {
+                case PLEASE_CONTRIBUTE:
+                    ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
+                    if (contribAuth != null){
+                        taskExecutorService.computeOrContribute(contribAuth);
+                    } else {
+                        log.error("Empty contribAuth for PLEASE_CONTRIBUTE [chainTaskId:{}]", chainTaskId);
+                    }
+                    break;
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortContributionTimeout(chainTaskId);
                     break;
-
                 case PLEASE_ABORT_CONSENSUS_REACHED:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.abortConsensusReached(chainTaskId);
                     break;
 
                 case PLEASE_REVEAL:
-                    taskExecutorService.reveal(chainTaskId);
+                    taskExecutorService.reveal(chainTaskId, notif.getTaskNotificationExtra().getBlockNumber());
                     break;
 
                 case PLEASE_UPLOAD:
                     taskExecutorService.uploadResult(chainTaskId);
                     break;
 
-                case COMPLETED:
+                case PLEASE_COMPLETE:
                     unsubscribeFromTopic(chainTaskId);
                     taskExecutorService.completeTask(chainTaskId);
                     break;
@@ -203,6 +212,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             }
         }
     }
+
+
+
 
     private String getTaskTopicName(String chainTaskId) {
         return "/topic/task/" + chainTaskId;
