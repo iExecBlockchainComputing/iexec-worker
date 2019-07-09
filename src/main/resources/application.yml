@@ -12,7 +12,7 @@ http:
 core:
   protocol: ${IEXEC_CORE_PROTOCOL:https}
   host: ${IEXEC_CORE_HOST:localhost}
-  port: ${IEXEC_CORE_PORT:18090}
+  port: ${IEXEC_CORE_PORT:18443}
 
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
