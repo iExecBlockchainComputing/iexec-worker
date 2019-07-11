@@ -27,6 +27,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -83,7 +84,7 @@ public class TaskExecutorHelperServiceTests {
     @Test
     public void shouldDownloadApp() {
         TaskDescription task = getStubTaskDescription(false);
-        when(contributionService.getCannotContributeStatus(CHAIN_TASK_ID))
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(computationService.downloadApp(CHAIN_TASK_ID, task.getAppUri()))
                 .thenReturn(true);
@@ -96,7 +97,7 @@ public class TaskExecutorHelperServiceTests {
     @Test
     public void shouldDownloadData() {
         TaskDescription task = getStubTaskDescription(false);
-        when(contributionService.getCannotContributeStatus(CHAIN_TASK_ID))
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(datasetService.downloadDataset(CHAIN_TASK_ID, task.getDatasetUri()))
                 .thenReturn(true);
@@ -107,7 +108,7 @@ public class TaskExecutorHelperServiceTests {
 
     @Test
     public void shouldBeAbleToContribute() {
-        when(contributionService.getCannotContributeStatus(CHAIN_TASK_ID))
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
 
         String error = taskExecutorHelperService.checkContributionAbility(CHAIN_TASK_ID);
@@ -116,8 +117,8 @@ public class TaskExecutorHelperServiceTests {
 
     @Test
     public void shouldNotBeAbleToContribute() {
-        when(contributionService.getCannotContributeStatus(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(CANT_CONTRIBUTE_SINCE_CHAIN_UNREACHABLE));
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CHAIN_UNREACHABLE));
 
         String error = taskExecutorHelperService.checkContributionAbility(CHAIN_TASK_ID);
         assertThat(error).isEqualTo("Cannot contribute");
@@ -150,8 +151,8 @@ public class TaskExecutorHelperServiceTests {
 
         String hash = taskExecutorHelperService.getTaskDeterminismHash(CHAIN_TASK_ID);
         assertThat(hash).isEmpty();
-        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID,
-                CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
+        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, CANT_CONTRIBUTE,
+                DETERMINISM_HASH_NOT_FOUND);
     }
 
     @Test
@@ -161,8 +162,8 @@ public class TaskExecutorHelperServiceTests {
 
         String hash = taskExecutorHelperService.getTaskDeterminismHash(CHAIN_TASK_ID);
         assertThat(hash).isEmpty();
-        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID,
-                CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, CANT_CONTRIBUTE,
+                TEE_EXECUTION_NOT_VERIFIED);
     }
 
     @Test

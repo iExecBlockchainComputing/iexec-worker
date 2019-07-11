@@ -6,6 +6,7 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.security.TokenService;
 import feign.FeignException;
@@ -143,6 +144,10 @@ public class CustomFeignClient {
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
         updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().build());
+    }
+
+    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateStatusCause cause) {
+        updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().replicateStatusCause(cause).build());
     }
 
     public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {

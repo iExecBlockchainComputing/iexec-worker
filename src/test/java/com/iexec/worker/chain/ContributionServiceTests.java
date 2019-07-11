@@ -14,6 +14,7 @@ import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
 
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +47,7 @@ public class ContributionServiceTests {
     }
 
     /**
-     *  getCannotContributeStatus()
+     *  getCannotContributeStatusCause()
      */
 
     @Test
@@ -55,8 +56,8 @@ public class ContributionServiceTests {
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
-        assertThat(contributionService.getCannotContributeStatus(chainTaskId).get())
-                .isEqualTo(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CHAIN_UNREACHABLE);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).get())
+                .isEqualTo(CHAIN_UNREACHABLE);
     }
 
     @Test
@@ -75,8 +76,8 @@ public class ContributionServiceTests {
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(0).build()));
         when(iexecHubService.getChainDeal(chainDealId)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
-        assertThat(contributionService.getCannotContributeStatus(chainTaskId).get())
-                .isEqualTo(ReplicateStatus.CANT_CONTRIBUTE_SINCE_STAKE_TOO_LOW);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).get())
+                .isEqualTo(STAKE_TOO_LOW);
     }
 
     @Test
@@ -96,8 +97,8 @@ public class ContributionServiceTests {
         when(iexecHubService.getChainDeal(chainDealId)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(false);
 
-        assertThat(contributionService.getCannotContributeStatus(chainTaskId).get())
-                .isEqualTo(ReplicateStatus.CANT_CONTRIBUTE_SINCE_TASK_NOT_ACTIVE);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).get())
+                .isEqualTo(TASK_NOT_ACTIVE);
     }
 
     @Test
@@ -119,8 +120,8 @@ public class ContributionServiceTests {
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
 
-        assertThat(contributionService.getCannotContributeStatus(chainTaskId).get())
-                .isEqualTo(ReplicateStatus.CANT_CONTRIBUTE_SINCE_AFTER_DEADLINE);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).get())
+                .isEqualTo(AFTER_DEADLINE);
     }
 
     @Test
@@ -145,7 +146,7 @@ public class ContributionServiceTests {
                 .thenReturn(Optional.of(ChainContribution.builder()
                 .status(ChainContributionStatus.CONTRIBUTED).build()));
 
-        assertThat(contributionService.getCannotContributeStatus(chainTaskId).get()).isEqualTo(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CONTRIBUTION_ALREADY_SET);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).get()).isEqualTo(CONTRIBUTION_ALREADY_SET);
     }
 
     @Test
@@ -171,7 +172,7 @@ public class ContributionServiceTests {
                 .thenReturn(Optional.of(ChainContribution.builder()
                 .status(ChainContributionStatus.UNSET).build()));
 
-        assertThat(contributionService.getCannotContributeStatus(chainTaskId).isPresent()).isFalse();
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()).isFalse();
     }
 
     /**
