@@ -1,20 +1,18 @@
 package com.iexec.worker.feign;
 
+
 import com.iexec.common.sms.SmsRequest;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
-
+import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import feign.FeignException;
 
-
-@FeignClient(
-    name = "SmsClient",
-    url = "#{publicConfigurationService.smsURL}"
-)
+@FeignClient(name = "SmsClient",
+        url = "#{publicConfigurationService.smsURL}",
+        configuration = FeignConfiguration.class)
 public interface SmsClient {
 
     @PostMapping("/secure")
