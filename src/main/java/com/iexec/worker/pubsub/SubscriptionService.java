@@ -45,7 +45,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     // internal components
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
-    private WebSocketStompClient stompClient;
     private String url;
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
@@ -62,25 +61,22 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     @PostConstruct
     void init() {
-        String coreHost = coreConfigurationService.getHost();
-        int corePort = coreConfigurationService.getPort();
-        this.url = "http://" + coreHost + ":" + corePort + "/connect";
-
+        this.url = coreConfigurationService.getUrl() + "/connect";
         this.restartStomp();
     }
 
-    void restartStomp() {
+    private void restartStomp() {
         log.info("Starting STOMP");
         if (isConnectEndpointUp()) {
             WebSocketClient webSocketClient = new StandardWebSocketClient();
             List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
                     new RestTemplateXhrTransport(restTemplate));
             SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-            this.stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
-            this.stompClient.setAutoStartup(true);
-            this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-            this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-            this.stompClient.connect(url, this);
+            WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
+            stompClient.setAutoStartup(true);
+            stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+            stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
+            stompClient.connect(url, this);
             log.info("Started STOMP");
         }
     }
