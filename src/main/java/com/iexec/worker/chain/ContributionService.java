@@ -3,6 +3,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.Optional;
+
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 
 @Slf4j
@@ -37,28 +40,28 @@ public class ContributionService {
         return iexecHubService.getChainTask(chainTaskId).isPresent();
     }
 
-    public Optional<ReplicateStatus> getCannotContributeStatus(String chainTaskId) {
+    public Optional<ReplicateStatusCause> getCannotContributeStatusCause(String chainTaskId) {
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
-            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CHAIN_UNREACHABLE);
+            return Optional.of(CHAIN_UNREACHABLE);
         }
 
         ChainTask chainTask = optionalChainTask.get();
 
         if (!hasEnoughStakeToContribute(chainTask)) {
-            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_STAKE_TOO_LOW);
+            return Optional.of(STAKE_TOO_LOW);
         }
 
         if (!isTaskActiveToContribute(chainTask)) {
-            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_TASK_NOT_ACTIVE);
+            return Optional.of(TASK_NOT_ACTIVE);
         }
 
         if (!isBeforeContributionDeadlineToContribute(chainTask)) {
-            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_AFTER_DEADLINE);
+            return Optional.of(AFTER_DEADLINE);
         }
 
         if (!isContributionUnsetToContribute(chainTask)) {
-            return Optional.of(ReplicateStatus.CANT_CONTRIBUTE_SINCE_CONTRIBUTION_ALREADY_SET);
+            return Optional.of(CONTRIBUTION_ALREADY_SET);
         }
 
         return Optional.empty();

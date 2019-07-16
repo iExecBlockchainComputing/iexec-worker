@@ -3,6 +3,7 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.SignatureUtils;
@@ -24,6 +25,8 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.DETERMINISM_HASH_NOT_FOUND;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_EXECUTION_NOT_VERIFIED;
 
 
 /*
@@ -109,14 +112,14 @@ public class TaskExecutorHelperService {
     }
 
     String checkContributionAbility(String chainTaskId) {
-        Optional<ReplicateStatus> oCannotContributeStatus =
-                contributionService.getCannotContributeStatus(chainTaskId);
+        Optional<ReplicateStatusCause> oCannotContributeStatusCause =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
 
-        if (!oCannotContributeStatus.isPresent()) return "";
+        if (!oCannotContributeStatusCause.isPresent()) return "";
 
         String errorMessage = "Cannot contribute";
-        log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatus.get());
-        customFeignClient.updateReplicateStatus(chainTaskId, oCannotContributeStatus.get());
+        log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatusCause.get());
+        customFeignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE, oCannotContributeStatusCause.get());
         return errorMessage;
     }
 
@@ -136,14 +139,14 @@ public class TaskExecutorHelperService {
         if (isTeeTask && determinismHash.isEmpty()) {
             log.error("Cannot continue, couldn't get TEE determinism hash [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+                    CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
             return "";
         }
 
         if (determinismHash.isEmpty()) {
             log.error("Cannot continue, couldn't get determinism hash [chainTaskId:{}]", chainTaskId);
             customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE_SINCE_DETERMINISM_HASH_NOT_FOUND);
+                    CANT_CONTRIBUTE, DETERMINISM_HASH_NOT_FOUND);
             return "";
         }
 
@@ -160,8 +163,7 @@ public class TaskExecutorHelperService {
         if (!oSconeEnclaveSignatureFile.isPresent()) {
             log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
             log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+            customFeignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
             return Optional.empty();
         }
 
@@ -176,8 +178,7 @@ public class TaskExecutorHelperService {
         if (!isValid) {
             log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
             log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE_SINCE_TEE_EXECUTION_NOT_VERIFIED);
+            customFeignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
             return Optional.empty();
         }
 
