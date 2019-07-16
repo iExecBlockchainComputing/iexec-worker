@@ -83,7 +83,7 @@ public class WorkerConfigurationService {
 
     public int getMemorySize() {
         com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
-        return new Long(os.getTotalPhysicalMemorySize() / (1024 * 1024 * 1024)).intValue();//in GB
+        return Long.valueOf(os.getTotalPhysicalMemorySize() / (1024 * 1024 * 1024)).intValue();//in GB
     }
 
     public float getGasPriceMultiplier() {

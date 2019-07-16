@@ -1,4 +1,4 @@
-FROM openjdk:8u191-jre-alpine3.9
+FROM azul/zulu-openjdk-alpine:11.0.3-jre
 
 RUN apk add --no-cache bash coreutils openssl zip
 
