@@ -58,7 +58,7 @@ dependencyManagement {
 dependencies {
     // iexec
     compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    //compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
     compile "org.springframework.boot:spring-boot-starter"
@@ -167,7 +167,8 @@ task prepareDockerFile(type: Copy) {
 
 task buildImage(type: Exec) {
     description 'Build a docker image for the core'
-    commandLine("sh", "-c", "docker image build -f build/main/resources/Dockerfile -t " + getDockerImageNameFull() + " .")
+    commandLine("sh", "-c", "docker image build -f build/main/resources/Dockerfile -t " + getDockerImageNameFull() + " . &&" +
+            "docker tag " + getDockerImageNameFull() + " " + imageName + ":dev")
 }
 
 buildImage.dependsOn prepareDockerFile

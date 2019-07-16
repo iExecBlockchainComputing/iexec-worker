@@ -1,14 +1,12 @@
 package com.iexec.worker.feign;
 
+import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import feign.FeignException;
-
-@FeignClient(
-    name = "CoreClient",
-    url = "http://${core.host}:${core.port}"
-)
+@FeignClient(name = "CoreClient",
+        url = "${core.protocol}://${core.host}:${core.port}",
+        configuration = FeignConfiguration.class)
 public interface CoreClient {
 
     @GetMapping("/version")

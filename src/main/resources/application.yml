@@ -1,9 +1,18 @@
 server:
   port: ${IEXEC_WORKER_PORT:18091}
 
+http:
+  client:
+    ssl:
+      #truststore required for dev (keystore of core here for easy maintainance but otherwise should be a truststore with core-cert.pem inside)
+      trust-store: ${IEXEC_WORKER_SSL_TRUSTSTORE:./src/main/resources/ssl-keystore-dev.p12}
+      trust-store-password: ${IEXEC_WORKER_SSL_TRUSTSTORE_PASSWORD:whatever}
+      #a keystore will be required too if we decide to add endpoint hooks
+
 core:
+  protocol: ${IEXEC_CORE_PROTOCOL:https}
   host: ${IEXEC_CORE_HOST:localhost}
-  port: ${IEXEC_CORE_PORT:18090}
+  port: ${IEXEC_CORE_PORT:18443}
 
 worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
