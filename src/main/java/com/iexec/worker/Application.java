@@ -6,6 +6,7 @@ import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
@@ -33,11 +34,8 @@ import java.util.List;
 @Slf4j
 public class Application implements CommandLineRunner {
 
-    @Value("${core.host}")
-    private String coreHost;
-
-    @Value("${core.port}")
-    private String corePort;
+    @Autowired
+    private CoreConfigurationService coreConfService;
 
     @Autowired
     private WorkerConfigurationService workerConfig;
@@ -78,7 +76,8 @@ public class Application implements CommandLineRunner {
                 .build();
 
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
-        log.info("Address of the core [address:{}]", "http://" + coreHost + ":" + corePort);
+
+        log.info("Address of the core [address:{}]", coreConfService.getUrl());
         log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
         PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
         log.info("Get configuration of the core [config:{}]", publicConfiguration);
