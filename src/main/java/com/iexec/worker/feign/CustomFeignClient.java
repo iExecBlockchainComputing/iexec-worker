@@ -46,7 +46,7 @@ public class CustomFeignClient {
         try {
             return workerClient.ping(tokenService.getToken());
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to ping (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -60,7 +60,7 @@ public class CustomFeignClient {
         try {
             return workerClient.getPublicConfiguration();
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to getPublicConfiguration (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -74,7 +74,7 @@ public class CustomFeignClient {
         try {
             return coreClient.getCoreVersion();
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to getCoreVersion (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -89,7 +89,7 @@ public class CustomFeignClient {
         try {
             workerClient.registerWorker(tokenService.getToken(), model);
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to registerWorker (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -103,7 +103,7 @@ public class CustomFeignClient {
         try {
             return replicateClient.getMissedTaskNotifications(lastAvailableBlockNumber, tokenService.getToken());
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to getMissedTaskNotifications (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -117,7 +117,7 @@ public class CustomFeignClient {
         try {
             return workerClient.getCurrentTasks(tokenService.getToken());
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to getTasksInProgress (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -132,7 +132,7 @@ public class CustomFeignClient {
             ContributionAuthorization contributionAuth = replicateClient.getAvailableReplicate(lastAvailableBlockNumber, tokenService.getToken());
             return contributionAuth == null ? Optional.empty() : Optional.of(contributionAuth);
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to getAvailableReplicate (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -155,7 +155,7 @@ public class CustomFeignClient {
             replicateClient.updateReplicateStatus(chainTaskId, status, tokenService.getToken(), details);
             log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
         } catch (FeignException e) {
-            if (HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED)) {
+            if (isUnauthorized(e)) {
                 tokenService.expireToken();
             } else {
                 log.error("Failed to updateReplicateStatus (will retry) [instance:{}, status:{}]", coreURL, e.status());
@@ -163,6 +163,10 @@ public class CustomFeignClient {
             sleep();
             updateReplicateStatus(chainTaskId, status, details);
         }
+    }
+
+    private boolean isUnauthorized(FeignException e) {
+        return e != null && e.status() > 0 && HttpStatus.valueOf(e.status()).equals(HttpStatus.UNAUTHORIZED);
     }
 
     private void sleep() {
