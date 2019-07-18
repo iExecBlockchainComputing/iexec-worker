@@ -3,8 +3,7 @@ package com.iexec.worker.docker;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.CustomDockerClient;
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
@@ -29,17 +28,17 @@ public class ComputationService {
     private static final String DATASET_FILENAME = "DATASET_FILENAME";
 
     private SmsService smsService;
-    private DatasetService datasetService;
+    private DataService dataService;
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
 
     public ComputationService(SmsService smsService,
-                              DatasetService datasetService,
+                              DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService) {
 
         this.smsService = smsService;
-        this.datasetService = datasetService;
+        this.dataService = dataService;
         this.customDockerClient = customDockerClient;
         this.sconeTeeService = sconeTeeService;
     }
@@ -63,11 +62,11 @@ public class ComputationService {
         }
 
         // decrypt data
-        boolean isDatasetDecryptionNeeded = datasetService.isDatasetDecryptionNeeded(chainTaskId);
+        boolean isDatasetDecryptionNeeded = dataService.isDatasetDecryptionNeeded(chainTaskId);
         boolean isDatasetDecrypted = false;
 
         if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
+            isDatasetDecrypted = dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {

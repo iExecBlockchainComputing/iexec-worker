@@ -2,7 +2,6 @@ package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
@@ -10,7 +9,7 @@ import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.feign.CustomFeignClient;
@@ -37,7 +36,7 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TEE_EXECUTION_NOT_
 @Service
 public class TaskExecutorHelperService {
 
-    private DatasetService datasetService;
+    private DataService dataService;
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
@@ -47,16 +46,16 @@ public class TaskExecutorHelperService {
     private CustomDockerClient customDockerClient;
     private ComputationService computationService;
 
-    public TaskExecutorHelperService(DatasetService datasetService,
-                               ResultService resultService,
-                               ContributionService contributionService,
-                               CustomFeignClient customFeignClient,
-                               WorkerConfigurationService workerConfigurationService,
-                               SconeTeeService sconeTeeService,
-                               IexecHubService iexecHubService,
-                               ComputationService computationService,
-                               CustomDockerClient customDockerClient) {
-        this.datasetService = datasetService;
+    public TaskExecutorHelperService(DataService dataService,
+                                     ResultService resultService,
+                                     ContributionService contributionService,
+                                     CustomFeignClient customFeignClient,
+                                     WorkerConfigurationService workerConfigurationService,
+                                     SconeTeeService sconeTeeService,
+                                     IexecHubService iexecHubService,
+                                     ComputationService computationService,
+                                     CustomDockerClient customDockerClient) {
+        this.dataService = dataService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
@@ -94,16 +93,26 @@ public class TaskExecutorHelperService {
         return "";
     }
 
-    String tryToDownloadData(String chainTaskId, String dataUri) {
+    String tryToDownloadData(TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
+        String dataUri = taskDescription.getDatasetUri();
         String error = checkContributionAbility(chainTaskId);
         if (!error.isEmpty()) return error;
 
         // pull data
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADING);
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, dataUri);
+        boolean isDatasetDownloaded = dataService.downloadFile(chainTaskId, dataUri);
         if (!isDatasetDownloaded) {
             customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
             String errorMessage = "Failed to pull dataset, URI:" + dataUri;
+            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+            return errorMessage;
+        }
+
+        boolean areInputFilesDownloaded = dataService.downloadFiles(chainTaskId, taskDescription.getInputFiles());
+        if (!areInputFilesDownloaded) {
+            customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
+            String errorMessage = "Failed to pull inputfiles, URI:" + taskDescription.getInputFiles();
             log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
             return errorMessage;
         }
