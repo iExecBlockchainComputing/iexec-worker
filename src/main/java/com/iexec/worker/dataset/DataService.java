@@ -12,11 +12,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
+import java.util.List;
 
 
 @Slf4j
 @Service
-public class DatasetService {
+public class DataService {
 
     @Value("${decryptFilePath}")
     private String scriptFilePath;
@@ -24,8 +25,8 @@ public class DatasetService {
     private final WorkerConfigurationService workerConfigurationService;
     private final SmsService smsService;
 
-    public DatasetService(WorkerConfigurationService workerConfigurationService,
-                          SmsService smsService) {
+    public DataService(WorkerConfigurationService workerConfigurationService,
+                       SmsService smsService) {
         this.workerConfigurationService = workerConfigurationService;
         this.smsService = smsService;
     }
@@ -33,20 +34,29 @@ public class DatasetService {
     /*
      * In order to keep a linear replicate workflow, we'll always have the steps:
      * APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING (even when the dataset requested is 0x0).
-     * In the 0x0 dataset case, we'll have an empty datasetUri, and we'll consider the dataset as downloaded
+     * In the 0x0 dataset case, we'll have an empty uri, and we'll consider the dataset as downloaded
      */
-    public boolean downloadDataset(String chainTaskId, String datasetUri) {
+    public boolean downloadFile(String chainTaskId, String uri) {
         if (chainTaskId.isEmpty()) {
-            log.error("Failed to downloadDataset, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
-                    chainTaskId, datasetUri);
+            log.error("Failed to download, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
+                    chainTaskId, uri);
             return false;
         }
-        if (datasetUri.isEmpty()) {
-            log.info("There's nothing to download for this task [chainTaskId:{}, datasetUri:{}]",
-                    chainTaskId, datasetUri);
+        if (uri.isEmpty()) {
+            log.info("There's nothing to download for this task [chainTaskId:{}, uri:{}]",
+                    chainTaskId, uri);
             return true;
         }
-        return FileHelper.downloadFileInDirectory(datasetUri, workerConfigurationService.getTaskInputDir(chainTaskId));
+        return FileHelper.downloadFileInDirectory(uri, workerConfigurationService.getTaskInputDir(chainTaskId));
+    }
+
+    public boolean downloadFiles(String chainTaskId, List<String> uris) {
+        for (String uri:uris){
+            if (!downloadFile(chainTaskId, uri)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {

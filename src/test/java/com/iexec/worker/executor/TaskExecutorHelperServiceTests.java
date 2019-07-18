@@ -10,7 +10,7 @@ import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.feign.CustomFeignClient;
@@ -24,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
@@ -35,7 +36,7 @@ import static org.mockito.Mockito.*;
 
 public class TaskExecutorHelperServiceTests {
 
-    @Mock private DatasetService datasetService;
+    @Mock private DataService dataService;
     @Mock private ResultService resultService;
     @Mock private ContributionService contributionService;
     @Mock private CustomFeignClient customFeignClient;
@@ -64,6 +65,7 @@ public class TaskExecutorHelperServiceTests {
                 .appUri("appUri")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
+                .inputFiles(new ArrayList<>())
                 .build();
     }
 
@@ -99,10 +101,12 @@ public class TaskExecutorHelperServiceTests {
         TaskDescription task = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, task.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, task.getDatasetUri()))
+                .thenReturn(true);
+        when(dataService.downloadFiles(CHAIN_TASK_ID, task.getInputFiles()))
                 .thenReturn(true);
 
-        String error = taskExecutorHelperService.tryToDownloadData(CHAIN_TASK_ID, task.getDatasetUri());
+        String error = taskExecutorHelperService.tryToDownloadData(task);
         assertThat(error).isEmpty();
     }
 

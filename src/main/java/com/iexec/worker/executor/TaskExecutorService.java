@@ -162,8 +162,7 @@ public class TaskExecutorService {
         customFeignClient.updateReplicateStatus(chainTaskId, APP_DOWNLOADED);
  
         // try to download data
-        String dataDownloadError = taskExecutorHelperService.tryToDownloadData(chainTaskId,
-                taskDescription.getDatasetUri());
+        String dataDownloadError = taskExecutorHelperService.tryToDownloadData(taskDescription);
         if (!dataDownloadError.isEmpty()) return dataDownloadError;
 
         customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOADED);

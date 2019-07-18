@@ -138,7 +138,7 @@ public class TaskExecutorServiceTests {
         when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
         when(taskExecutorHelperService.checkAppType(any(), any())).thenReturn("");
         when(taskExecutorHelperService.tryToDownloadApp(any())).thenReturn("");
-        when(taskExecutorHelperService.tryToDownloadData(any(), any())).thenReturn("");
+        when(taskExecutorHelperService.tryToDownloadData(any())).thenReturn("");
         when(taskExecutorHelperService.checkContributionAbility(any())).thenReturn("");
         when(taskExecutorHelperService.checkIfAppImageExists(any(), any())).thenReturn("");
 
@@ -157,7 +157,7 @@ public class TaskExecutorServiceTests {
         when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
         when(taskExecutorHelperService.checkAppType(any(), any())).thenReturn("");
         when(taskExecutorHelperService.tryToDownloadApp(any())).thenReturn("");
-        when(taskExecutorHelperService.tryToDownloadData(any(), any())).thenReturn("");
+        when(taskExecutorHelperService.tryToDownloadData(any())).thenReturn("");
         when(taskExecutorHelperService.checkContributionAbility(any())).thenReturn("");
         when(taskExecutorHelperService.checkIfAppImageExists(any(), any())).thenReturn("");
 

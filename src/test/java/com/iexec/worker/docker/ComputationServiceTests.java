@@ -5,9 +5,7 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.docker.CustomDockerClient;
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.spotify.docker.client.messages.ContainerConfig;
@@ -30,7 +28,7 @@ import java.util.ArrayList;
 public class ComputationServiceTests {
 
     @Mock private SmsService smsService;
-    @Mock private DatasetService datasetService;
+    @Mock private DataService dataService;
     @Mock private CustomDockerClient customDockerClient;
     @Mock private SconeTeeService sconeTeeService;
 
@@ -81,7 +79,7 @@ public class ComputationServiceTests {
         String expectedStdout = "Computed successfully !";
 
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
+        when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
         when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
@@ -92,7 +90,7 @@ public class ComputationServiceTests {
 
         assertThat(result.getLeft()).isEqualTo(COMPUTED);
         assertThat(result.getRight()).isEqualTo(expectedStdout);
-        verify(datasetService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+        verify(dataService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
     @Test
@@ -102,8 +100,8 @@ public class ComputationServiceTests {
         String expectedStdout = "Computed successfully !";
 
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(datasetService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
+        when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
         when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
@@ -114,7 +112,7 @@ public class ComputationServiceTests {
 
         assertThat(result.getLeft()).isEqualTo(COMPUTED);
         assertThat(result.getRight()).isEqualTo(expectedStdout);
-        verify(datasetService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+        verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
     @Test
@@ -124,8 +122,8 @@ public class ComputationServiceTests {
         String expectedStdout = "Failed to decrypt dataset, URI:" + task.getDatasetUri();
 
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
-        when(datasetService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(datasetService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
+        when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
         when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
@@ -136,7 +134,7 @@ public class ComputationServiceTests {
 
         assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
         assertThat(result.getRight()).isEqualTo(expectedStdout);
-        verify(datasetService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
+        verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
     // runTeeComputation
