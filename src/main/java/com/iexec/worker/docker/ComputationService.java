@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import static com.iexec.common.replicate.ReplicateStatus.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 
@@ -25,7 +24,11 @@ import java.util.List;
 @Service
 public class ComputationService {
 
-    private static final String DATASET_FILENAME = "DATASET_FILENAME";
+    // env variables that will be injected in the container of a task computation
+    private static final String IEXEC_DATASET_FILENAME_ENV_PROPERTY = "IEXEC_DATASET_FILENAME";
+    private static final String IEXEC_BOT_TASK_INDEX_ENV_PROPERTY = "IEXEC_BOT_TASK_INDEX";
+    private static final String IEXEC_BOT_SIZE_ENV_PROPERTY = "IEXEC_BOT_SIZE";
+    private static final String IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY = "IEXEC_BOT_FIRST_INDEX";
 
     private SmsService smsService;
     private DataService dataService;
@@ -77,7 +80,11 @@ public class ComputationService {
 
         // compute
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
-        List<String> env = Arrays.asList(DATASET_FILENAME + "=" + datasetFilename);
+        List<String> env = new ArrayList<>();
+        env.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
+        env.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
+        env.add(IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotFirstIndex());
+        env.add(IEXEC_BOT_TASK_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotIndex());
 
         ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, env, cmd);
         stdout = customDockerClient.dockerRun(chainTaskId, containerConfig, maxExecutionTime);
@@ -118,7 +125,7 @@ public class ComputationService {
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        String datasetEnv = DATASET_FILENAME + "=" + datasetFilename;
+        String datasetEnv = IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename;
         sconeAppEnv.add(datasetEnv);
         sconeEncrypterEnv.add(datasetEnv);
 
