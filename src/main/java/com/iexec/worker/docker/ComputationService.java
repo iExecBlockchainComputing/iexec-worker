@@ -80,13 +80,8 @@ public class ComputationService {
 
         // compute
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
-        List<String> env = new ArrayList<>();
-        env.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
-        env.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
-        env.add(IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotFirstIndex());
-        env.add(IEXEC_BOT_TASK_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotIndex());
-
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, env, cmd);
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri,
+                getContainerEnvVariables(datasetFilename, taskDescription), cmd);
         stdout = customDockerClient.dockerRun(chainTaskId, containerConfig, maxExecutionTime);
 
         if (stdout.isEmpty()) {
@@ -125,9 +120,10 @@ public class ComputationService {
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        String datasetEnv = IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename;
-        sconeAppEnv.add(datasetEnv);
-        sconeEncrypterEnv.add(datasetEnv);
+        for(String envVar:getContainerEnvVariables(datasetFilename, taskDescription)){
+            sconeAppEnv.add(envVar);
+            sconeEncrypterEnv.add(envVar);
+        }
 
         ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, sconeAppEnv, cmd);
         ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, sconeEncrypterEnv, cmd);
@@ -150,5 +146,14 @@ public class ComputationService {
         // encrypt result
         stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
         return Pair.of(COMPUTED, stdout);
+    }
+
+    private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription){
+        List<String> list = new ArrayList<>();
+        list.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
+        list.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
+        list.add(IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotFirstIndex());
+        list.add(IEXEC_BOT_TASK_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotIndex());
+        return list;
     }
 }
