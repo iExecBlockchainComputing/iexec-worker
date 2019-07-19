@@ -1,21 +1,18 @@
 package com.iexec.worker.docker;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.dapp.DappType;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.dataset.DatasetService;
-import com.iexec.worker.docker.CustomDockerClient;
+import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
-import org.apache.commons.lang3.tuple.Pair;
 import com.spotify.docker.client.messages.ContainerConfig;
 
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
-
-import static com.iexec.common.replicate.ReplicateStatus.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,24 +29,44 @@ public class ComputationService {
     private DatasetService datasetService;
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
+    private ResultService resultService;
+    //HashMap<String, ReplicateStatus> computed = new HashMap<>();
 
     public ComputationService(SmsService smsService,
                               DatasetService datasetService,
                               CustomDockerClient customDockerClient,
-                              SconeTeeService sconeTeeService) {
+                              SconeTeeService sconeTeeService,
+                              ResultService resultService) {
 
         this.smsService = smsService;
         this.datasetService = datasetService;
         this.customDockerClient = customDockerClient;
         this.sconeTeeService = sconeTeeService;
+
+        this.resultService = resultService;
     }
 
-    public boolean downloadApp(String chainTaskId, String appUri) {
-        return customDockerClient.pullImage(chainTaskId, appUri);
+    public String checkAppType(String chainTaskId, DappType type) {
+        if (type.equals(DappType.DOCKER)) return "";
+
+        String errorMessage = "Application is not of type Docker";
+        log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+        return errorMessage;
     }
 
-    public Pair<ReplicateStatus, String> runNonTeeComputation(TaskDescription taskDescription,
-                                                              ContributionAuthorization contributionAuth) {
+    public boolean downloadApp(String chainTaskId, TaskDescription taskDescription) {
+        // check app type
+        String appTypeError = checkAppType(chainTaskId, taskDescription.getAppType());
+        if (!appTypeError.isEmpty()){
+            //return appTypeError;
+            return false;
+        }
+
+        return customDockerClient.pullImage(chainTaskId, taskDescription.getAppUri());
+    }
+
+    public boolean runNonTeeComputation(TaskDescription taskDescription,
+                                                                   ContributionAuthorization contributionAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         String imageUri = taskDescription.getAppUri();
         String cmd = taskDescription.getCmd();
@@ -73,7 +90,9 @@ public class ComputationService {
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
             stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
+            //computed.putIfAbsent(chainTaskId, COMPUTE_FAILED);
+            //return Pair.of(COMPUTE_FAILED, stdout);
+            return false;
         }
 
         // compute
@@ -86,13 +105,18 @@ public class ComputationService {
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
+            //return Pair.of(COMPUTE_FAILED, stdout);
+            return false;
         }
 
-        return Pair.of(COMPUTED, stdout);        
+        resultService.saveResult(chainTaskId, taskDescription, stdout);
+
+        //retu ReplicateStatusCause, String ?
+        //return Pair.of(COMPUTED, stdout);
+        return true;
     }
 
-    public Pair<ReplicateStatus, String> runTeeComputation(TaskDescription taskDescription,
+    public boolean runTeeComputation(TaskDescription taskDescription,
                                                            ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         String imageUri = taskDescription.getAppUri();
@@ -106,7 +130,8 @@ public class ComputationService {
         if (secureSessionId.isEmpty()) {
             stdout = "Could not generate scone secure session for tee computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
+            //return Pair.of(COMPUTE_FAILED, stdout);
+            return false;
         }
 
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app");
@@ -115,7 +140,8 @@ public class ComputationService {
         if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
             stdout = "Could not create scone docker environment";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
+            //return Pair.of(COMPUTE_FAILED, stdout);
+            return false;
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
@@ -129,7 +155,8 @@ public class ComputationService {
         if (sconeAppConfig == null || sconeEncrypterConfig == null) {
             stdout = "Could not build scone container config";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
+            //return Pair.of(COMPUTE_FAILED, stdout);
+            return false;
         }
 
         // run computation
@@ -138,11 +165,13 @@ public class ComputationService {
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
+            //return Pair.of(COMPUTE_FAILED, stdout);
+            return false;
         }
 
         // encrypt result
         stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
-        return Pair.of(COMPUTED, stdout);
+        //return Pair.of(COMPUTED, stdout);
+        return  true;
     }
 }

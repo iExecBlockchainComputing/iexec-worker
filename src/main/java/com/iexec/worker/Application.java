@@ -107,9 +107,12 @@ public class Application implements CommandLineRunner {
         log.info("Cool, your iexec-worker is all set!");
 
         // ask core for interrupted replicates
+
+        //TODO re activate
         List<String> recoveredTasks = amnesiaRecoveryService.recoverInterruptedReplicates();
 
         // clean the results folder
+        //TODO re activate
         resultService.cleanUnusedResultFolders(recoveredTasks);
     }
 }

@@ -73,7 +73,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(subscriptionService, Mockito.times(0))
-                .handleTaskNotification(notif);
+                .handleSubscription(notif);
     }
 
     @Test
@@ -90,7 +90,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(subscriptionService, Mockito.times(0))
-                .handleTaskNotification(notif);
+                .handleSubscription(notif);
     }
 
     @Test
@@ -107,7 +107,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(subscriptionService, Mockito.times(0))
-                .handleTaskNotification(notif);
+                .handleSubscription(notif);
     }
 
     // The notification type does not matter here since it is handled on the subscription service
@@ -126,7 +126,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
 
         Mockito.verify(subscriptionService, Mockito.times(1))
-                .handleTaskNotification(notif);
+                .handleSubscription(notif);
     }
 
     private TaskNotification getStubInterruptedTask(TaskNotificationType notificationType) {

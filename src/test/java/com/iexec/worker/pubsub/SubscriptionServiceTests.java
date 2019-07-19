@@ -5,7 +5,7 @@ import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.executor.TaskExecutorService;
+import com.iexec.worker.executor.TaskManagerService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -23,7 +23,7 @@ public class SubscriptionServiceTests {
     @Mock
     private WorkerConfigurationService workerConfigurationService;
     @Mock
-    private TaskExecutorService taskExecutorService;
+    private TaskManagerService taskManagerService;
 
     @InjectMocks
     SubscriptionService subscriptionService;
@@ -56,17 +56,17 @@ public class SubscriptionServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
 
-        subscriptionService.handleTaskNotification(notif);
+        subscriptionService.handleSubscription(notif);
 
-        Mockito.verifyZeroInteractions(taskExecutorService);
+        Mockito.verifyZeroInteractions(taskManagerService);
     }
 
     @Test
     public void shouldNotContributeSinceNoContributionAuthorization() {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_CONTRIBUTE);
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verifyZeroInteractions(taskExecutorService);
+        Mockito.verifyZeroInteractions(taskManagerService);
     }
 
     @Test
@@ -76,48 +76,48 @@ public class SubscriptionServiceTests {
                         .contributionAuthorization(new ContributionAuthorization())
                         .build());
 
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).computeOrContribute(any());
+        Mockito.verify(taskManagerService, Mockito.times(1)).contribute(any());
     }
 
     @Test
     public void shouldAbortOnContributionTimeout() {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_ABORT_CONTRIBUTION_TIMEOUT);
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).abortContributionTimeout(CHAIN_TASK_ID);
+        Mockito.verify(taskManagerService, Mockito.times(1)).abort(CHAIN_TASK_ID);
     }
 
     @Test
     public void shouldAbortOnConsensusReached() {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_ABORT_CONSENSUS_REACHED);
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).abortConsensusReached(CHAIN_TASK_ID);
+        Mockito.verify(taskManagerService, Mockito.times(1)).abortConsensusReached(CHAIN_TASK_ID);
     }
 
     @Test
     public void shouldReveal() {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_REVEAL);
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).reveal(eq(CHAIN_TASK_ID), anyLong());
+        Mockito.verify(taskManagerService, Mockito.times(1)).reveal(any(), any());
     }
 
     @Test
     public void shouldUpload() {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_UPLOAD);
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).uploadResult(CHAIN_TASK_ID);
+        Mockito.verify(taskManagerService, Mockito.times(1)).uploadResult(CHAIN_TASK_ID);
     }
 
     @Test
     public void shouldComplete() {
         notifTemplate.setTaskNotificationType(TaskNotificationType.PLEASE_COMPLETE);
-        subscriptionService.handleTaskNotification(notifTemplate);
+        subscriptionService.handleSubscription(notifTemplate);
 
-        Mockito.verify(taskExecutorService, Mockito.times(1)).completeTask(CHAIN_TASK_ID);
+        Mockito.verify(taskManagerService, Mockito.times(1)).completeTask(CHAIN_TASK_ID);
     }
 }

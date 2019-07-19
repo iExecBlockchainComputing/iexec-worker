@@ -8,6 +8,7 @@ import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -28,15 +29,18 @@ public class AmnesiaRecoveryService {
     private SubscriptionService subscriptionService;
     private ResultService resultService;
     private IexecHubService iexecHubService;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     public AmnesiaRecoveryService(CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
                                   ResultService resultService,
-                                  IexecHubService iexecHubService) {
+                                  IexecHubService iexecHubService,
+                                  ApplicationEventPublisher applicationEventPublisher) {
         this.customFeignClient = customFeignClient;
         this.subscriptionService = subscriptionService;
         this.resultService = resultService;
         this.iexecHubService = iexecHubService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public List<String> recoverInterruptedReplicates() {
@@ -74,9 +78,10 @@ public class AmnesiaRecoveryService {
 
             TaskDescription taskDescription = optionalTaskDescription.get();
 
-            subscriptionService.subscribeToTopic(chainTaskId);
             resultService.saveResultInfo(chainTaskId, taskDescription);
-            subscriptionService.handleTaskNotification(missedTaskNotification);
+
+            subscriptionService.subscribeToTopic(chainTaskId);
+            applicationEventPublisher.publishEvent(missedTaskNotification);
 
             recoveredChainTaskIds.add(chainTaskId);
         }
