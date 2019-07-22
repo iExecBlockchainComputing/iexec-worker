@@ -10,6 +10,7 @@ import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.tee.SgxService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
@@ -61,6 +62,9 @@ public class Application implements CommandLineRunner {
     @Autowired
     private SconeTeeService sconeTeeService;
 
+    @Autowired
+    private SgxService sgxService;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -96,8 +100,9 @@ public class Application implements CommandLineRunner {
         }
 
         // check if worker is TEE enabled
-        if (workerConfig.isTeeEnabled()) {
+        if (sgxService.isSgxEnabled()) {
             log.info("SGX is enabled, worker can execute TEE tasks");
+            workerConfig.setIsTeeEnabled(true);
             sconeTeeService.startLasService();
         }
 

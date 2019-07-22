@@ -2,6 +2,8 @@ package com.iexec.worker.tee;
 
 import java.io.File;
 
+import com.iexec.worker.utils.LoggingUtils;
+
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +26,8 @@ public class SgxService {
         }
 
         if (isSgxDriverFound && !isSgxDeviceFound) {
-            log.warn("SGX driver is installed but no SGX device found. Please check if SGX is enabled");
+            String message = "SGX driver is installed but no SGX device found. Please check if SGX is enabled";
+            LoggingUtils.printHighlightedMessage(message);
             return false;
         }
 

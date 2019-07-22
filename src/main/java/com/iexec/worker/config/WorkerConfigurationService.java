@@ -1,7 +1,6 @@
 package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.tee.SgxService;
 import com.iexec.worker.utils.FileHelper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,10 +31,12 @@ public class WorkerConfigurationService {
 
     private boolean isTeeEnabled;
 
-    public WorkerConfigurationService(CredentialsService credentialsService,
-                                      SgxService sgxService) {
+    public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
-        isTeeEnabled = sgxService.isSgxEnabled();
+    }
+
+    public void setIsTeeEnabled(boolean isTeeEnabled) {
+        this.isTeeEnabled = isTeeEnabled;
     }
 
     public String getWorkerName() {
