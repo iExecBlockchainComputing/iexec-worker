@@ -241,4 +241,10 @@ public class ComputationServiceTests {
         assertThat(isComputed).isFalse();
         //assertThat(result.getRight()).isEqualTo(expectedStdout);
     }
+
+    @Test
+    public void ShouldAppTypeBeDocker() {
+        assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
+    }
+
 }

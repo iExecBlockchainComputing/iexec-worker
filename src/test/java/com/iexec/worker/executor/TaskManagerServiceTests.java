@@ -45,7 +45,6 @@ public class TaskManagerServiceTests {
     @Mock private WorkerConfigurationService workerConfigurationService;
     @Mock private SconeTeeService sconeTeeService;
     @Mock private IexecHubService iexecHubService;
-    @Mock private CustomDockerClient customDockerClient;
     @Mock private ComputationService computationService;
     @Mock private RevealService revealService;
 
@@ -78,20 +77,30 @@ public class TaskManagerServiceTests {
                 .build();
     }
 
-    @Test
-    public void ShouldAppTypeBeDocker() {
-        String error = computationService.checkAppType(CHAIN_TASK_ID, DappType.DOCKER);
+    /*
+    *
+    * TODO Add should not
+    *
+    * */
 
-        assertThat(error).isEmpty();
+    @Test
+    public void shouldStart() {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(getStubTaskDescription(false));
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
+
+        boolean isStarted = taskManagerService.start(CHAIN_TASK_ID);
+
+        assertThat(isStarted).isTrue();
     }
 
     @Test
     public void shouldDownloadApp() {
-        TaskDescription task = getStubTaskDescription(false);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(computationService.downloadApp(CHAIN_TASK_ID, task))
-                .thenReturn(true);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(computationService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
 
         boolean isAppDownloaded = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
@@ -100,75 +109,139 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldDownloadData() {
-        TaskDescription task = getStubTaskDescription(false);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, task.getDatasetUri()))
-                .thenReturn(true);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(datasetService.downloadDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
 
         boolean isDataDownloaded = taskManagerService.downloadData(CHAIN_TASK_ID);
+
         assertThat(isDataDownloaded).isTrue();
     }
 
     @Test
-    public void shouldBeAbleToContribute() {
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
+    public void shouldComputeSinceNonTeeComputation() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(computationService.isAppDownloaded(taskDescription.getAppUri())).thenReturn(true);
+        ContributionAuthorization contributionAuthorization = new ContributionAuthorization();
+        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
+        when(computationService.runNonTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        String error = taskManagerService.checkContributionAbility(CHAIN_TASK_ID);
-        assertThat(error).isEmpty();
+        boolean isComputed = taskManagerService.compute(CHAIN_TASK_ID);
+
+        assertThat(isComputed).isTrue();
+        verify(computationService, never()).runTeeComputation(any(), any());
     }
 
     @Test
-    public void shouldNotBeAbleToContribute() {
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(CHAIN_UNREACHABLE));
+    public void shouldComputeSinceTeeComputation() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(computationService.isAppDownloaded(taskDescription.getAppUri())).thenReturn(true);
+        ContributionAuthorization contributionAuthorization = new ContributionAuthorization();
+        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
+        when(computationService.runTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        String error = taskManagerService.checkContributionAbility(CHAIN_TASK_ID);
-        assertThat(error).isEqualTo("Cannot contribute");
+        boolean isComputed = taskManagerService.compute(CHAIN_TASK_ID);
+
+        assertThat(isComputed).isTrue();
+        verify(computationService, never()).runNonTeeComputation(any(), any());
     }
 
     @Test
-    public void shouldFindAppImage() {
-        TaskDescription task = getStubTaskDescription(false);
-        when(customDockerClient.isImagePulled(task.getAppUri())).thenReturn(true);
-        
-        String error = taskManagerService.checkIfAppImageExists(CHAIN_TASK_ID, task.getAppUri());
-        assertThat(error).isEmpty();
+    public void shouldContributeSinceNonTeeComputation() {
+        boolean isTeeTask = false;
+        TaskDescription taskDescription = getStubTaskDescription(isTeeTask);
+        String hash = "hash";
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        //determinism hash
+        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
+        //enclave signature
+        ContributionAuthorization contributionAuthorization = getStubAuth(NO_TEE_ENCLAVE_CHALLENGE);
+        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
+        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(isTeeTask);
+
+        when(contributionService.contribute(contributionAuthorization, hash, SignatureUtils.emptySignature()))
+                .thenReturn(Optional.of(ChainReceipt.builder().blockNumber(10).build()));
+
+        boolean isContributed = taskManagerService.contribute(CHAIN_TASK_ID);
+
+        assertThat(isContributed).isTrue();
     }
 
     @Test
-    public void shouldGetDeterminismHash() {
-        String expectedHash = "expectedHash";
-
-        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(expectedHash);
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(false);
-        
-        String hash = taskManagerService.getTaskDeterminismHash(CHAIN_TASK_ID);
-        assertThat(hash).isEqualTo(expectedHash);
+    public void shouldContributeSinceTeeComputation() {
+        //TODO
     }
 
     @Test
-    public void shouldNotGetNonTeeDeterminismHash() {
-        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn("");
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(false);
+    public void shouldReveal() {
+        String hash = "hash";
+        long consensusBlock = 55;
 
-        String hash = taskManagerService.getTaskDeterminismHash(CHAIN_TASK_ID);
-        assertThat(hash).isEmpty();
-        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, CANT_CONTRIBUTE,
-                DETERMINISM_HASH_NOT_FOUND);
+        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
+        when(revealService.canReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+
+        taskManagerService.reveal(CHAIN_TASK_ID, TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
+
+        verify(revealService, times(1)).reveal(CHAIN_TASK_ID, hash);
     }
 
     @Test
-    public void shouldNotGetTeeDeterminismHash() {
-        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn("");
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
+    public void shouldUploadResultWithoutEncrypting() {
+        ReplicateDetails details = ReplicateDetails.builder()
+                .resultLink("resultUri")
+                .chainCallbackData("callbackData")
+                .build();
 
-        String hash = taskManagerService.getTaskDeterminismHash(CHAIN_TASK_ID);
-        assertThat(hash).isEmpty();
-        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, CANT_CONTRIBUTE,
-                TEE_EXECUTION_NOT_VERIFIED);
+        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
+        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
+
+        taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        verify(resultService, never()).encryptResult(CHAIN_TASK_ID);
     }
+
+    @Test
+    public void shouldEncryptAndUploadResult() {
+        ReplicateDetails details = ReplicateDetails.builder()
+                .resultLink("resultUri")
+                .chainCallbackData("callbackData")
+                .build();
+
+        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
+        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
+
+        taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
+    }
+
+    @Test
+    public void shouldNotUploadResultSinceNotEncryptedWhenNeeded() {
+        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
+        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(false);
+
+        taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        verify(resultService, never()).uploadResult(CHAIN_TASK_ID);
+    }
+
+
+
+
+
+    //TODO clean theses
 
     @Test
     public void shouldGetNonTeeEnclaveSignature() {
@@ -218,6 +291,8 @@ public class TaskManagerServiceTests {
         assertThat(oSign.isPresent()).isFalse();
     }
 
+    //misc
+
     @Test
     public void shouldFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -247,229 +322,5 @@ public class TaskManagerServiceTests {
         assertThat(isValid).isFalse();
     }
 
-
-
-    //TODO ACTIVATE these tests
-
-    /*
-    @Test
-    public void shouldNotAddReplicateWhenTaskNotInitializedOnchain() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(false);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription(false)));
-
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        verify(customFeignClient, never())
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-    }
-
-    @Test
-    public void shouldNotAddReplicateWhenTeeRequiredButNotSupported() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription(true)));
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        verify(customFeignClient, never())
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-    }
-
-    @Test
-    public void shouldAddReplicateWithNoTeeRequired() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription(false)));
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        verify(customFeignClient, times(1))
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-    }
-
-    @Test
-    public void shouldAddReplicateWithTeeRequired() {
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription(true)));
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
-
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        verify(customFeignClient, times(1))
-                .updateReplicateStatus(CHAIN_TASK_ID, ReplicateStatus.RUNNING);
-    }
-
-    // compute()
-
-    @Test
-    public void shouldComputeNonTeeTask() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription(false)));
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
-        when(computationService.checkAppType(any(), any())).thenReturn("");
-        when(taskManagerService.downloadApp(any())).thenReturn(true);
-        when(taskManagerService.downloadData(any())).thenReturn(true);
-        when(taskManagerService.checkContributionAbility(any())).thenReturn("");
-        when(taskManagerService.checkIfAppImageExists(any(), any())).thenReturn("");
-
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        verify(computationService, times(1))
-                .runNonTeeComputation(any(), any());
-    }
-
-    @Test
-    public void shouldComputeTeeTask() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getStubTaskDescription(true)));
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(true);
-        when(computationService.checkAppType(any(), any())).thenReturn("");
-        when(taskManagerService.downloadApp(any())).thenReturn(true);
-        when(taskManagerService.downloadData(any())).thenReturn(true);
-        when(taskManagerService.checkContributionAbility(any())).thenReturn("");
-        when(taskManagerService.checkIfAppImageExists(any(), any())).thenReturn("");
-
-        CompletableFuture<Boolean> future = taskExecutorService.addReplicate(getStubAuth(TEE_ENCLAVE_CHALLENGE));
-        future.join();
-
-        verify(computationService, times(1))
-                .runTeeComputation(any(), any());
-    }
-
-    */
-
-    //END TODO
-
-    // contribute()
-
-    @Test
-    public void shouldContribute() {
-        ContributionAuthorization contributionAuth = getStubAuth(NO_TEE_ENCLAVE_CHALLENGE);
-        String hash = "hash";
-        Signature enclaveSignature = new Signature();
-
-        when(taskManagerService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
-        when(taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, NO_TEE_ENCLAVE_CHALLENGE))
-                .thenReturn(Optional.of(new Signature()));
-        when(taskManagerService.checkContributionAbility(CHAIN_TASK_ID)).thenReturn("");
-        when(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).thenReturn(true);
-
-        taskManagerService.contribute(contributionAuth.getChainTaskId());
-
-        verify(contributionService, times(1)).contribute(contributionAuth, hash, enclaveSignature);
-    }
-
-    // reveal()
-
-    @Test
-    public void shouldReveal() {
-        String hash = "hash";
-        long consensusBlock = 55;
-
-        when(taskManagerService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
-        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
-        when(revealService.canReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
-        when(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).thenReturn(true);
-
-        taskManagerService.reveal(CHAIN_TASK_ID, TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
-
-        verify(revealService, times(1)).reveal(CHAIN_TASK_ID, hash);
-    }
-
-    // uploadResult()
-
-    @Test
-    public void shouldUploadResultWithoutEncrypting() {
-        ReplicateDetails details = ReplicateDetails.builder()
-                .resultLink("resultUri")
-                .chainCallbackData("callbackData")
-                .build();
-
-        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
-        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
-
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-
-        verify(resultService, never()).encryptResult(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldEncryptAndUploadResult() {
-        ReplicateDetails details = ReplicateDetails.builder()
-                .resultLink("resultUri")
-                .chainCallbackData("callbackData")
-                .build();
-
-        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
-        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
-
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-
-        verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldNotUploadResultSinceNotEncryptedWhenNeeded() {
-        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(false);
-
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-
-        verify(resultService, never()).uploadResult(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldUpdateReplicateAfterUploadResult() {
-        String chainTaskId = "chainTaskId";
-        ReplicateDetails details = ReplicateDetails.builder()
-                .resultLink("resultUri")
-                .chainCallbackData("callbackData")
-                .build();
-
-        when(resultService.isResultEncryptionNeeded(chainTaskId)).thenReturn(false);
-        when(resultService.uploadResult(chainTaskId)).thenReturn(details.getResultLink());
-        when(resultService.getCallbackDataFromFile(chainTaskId)).thenReturn(details.getChainCallbackData());
-
-        taskManagerService.uploadResult(chainTaskId);
-
-        verify(customFeignClient, never())
-                .updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-        verify(customFeignClient, times(1))
-                .updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
-    }
-
-    @Test
-    public void shouldNotUpdateReplicateAfterUploadingResultSinceEmptyUri() {
-        String chainTaskId = "chainTaskId";
-        ReplicateDetails details = ReplicateDetails.builder()
-                .resultLink("")
-                .chainCallbackData("callbackData")
-                .build();
-
-        when(resultService.isResultEncryptionNeeded(chainTaskId)).thenReturn(false);
-        when(resultService.uploadResult(chainTaskId)).thenReturn(details.getResultLink());
-        when(resultService.getCallbackDataFromFile(chainTaskId)).thenReturn(details.getChainCallbackData());
-
-        taskManagerService.uploadResult(chainTaskId);
-
-        verify(customFeignClient, times(1))
-                .updateReplicateStatus(chainTaskId, RESULT_UPLOAD_FAILED);
-        verify(customFeignClient, times(0))
-                .updateReplicateStatus(chainTaskId, RESULT_UPLOADED, details);
-    }
 
 }

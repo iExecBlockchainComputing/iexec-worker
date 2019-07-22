@@ -5,6 +5,7 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
@@ -23,21 +24,25 @@ public class TaskNotificationService {
     private CustomFeignClient customFeignClient;
     private ApplicationEventPublisher applicationEventPublisher;
     private SubscriptionService subscriptionService;
+    private ContributionService contributionService;
 
 
     public TaskNotificationService(TaskManagerService taskManagerService,
                                    CustomFeignClient customFeignClient,
                                    ApplicationEventPublisher applicationEventPublisher,
-                                   SubscriptionService subscriptionService) {
+                                   SubscriptionService subscriptionService,
+                                   ContributionService contributionService
+                                   ) {
         this.taskManagerService = taskManagerService;
         this.customFeignClient = customFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
+        this.contributionService = contributionService;
     }
 
 
     @EventListener
-    private void onTaskNotification(TaskNotification notification) {
+    protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
         TaskNotificationType nextAction = null;
@@ -50,10 +55,15 @@ public class TaskNotificationService {
 
         TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
+        if (!storeContributionAuthorizationFromExtraIfPresent(extra)){
+            log.error("Should storeContributionAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
+            return;
+        }
+
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, RUNNING);
-                boolean isStarted = taskManagerService.start(chainTaskId, extra);
+                boolean isStarted = taskManagerService.start(chainTaskId);
                 if (!isStarted) {
                     updateStatusAndGetNextAction(chainTaskId, START_FAILED);
                     return;
@@ -116,13 +126,14 @@ public class TaskNotificationService {
                 break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
-                boolean isCompleted = taskManagerService.completeTask(chainTaskId);
+                boolean isCompleted = taskManagerService.complete(chainTaskId);
                 if (!isCompleted) {
                     updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED);
                     return;
                 }
                 updateStatusAndGetNextAction(chainTaskId, COMPLETED);
                 break;
+            //TODO merge abort
             case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                 boolean isAborted = taskManagerService.abort(chainTaskId);
                 if (!isAborted) {
@@ -153,6 +164,13 @@ public class TaskNotificationService {
             log.warn("No more action to do [chainTaskId:{}]", chainTaskId);
         }
 
+    }
+
+    private boolean storeContributionAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
+        if (extra != null && extra.getContributionAuthorization() != null){
+            return contributionService.putContributionAuthorization(extra.getContributionAuthorization());
+        }
+        return true;
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {

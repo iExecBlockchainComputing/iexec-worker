@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,8 @@ public class AmnesiaRecoveryServiceTests {
     private IexecHubService iexecHubService;
     @Mock
     private SubscriptionService subscriptionService;
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     AmnesiaRecoveryService amnesiaRecoveryService;
@@ -73,7 +76,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(subscriptionService, Mockito.times(0))
-                .handleSubscription(notif);
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
     @Test
@@ -90,7 +93,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(subscriptionService, Mockito.times(0))
-                .handleSubscription(notif);
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
     @Test
@@ -107,7 +110,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered).isEmpty();
 
         Mockito.verify(subscriptionService, Mockito.times(0))
-                .handleSubscription(notif);
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
     // The notification type does not matter here since it is handled on the subscription service
@@ -126,7 +129,7 @@ public class AmnesiaRecoveryServiceTests {
         assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
 
         Mockito.verify(subscriptionService, Mockito.times(1))
-                .handleSubscription(notif);
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
     private TaskNotification getStubInterruptedTask(TaskNotificationType notificationType) {

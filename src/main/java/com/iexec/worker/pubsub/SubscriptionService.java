@@ -158,7 +158,7 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
 
-    private void unsubscribeFromTopic(String chainTaskId) {
+    void unsubscribeFromTopic(String chainTaskId) {
         if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
             chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
             chainTaskIdToSubscription.remove(chainTaskId);
@@ -178,17 +178,19 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             String chainTaskId = notif.getChainTaskId();
 
             switch (action){
-                //case PLEASE_START:
-                //    subscribeToTopic(chainTaskId);
-                //    break;
+                /* Subscribe if not ?
+                case PLEASE_START:
                 case PLEASE_DOWNLOAD_APP:
                 case PLEASE_DOWNLOAD_DATA:
                 case PLEASE_COMPUTE:
                 case PLEASE_CONTRIBUTE:
                 case PLEASE_REVEAL:
                 case PLEASE_UPLOAD:
+                    subscribeToTopic(chainTaskId);
                     break;
+                 */
                 case PLEASE_COMPLETE:
+                case PLEASE_ABORT:
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                 case PLEASE_ABORT_CONSENSUS_REACHED:
                     unsubscribeFromTopic(chainTaskId);

@@ -43,6 +43,7 @@ public class AmnesiaRecoveryService {
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
+    //TODO clean that
     public List<String> recoverInterruptedReplicates() {
         long latestAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         List<TaskNotification> missedTaskNotifications = customFeignClient.getMissedTaskNotifications(

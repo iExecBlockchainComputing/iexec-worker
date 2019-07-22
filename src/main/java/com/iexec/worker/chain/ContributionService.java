@@ -2,17 +2,19 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
-import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
 
+import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
@@ -23,9 +25,12 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 public class ContributionService {
 
     private IexecHubService iexecHubService;
+    private ContributionAuthorizationService contributionAuthorizationService;
 
-    public ContributionService(IexecHubService iexecHubService) {
+    public ContributionService(IexecHubService iexecHubService,
+                               ContributionAuthorizationService contributionAuthorizationService) {
         this.iexecHubService = iexecHubService;
+        this.contributionAuthorizationService = contributionAuthorizationService;
     }
 
     public static String computeResultSeal(String walletAddress, String chainTaskId, String deterministHash) {
@@ -64,7 +69,25 @@ public class ContributionService {
             return Optional.of(CONTRIBUTION_ALREADY_SET);
         }
 
+        if (!isContributionUnsetToContribute(chainTask)) {
+            return Optional.of(CONTRIBUTION_ALREADY_SET);
+        }
+
+        if (!isContributionAuthorizationPresent(chainTaskId)) {
+            return Optional.of(CONTRIBUTION_AUTHORIZATION_MISSING);
+        }
+
         return Optional.empty();
+    }
+
+    private boolean isContributionAuthorizationPresent(String chainTaskId) {
+        ContributionAuthorization contributionAuthorization =
+                contributionAuthorizationService.getContributionAuthorization(chainTaskId);
+        if (contributionAuthorization != null){
+            return true;
+        }
+        log.error("ContributionAuthorization missing [chainTaskId:{}]", chainTaskId);
+        return false;
     }
 
     private boolean hasEnoughStakeToContribute(ChainTask chainTask) {
@@ -121,6 +144,17 @@ public class ContributionService {
         ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
                 iexecHubService.getLatestBlockNumber());
 
+
+
         return Optional.of(chainReceipt);
     }
+
+    public boolean putContributionAuthorization(ContributionAuthorization contributionAuthorization) {
+        return contributionAuthorizationService.putContributionAuthorization(contributionAuthorization);
+    }
+
+    public ContributionAuthorization getContributionAuthorization(String chainTaskId) {
+        return contributionAuthorizationService.getContributionAuthorization(chainTaskId);
+    }
+
 }

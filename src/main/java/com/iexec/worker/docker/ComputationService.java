@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.iexec.common.replicate.ReplicateStatus.COMPUTE_FAILED;
+
 
 @Slf4j
 @Service
@@ -46,23 +48,27 @@ public class ComputationService {
         this.resultService = resultService;
     }
 
-    public String checkAppType(String chainTaskId, DappType type) {
-        if (type.equals(DappType.DOCKER)) return "";
+    public boolean isValidAppType(String chainTaskId, DappType type) {
+        if (type.equals(DappType.DOCKER)){
+            return true;
+        }
 
         String errorMessage = "Application is not of type Docker";
         log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-        return errorMessage;
+        return false;
     }
 
     public boolean downloadApp(String chainTaskId, TaskDescription taskDescription) {
-        // check app type
-        String appTypeError = checkAppType(chainTaskId, taskDescription.getAppType());
-        if (!appTypeError.isEmpty()){
-            //return appTypeError;
+        boolean isValidAppType = isValidAppType(chainTaskId, taskDescription.getAppType());
+        if (!isValidAppType){
             return false;
         }
 
         return customDockerClient.pullImage(chainTaskId, taskDescription.getAppUri());
+    }
+
+    public boolean isAppDownloaded(String imageUri) {
+        return customDockerClient.isImagePulled(imageUri);
     }
 
     public boolean runNonTeeComputation(TaskDescription taskDescription,

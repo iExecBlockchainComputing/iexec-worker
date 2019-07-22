@@ -181,11 +181,31 @@ public class ResultService {
     public String getTaskDeterminismHash(String chainTaskId) {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
 
-        if (!isTeeTask) return getNonTeeDeterminismHash(chainTaskId);
-
-        log.info("This is a TEE task, getting determinism hash from enclave output");
-        return getTeeDeterminismHash(chainTaskId);
+        if (isTeeTask){
+            return getTeeDeterminismHash(chainTaskId);
+        } else {
+            return getNonTeeDeterminismHash(chainTaskId);
+        }
     }
+
+    /* Remove that
+
+        if (isTeeTask && determinismHash.isEmpty()) {
+            log.error("Cannot continue, couldn't get TEE determinism hash [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId,
+                    CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
+            return "";
+        }
+
+        if (determinismHash.isEmpty()) {
+            log.error("Cannot continue, couldn't get determinism hash [chainTaskId:{}]", chainTaskId);
+            customFeignClient.updateReplicateStatus(chainTaskId,
+                    CANT_CONTRIBUTE, DETERMINISM_HASH_NOT_FOUND);
+            return "";
+        }
+
+
+     */
 
     private String getNonTeeDeterminismHash(String chainTaskId) {
         String hash = "";

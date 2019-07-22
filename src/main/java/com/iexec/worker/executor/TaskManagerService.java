@@ -36,10 +36,6 @@ import static com.iexec.common.replicate.ReplicateStatusCause.DETERMINISM_HASH_N
 import static com.iexec.common.replicate.ReplicateStatusCause.TEE_EXECUTION_NOT_VERIFIED;
 
 
-/*
- * this service is only caller by ReplicateDemandService when getting new replicate
- * or by AmnesiaRecoveryService when recovering an interrupted task
- */
 @Slf4j
 @Service
 public class TaskManagerService {
@@ -53,12 +49,8 @@ public class TaskManagerService {
     private WorkerConfigurationService workerConfigurationService;
     private SconeTeeService sconeTeeService;
     private IexecHubService iexecHubService;
-    private CustomDockerClient customDockerClient;
     private RevealService revealService;
-    private PublicConfigurationService publicConfigurationService;
     private ComputationService computationService;
-    private String corePublicAddress;
-    HashMap<String, ContributionAuthorization> contributionAuthorizations = new HashMap<>();
 
     public TaskManagerService(DatasetService datasetService,
                               ResultService resultService,
@@ -68,9 +60,7 @@ public class TaskManagerService {
                               SconeTeeService sconeTeeService,
                               IexecHubService iexecHubService,
                               ComputationService computationService,
-                              CustomDockerClient customDockerClient,
-                              RevealService revealService,
-                              PublicConfigurationService publicConfigurationService) {
+                              RevealService revealService) {
         this.datasetService = datasetService;
         this.resultService = resultService;
         this.contributionService = contributionService;
@@ -79,89 +69,60 @@ public class TaskManagerService {
         this.sconeTeeService = sconeTeeService;
         this.iexecHubService = iexecHubService;
         this.computationService = computationService;
-        this.customDockerClient = customDockerClient;
         this.revealService = revealService;
-        this.publicConfigurationService = publicConfigurationService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
+
     }
-
-
 
     public boolean canAcceptMoreReplicates() {
         //return executor.getActiveCount() < maxNbExecutions;
         return true;
     }
 
-    @PostConstruct
-    public void initIt() {
-        corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
-    }
 
-
-
-    public boolean start(String chainTaskId, TaskNotificationExtra extra){
-        ContributionAuthorization contributionAuthorization;
-        if (extra == null || extra.getContributionAuthorization() == null){
-            log.error("Contribution auth missing [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        contributionAuthorization = extra.getContributionAuthorization();
-
-        contributionAuthorizations.putIfAbsent(chainTaskId, contributionAuthorization);
-
-        if (!contributionService.isContributionAuthorizationValid(contributionAuthorization, corePublicAddress)) {
-            log.error("The contribution contribAuth is NOT valid, the task will not be performed"
-                    + " [chainTaskId:{}, contribAuth:{}]", chainTaskId, contributionAuthorization);
-            return false;
-        }
-
-        // don't run if task is not initialized onChain
+    public boolean start(String chainTaskId){
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.error("Task not initialized onChain [chainTaskId:{}]", chainTaskId);
+            log.error("Cant start (task not initialized) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        Optional<TaskDescription> taskDescriptionFromChain =
-                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
-
-        if (!taskDescriptionFromChain.isPresent()) {
-            log.error("Cannot run, task description not found onChain [chainTaskId:{}]",
-                    chainTaskId);
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Cant start (taskDescription missing) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
-        TaskDescription taskDescription = taskDescriptionFromChain.get();
-        boolean isTeeTask = taskDescription.isTeeTask();
+        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
+            log.error("Cant start (cant contribute) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
 
-        // don't run if task needs TEE && TEE not supported;
-        if (isTeeTask && !workerConfigurationService.isTeeEnabled()) {
-            log.error("Task needs TEE, I don't support it [chainTaskId:{}]", chainTaskId);
+        if (taskDescription.isTeeTask() && !workerConfigurationService.isTeeEnabled()) {
+            log.error("Cant start (tee task but not supported) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         return true;
     }
 
-    boolean downloadApp(String chainTaskId) {
-        Optional<TaskDescription> taskDescriptionFromChain =
-                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
-        if (taskDescriptionFromChain.isEmpty()){
+
+    boolean downloadApp(String chainTaskId) {
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Cant download app (taskDescription missing) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
-        String error = checkContributionAbility(chainTaskId);
-        if (!error.isEmpty()) return false;
+        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
+            log.error("Cant download app (cant contribute) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
 
-        // pull app
-
-        boolean isAppDownloaded = computationService.downloadApp(chainTaskId, taskDescriptionFromChain.get());
-        if (!isAppDownloaded) {
-            String errorMessage = "Failed to pull application image, URI:" + taskDescriptionFromChain.get().getAppUri();
-            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+        if (!computationService.downloadApp(chainTaskId, taskDescription)) {
+            log.error("Cant download app (download failed) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
@@ -169,125 +130,186 @@ public class TaskManagerService {
     }
 
     boolean downloadData(String chainTaskId) {
-        Optional<TaskDescription> taskDescriptionFromChain =
-                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
-
-        if (taskDescriptionFromChain.isEmpty()){
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Cant download data (taskDescription missing) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
-        String dataUri = taskDescriptionFromChain.get().getDatasetUri();
+        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
+            log.error("Cant download data (cant contribute) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
 
-        String error = checkContributionAbility(chainTaskId);
-        if (!error.isEmpty()) return false;
-
-        // pull data
-
-        boolean isDatasetDownloaded = datasetService.downloadDataset(chainTaskId, dataUri);
-        if (!isDatasetDownloaded) {
-            customFeignClient.updateReplicateStatus(chainTaskId, DATA_DOWNLOAD_FAILED);
-            String errorMessage = "Failed to pull dataset, URI:" + dataUri;
-            log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
+        if (!datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri())){
+            log.error("Cant download data (download failed) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
         return true;
     }
 
-    public boolean compute(String chainTaskId) {
-        ContributionAuthorization contributionAuthorization = contributionAuthorizations.get(chainTaskId);
-
-        if (contributionAuthorization == null){
-            log.error("Contribution auth missing for compute [chainTaskId:{}]", chainTaskId);
+    boolean compute(String chainTaskId) {
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Cant compute (taskDescription missing) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
-        Optional<TaskDescription> taskDescriptionFromChain =
-                iexecHubService.getTaskDescriptionFromChain(chainTaskId);
-
-        if (taskDescriptionFromChain.isEmpty()){
+        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
+            log.error("Cant compute (cant contribute) [chainTaskId:{}]",chainTaskId);
             return false;
         }
 
-        String error = checkContributionAbility(chainTaskId);
-        if (!error.isEmpty()) return false;
+        if (!computationService.isAppDownloaded(taskDescription.getAppUri())){
+            log.error("Cant compute (app not downloaded) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
 
-        boolean isTeeTask = taskDescriptionFromChain.get().isTeeTask();
-
-
-        String imageExistenceError = checkIfAppImageExists(chainTaskId,
-                taskDescriptionFromChain.get().getAppUri());
-        if (!imageExistenceError.isEmpty()) return false;
+        //TODO add isDataSetDownloaded ?
 
         boolean isComputed;
-        if (isTeeTask) {
-            isComputed = computationService.runTeeComputation(taskDescriptionFromChain.get(), contributionAuthorization);
+        ContributionAuthorization contributionAuthorization = contributionService.getContributionAuthorization(chainTaskId);
+        if (taskDescription.isTeeTask()) {
+            isComputed = computationService.runTeeComputation(taskDescription, contributionAuthorization);
         } else {
-            isComputed = computationService.runNonTeeComputation(taskDescriptionFromChain.get(), contributionAuthorization);
+            isComputed = computationService.runNonTeeComputation(taskDescription, contributionAuthorization);
         }
 
-        //customFeignClient.updateReplicateStatus(chainTaskId, pair.getLeft());
-        //return pair.getRight();
+        if (!isComputed){
+            log.error("Cant compute (compute failed) [chainTaskId:{}]",chainTaskId);
+        }
+
         return isComputed;
     }
 
-    String checkContributionAbility(String chainTaskId) {
-        Optional<ReplicateStatusCause> oCannotContributeStatusCause =
-                contributionService.getCannotContributeStatusCause(chainTaskId);
+    public boolean contribute(String chainTaskId) {
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Cant contribute (taskDescription missing) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
 
-        if (!oCannotContributeStatusCause.isPresent()) return "";
+        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
+            log.error("Cant contribute (cant contribute) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
 
-        String errorMessage = "Cannot contribute";
-        log.error(errorMessage + " [chainTaskId:{}, cause:{}]", chainTaskId, oCannotContributeStatusCause.get());
-        customFeignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE, oCannotContributeStatusCause.get());
-        return errorMessage;
-    }
+        boolean hasEnoughGas = checkGasBalance(chainTaskId);
+        if (!hasEnoughGas){
+            log.error("Cant contribute (no more gas) [chainTaskId:{}]",chainTaskId);
+            System.exit(0);
+        }
 
-    String checkIfAppImageExists(String chainTaskId, String imageUri) {
-        if (customDockerClient.isImagePulled(imageUri)) return "";
-
-        String errorMessage = "Application image not found, URI:" + imageUri;
-        log.error(errorMessage + " [chainTaskId:{}]", chainTaskId);
-        customFeignClient.updateReplicateStatus(chainTaskId, COMPUTE_FAILED);
-        return errorMessage;
-    }
-
-    String getTaskDeterminismHash(String chainTaskId) {
         String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
-
-        if (isTeeTask && determinismHash.isEmpty()) {
-            log.error("Cannot continue, couldn't get TEE determinism hash [chainTaskId:{}]", chainTaskId);
-            //TODO change that to CAUSE
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
-            return "";
+        if (determinismHash.isEmpty()){
+            log.error("Cant contribute (determinism hash missing) [chainTaskId:{}]",chainTaskId);
+            return false;
         }
 
-        if (determinismHash.isEmpty()) {
-            log.error("Cannot continue, couldn't get determinism hash [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE, DETERMINISM_HASH_NOT_FOUND);
-            return "";
+        ContributionAuthorization contributionAuthorization = contributionService.getContributionAuthorization(chainTaskId);
+        String enclaveChallenge = contributionAuthorization.getEnclaveChallenge();
+        Optional<Signature> enclaveSignature = getVerifiedEnclaveSignature(chainTaskId, enclaveChallenge);
+        if (enclaveSignature.isEmpty()){//could be 0x0
+            log.error("Cant contribute (enclave signature missing) [chainTaskId:{}]",chainTaskId);
+            return false;
         }
 
-        return determinismHash;
+        Optional<ChainReceipt> chainReceipt =
+                contributionService.contribute(contributionAuthorization, determinismHash, enclaveSignature.get());
+
+        return isValidChainReceipt(chainTaskId, chainReceipt);
     }
 
+    public boolean reveal(String chainTaskId, TaskNotificationExtra extra) {
+        String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
+        if (determinismHash.isEmpty()){
+            log.error("Cant reveal (determinism hash missing) [chainTaskId:{}]",chainTaskId);
+            return false;
+        }
+
+        if (extra == null || extra.getBlockNumber() == 0){
+            log.error("Cant reveal (consensusBlock missing) [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+        long consensusBlock = extra.getBlockNumber();
+        boolean isBlockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
+        if (!isBlockReached) {
+            log.error("Cant reveal (consensus block not reached)[chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
+        boolean canReveal = revealService.canReveal(chainTaskId, determinismHash);
+        if (!canReveal) {
+            log.error("Cant reveal (cant reveal) [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
+        boolean hasEnoughGas = checkGasBalance(chainTaskId);
+        if (!hasEnoughGas){
+            log.error("Cant reveal (no more gas) [chainTaskId:{}]",chainTaskId);
+            System.exit(0);
+        }
+
+        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, determinismHash);
+
+        return  isValidChainReceipt(chainTaskId, oChainReceipt);
+    }
+
+    public ReplicateDetails uploadResult(String chainTaskId) {
+        boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
+        boolean isResultEncrypted = false;
+
+        if (isResultEncryptionNeeded) {
+            isResultEncrypted = resultService.encryptResult(chainTaskId);
+        }
+
+        if (isResultEncryptionNeeded && !isResultEncrypted) {
+            log.error("Cant upload (encrypt result failed) [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+
+        String resultLink = resultService.uploadResult(chainTaskId);
+        if (resultLink.isEmpty()) {
+            log.error("Cant upload (resultLink missing) [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+
+        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
+
+        log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]", chainTaskId, resultLink, callbackData);
+
+        ReplicateDetails details = ReplicateDetails.builder()
+                .resultLink(resultLink)
+                .chainCallbackData(callbackData)
+                .build();
+
+        return details;
+    }
+
+    public boolean complete(String chainTaskId) {
+        resultService.removeResult(chainTaskId);
+        return true;
+    }
+
+    public boolean abort(String chainTaskId) {
+        return resultService.removeResult(chainTaskId);
+    }
+
+
+    //TODO Move that to result service
     Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String signerAddress) {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
-        if (!isTeeTask) return Optional.of(SignatureUtils.emptySignature());
+        if (!isTeeTask){
+            return Optional.of(SignatureUtils.emptySignature());
+        }
 
         Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
                 resultService.readSconeEnclaveSignatureFile(chainTaskId);
-
         if (!oSconeEnclaveSignatureFile.isPresent()) {
             log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
-            log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
             return Optional.empty();
         }
-
         SconeEnclaveSignatureFile sconeEnclaveSignatureFile = oSconeEnclaveSignatureFile.get();
         Signature enclaveSignature = new Signature(sconeEnclaveSignatureFile.getSignature());
         String resultHash = sconeEnclaveSignatureFile.getResultHash();
@@ -298,8 +320,6 @@ public class TaskManagerService {
 
         if (!isValid) {
             log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
-            log.error("Cannot contribute, TEE execution not verified [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId, CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
             return Optional.empty();
         }
 
@@ -307,7 +327,9 @@ public class TaskManagerService {
     }
 
     boolean checkGasBalance(String chainTaskId) {
-        if (iexecHubService.hasEnoughGas()) return true;
+        if (iexecHubService.hasEnoughGas()){
+            return true;
+        }
 
         customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
         String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
@@ -316,6 +338,7 @@ public class TaskManagerService {
         return false;
     }
 
+    //TODO Move that to contribute & reveal services
     boolean isValidChainReceipt(String chainTaskId, Optional<ChainReceipt> oChainReceipt) {
         if (!oChainReceipt.isPresent()) {
             log.warn("The chain receipt is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
@@ -331,139 +354,4 @@ public class TaskManagerService {
         return true;
     }
 
-    public boolean contribute(String chainTaskId) {
-        ContributionAuthorization contributionAuthorization = contributionAuthorizations.get(chainTaskId);
-
-        if (contributionAuthorization == null){
-            log.error("Contribution auth missing for compute [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        String enclaveChallenge = contributionAuthorization.getEnclaveChallenge();
-        log.info("Trying to contribute [chainTaskId:{}]", chainTaskId);
-
-        String determinismHash = getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()) return false;
-
-        Optional<Signature> oEnclaveSignature = getVerifiedEnclaveSignature(chainTaskId, enclaveChallenge);
-        if (!oEnclaveSignature.isPresent()) return false;
-
-        Signature enclaveSignature = oEnclaveSignature.get();
-
-        String contributionAbilityError = checkContributionAbility(chainTaskId);
-        if (!contributionAbilityError.isEmpty()) return false;
-
-        //customFeignClient.updateReplicateStatus(chainTaskId, ReplicateStatus.CAN_CONTRIBUTE);
-
-        boolean hasEnoughGas = checkGasBalance(chainTaskId);
-        if (!hasEnoughGas) System.exit(0);
-
-        Optional<ChainReceipt> oChainReceipt =
-                contributionService.contribute(contributionAuthorization, determinismHash, enclaveSignature);
-
-        boolean isValidChainReceipt = isValidChainReceipt(chainTaskId, oChainReceipt);
-        if (isValidChainReceipt){
-            return true;
-        }
-        return false;
-    }
-
-    public boolean reveal(String chainTaskId, TaskNotificationExtra extra) {
-
-        if (extra == null || extra.getBlockNumber() == 0){
-            log.error("ConsensusBlock missing for reveal [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-        long consensusBlock = extra.getBlockNumber();
-
-        log.info("Trying to reveal [chainTaskId:{}]", chainTaskId);
-        String determinismHash = getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()) return false;
-
-        boolean isBlockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
-        boolean canReveal = revealService.canReveal(chainTaskId, determinismHash);
-
-        if (!isBlockReached || !canReveal) {
-            log.error("The worker will not be able to reveal [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId, CANT_REVEAL);
-            return false;
-        }
-
-        boolean hasEnoughGas = checkGasBalance(chainTaskId);
-        if (!hasEnoughGas) System.exit(0);
-
-        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, determinismHash);
-
-        boolean isValidChainReceipt = isValidChainReceipt(chainTaskId, oChainReceipt);
-        if (isValidChainReceipt){
-            return true;
-        }
-
-        return false;
-    }
-
-    public void abortConsensusReached(String chainTaskId) {
-        resultService.removeResult(chainTaskId);
-        customFeignClient.updateReplicateStatus(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
-    }
-
-    public boolean abort(String chainTaskId) {
-        return resultService.removeResult(chainTaskId);
-    }
-
-    public ReplicateDetails uploadResult(String chainTaskId) {
-
-        boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
-        boolean isResultEncrypted = false;
-
-        if (isResultEncryptionNeeded) {
-            isResultEncrypted = resultService.encryptResult(chainTaskId);
-        }
-
-        if (isResultEncryptionNeeded && !isResultEncrypted) {
-            log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-
-        String resultLink = resultService.uploadResult(chainTaskId);
-
-        if (resultLink.isEmpty()) {
-            log.error("ResultLink missing (aborting) [chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-
-        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
-
-        log.info("Uploaded result with details [chainTaskId:{}, resultLink:{}, callbackData:{}]",
-                chainTaskId, resultLink, callbackData);
-
-        ReplicateDetails details = ReplicateDetails.builder()
-                .resultLink(resultLink)
-                .chainCallbackData(callbackData)
-                .build();
-
-        return details;
-    }
-
-    public boolean completeTask(String chainTaskId) {
-        resultService.removeResult(chainTaskId);
-        return true;
-    }
-
-
-        /*
-    public void computeOrContribute(ContributionAuthorization contributionAuth) {
-
-        String chainTaskId = contributionAuth.getChainTaskId();
-
-        boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
-
-        if (isResultAvailable) {
-            log.info("Result found, will restart task from CONTRIBUTING [chainTaskId:{}]", chainTaskId);
-            contribute(contributionAuth);
-            return;
-        }
-
-        addReplicate(contributionAuth);
-        */
 }
