@@ -79,7 +79,7 @@ public class ComputationService {
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
         List<String> env = Arrays.asList(DATASET_FILENAME + "=" + datasetFilename);
 
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, env, cmd);
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(chainTaskId, imageUri, env, cmd);
         stdout = customDockerClient.dockerRun(chainTaskId, containerConfig, maxExecutionTime);
 
         if (stdout.isEmpty()) {
@@ -122,8 +122,8 @@ public class ComputationService {
         sconeAppEnv.add(datasetEnv);
         sconeEncrypterEnv.add(datasetEnv);
 
-        ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, sconeAppEnv, cmd);
-        ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, sconeEncrypterEnv, cmd);
+        ContainerConfig sconeAppConfig = customDockerClient.buildSconeAppContainerConfig(chainTaskId, imageUri, sconeAppEnv, cmd);
+        ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeAppContainerConfig(chainTaskId, imageUri, sconeEncrypterEnv, cmd);
 
         if (sconeAppConfig == null || sconeEncrypterConfig == null) {
             stdout = "Could not build scone container config";

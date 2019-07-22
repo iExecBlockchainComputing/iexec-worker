@@ -2,15 +2,22 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
+import com.spotify.docker.client.DockerClient.ListContainersParam;
 import com.spotify.docker.client.DockerClient.LogsParam;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
+import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Device;
+import com.spotify.docker.client.messages.EndpointConfig;
 import com.spotify.docker.client.messages.HostConfig;
+import com.spotify.docker.client.messages.NetworkConfig;
+import com.spotify.docker.client.messages.ContainerConfig.NetworkingConfig;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -19,79 +26,83 @@ import javax.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Slf4j
 @Service
 public class CustomDockerClient {
 
+    private static final String WORKER_DOCKER_NETWORK = "iexec-worker-net";
     private static final String EXITED = "exited";
 
     private DefaultDockerClient docker;
+    private String workerDockerNetworkId;
     private WorkerConfigurationService workerConfigurationService;
+    private SconeLasConfiguration sconeLasConfiguration;
 
-    public CustomDockerClient(WorkerConfigurationService workerConfigurationService) throws DockerCertificateException {
+    public CustomDockerClient(WorkerConfigurationService workerConfigurationService,
+                              SconeLasConfiguration sconeLasConfiguration) throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
+        workerDockerNetworkId = createNetwork(WORKER_DOCKER_NETWORK);
         this.workerConfigurationService = workerConfigurationService;
+        this.sconeLasConfiguration = sconeLasConfiguration;
     }
 
-    public ContainerConfig buildContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
-        if (imageUri == null || imageUri.isEmpty()) return null;
-
-        HostConfig hostConfig = getHostConfig(chainTaskId);
-        if (hostConfig == null) return null;
-
-        return buildCommonContainerConfig(hostConfig, imageUri, env, cmd);
-    }
-
-    public ContainerConfig buildSconeContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
-        if (imageUri == null || imageUri.isEmpty()) return null;
-
-        HostConfig hostConfig = getSconeHostConfig(chainTaskId);
-        if (hostConfig == null) return null;
-
-        return buildCommonContainerConfig(hostConfig, imageUri, env, cmd);
-    }
-
-    private ContainerConfig buildCommonContainerConfig(HostConfig hostConfig, String imageUri, List<String> env, String... cmd) {
-        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
-
-        if (cmd != null && cmd.length != 0) containerConfigBuilder.cmd(cmd);
-
-        return containerConfigBuilder.image(imageUri)
-                .hostConfig(hostConfig)
-                .env(env)
-                .build();
-    }
-
-    private HostConfig getHostConfig(String chainTaskId) {
+    public ContainerConfig buildAppContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
         HostConfig.Bind inputBind = createInputBind(chainTaskId);
         HostConfig.Bind outputBind = createOutputBind(chainTaskId);
 
         if (inputBind == null || outputBind == null) return null;
 
-        return HostConfig.builder()
+        HostConfig hostConfig = HostConfig.builder()
                 .appendBinds(inputBind, outputBind)
                 .build();
+
+        return commonContainerConfigBuilder(hostConfig, imageUri, env, cmd).build();
     }
 
-    private HostConfig getSconeHostConfig(String chainTaskId) {
+    public ContainerConfig buildSconeAppContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
         HostConfig.Bind inputBind = createInputBind(chainTaskId);
         HostConfig.Bind outputBind = createOutputBind(chainTaskId);
         HostConfig.Bind sconeBind = createSconeBind(chainTaskId);
 
         if (inputBind == null || outputBind == null || sconeBind == null) return null;
 
-        Device device = Device.builder()
-                .pathOnHost("/dev/isgx")
-                .pathInContainer("/dev/isgx")
-                .cgroupPermissions("rwm")
+        HostConfig hostConfig = HostConfig.builder()
+                .appendBinds(inputBind, outputBind, sconeBind)
+                .devices(getSgxDevice())
                 .build();
 
-        return HostConfig.builder()
-                .appendBinds(inputBind, outputBind, sconeBind)
-                .devices(device)
+        return commonContainerConfigBuilder(hostConfig, imageUri, env, cmd).build();
+    }
+
+    public ContainerConfig buildSconeLasContainerConfig(String imageUri, String port) {
+        HostConfig hostConfig = HostConfig.builder()
+                .devices(getSgxDevice())
                 .build();
+
+        return commonContainerConfigBuilder(hostConfig, imageUri, List.of(), new String[0])
+                .exposedPorts(port)
+                .build();
+    }
+
+    private ContainerConfig.Builder commonContainerConfigBuilder(HostConfig hostConfig, String imageUri, List<String> env, String... cmd) {
+        if (imageUri == null || imageUri.isEmpty()) return null;
+
+        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
+
+        EndpointConfig endpointConfig = EndpointConfig.builder().build();
+        Map<String, EndpointConfig> endpointConfigMap = Map.of(WORKER_DOCKER_NETWORK, endpointConfig);
+        NetworkingConfig networkingConfig = NetworkingConfig.create(endpointConfigMap);
+        containerConfigBuilder.networkingConfig(networkingConfig);
+
+        if (cmd != null && cmd.length != 0) containerConfigBuilder.cmd(cmd);
+
+        return containerConfigBuilder.image(imageUri)
+                .hostConfig(hostConfig)
+                .env(env);
     }
 
     private HostConfig.Bind createInputBind(String chainTaskId) {
@@ -122,6 +133,14 @@ public class CustomDockerClient {
         return HostConfig.Bind.from(source)
                 .to(dest)
                 .readOnly(false)
+                .build();
+    }
+
+    private Device getSgxDevice() {
+        return Device.builder()
+                .pathOnHost("/dev/isgx")
+                .pathInContainer("/dev/isgx")
+                .cgroupPermissions("rwm")
                 .build();
     }
 
@@ -162,11 +181,11 @@ public class CustomDockerClient {
         log.info("Running computation [chainTaskId:{}, image:{}, cmd:{}]",
                 chainTaskId, containerConfig.image(), containerConfig.cmd());
 
-        // docker create
+        // docker container create
         String containerId = createContainer(chainTaskId, containerConfig);
         if (containerId.isEmpty()) return "";
 
-        // docker start
+        // docker container start
         boolean isContainerStarted = startContainer(containerId);
 
         if (!isContainerStarted) return "";
@@ -174,39 +193,77 @@ public class CustomDockerClient {
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(chainTaskId, containerId, executionTimeoutDate);
 
-        // docker stop
+        // docker container stop
         stopContainer(containerId);
 
         log.info("Computation completed [chainTaskId:{}]", chainTaskId);
 
-        // docker logs
+        // docker container logs
         String stdout = getContainerLogs(containerId);
 
-        // docker rm
+        // docker container rm
         removeContainer(containerId);
         return stdout;
     }
 
-    public String createContainer(String chainTaskId, ContainerConfig containerConfig) {
-        log.debug("Creating container [chainTaskId:{}]", chainTaskId);
+    public void runContainerAsService(String containerName, ContainerConfig containerConfig) {
+        if (containerConfig == null) {
+            log.error("Could not run container as a service, container config is null "
+                    + "[containerName:{}]", containerName);
+            return;
+        }
+
+        log.info("Running container as a service [containerName:{}, image:{}, cmd:{}]",
+                containerName, containerConfig.image(), containerConfig.cmd());
+
+        // docker container create
+        String containerId = createContainer(containerName, containerConfig);
+        if (containerId.isEmpty()) return;
+
+        // docker container start
+        startContainer(containerId);
+    }
+
+    private Container getContainerByName(String containerName) {
+        log.debug("Getting container by name [containerName:{}]", containerName);
+        List<Container> containerList;
+
+        try {
+            containerList = docker.listContainers(ListContainersParam.allContainers())
+                    .stream()
+                    .filter(container -> container.names().contains(containerName))
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Failed to get container by name [containerName:{}]", containerName);
+            e.printStackTrace();
+            return null;
+        }
+
+        if (containerList.isEmpty()) return null;
+        return containerList.get(0);
+    }
+
+    public String createContainer(String containerName, ContainerConfig containerConfig) {
+        log.debug("Creating container [containerName:{}]", containerName);
 
         if (containerConfig == null) return "";
-
+        removeDuplicateContainer(containerName);
         ContainerCreation containerCreation;
 
         try {
-            containerCreation = docker.createContainer(containerConfig);
+            containerCreation = docker.createContainer(containerConfig, containerName);
         } catch (DockerException | InterruptedException e) {
-            log.error("Failed to create container [chainTaskId:{}, image:{}, cmd:{}]",
-                    chainTaskId, containerConfig.image(), containerConfig.cmd());
+            log.error("Failed to create container [containerName:{}, image:{}, cmd:{}]",
+                    containerName, containerConfig.image(), containerConfig.cmd());
             e.printStackTrace();
             return "";
         }
 
         if (containerCreation == null) return "";
 
-        log.info("Created container [chainTaskId:{}, containerId:{}]",
-                chainTaskId, containerCreation.id());
+        log.info("Created container [containerName:{}, containerId:{}]",
+                containerName, containerCreation.id());
 
         return containerCreation.id() != null ? containerCreation.id() : "";
     }
@@ -292,6 +349,21 @@ public class CustomDockerClient {
         return true;
     }
 
+    private boolean removeContainerByName(String containerName) {
+        Container container = getContainerByName(containerName);
+        return removeContainer(container.id());
+    }
+
+    private void removeDuplicateContainer(String containerName) {
+        log.debug("Trying to remove duplicate container [containerName:{}]", containerName);
+
+        Container container = getContainerByName(containerName);
+        if (container == null) return;
+
+        log.info("Found duplicate container, will remove it [containerName:{}]", containerName);
+        removeContainer(container.id());
+    }
+
     public boolean isContainerExited(String containerId) {
         return getContainerStatus(containerId).equals(EXITED);
     }
@@ -310,8 +382,35 @@ public class CustomDockerClient {
         return new Date().after(executionTimeoutDate);
     }
 
+    private String createNetwork(String name) {
+        NetworkConfig networkConfig = NetworkConfig.builder()
+                .driver("bridge")
+                .checkDuplicate(true)
+                .name(name)
+                .build();
+
+        try {
+            return docker.createNetwork(networkConfig).id();
+        } catch (Exception e) {
+            log.error("Failed to create docker network [name:{}]", name);
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    private void removeNetwork(String id) {
+        try {
+            docker.removeNetwork(workerDockerNetworkId);
+        } catch (Exception e) {
+            log.error("Failed to remove docker network [id:{}]", id);
+            e.printStackTrace();
+        }
+    }
+
     @PreDestroy
     void onPreDestroy() {
+        removeContainerByName(sconeLasConfiguration.getContainerName());
+        removeNetwork(workerDockerNetworkId);
         docker.close();
     }
 }

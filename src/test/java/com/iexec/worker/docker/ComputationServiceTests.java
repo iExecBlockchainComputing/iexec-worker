@@ -80,7 +80,7 @@ public class ComputationServiceTests {
 
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
+        when(customDockerClient.buildAppContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout);
@@ -102,7 +102,7 @@ public class ComputationServiceTests {
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
-        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
+        when(customDockerClient.buildAppContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout);
@@ -124,7 +124,7 @@ public class ComputationServiceTests {
         when(smsService.fetchTaskSecrets(any())).thenReturn(true);
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
-        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
+        when(customDockerClient.buildAppContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout);
@@ -153,7 +153,7 @@ public class ComputationServiceTests {
         when(sconeTeeService.createSconeSecureSession(contributionAuth))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
-        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
+        when(customDockerClient.buildSconeAppContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout1)
@@ -208,7 +208,7 @@ public class ComputationServiceTests {
         when(sconeTeeService.createSconeSecureSession(contributionAuth))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
-        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any())).thenReturn(null);
+        when(customDockerClient.buildSconeAppContainerConfig(any(), any(), any(), any())).thenReturn(null);
 
         Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
 
@@ -229,7 +229,7 @@ public class ComputationServiceTests {
         when(sconeTeeService.createSconeSecureSession(contributionAuth))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
-        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
+        when(customDockerClient.buildSconeAppContainerConfig(any(), any(), any(), any()))
                 .thenReturn(containerConfig);
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn("");

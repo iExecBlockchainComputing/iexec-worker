@@ -71,7 +71,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(getDockerIexecOut());
 
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 IMAGE_URI, ENV, CMD);
 
         assertThat(containerConfig.image()).isEqualTo(IMAGE_URI);
@@ -91,7 +91,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(getDockerIexecOut());
 
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 "", ENV, CMD);
 
         assertThat(containerConfig).isNull();
@@ -103,7 +103,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("");
 
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 IMAGE_URI, ENV, CMD);
 
         assertThat(containerConfig).isNull();
@@ -120,7 +120,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID))
                 .thenReturn(getDockerScone());
 
-        ContainerConfig containerConfig = customDockerClient.buildSconeContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildSconeAppContainerConfig(CHAIN_TASK_ID,
                 IMAGE_URI, ENV, CMD);
 
         assertThat(containerConfig.image()).isEqualTo(IMAGE_URI);
@@ -147,7 +147,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID))
                 .thenReturn(getDockerScone());
 
-        ContainerConfig containerConfig = customDockerClient.buildSconeContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildSconeAppContainerConfig(CHAIN_TASK_ID,
                 "", ENV, CMD);
 
         assertThat(containerConfig).isNull();
@@ -160,7 +160,7 @@ public class CustomDockerClientTests {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("");
         when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID)).thenReturn("");
 
-        ContainerConfig containerConfig = customDockerClient.buildSconeContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildSconeAppContainerConfig(CHAIN_TASK_ID,
                 IMAGE_URI, ENV, CMD);
 
         assertThat(containerConfig).isNull();
@@ -224,7 +224,7 @@ public class CustomDockerClientTests {
     public void shouldComputeAndGetLogs() {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(getDockerInput());
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(getDockerIexecOut());
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 ALPINE_LATEST, ENV, "echo", "Hello from Docker alpine!");
 
         String stdout = customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, MAX_EXECUTION_TIME);
@@ -236,7 +236,7 @@ public class CustomDockerClientTests {
     public void shouldStopComputingIfTooLong() {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(getDockerInput());
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(getDockerIexecOut());
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 ALPINE_LATEST, ENV, "sh", "-c", "sleep 30 && echo Hello from Docker alpine!");
 
         String stdout = customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, MAX_EXECUTION_TIME);
@@ -284,7 +284,7 @@ public class CustomDockerClientTests {
     public void shouldStopAlreadyStoppedContainer() {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(getDockerInput());
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(getDockerIexecOut());
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 ALPINE_LATEST, ENV, "sh", "-c", "sleep 30 && echo Hello from Docker alpine!");
 
         String containerId = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
@@ -313,7 +313,7 @@ public class CustomDockerClientTests {
     public void shouldNotRemoveRunningContainer() {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(getDockerInput());
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(getDockerIexecOut());
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(CHAIN_TASK_ID,
+        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(CHAIN_TASK_ID,
                 ALPINE_LATEST, ENV, "sh", "-c", "sleep 30 && echo Hello from Docker alpine!");
 
         String containerId = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
