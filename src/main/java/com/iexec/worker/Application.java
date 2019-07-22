@@ -10,11 +10,11 @@ import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -58,6 +58,9 @@ public class Application implements CommandLineRunner {
     @Autowired
     private VersionService versionService;
 
+    @Autowired
+    private SconeTeeService sconeTeeService;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -65,15 +68,6 @@ public class Application implements CommandLineRunner {
     @Override
     public void run(String... args) {
         String workerAddress = credentialsService.getCredentials().getAddress();
-        WorkerConfigurationModel model = WorkerConfigurationModel.builder()
-                .name(workerConfig.getWorkerName())
-                .walletAddress(workerAddress)
-                .os(workerConfig.getOS())
-                .cpu(workerConfig.getCPU())
-                .cpuNb(workerConfig.getNbCPU())
-                .memorySize(workerConfig.getMemorySize())
-                .teeEnabled(workerConfig.isTeeEnabled())
-                .build();
 
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
 
@@ -100,6 +94,22 @@ public class Application implements CommandLineRunner {
             LoggingUtils.printHighlightedMessage(noEnoughGas);
             System.exit(0);
         }
+
+        // check if worker is TEE enabled
+        if (workerConfig.isTeeEnabled()) {
+            log.info("SGX is enabled, worker can execute TEE tasks");
+            sconeTeeService.startLasService();
+        }
+
+        WorkerConfigurationModel model = WorkerConfigurationModel.builder()
+                .name(workerConfig.getWorkerName())
+                .walletAddress(workerAddress)
+                .os(workerConfig.getOS())
+                .cpu(workerConfig.getCPU())
+                .cpuNb(workerConfig.getNbCPU())
+                .memorySize(workerConfig.getMemorySize())
+                .teeEnabled(workerConfig.isTeeEnabled())
+                .build();
 
         customFeignClient.registerWorker(model);
         log.info("Registered the worker to the core [worker:{}]", model);
