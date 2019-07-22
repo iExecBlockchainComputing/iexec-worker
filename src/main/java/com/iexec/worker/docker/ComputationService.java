@@ -32,7 +32,6 @@ public class ComputationService {
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
     private ResultService resultService;
-    //HashMap<String, ReplicateStatus> computed = new HashMap<>();
 
     public ComputationService(SmsService smsService,
                               DatasetService datasetService,
@@ -96,8 +95,6 @@ public class ComputationService {
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
             stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            //computed.putIfAbsent(chainTaskId, COMPUTE_FAILED);
-            //return Pair.of(COMPUTE_FAILED, stdout);
             return false;
         }
 
@@ -111,14 +108,11 @@ public class ComputationService {
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            //return Pair.of(COMPUTE_FAILED, stdout);
             return false;
         }
 
         resultService.saveResult(chainTaskId, taskDescription, stdout);
 
-        //retu ReplicateStatusCause, String ?
-        //return Pair.of(COMPUTED, stdout);
         return true;
     }
 
@@ -136,7 +130,6 @@ public class ComputationService {
         if (secureSessionId.isEmpty()) {
             stdout = "Could not generate scone secure session for tee computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            //return Pair.of(COMPUTE_FAILED, stdout);
             return false;
         }
 
@@ -146,7 +139,6 @@ public class ComputationService {
         if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
             stdout = "Could not create scone docker environment";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            //return Pair.of(COMPUTE_FAILED, stdout);
             return false;
         }
 
@@ -161,7 +153,6 @@ public class ComputationService {
         if (sconeAppConfig == null || sconeEncrypterConfig == null) {
             stdout = "Could not build scone container config";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            //return Pair.of(COMPUTE_FAILED, stdout);
             return false;
         }
 
@@ -171,13 +162,11 @@ public class ComputationService {
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
             log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            //return Pair.of(COMPUTE_FAILED, stdout);
             return false;
         }
 
         // encrypt result
         stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
-        //return Pair.of(COMPUTED, stdout);
         return  true;
     }
 }

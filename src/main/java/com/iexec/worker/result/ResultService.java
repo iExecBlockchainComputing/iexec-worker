@@ -188,25 +188,6 @@ public class ResultService {
         }
     }
 
-    /* Remove that
-
-        if (isTeeTask && determinismHash.isEmpty()) {
-            log.error("Cannot continue, couldn't get TEE determinism hash [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE, TEE_EXECUTION_NOT_VERIFIED);
-            return "";
-        }
-
-        if (determinismHash.isEmpty()) {
-            log.error("Cannot continue, couldn't get determinism hash [chainTaskId:{}]", chainTaskId);
-            customFeignClient.updateReplicateStatus(chainTaskId,
-                    CANT_CONTRIBUTE, DETERMINISM_HASH_NOT_FOUND);
-            return "";
-        }
-
-
-     */
-
     private String getNonTeeDeterminismHash(String chainTaskId) {
         String hash = "";
         String filePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)

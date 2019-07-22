@@ -87,9 +87,6 @@ public class ReplicateDemandService {
                 .taskNotificationExtra(notificationExtra)
                 .build();
 
-        //subscriptionService.handleSubscription(taskNotification);
-        //taskNotificationService.onTaskNotification(taskNotification);
-
         subscriptionService.subscribeToTopic(chainTaskId);
         applicationEventPublisher.publishEvent(taskNotification);
 
