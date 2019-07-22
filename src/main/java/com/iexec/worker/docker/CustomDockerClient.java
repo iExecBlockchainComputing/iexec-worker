@@ -5,7 +5,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient.ListContainersFilterParam;
 import com.spotify.docker.client.DockerClient.ListContainersParam;
 import com.spotify.docker.client.DockerClient.ListNetworksParam;
 import com.spotify.docker.client.DockerClient.LogsParam;
@@ -19,7 +18,6 @@ import com.spotify.docker.client.messages.EndpointConfig;
 import com.spotify.docker.client.messages.HostConfig;
 import com.spotify.docker.client.messages.Network;
 import com.spotify.docker.client.messages.NetworkConfig;
-import com.spotify.docker.client.messages.NetworkCreation;
 import com.spotify.docker.client.messages.ContainerConfig.NetworkingConfig;
 
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +41,6 @@ public class CustomDockerClient {
     private static final String EXITED = "exited";
 
     private DefaultDockerClient docker;
-    private String workerDockerNetworkId;
     private WorkerConfigurationService workerConfigurationService;
     private SconeLasConfiguration sconeLasConfiguration;
 
@@ -52,7 +49,7 @@ public class CustomDockerClient {
         docker = DefaultDockerClient.fromEnv().build();
 
         if (getNetworkListByName(WORKER_DOCKER_NETWORK).isEmpty()) {
-            workerDockerNetworkId = createNetwork(WORKER_DOCKER_NETWORK);
+            createNetwork(WORKER_DOCKER_NETWORK);
         }
 
         this.workerConfigurationService = workerConfigurationService;
@@ -436,7 +433,7 @@ public class CustomDockerClient {
             return "";
         }
 
-        log.debug("Created network [networkName:{}, networkId]", networkName, networkId));
+        log.debug("Created network [networkName:{}, networkId]", networkName, networkId);
         return networkId;
     }
 
