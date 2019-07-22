@@ -13,8 +13,10 @@ import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
+import com.spotify.docker.client.messages.ContainerConfig;
 
 import org.springframework.stereotype.Service;
 
@@ -33,18 +35,30 @@ public class SconeTeeService {
     private SconeLasConfiguration sconeLasConfiguration;
     private WorkerConfigurationService workerConfigurationService;
     private PublicConfigurationService publicConfigurationService;
+    private CustomDockerClient customDockerClient;
     private SmsService smsService;
 
 
-    public SconeTeeService(SmsService smsService,
-                           SconeLasConfiguration sconeLasConfiguration,
+    public SconeTeeService(SconeLasConfiguration sconeLasConfiguration,
                            WorkerConfigurationService workerConfigurationService,
-                           PublicConfigurationService publicConfigurationService) {
+                           PublicConfigurationService publicConfigurationService,
+                           CustomDockerClient customDockerClient,
+                           SmsService smsService) {
 
-        this.smsService = smsService;
         this.sconeLasConfiguration = sconeLasConfiguration;
         this.workerConfigurationService = workerConfigurationService;
         this.publicConfigurationService = publicConfigurationService;
+        this.customDockerClient = customDockerClient;
+        this.smsService = smsService;
+    }
+
+    public void startLasService() {
+        String imageUri = sconeLasConfiguration.getImageUri();
+        String port = sconeLasConfiguration.getPort();
+        String lasContainerName = sconeLasConfiguration.getContainerName();
+
+        ContainerConfig lasContainerConfig = customDockerClient.buildSconeLasContainerConfig(imageUri, port);
+        customDockerClient.runContainerAsService(lasContainerName, lasContainerConfig);
     }
 
     public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
@@ -79,7 +93,7 @@ public class SconeTeeService {
 
     public ArrayList<String> buildSconeDockerEnv(String sconeConfigId) {
         SconeConfig sconeConfig = SconeConfig.builder()
-                .sconeLasAddress(sconeLasConfiguration.getURL())
+                .sconeLasAddress(sconeLasConfiguration.getUrl())
                 .sconeCasAddress(publicConfigurationService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
                 .build();

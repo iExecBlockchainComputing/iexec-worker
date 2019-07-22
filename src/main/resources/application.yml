@@ -28,8 +28,11 @@ wallet:
 
 scone:
   las:
-    host: ${IEXEC_SCONE_LAS_HOST:localhost}
-    port: ${IEXEC_SCONE_LAS_PORT:18766}
+    # host: ${IEXEC_SCONE_LAS_HOST:localhost}
+    image: ${IEXEC_LAS_IMAGE:nexus.iex.ec/iexec-las}
+    version: ${IEXEC_LAS_VERSION:1.0.0}
+    port: ${IEXEC_LAS_PORT:18766}
+    containerName: ${IEXEC_LAS_CONTAINER_NAME:iexec-las}
 
 decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
 encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
