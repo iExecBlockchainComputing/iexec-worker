@@ -5,7 +5,9 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
+import com.spotify.docker.client.DockerClient.ListContainersFilterParam;
 import com.spotify.docker.client.DockerClient.ListContainersParam;
+import com.spotify.docker.client.DockerClient.ListNetworksParam;
 import com.spotify.docker.client.DockerClient.LogsParam;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
@@ -15,7 +17,9 @@ import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Device;
 import com.spotify.docker.client.messages.EndpointConfig;
 import com.spotify.docker.client.messages.HostConfig;
+import com.spotify.docker.client.messages.Network;
 import com.spotify.docker.client.messages.NetworkConfig;
+import com.spotify.docker.client.messages.NetworkCreation;
 import com.spotify.docker.client.messages.ContainerConfig.NetworkingConfig;
 
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +28,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PreDestroy;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +50,11 @@ public class CustomDockerClient {
     public CustomDockerClient(WorkerConfigurationService workerConfigurationService,
                               SconeLasConfiguration sconeLasConfiguration) throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
-        workerDockerNetworkId = createNetwork(WORKER_DOCKER_NETWORK);
+
+        if (getNetworkListByName(WORKER_DOCKER_NETWORK).isEmpty()) {
+            workerDockerNetworkId = createNetwork(WORKER_DOCKER_NETWORK);
+        }
+
         this.workerConfigurationService = workerConfigurationService;
         this.sconeLasConfiguration = sconeLasConfiguration;
     }
@@ -60,7 +69,10 @@ public class CustomDockerClient {
                 .appendBinds(inputBind, outputBind)
                 .build();
 
-        return commonContainerConfigBuilder(hostConfig, imageUri, env, cmd).build();
+        ContainerConfig.Builder commonConfigBuilder =
+                commonContainerConfigBuilder(hostConfig, imageUri, env, cmd);
+
+        return commonConfigBuilder != null ? commonConfigBuilder.build() : null;
     }
 
     public ContainerConfig buildSconeAppContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
@@ -75,17 +87,28 @@ public class CustomDockerClient {
                 .devices(getSgxDevice())
                 .build();
 
-        return commonContainerConfigBuilder(hostConfig, imageUri, env, cmd).build();
+        ContainerConfig.Builder commonConfigBuilder =
+                commonContainerConfigBuilder(hostConfig,imageUri, env, cmd);
+
+        return commonConfigBuilder != null ? commonConfigBuilder.build() : null;
     }
 
     public ContainerConfig buildSconeLasContainerConfig(String imageUri, String port) {
+        try {
+            Integer.parseInt(port);
+        } catch (NumberFormatException e) {
+            log.error("Cannot build LAS container config, invalid port number [portNumber:{}]", port);
+            return null;
+        }
+
         HostConfig hostConfig = HostConfig.builder()
                 .devices(getSgxDevice())
                 .build();
 
-        return commonContainerConfigBuilder(hostConfig, imageUri, List.of(), new String[0])
-                .exposedPorts(port)
-                .build();
+        ContainerConfig.Builder commonConfigBuilder =
+                commonContainerConfigBuilder(hostConfig, imageUri, List.of(), new String[0]);
+
+        return commonConfigBuilder != null ? commonConfigBuilder.exposedPorts(port).build() : null;
     }
 
     private ContainerConfig.Builder commonContainerConfigBuilder(HostConfig hostConfig, String imageUri, List<String> env, String... cmd) {
@@ -206,7 +229,7 @@ public class CustomDockerClient {
         return stdout;
     }
 
-    public void runContainerAsService(String containerName, ContainerConfig containerConfig) {
+    public void runContainerAsAService(String containerName, ContainerConfig containerConfig) {
         if (containerConfig == null) {
             log.error("Could not run container as a service, container config is null "
                     + "[containerName:{}]", containerName);
@@ -231,7 +254,7 @@ public class CustomDockerClient {
         try {
             containerList = docker.listContainers(ListContainersParam.allContainers())
                     .stream()
-                    .filter(container -> container.names().contains(containerName))
+                    .filter(container -> container.names().contains("/" + containerName))
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
@@ -382,35 +405,60 @@ public class CustomDockerClient {
         return new Date().after(executionTimeoutDate);
     }
 
-    private String createNetwork(String name) {
+    // we may have multiple networks having the same name
+    // but different IDs.
+    private List<Network> getNetworkListByName(String networkName) {
+        log.debug("Getting network list by name [networkName:{}]", networkName);
+
+        try {
+            return docker.listNetworks(ListNetworksParam.byNetworkName(networkName));
+        } catch (Exception e) {
+            log.error("Failed to get network list by name [networkName:{}]", networkName);
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
+    private String createNetwork(String networkName) {
+        log.debug("Creating network [networkName:{}]", networkName);
         NetworkConfig networkConfig = NetworkConfig.builder()
                 .driver("bridge")
                 .checkDuplicate(true)
-                .name(name)
+                .name(networkName)
                 .build();
 
+        String networkId;
         try {
-            return docker.createNetwork(networkConfig).id();
+            networkId = docker.createNetwork(networkConfig).id();
         } catch (Exception e) {
-            log.error("Failed to create docker network [name:{}]", name);
+            log.error("Failed to create docker network [name:{}]", networkName);
             e.printStackTrace();
             return "";
         }
+
+        log.debug("Created network [networkName:{}, networkId]", networkName, networkId));
+        return networkId;
     }
 
-    private void removeNetwork(String id) {
+    private void removeNetwork(String networkId) {
+        log.debug("Removing network [networkId:{}]", networkId);
         try {
-            docker.removeNetwork(workerDockerNetworkId);
+            docker.removeNetwork(networkId);
+            log.debug("Removed network [networkId:{}]", networkId);
         } catch (Exception e) {
-            log.error("Failed to remove docker network [id:{}]", id);
+            log.error("Failed to remove docker network [networkId:{}]", networkId);
             e.printStackTrace();
         }
     }
 
+    // TODO: clean all containers connecting to
+    // the network before removing it
     @PreDestroy
     void onPreDestroy() {
         removeContainerByName(sconeLasConfiguration.getContainerName());
-        removeNetwork(workerDockerNetworkId);
+        for (Network network : getNetworkListByName(WORKER_DOCKER_NETWORK)) {
+            removeNetwork(network.id());
+        }
         docker.close();
     }
 }

@@ -58,7 +58,7 @@ public class SconeTeeService {
         String lasContainerName = sconeLasConfiguration.getContainerName();
 
         ContainerConfig lasContainerConfig = customDockerClient.buildSconeLasContainerConfig(imageUri, port);
-        customDockerClient.runContainerAsService(lasContainerName, lasContainerConfig);
+        customDockerClient.runContainerAsAService(lasContainerName, lasContainerConfig);
     }
 
     public String createSconeSecureSession(ContributionAuthorization contributionAuth) {

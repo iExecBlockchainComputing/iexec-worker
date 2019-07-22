@@ -1,7 +1,6 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
-import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import org.junit.Before;

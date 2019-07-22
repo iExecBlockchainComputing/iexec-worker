@@ -62,7 +62,7 @@ public class CustomDockerClientTests {
     public String getDockerIexecOut() { return getDockerOutput() + "/iexec_out"; }
     public String getDockerScone() { return DOCKER_TMP_FOLDER + "/scone"; }
 
-    // buildContainerConfig()
+    // buildAppContainerConfig()
 
     @Test
     public void shouldBuildContainerConfig() {
@@ -98,8 +98,7 @@ public class CustomDockerClientTests {
     }
 
     @Test
-    public void shouldNotBuildContainerConfigWithoutHostConfig() {
-        // this causes hostConfig to be null
+    public void shouldNotBuildContainerConfigWithEmptyBinds() {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("");
 
@@ -109,7 +108,7 @@ public class CustomDockerClientTests {
         assertThat(containerConfig).isNull();
     }
 
-    // buildSconeContainerConfig()
+    // buildSconeAppContainerConfig()
 
     @Test
     public void shouldBuildSconeContainerConfig() {
@@ -154,9 +153,10 @@ public class CustomDockerClientTests {
     }
 
     @Test
-    public void shouldNotBuildSconeContainerConfigWithoutHostConfig() {
+    public void shouldNotBuildSconeContainerConfigWithEmptyBinds() {
         // this causes hostConfig to be null
-        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn(getDockerInput());
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("");
         when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID)).thenReturn("");
 
@@ -165,6 +165,35 @@ public class CustomDockerClientTests {
 
         assertThat(containerConfig).isNull();
     }
+
+        // buildSconeLasContainerConfig()
+
+        @Test
+        public void shouldBuildSconeLasContainerConfig() {
+            ContainerConfig containerConfig =
+                    customDockerClient.buildSconeLasContainerConfig(IMAGE_URI, "18766");
+    
+            assertThat(containerConfig.image()).isEqualTo(IMAGE_URI);
+            Device sgxDevice = containerConfig.hostConfig().devices().get(0);
+            assertThat(sgxDevice.pathOnHost()).isEqualTo(SGX_DEVICE_PATH);
+            assertThat(sgxDevice.pathInContainer()).isEqualTo(SGX_DEVICE_PATH);
+            assertThat(sgxDevice.cgroupPermissions()).isEqualTo(SGX_DEVICE_PERMISSIONS);
+    
+        }
+    
+        @Test
+        public void shouldNotBuildSconeLasContainerConfigWithoutImage() {
+            ContainerConfig containerConfig =
+                    customDockerClient.buildSconeLasContainerConfig("", "18766");
+            assertThat(containerConfig).isNull();
+        }
+
+        @Test
+        public void shouldNotBuildSconeLasContainerConfigWithoutValidPortNumber() {
+            ContainerConfig containerConfig =
+                    customDockerClient.buildSconeLasContainerConfig(IMAGE_URI, "");
+            assertThat(containerConfig).isNull();
+        }
 
     // pullImage()
 
