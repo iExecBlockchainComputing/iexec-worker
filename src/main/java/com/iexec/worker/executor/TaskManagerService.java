@@ -4,36 +4,28 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateDetails;
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DatasetService;
 import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.Set;
 
-import static com.iexec.common.replicate.ReplicateStatus.*;
-import static com.iexec.common.replicate.ReplicateStatusCause.DETERMINISM_HASH_NOT_FOUND;
-import static com.iexec.common.replicate.ReplicateStatusCause.TEE_EXECUTION_NOT_VERIFIED;
+import static com.iexec.common.replicate.ReplicateStatus.OUT_OF_GAS;
 
 
 @Slf4j
@@ -41,7 +33,6 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TEE_EXECUTION_NOT_
 public class TaskManagerService {
 
     private final int maxNbExecutions;
-    private final ThreadPoolExecutor executor;
     private DatasetService datasetService;
     private ResultService resultService;
     private ContributionService contributionService;
@@ -51,6 +42,7 @@ public class TaskManagerService {
     private IexecHubService iexecHubService;
     private RevealService revealService;
     private ComputationService computationService;
+    private Set<String> tasksUsingCpu;
 
     public TaskManagerService(DatasetService datasetService,
                               ResultService resultService,
@@ -71,18 +63,31 @@ public class TaskManagerService {
         this.computationService = computationService;
         this.revealService = revealService;
 
-        maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
-        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxNbExecutions);
-
+        maxNbExecutions = 2; //Runtime.getRuntime().availableProcessors() - 1;
+        tasksUsingCpu = new HashSet<>();
     }
 
+    //TOOD improve that when coming from recover
     public boolean canAcceptMoreReplicates() {
-        //return executor.getActiveCount() < maxNbExecutions;
-        return true;
+        if (tasksUsingCpu.size() > 0) {
+            log.info("Some task are using CPU [tasksUsingCpu:{}, maxTasksUsingCpu:{}]", tasksUsingCpu.size(), maxNbExecutions);
+        }
+        return tasksUsingCpu.size() <= maxNbExecutions;
     }
 
+    private void setTaskUsingCpu(String chainTaskId) {
+        tasksUsingCpu.add(chainTaskId);
+        log.info("Set task using CPU [tasksUsingCpu:{}]", tasksUsingCpu.size());
+    }
 
-    public boolean start(String chainTaskId){
+    private void unsetTaskUsingCpu(String chainTaskId) {
+        tasksUsingCpu.remove(chainTaskId);
+        log.info("Unset task using CPU [tasksUsingCpu:{}]", tasksUsingCpu.size());
+    }
+
+    boolean start(String chainTaskId) {
+        setTaskUsingCpu(chainTaskId);
+
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
             log.error("Cant start (task not initialized) [chainTaskId:{}]", chainTaskId);
             return false;
@@ -90,12 +95,12 @@ public class TaskManagerService {
 
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cant start (taskDescription missing) [chainTaskId:{}]",chainTaskId);
+            log.error("Cant start (taskDescription missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
-            log.error("Cant start (cant contribute) [chainTaskId:{}]",chainTaskId);
+        if (contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()) {
+            log.error("Cant start (cant contribute) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
@@ -107,22 +112,22 @@ public class TaskManagerService {
         return true;
     }
 
-
-
     boolean downloadApp(String chainTaskId) {
+        setTaskUsingCpu(chainTaskId);
+
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cant download app (taskDescription missing) [chainTaskId:{}]",chainTaskId);
+            log.error("Cant download app (taskDescription missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
-            log.error("Cant download app (cant contribute) [chainTaskId:{}]",chainTaskId);
+        if (contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()) {
+            log.error("Cant download app (cant contribute) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         if (!computationService.downloadApp(chainTaskId, taskDescription)) {
-            log.error("Cant download app (download failed) [chainTaskId:{}]",chainTaskId);
+            log.error("Cant download app (download failed) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
@@ -130,19 +135,21 @@ public class TaskManagerService {
     }
 
     boolean downloadData(String chainTaskId) {
+        setTaskUsingCpu(chainTaskId);
+
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cant download data (taskDescription missing) [chainTaskId:{}]",chainTaskId);
+            log.error("Cant download data (taskDescription missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
-            log.error("Cant download data (cant contribute) [chainTaskId:{}]",chainTaskId);
+        if (contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()) {
+            log.error("Cant download data (cant contribute) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri())){
-            log.error("Cant download data (download failed) [chainTaskId:{}]",chainTaskId);
+        if (!datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri())) {
+            log.error("Cant download data (download failed) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
@@ -150,19 +157,21 @@ public class TaskManagerService {
     }
 
     boolean compute(String chainTaskId) {
+        setTaskUsingCpu(chainTaskId);
+
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cant compute (taskDescription missing) [chainTaskId:{}]",chainTaskId);
+            log.error("Cant compute (taskDescription missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
-            log.error("Cant compute (cant contribute) [chainTaskId:{}]",chainTaskId);
+        if (contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()) {
+            log.error("Cant compute (cant contribute) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!computationService.isAppDownloaded(taskDescription.getAppUri())){
-            log.error("Cant compute (app not downloaded) [chainTaskId:{}]",chainTaskId);
+        if (!computationService.isAppDownloaded(taskDescription.getAppUri())) {
+            log.error("Cant compute (app not downloaded) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
@@ -176,42 +185,45 @@ public class TaskManagerService {
             isComputed = computationService.runNonTeeComputation(taskDescription, contributionAuthorization);
         }
 
-        if (!isComputed){
-            log.error("Cant compute (compute failed) [chainTaskId:{}]",chainTaskId);
-        }
-
-        return isComputed;
-    }
-
-    public boolean contribute(String chainTaskId) {
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            log.error("Cant contribute (taskDescription missing) [chainTaskId:{}]",chainTaskId);
+        if (!isComputed) {
+            log.error("Cant compute (compute failed) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (!contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()){
-            log.error("Cant contribute (cant contribute) [chainTaskId:{}]",chainTaskId);
+        return true;
+    }
+
+    boolean contribute(String chainTaskId) {
+        unsetTaskUsingCpu(chainTaskId);
+
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Cant contribute (taskDescription missing) [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
+        if (contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()) {
+            log.error("Cant contribute (cant contribute) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         boolean hasEnoughGas = checkGasBalance(chainTaskId);
-        if (!hasEnoughGas){
-            log.error("Cant contribute (no more gas) [chainTaskId:{}]",chainTaskId);
+        if (!hasEnoughGas) {
+            log.error("Cant contribute (no more gas) [chainTaskId:{}]", chainTaskId);
             System.exit(0);
         }
 
         String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()){
-            log.error("Cant contribute (determinism hash missing) [chainTaskId:{}]",chainTaskId);
+        if (determinismHash.isEmpty()) {
+            log.error("Cant contribute (determinism hash missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         ContributionAuthorization contributionAuthorization = contributionService.getContributionAuthorization(chainTaskId);
         String enclaveChallenge = contributionAuthorization.getEnclaveChallenge();
         Optional<Signature> enclaveSignature = getVerifiedEnclaveSignature(chainTaskId, enclaveChallenge);
-        if (enclaveSignature.isEmpty()){//could be 0x0
-            log.error("Cant contribute (enclave signature missing) [chainTaskId:{}]",chainTaskId);
+        if (enclaveSignature.isEmpty()) {//could be 0x0
+            log.error("Cant contribute (enclave signature missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
@@ -221,14 +233,16 @@ public class TaskManagerService {
         return isValidChainReceipt(chainTaskId, chainReceipt);
     }
 
-    public boolean reveal(String chainTaskId, TaskNotificationExtra extra) {
+    boolean reveal(String chainTaskId, TaskNotificationExtra extra) {
+        unsetTaskUsingCpu(chainTaskId);
+
         String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()){
-            log.error("Cant reveal (determinism hash missing) [chainTaskId:{}]",chainTaskId);
+        if (determinismHash.isEmpty()) {
+            log.error("Cant reveal (determinism hash missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (extra == null || extra.getBlockNumber() == 0){
+        if (extra == null || extra.getBlockNumber() == 0) {
             log.error("Cant reveal (consensusBlock missing) [chainTaskId:{}]", chainTaskId);
             return false;
         }
@@ -246,17 +260,19 @@ public class TaskManagerService {
         }
 
         boolean hasEnoughGas = checkGasBalance(chainTaskId);
-        if (!hasEnoughGas){
-            log.error("Cant reveal (no more gas) [chainTaskId:{}]",chainTaskId);
+        if (!hasEnoughGas) {
+            log.error("Cant reveal (no more gas) [chainTaskId:{}]", chainTaskId);
             System.exit(0);
         }
 
         Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, determinismHash);
 
-        return  isValidChainReceipt(chainTaskId, oChainReceipt);
+        return isValidChainReceipt(chainTaskId, oChainReceipt);
     }
 
-    public ReplicateDetails uploadResult(String chainTaskId) {
+    ReplicateDetails uploadResult(String chainTaskId) {
+        unsetTaskUsingCpu(chainTaskId);
+
         boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
         boolean isResultEncrypted = false;
 
@@ -279,20 +295,20 @@ public class TaskManagerService {
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]", chainTaskId, resultLink, callbackData);
 
-        ReplicateDetails details = ReplicateDetails.builder()
+        return ReplicateDetails.builder()
                 .resultLink(resultLink)
                 .chainCallbackData(callbackData)
                 .build();
-
-        return details;
     }
 
-    public boolean complete(String chainTaskId) {
+    boolean complete(String chainTaskId) {
+        unsetTaskUsingCpu(chainTaskId);
         resultService.removeResult(chainTaskId);
         return true;
     }
 
-    public boolean abort(String chainTaskId) {
+    boolean abort(String chainTaskId) {
+        unsetTaskUsingCpu(chainTaskId);
         return resultService.removeResult(chainTaskId);
     }
 
@@ -300,13 +316,13 @@ public class TaskManagerService {
     //TODO Move that to result service
     Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String signerAddress) {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
-        if (!isTeeTask){
+        if (!isTeeTask) {
             return Optional.of(SignatureUtils.emptySignature());
         }
 
         Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
                 resultService.readSconeEnclaveSignatureFile(chainTaskId);
-        if (!oSconeEnclaveSignatureFile.isPresent()) {
+        if (oSconeEnclaveSignatureFile.isEmpty()) {
             log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
@@ -327,7 +343,7 @@ public class TaskManagerService {
     }
 
     boolean checkGasBalance(String chainTaskId) {
-        if (iexecHubService.hasEnoughGas()){
+        if (iexecHubService.hasEnoughGas()) {
             return true;
         }
 
@@ -340,7 +356,7 @@ public class TaskManagerService {
 
     //TODO Move that to contribute & reveal services
     boolean isValidChainReceipt(String chainTaskId, Optional<ChainReceipt> oChainReceipt) {
-        if (!oChainReceipt.isPresent()) {
+        if (oChainReceipt.isEmpty()) {
             log.warn("The chain receipt is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
             return false;
         }
