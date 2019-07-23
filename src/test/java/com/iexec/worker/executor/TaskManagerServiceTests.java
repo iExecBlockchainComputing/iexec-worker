@@ -13,9 +13,8 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
@@ -30,7 +29,6 @@ import org.mockito.MockitoAnnotations;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -38,7 +36,7 @@ import static org.mockito.Mockito.*;
 
 public class TaskManagerServiceTests {
 
-    @Mock private DatasetService datasetService;
+    @Mock private DataService dataService;
     @Mock private ResultService resultService;
     @Mock private ContributionService contributionService;
     @Mock private CustomFeignClient customFeignClient;
@@ -112,7 +110,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(datasetService.downloadDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
 
         boolean isDataDownloaded = taskManagerService.downloadData(CHAIN_TASK_ID);
 

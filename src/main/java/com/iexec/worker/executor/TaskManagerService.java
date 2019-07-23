@@ -11,7 +11,7 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DatasetService;
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
@@ -33,7 +33,7 @@ import static com.iexec.common.replicate.ReplicateStatus.OUT_OF_GAS;
 public class TaskManagerService {
 
     private final int maxNbExecutions;
-    private DatasetService datasetService;
+    private DataService dataService;
     private ResultService resultService;
     private ContributionService contributionService;
     private CustomFeignClient customFeignClient;
@@ -44,7 +44,7 @@ public class TaskManagerService {
     private ComputationService computationService;
     private Set<String> tasksUsingCpu;
 
-    public TaskManagerService(DatasetService datasetService,
+    public TaskManagerService(DataService dataService,
                               ResultService resultService,
                               ContributionService contributionService,
                               CustomFeignClient customFeignClient,
@@ -53,7 +53,7 @@ public class TaskManagerService {
                               IexecHubService iexecHubService,
                               ComputationService computationService,
                               RevealService revealService) {
-        this.datasetService = datasetService;
+        this.dataService = dataService;
         this.resultService = resultService;
         this.contributionService = contributionService;
         this.customFeignClient = customFeignClient;
@@ -147,7 +147,7 @@ public class TaskManagerService {
             return false;
         }
 
-        if (!datasetService.downloadDataset(chainTaskId, taskDescription.getDatasetUri())) {
+        if (!dataService.downloadFile(chainTaskId, taskDescription.getDatasetUri())) {
             log.error("Cant download data (download failed) [chainTaskId:{}]", chainTaskId);
             return false;
         }
