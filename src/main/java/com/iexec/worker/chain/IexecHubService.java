@@ -4,6 +4,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.security.Signature;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -32,6 +35,7 @@ public class IexecHubService extends IexecHubAbstractService {
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
     private Web3jService web3jService;
+    private Map<String, TaskDescription> taskDescriptions = new HashMap<>();
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
@@ -237,6 +241,26 @@ public class IexecHubService extends IexecHubAbstractService {
             }
         }
         return false;
+    }
+
+    /*
+     * Behave as a cache to avoid always calling blockchain to retrieve task description
+     *
+     */
+    public void putTaskDescription(TaskDescription taskDescription) {
+        if (taskDescription != null && taskDescription.getChainTaskId() != null){
+            taskDescriptions.putIfAbsent(taskDescription.getChainTaskId(), taskDescription);
+            return;
+        }
+        log.error("Cant putTaskDescription [taskDescription:{}]", taskDescription);
+    }
+
+    public TaskDescription getTaskDescription(String chainTaskId) {
+        if (taskDescriptions.get(chainTaskId) == null){
+            Optional<TaskDescription> taskDescriptionFromChain = this.getTaskDescriptionFromChain(chainTaskId);
+            taskDescriptionFromChain.ifPresent(this::putTaskDescription);
+        }
+        return taskDescriptions.get(chainTaskId);
     }
 
 }

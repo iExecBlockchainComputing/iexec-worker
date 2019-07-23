@@ -4,6 +4,7 @@ import com.iexec.common.chain.*;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.config.PublicConfigurationService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.when;
 public class ContributionServiceTests {
 
     @Mock private IexecHubService iexecHubService;
+    @Mock private ContributionAuthorizationService contributionAuthorizationService;
 
     @InjectMocks
     private ContributionService contributionService;
@@ -171,12 +173,15 @@ public class ContributionServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId))
                 .thenReturn(Optional.of(ChainContribution.builder()
                 .status(ChainContributionStatus.UNSET).build()));
+        when(contributionAuthorizationService.getContributionAuthorization(chainTaskId))
+                .thenReturn(new ContributionAuthorization());
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()).isFalse();
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()).isTrue();
     }
 
     /**
      *  isContributionAuthorizationValid()
+     *
      */
 
     @Test

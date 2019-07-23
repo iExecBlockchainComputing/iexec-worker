@@ -1,12 +1,11 @@
 package com.iexec.worker.pubsub;
 
-import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.executor.TaskExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -38,9 +37,9 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private RestTemplate restTemplate;
     // external services
-    private TaskExecutorService taskExecutorService;
     private CoreConfigurationService coreConfigurationService;
     private WorkerConfigurationService workerConfigurationService;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     // internal components
     private StompSession session;
@@ -49,14 +48,13 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     public SubscriptionService(CoreConfigurationService coreConfigurationService,
                                WorkerConfigurationService workerConfigurationService,
-                               TaskExecutorService taskExecutorService,
-                               RestTemplate restTemplate) {
-        this.taskExecutorService = taskExecutorService;
+                               RestTemplate restTemplate,
+                               ApplicationEventPublisher applicationEventPublisher) {
         this.restTemplate = restTemplate;
         this.coreConfigurationService = coreConfigurationService;
         this.workerConfigurationService = workerConfigurationService;
+        this.applicationEventPublisher = applicationEventPublisher;
         chainTaskIdToSubscription = new ConcurrentHashMap<>();
-
     }
 
     @PostConstruct
@@ -145,7 +143,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                 public void handleFrame(StompHeaders headers, @Nullable Object payload) {
                     if (payload != null) {
                         TaskNotification taskNotification = (TaskNotification) payload;
-                        handleTaskNotification(taskNotification);
+                        log.info("PubSub service received taskNotification [chainTaskId:{}, type:{}]", chainTaskId, taskNotification.getTaskNotificationType());
+                        applicationEventPublisher.publishEvent(taskNotification);
                     } else {
                         log.info("Payload of TaskNotification is null [chainTaskId:{}]", chainTaskId);
                     }
@@ -158,7 +157,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
-    public void unsubscribeFromTopic(String chainTaskId) {
+
+    void unsubscribeFromTopic(String chainTaskId) {
         if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
             chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
             chainTaskIdToSubscription.remove(chainTaskId);
@@ -168,51 +168,38 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         }
     }
 
-    public void handleTaskNotification(TaskNotification notif) {
-        if (notif.getWorkersAddress().contains(workerConfigurationService.getWorkerWalletAddress())
-                || notif.getWorkersAddress().isEmpty()) {
+    public void handleSubscription(TaskNotification notif) {
+        if (notif.getWorkersAddress() != null &&
+                (notif.getWorkersAddress().contains(workerConfigurationService.getWorkerWalletAddress())
+                        || notif.getWorkersAddress().isEmpty())) {
             log.info("Received notification [notification:{}]", notif);
 
-            TaskNotificationType type = notif.getTaskNotificationType();
+            TaskNotificationType action = notif.getTaskNotificationType();
             String chainTaskId = notif.getChainTaskId();
 
-            switch (type) {
+            switch (action){
+                /* Subscribe if not ?
+                case PLEASE_START:
+                case PLEASE_DOWNLOAD_APP:
+                case PLEASE_DOWNLOAD_DATA:
+                case PLEASE_COMPUTE:
                 case PLEASE_CONTRIBUTE:
-                    ContributionAuthorization contribAuth = notif.getTaskNotificationExtra().getContributionAuthorization();
-                    if (contribAuth != null){
-                        taskExecutorService.computeOrContribute(contribAuth);
-                    } else {
-                        log.error("Empty contribAuth for PLEASE_CONTRIBUTE [chainTaskId:{}]", chainTaskId);
-                    }
+                case PLEASE_REVEAL:
+                case PLEASE_UPLOAD:
+                    subscribeToTopic(chainTaskId);
                     break;
+                 */
+                case PLEASE_COMPLETE:
+                case PLEASE_ABORT:
                 case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
-                    unsubscribeFromTopic(chainTaskId);
-                    taskExecutorService.abortContributionTimeout(chainTaskId);
-                    break;
                 case PLEASE_ABORT_CONSENSUS_REACHED:
                     unsubscribeFromTopic(chainTaskId);
-                    taskExecutorService.abortConsensusReached(chainTaskId);
                     break;
-
-                case PLEASE_REVEAL:
-                    taskExecutorService.reveal(chainTaskId, notif.getTaskNotificationExtra().getBlockNumber());
-                    break;
-
-                case PLEASE_UPLOAD:
-                    taskExecutorService.uploadResult(chainTaskId);
-                    break;
-
-                case PLEASE_COMPLETE:
-                    unsubscribeFromTopic(chainTaskId);
-                    taskExecutorService.completeTask(chainTaskId);
-                    break;
-
                 default:
                     break;
             }
         }
     }
-
 
 
 

@@ -6,6 +6,7 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.dataset.DataService;
+import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.spotify.docker.client.messages.ContainerConfig;
@@ -31,6 +32,7 @@ public class ComputationServiceTests {
     @Mock private DataService dataService;
     @Mock private CustomDockerClient customDockerClient;
     @Mock private SconeTeeService sconeTeeService;
+    @Mock private ResultService resultService;
 
     @InjectMocks
     private ComputationService computationService;
@@ -67,7 +69,12 @@ public class ComputationServiceTests {
     public void shouldDownloadApp() {
         String imageUri = "imageUri";
         when(customDockerClient.pullImage(CHAIN_TASK_ID, imageUri)).thenReturn(true);
-        assertThat(computationService.downloadApp(CHAIN_TASK_ID, imageUri)).isTrue();
+        assertThat(computationService.downloadApp(CHAIN_TASK_ID,
+                TaskDescription.builder()
+                .appUri(imageUri)
+                .appType(DappType.DOCKER)
+                .build()
+        )).isTrue();
     }
 
     // runNonTeeComputation()
@@ -85,11 +92,10 @@ public class ComputationServiceTests {
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout);
 
-        Pair<ReplicateStatus, String> result = computationService.runNonTeeComputation(task,
+        boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isTrue();
         verify(dataService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
@@ -107,11 +113,10 @@ public class ComputationServiceTests {
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout);
 
-        Pair<ReplicateStatus, String> result = computationService.runNonTeeComputation(task,
+        boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isTrue();
         verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
@@ -129,11 +134,10 @@ public class ComputationServiceTests {
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn(expectedStdout);
 
-        Pair<ReplicateStatus, String> result = computationService.runNonTeeComputation(task,
+        boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isFalse();
         verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
@@ -159,10 +163,9 @@ public class ComputationServiceTests {
                 .thenReturn(expectedStdout1)
                 .thenReturn(expectedStdout2);
 
-        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout1 + expectedStdout2);
+        assertThat(isComputed).isTrue();
     }
 
     @Test
@@ -173,10 +176,9 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(contributionAuth)).thenReturn("");
 
-        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isFalse();
     }
 
     @Test
@@ -190,10 +192,9 @@ public class ComputationServiceTests {
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(new ArrayList<>());
 
-        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isFalse();
     }
 
     @Test
@@ -210,10 +211,9 @@ public class ComputationServiceTests {
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
         when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any())).thenReturn(null);
 
-        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isFalse();
     }
 
     @Test
@@ -234,9 +234,14 @@ public class ComputationServiceTests {
         when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
                 .thenReturn("");
 
-        Pair<ReplicateStatus, String> result = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
-        assertThat(result.getLeft()).isEqualTo(COMPUTE_FAILED);
-        assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isFalse();
     }
+
+    @Test
+    public void ShouldAppTypeBeDocker() {
+        assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
+    }
+
 }

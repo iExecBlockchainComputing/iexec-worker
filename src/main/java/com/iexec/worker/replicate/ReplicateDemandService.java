@@ -6,11 +6,12 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.executor.TaskExecutorService;
+import com.iexec.worker.executor.TaskManagerService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -23,28 +24,31 @@ import java.util.Optional;
 public class ReplicateDemandService {
 
     private final CustomFeignClient customFeignClient;
-    private TaskExecutorService taskExecutorService;
+    private TaskManagerService taskManagerService;
     private IexecHubService iexecHubService;
     private SubscriptionService subscriptionService;
     private ContributionService contributionService;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Autowired
-    public ReplicateDemandService(TaskExecutorService taskExecutorService,
-                                  IexecHubService iexecHubService,
+    public ReplicateDemandService(IexecHubService iexecHubService,
                                   CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
-                                  ContributionService contributionService) {
+                                  ContributionService contributionService,
+                                  ApplicationEventPublisher applicationEventPublisher,
+                                  TaskManagerService taskManagerService) {
         this.customFeignClient = customFeignClient;
-        this.taskExecutorService = taskExecutorService;
         this.iexecHubService = iexecHubService;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
+        this.applicationEventPublisher = applicationEventPublisher;
+        this.taskManagerService = taskManagerService;
     }
 
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     public void askForReplicate() {
         // check if the worker can run a task or not
-        if (!taskExecutorService.canAcceptMoreReplicates()) {
+        if (!taskManagerService.canAcceptMoreReplicates()) {
             log.info("The worker is already full, it can't accept more tasks");
             return;
         }
@@ -72,8 +76,6 @@ public class ReplicateDemandService {
             return;
         }
 
-        subscriptionService.subscribeToTopic(chainTaskId);
-
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
                 .contributionAuthorization(contributionAuth)
                 .build();
@@ -81,10 +83,12 @@ public class ReplicateDemandService {
         TaskNotification taskNotification = TaskNotification.builder()
                 .chainTaskId(chainTaskId)
                 .workersAddress(Collections.emptyList())
-                .taskNotificationType(TaskNotificationType.PLEASE_CONTRIBUTE)
+                .taskNotificationType(TaskNotificationType.PLEASE_START)
                 .taskNotificationExtra(notificationExtra)
                 .build();
 
-        subscriptionService.handleTaskNotification(taskNotification);
+        subscriptionService.subscribeToTopic(chainTaskId);
+        applicationEventPublisher.publishEvent(taskNotification);
+
     }
 }
