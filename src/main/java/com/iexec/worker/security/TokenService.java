@@ -55,7 +55,8 @@ public class TokenService {
         try {
             return workerClient.getChallenge(workerAddress);
         } catch (FeignException e) {
-            log.error("Failed to getChallenge (will retry) [status:{}]", e.status());
+            log.error("Failed to getChallenge, is this worker allow to join the pool? (will retry) " +
+                    "[workerAddress:{}, status:{}]", workerAddress, e.status());
             sleep();
             return getChallenge(workerAddress);
         }
