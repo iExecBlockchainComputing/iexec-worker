@@ -6,6 +6,7 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.dataset.DataService;
+import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.spotify.docker.client.messages.ContainerConfig;
@@ -31,6 +32,7 @@ public class ComputationServiceTests {
     @Mock private DataService dataService;
     @Mock private CustomDockerClient customDockerClient;
     @Mock private SconeTeeService sconeTeeService;
+    @Mock private ResultService resultService;
 
     @InjectMocks
     private ComputationService computationService;
@@ -67,7 +69,12 @@ public class ComputationServiceTests {
     public void shouldDownloadApp() {
         String imageUri = "imageUri";
         when(customDockerClient.pullImage(CHAIN_TASK_ID, imageUri)).thenReturn(true);
-        assertThat(computationService.downloadApp(CHAIN_TASK_ID, TaskDescription.builder().appUri(imageUri).build())).isTrue();
+        assertThat(computationService.downloadApp(CHAIN_TASK_ID,
+                TaskDescription.builder()
+                .appUri(imageUri)
+                .appType(DappType.DOCKER)
+                .build()
+        )).isTrue();
     }
 
     // runNonTeeComputation()
@@ -89,7 +96,6 @@ public class ComputationServiceTests {
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
         assertThat(isComputed).isTrue();
-       // assertThat(result.getRight()).isEqualTo(expectedStdout);
         verify(dataService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
@@ -110,8 +116,7 @@ public class ComputationServiceTests {
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
-        assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout);
+        assertThat(isComputed).isTrue();
         verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
@@ -133,7 +138,6 @@ public class ComputationServiceTests {
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
 
         assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout);
         verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
     }
 
@@ -161,8 +165,7 @@ public class ComputationServiceTests {
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
-        assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout1 + expectedStdout2);
+        assertThat(isComputed).isTrue();
     }
 
     @Test
@@ -176,7 +179,6 @@ public class ComputationServiceTests {
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
         assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout);
     }
 
     @Test
@@ -193,7 +195,6 @@ public class ComputationServiceTests {
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
         assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout);
     }
 
     @Test
@@ -213,7 +214,6 @@ public class ComputationServiceTests {
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
         assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout);
     }
 
     @Test
@@ -237,7 +237,6 @@ public class ComputationServiceTests {
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
         assertThat(isComputed).isFalse();
-        //assertThat(result.getRight()).isEqualTo(expectedStdout);
     }
 
     @Test
