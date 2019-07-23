@@ -147,8 +147,15 @@ public class TaskManagerService {
             return false;
         }
 
-        if (!dataService.downloadFile(chainTaskId, taskDescription.getDatasetUri())) {
-            log.error("Cant download data (download failed) [chainTaskId:{}]", chainTaskId);
+        if (taskDescription.getDatasetUri() == null || !dataService.downloadFile(chainTaskId, taskDescription.getDatasetUri())) {
+            log.error("Cant download data (download iexec dataset failed) [chainTaskId:{}, datasetUri:{}]",
+                    chainTaskId, taskDescription.getDatasetUri());
+            return false;
+        }
+
+        if (taskDescription.getInputFiles() != null && !dataService.downloadFiles(chainTaskId, taskDescription.getInputFiles())){
+            log.error("Cant download data (download input files failed) [chainTaskId:{}, inputFiles:{}]",
+                    chainTaskId, taskDescription.getInputFiles());
             return false;
         }
 
