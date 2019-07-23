@@ -21,9 +21,11 @@ import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatus.OUT_OF_GAS;
 
@@ -64,7 +66,7 @@ public class TaskManagerService {
         this.revealService = revealService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
-        tasksUsingCpu = new HashSet<>();
+        tasksUsingCpu = Collections.newSetFromMap(new ConcurrentHashMap<>());
     }
     
     public boolean canAcceptMoreReplicates() {

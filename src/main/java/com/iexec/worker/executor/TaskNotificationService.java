@@ -146,7 +146,7 @@ public class TaskNotificationService {
                 if (!isAbortedAfterConsensusReached) {
                     return;
                 }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED_ON_CONTRIBUTION_TIMEOUT);
+                updateStatusAndGetNextAction(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
                 break;
             default:
                 break;

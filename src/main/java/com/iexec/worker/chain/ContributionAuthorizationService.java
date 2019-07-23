@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
@@ -24,7 +26,7 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 public class ContributionAuthorizationService {
 
     private PublicConfigurationService publicConfigurationService;
-    private HashMap<String, ContributionAuthorization> contributionAuthorizations;
+    private Map<String, ContributionAuthorization> contributionAuthorizations;
     private String corePublicAddress;
 
     public ContributionAuthorizationService(PublicConfigurationService publicConfigurationService) {
@@ -34,7 +36,7 @@ public class ContributionAuthorizationService {
     @PostConstruct
     public void initIt() {
         corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
-        contributionAuthorizations = new HashMap<>();
+        contributionAuthorizations = new ConcurrentHashMap<>();
     }
 
 

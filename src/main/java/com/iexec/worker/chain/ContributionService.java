@@ -69,10 +69,6 @@ public class ContributionService {
             return Optional.of(CONTRIBUTION_ALREADY_SET);
         }
 
-        if (!isContributionUnsetToContribute(chainTask)) {
-            return Optional.of(CONTRIBUTION_ALREADY_SET);
-        }
-
         if (!isContributionAuthorizationPresent(chainTaskId)) {
             return Optional.of(CONTRIBUTION_AUTHORIZATION_MISSING);
         }

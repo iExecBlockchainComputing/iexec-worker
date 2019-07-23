@@ -15,6 +15,7 @@ import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -34,7 +35,7 @@ public class IexecHubService extends IexecHubAbstractService {
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
     private Web3jService web3jService;
-    private HashMap<String, TaskDescription> taskDescriptions = new HashMap<>();
+    private Map<String, TaskDescription> taskDescriptions = new HashMap<>();
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
