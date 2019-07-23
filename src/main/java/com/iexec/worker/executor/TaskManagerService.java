@@ -63,11 +63,10 @@ public class TaskManagerService {
         this.computationService = computationService;
         this.revealService = revealService;
 
-        maxNbExecutions = 2; //Runtime.getRuntime().availableProcessors() - 1;
+        maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         tasksUsingCpu = new HashSet<>();
     }
-
-    //TOOD improve that when coming from recover
+    
     public boolean canAcceptMoreReplicates() {
         if (tasksUsingCpu.size() > 0) {
             log.info("Some task are using CPU [tasksUsingCpu:{}, maxTasksUsingCpu:{}]", tasksUsingCpu.size(), maxNbExecutions);
