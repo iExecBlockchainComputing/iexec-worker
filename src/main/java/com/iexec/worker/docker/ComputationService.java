@@ -3,7 +3,8 @@ package com.iexec.worker.docker;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.dataset.DatasetService;
+
+import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.iexec.common.replicate.ReplicateStatus.COMPUTE_FAILED;
@@ -25,22 +25,26 @@ import static com.iexec.common.replicate.ReplicateStatus.COMPUTE_FAILED;
 @Service
 public class ComputationService {
 
-    private static final String DATASET_FILENAME = "DATASET_FILENAME";
+    // env variables that will be injected in the container of a task computation
+    private static final String IEXEC_DATASET_FILENAME_ENV_PROPERTY = "IEXEC_DATASET_FILENAME";
+    private static final String IEXEC_BOT_TASK_INDEX_ENV_PROPERTY = "IEXEC_BOT_TASK_INDEX";
+    private static final String IEXEC_BOT_SIZE_ENV_PROPERTY = "IEXEC_BOT_SIZE";
+    private static final String IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY = "IEXEC_BOT_FIRST_INDEX";
 
     private SmsService smsService;
-    private DatasetService datasetService;
+    private DataService dataService;
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
     private ResultService resultService;
 
     public ComputationService(SmsService smsService,
-                              DatasetService datasetService,
+                              DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
                               ResultService resultService) {
 
         this.smsService = smsService;
-        this.datasetService = datasetService;
+        this.dataService = dataService;
         this.customDockerClient = customDockerClient;
         this.sconeTeeService = sconeTeeService;
 
@@ -85,11 +89,11 @@ public class ComputationService {
         }
 
         // decrypt data
-        boolean isDatasetDecryptionNeeded = datasetService.isDatasetDecryptionNeeded(chainTaskId);
+        boolean isDatasetDecryptionNeeded = dataService.isDatasetDecryptionNeeded(chainTaskId);
         boolean isDatasetDecrypted = false;
 
         if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = datasetService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
+            isDatasetDecrypted = dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
@@ -100,9 +104,8 @@ public class ComputationService {
 
         // compute
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
-        List<String> env = Arrays.asList(DATASET_FILENAME + "=" + datasetFilename);
-
-        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri, env, cmd);
+        ContainerConfig containerConfig = customDockerClient.buildContainerConfig(chainTaskId, imageUri,
+                getContainerEnvVariables(datasetFilename, taskDescription), cmd);
         stdout = customDockerClient.dockerRun(chainTaskId, containerConfig, maxExecutionTime);
 
         if (stdout.isEmpty()) {
@@ -143,9 +146,10 @@ public class ComputationService {
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        String datasetEnv = DATASET_FILENAME + "=" + datasetFilename;
-        sconeAppEnv.add(datasetEnv);
-        sconeEncrypterEnv.add(datasetEnv);
+        for(String envVar:getContainerEnvVariables(datasetFilename, taskDescription)){
+            sconeAppEnv.add(envVar);
+            sconeEncrypterEnv.add(envVar);
+        }
 
         ContainerConfig sconeAppConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, sconeAppEnv, cmd);
         ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeContainerConfig(chainTaskId, imageUri, sconeEncrypterEnv, cmd);
@@ -168,5 +172,14 @@ public class ComputationService {
         // encrypt result
         stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
         return  true;
+    }
+
+    private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription){
+        List<String> list = new ArrayList<>();
+        list.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
+        list.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
+        list.add(IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotFirstIndex());
+        list.add(IEXEC_BOT_TASK_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotIndex());
+        return list;
     }
 }
