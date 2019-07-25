@@ -54,7 +54,7 @@ public class ComputationServiceTests {
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
                 .maxExecutionTime(500)
-                .cmd("rm -rf /*")
+                .cmd("ls")
                 .inputFiles(new ArrayList<>())
                 .build();
     }
