@@ -55,6 +55,7 @@ public class ComputationServiceTests {
                 .isTeeTask(isTeeTask)
                 .maxExecutionTime(500)
                 .cmd("rm -rf /*")
+                .inputFiles(new ArrayList<>())
                 .build();
     }
 

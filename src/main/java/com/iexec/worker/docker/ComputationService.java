@@ -183,7 +183,8 @@ public class ComputationService {
         list.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
         list.add(IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotFirstIndex());
         list.add(IEXEC_BOT_TASK_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotIndex());
-        list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + taskDescription.getInputFiles().size());
+        int nbFiles = taskDescription.getInputFiles() == null ? 0 : taskDescription.getInputFiles().size();
+        list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + nbFiles);
 
         int iter = 1;
         for(String inputFile:taskDescription.getInputFiles()) {
