@@ -188,10 +188,10 @@ public class ComputationService {
         int nbFiles = taskDescription.getInputFiles() == null ? 0 : taskDescription.getInputFiles().size();
         list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + nbFiles);
 
-        int iter = 1;
+        int inputFileIndex = 1;
         for(String inputFile:taskDescription.getInputFiles()) {
-            list.add(IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX + iter + "=" + FilenameUtils.getName(inputFile));
-            iter++;
+            list.add(IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX + inputFileIndex + "=" + FilenameUtils.getName(inputFile));
+            inputFileIndex++;
         }
 
         list.add(IEXEC_INPUT_FILES_FOLDER_ENV_PROPERTY + "=" + FileHelper.SLASH_IEXEC_IN);
