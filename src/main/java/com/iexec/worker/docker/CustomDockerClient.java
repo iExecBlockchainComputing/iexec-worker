@@ -2,6 +2,7 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.tee.SgxService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
@@ -21,6 +22,8 @@ import com.spotify.docker.client.messages.NetworkConfig;
 import com.spotify.docker.client.messages.ContainerConfig.NetworkingConfig;
 
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
@@ -30,6 +33,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 
@@ -45,7 +49,8 @@ public class CustomDockerClient {
     private SconeLasConfiguration sconeLasConfiguration;
 
     public CustomDockerClient(WorkerConfigurationService workerConfigurationService,
-                              SconeLasConfiguration sconeLasConfiguration) throws DockerCertificateException {
+                              SconeLasConfiguration sconeLasConfiguration)
+                              throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
 
         if (getNetworkListByName(WORKER_DOCKER_NETWORK).isEmpty()) {
@@ -56,73 +61,107 @@ public class CustomDockerClient {
         this.sconeLasConfiguration = sconeLasConfiguration;
     }
 
-    public ContainerConfig buildAppContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
-        HostConfig.Bind inputBind = createInputBind(chainTaskId);
-        HostConfig.Bind outputBind = createOutputBind(chainTaskId);
+    public String runSgxCheckContainer(DockerExecutionConfig dockerExecutionConfig) {
+        String chainTaskId = dockerExecutionConfig.getChainTaskId();
+        HostConfig.Bind slashDevBind = createBind("/dev", "/dev");
+        HostConfig sgxHostConfig = getSgxHostConfig(slashDevBind);
+        ContainerConfig containerConfig = buildContainerConfig(dockerExecutionConfig, sgxHostConfig);
 
-        if (inputBind == null || outputBind == null) return null;
-
-        HostConfig hostConfig = HostConfig.builder()
-                .appendBinds(inputBind, outputBind)
-                .build();
-
-        ContainerConfig.Builder commonConfigBuilder =
-                commonContainerConfigBuilder(hostConfig, imageUri, env, cmd);
-
-        return commonConfigBuilder != null ? commonConfigBuilder.build() : null;
+        try {
+            return runContainer(chainTaskId, containerConfig, dockerExecutionConfig.getMaxExecutionTime()).get();
+        } catch (Exception e) {
+            log.error("Could not check SGX device, will run worker without SGX support");
+            e.printStackTrace();
+            return "";
+        }
     }
 
-    public ContainerConfig buildSconeAppContainerConfig(String chainTaskId, String imageUri, List<String> env, String... cmd) {
-        HostConfig.Bind inputBind = createInputBind(chainTaskId);
-        HostConfig.Bind outputBind = createOutputBind(chainTaskId);
-        HostConfig.Bind sconeBind = createSconeBind(chainTaskId);
-
-        if (inputBind == null || outputBind == null || sconeBind == null) return null;
-
-        HostConfig hostConfig = HostConfig.builder()
-                .appendBinds(inputBind, outputBind, sconeBind)
-                .devices(getSgxDevice())
-                .build();
-
-        ContainerConfig.Builder commonConfigBuilder =
-                commonContainerConfigBuilder(hostConfig,imageUri, env, cmd);
-
-        return commonConfigBuilder != null ? commonConfigBuilder.build() : null;
-    }
-
-    public ContainerConfig buildSconeLasContainerConfig(String imageUri, String port) {
+    public void runLasContainer(DockerExecutionConfig dockerExecutionConfig) {
+        String port = dockerExecutionConfig.getContainerPort();
         try {
             Integer.parseInt(port);
         } catch (NumberFormatException e) {
-            log.error("Cannot build LAS container config, invalid port number [portNumber:{}]", port);
+            log.error("Cannot run LAS container config, invalid port number [portNumber:{}]", port);
+            return;
+        }
+
+        HostConfig hostConfig = getSgxHostConfig();
+        ContainerConfig containerConfig = buildContainerConfig(dockerExecutionConfig, hostConfig);
+        runContainer(dockerExecutionConfig.getChainTaskId(), containerConfig);
+    }
+
+    public String runNonTeeTaskContainer(DockerExecutionConfig dockerExecutionConfig) {
+        String chainTaskId = dockerExecutionConfig.getChainTaskId();
+        HostConfig.Bind inputBind = createInputBind(chainTaskId);
+        HostConfig.Bind outputBind = createOutputBind(chainTaskId);
+        HostConfig hostConfig = getHostConfig(inputBind, outputBind);
+        ContainerConfig containerConfig = buildContainerConfig(dockerExecutionConfig, hostConfig);
+
+        try {
+            return runContainer(chainTaskId, containerConfig, dockerExecutionConfig.getMaxExecutionTime()).get();
+        } catch (Exception e) {
+            log.error("Could not run container [chainTaskId:{}]", chainTaskId);
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    public String runTeeTaskContainer(DockerExecutionConfig dockerExecutionConfig) {
+        String chainTaskId = dockerExecutionConfig.getChainTaskId();
+        HostConfig.Bind inputBind = createInputBind(chainTaskId);
+        HostConfig.Bind outputBind = createOutputBind(chainTaskId);
+        HostConfig.Bind sconeBind = createSconeBind(chainTaskId);
+        HostConfig sgxHostConfig = getSgxHostConfig(inputBind, outputBind, sconeBind);
+        ContainerConfig containerConfig = buildContainerConfig(dockerExecutionConfig, sgxHostConfig);
+
+        try {
+            return runContainer(chainTaskId, containerConfig, dockerExecutionConfig.getMaxExecutionTime()).get();
+        } catch (Exception e) {
+            log.error("Could not run container [chainTaskId:{}]", chainTaskId);
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    private ContainerConfig buildContainerConfig(DockerExecutionConfig dockerExecutionConfig, HostConfig hostConfig) {
+        String imageUri = dockerExecutionConfig.getImageUri();
+        String[] cmd = dockerExecutionConfig.getCmd();
+        List<String> env = dockerExecutionConfig.getEnv();
+        String port = dockerExecutionConfig.getContainerPort();
+        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
+
+        if (hostConfig == null) {
             return null;
         }
 
-        HostConfig hostConfig = HostConfig.builder()
-                .devices(getSgxDevice())
-                .build();
+        containerConfigBuilder.hostConfig(hostConfig);
+        
+        if (imageUri == null || imageUri.isEmpty()) {
+            return null;
+        }
 
-        ContainerConfig.Builder commonConfigBuilder =
-                commonContainerConfigBuilder(hostConfig, imageUri, List.of(), new String[0]);
+        containerConfigBuilder.image(imageUri);
 
-        return commonConfigBuilder != null ? commonConfigBuilder.exposedPorts(port).build() : null;
-    }
+        if (cmd != null && cmd.length != 0) {
+            containerConfigBuilder.cmd(cmd);
+        }
 
-    private ContainerConfig.Builder commonContainerConfigBuilder(HostConfig hostConfig, String imageUri, List<String> env, String... cmd) {
-        if (imageUri == null || imageUri.isEmpty()) return null;
+        if (port != null && !port.isEmpty()) {
+            containerConfigBuilder.exposedPorts(port);
+        }
 
-        ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
+        if (!env.isEmpty()) {
+            containerConfigBuilder.env(env);
+        }
 
+        // attach container to "iexec-worker-net" network
         EndpointConfig endpointConfig = EndpointConfig.builder().build();
         Map<String, EndpointConfig> endpointConfigMap = Map.of(WORKER_DOCKER_NETWORK, endpointConfig);
         NetworkingConfig networkingConfig = NetworkingConfig.create(endpointConfigMap);
         containerConfigBuilder.networkingConfig(networkingConfig);
 
-        if (cmd != null && cmd.length != 0) containerConfigBuilder.cmd(cmd);
+        return containerConfigBuilder.build();
 
-        return containerConfigBuilder.image(imageUri)
-                .hostConfig(hostConfig)
-                .env(env);
     }
 
     private HostConfig.Bind createInputBind(String chainTaskId) {
@@ -141,7 +180,9 @@ public class CustomDockerClient {
     }
 
     private HostConfig.Bind createBind(String source, String dest) {
-        if (source == null || source.isEmpty() || dest == null || dest.isEmpty()) return null;
+        if (source == null || source.isEmpty() || dest == null || dest.isEmpty()) {
+            return null;
+        }
 
         boolean isSourceMountPointSet = FileHelper.createFolder(source);
 
@@ -156,11 +197,34 @@ public class CustomDockerClient {
                 .build();
     }
 
-    private Device getSgxDevice() {
-        return Device.builder()
-                .pathOnHost("/dev/isgx")
-                .pathInContainer("/dev/isgx")
-                .cgroupPermissions("rwm")
+    private HostConfig getHostConfig(HostConfig.Bind... binds) {
+        for (HostConfig.Bind bind : binds) {
+            if (bind == null) {
+                return null;
+            }
+        }
+
+        return HostConfig.builder()
+                .appendBinds(binds)
+                .build();
+    }
+
+    private HostConfig getSgxHostConfig(HostConfig.Bind... binds) {
+        for (HostConfig.Bind bind : binds) {
+            if (bind == null) {
+                return null;
+            }
+        }
+
+        Device sgxDevice = Device.builder()
+                .pathOnHost(SgxService.SGX_DEVICE_PATH)
+                .pathInContainer(SgxService.SGX_DEVICE_PATH)
+                .cgroupPermissions(SgxService.SGX_CGROUP_PERMISSIONS)
+                .build();
+
+        return HostConfig.builder()
+                .appendBinds(binds)
+                .devices(sgxDevice)
                 .build();
     }
 
@@ -190,78 +254,64 @@ public class CustomDockerClient {
     }
 
     /**
-     * This creates a container, starts, waits then stops it, and returns its logs
+     * This manages the docker execution workflow.
+     * We create and start the container.
+     * 
+     * if (maxExecutionTime == 0)
+     *      the container will be considered a service
+     *      and will run without a timeout (such as the LAS service)
+     * 
+     * if (maxExecutionTime != 0)
+     *      we wait for the execution to end or we stop the container
+     *      when it reaches the deadline.
+     * 
+     * In the latter case we return the stdout logs as a string.
      */
-    public String dockerRun(String chainTaskId, ContainerConfig containerConfig, long maxExecutionTime) {
+
+    public void runContainer(String containerName, ContainerConfig containerConfig) {
+        runContainer(containerName, containerConfig, 0);
+    }
+
+    @Async
+    public CompletableFuture<String> runContainer(String containerName, ContainerConfig containerConfig, long maxExecutionTime) {
         if (containerConfig == null) {
-            log.error("Could not run computation, container config is null [chainTaskId:{}]", chainTaskId);
-            return "";
+            log.error("Could not run computation, container config is null [chainTaskId:{}]", containerName);
+            return CompletableFuture.completedFuture("");
         }
 
         log.info("Running computation [chainTaskId:{}, image:{}, cmd:{}]",
-                chainTaskId, containerConfig.image(), containerConfig.cmd());
+                containerName, containerConfig.image(), containerConfig.cmd());
 
         // docker container create
-        String containerId = createContainer(chainTaskId, containerConfig);
-        if (containerId.isEmpty()) return "";
+        String containerId = createContainer(containerName, containerConfig);
+        if (containerId.isEmpty()) {
+            return CompletableFuture.completedFuture("");
+        }
 
         // docker container start
         boolean isContainerStarted = startContainer(containerId);
+        if (!isContainerStarted) {
+            removeContainer(containerId);
+            return CompletableFuture.completedFuture("");
+        }
 
-        if (!isContainerStarted) return "";
+        if (maxExecutionTime == 0) {
+            return CompletableFuture.completedFuture("");
+        }
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
-        waitContainer(chainTaskId, containerId, executionTimeoutDate);
+        waitContainer(containerName, containerId, executionTimeoutDate);
+        log.info("Computation completed [chainTaskId:{}]", containerName);
 
         // docker container stop
         stopContainer(containerId);
-
-        log.info("Computation completed [chainTaskId:{}]", chainTaskId);
 
         // docker container logs
         String stdout = getContainerLogs(containerId);
 
         // docker container rm
         removeContainer(containerId);
-        return stdout;
-    }
-
-    public void runContainerAsAService(String containerName, ContainerConfig containerConfig) {
-        if (containerConfig == null) {
-            log.error("Could not run container as a service, container config is null "
-                    + "[containerName:{}]", containerName);
-            return;
-        }
-
-        log.info("Running container as a service [containerName:{}, image:{}, cmd:{}]",
-                containerName, containerConfig.image(), containerConfig.cmd());
-
-        // docker container create
-        String containerId = createContainer(containerName, containerConfig);
-        if (containerId.isEmpty()) return;
-
-        // docker container start
-        startContainer(containerId);
-    }
-
-    private Container getContainerByName(String containerName) {
-        log.debug("Getting container by name [containerName:{}]", containerName);
-        List<Container> containerList;
-
-        try {
-            containerList = docker.listContainers(ListContainersParam.allContainers())
-                    .stream()
-                    .filter(container -> container.names().contains("/" + containerName))
-                    .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            log.error("Failed to get container by name [containerName:{}]", containerName);
-            e.printStackTrace();
-            return null;
-        }
-
-        if (containerList.isEmpty()) return null;
-        return containerList.get(0);
+        return CompletableFuture.completedFuture(stdout);
     }
 
     public String createContainer(String containerName, ContainerConfig containerConfig) {
@@ -304,15 +354,15 @@ public class CustomDockerClient {
         return true;
     }
 
-    public void waitContainer(String chainTaskId, String containerId, Date executionTimeoutDate) {
+    public void waitContainer(String containerName, String containerId, Date executionTimeoutDate) {
         boolean isComputed = false;
         boolean isTimeout = false;
 
         if (containerId == null || containerId.isEmpty()) return;
 
         while (!isComputed && !isTimeout) {
-            log.info("Computing [chainTaskId:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
-                    chainTaskId, containerId, getContainerStatus(containerId), isComputed, isTimeout);
+            log.info("Computing [containerName:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
+                    containerName, containerId, getContainerStatus(containerId), isComputed, isTimeout);
 
             WaitUtils.sleep(1);
             isComputed = isContainerExited(containerId);
@@ -320,7 +370,8 @@ public class CustomDockerClient {
         }
 
         if (isTimeout) {
-            log.warn("Container reached timeout, stopping [chainTaskId:{}, containerId:{}]", chainTaskId, containerId);
+            log.warn("Container reached timeout, stopping [containerName:{}, containerId:{}]",
+            containerName, containerId);
         }
     }
 
@@ -374,6 +425,7 @@ public class CustomDockerClient {
         return removeContainer(container.id());
     }
 
+    // This cleans possible conflicting containers having the same name.
     private void removeDuplicateContainer(String containerName) {
         log.debug("Trying to remove duplicate container [containerName:{}]", containerName);
 
@@ -382,6 +434,26 @@ public class CustomDockerClient {
 
         log.info("Found duplicate container, will remove it [containerName:{}]", containerName);
         removeContainer(container.id());
+    }
+
+    private Container getContainerByName(String containerName) {
+        log.debug("Getting container by name [containerName:{}]", containerName);
+        List<Container> containerList;
+
+        try {
+            containerList = docker.listContainers(ListContainersParam.allContainers())
+                    .stream()
+                    .filter(container -> container.names().contains("/" + containerName))
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Failed to get container by name [containerName:{}]", containerName);
+            e.printStackTrace();
+            return null;
+        }
+
+        if (containerList.isEmpty()) return null;
+        return containerList.get(0);
     }
 
     public boolean isContainerExited(String containerId) {
@@ -402,8 +474,7 @@ public class CustomDockerClient {
         return new Date().after(executionTimeoutDate);
     }
 
-    // we may have multiple networks having the same name
-    // but different IDs.
+    // This cleans possible conflicting networks having the same name.
     private List<Network> getNetworkListByName(String networkName) {
         log.debug("Getting network list by name [networkName:{}]", networkName);
 
