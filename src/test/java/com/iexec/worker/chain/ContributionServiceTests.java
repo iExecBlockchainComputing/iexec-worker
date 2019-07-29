@@ -3,6 +3,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.config.PublicConfigurationService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.when;
 public class ContributionServiceTests {
 
     @Mock private IexecHubService iexecHubService;
+    @Mock private ContributionAuthorizationService contributionAuthorizationService;
 
     @InjectMocks
     private ContributionService contributionService;
@@ -170,12 +172,15 @@ public class ContributionServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId))
                 .thenReturn(Optional.of(ChainContribution.builder()
                 .status(ChainContributionStatus.UNSET).build()));
+        when(contributionAuthorizationService.getContributionAuthorization(chainTaskId))
+                .thenReturn(new ContributionAuthorization());
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).isPresent()).isFalse();
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()).isTrue();
     }
 
     /**
      *  isContributionAuthorizationValid()
+     *
      */
 
     @Test
@@ -191,7 +196,7 @@ public class ContributionServiceTests {
         Signature signature = new Signature(
                 BytesUtils.stringToBytes("0x99f6b19da6aeb2133763a11204b9895c5b7d0478d08ae3d889a6bd6c820b612f"),
                 BytesUtils.stringToBytes("0x0b64b1f9ceb8472f4944da55d3b75947a04618bae5ddd57a7a2a2d14c3802b7e"),
-                (byte) 27);
+                new byte[]{(byte) 27});
 
         ContributionAuthorization contribAuth = ContributionAuthorization.builder()
                 .workerWallet(workerWallet)

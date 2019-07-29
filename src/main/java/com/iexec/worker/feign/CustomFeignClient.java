@@ -4,6 +4,7 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerConfigurationModel;
 import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -142,18 +143,19 @@ public class CustomFeignClient {
         }
     }
 
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
-        updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().build());
+    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
+        return updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().build());
     }
 
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateStatusCause cause) {
-        updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().replicateStatusCause(cause).build());
+    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateStatusCause cause) {
+        return updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().replicateStatusCause(cause).build());
     }
 
-    public void updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {
+    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {
         try {
-            replicateClient.updateReplicateStatus(chainTaskId, status, tokenService.getToken(), details);
+            TaskNotificationType taskNotificationType = replicateClient.updateReplicateStatus(chainTaskId, status, tokenService.getToken(), details);
             log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
+            return taskNotificationType;
         } catch (FeignException e) {
             if (isUnauthorized(e)) {
                 tokenService.expireToken();
@@ -161,7 +163,7 @@ public class CustomFeignClient {
                 log.error("Failed to updateReplicateStatus (will retry) [instance:{}, status:{}]", coreURL, e.status());
             }
             sleep();
-            updateReplicateStatus(chainTaskId, status, details);
+            return updateReplicateStatus(chainTaskId, status, details);
         }
     }
 
