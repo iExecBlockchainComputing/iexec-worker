@@ -15,11 +15,8 @@ import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.iexec.common.replicate.ReplicateStatus.COMPUTE_FAILED;
 
 
 @Slf4j
@@ -157,7 +154,7 @@ public class ComputationService {
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        for(String envVar:getContainerEnvVariables(datasetFilename, taskDescription)){
+        for(String envVar : getContainerEnvVariables(datasetFilename, taskDescription)){
             sconeAppEnv.add(envVar);
             sconeEncrypterEnv.add(envVar);
         }
@@ -196,7 +193,7 @@ public class ComputationService {
         list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + nbFiles);
 
         int inputFileIndex = 1;
-        for(String inputFile:taskDescription.getInputFiles()) {
+        for(String inputFile : taskDescription.getInputFiles()) {
             list.add(IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX + inputFileIndex + "=" + FilenameUtils.getName(inputFile));
             inputFileIndex++;
         }
