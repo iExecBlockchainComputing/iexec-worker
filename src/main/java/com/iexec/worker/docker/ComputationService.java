@@ -8,7 +8,6 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
 import org.apache.commons.lang3.tuple.Pair;
-import com.spotify.docker.client.messages.ContainerConfig;
 
 import org.springframework.stereotype.Service;
 
@@ -79,8 +78,16 @@ public class ComputationService {
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
         List<String> env = Arrays.asList(DATASET_FILENAME + "=" + datasetFilename);
 
-        ContainerConfig containerConfig = customDockerClient.buildAppContainerConfig(chainTaskId, imageUri, env, cmd);
-        stdout = customDockerClient.dockerRun(chainTaskId, containerConfig, maxExecutionTime);
+        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(chainTaskId)
+                .imageUri(imageUri)
+                .cmd(cmd.split(" "))
+                .containerName(chainTaskId)
+                .maxExecutionTime(maxExecutionTime)
+                .env(env)
+                .build();
+
+        stdout = customDockerClient.runNonTeeTaskContainer(dockerExecutionConfig);
 
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
@@ -122,17 +129,17 @@ public class ComputationService {
         sconeAppEnv.add(datasetEnv);
         sconeEncrypterEnv.add(datasetEnv);
 
-        ContainerConfig sconeAppConfig = customDockerClient.buildSconeAppContainerConfig(chainTaskId, imageUri, sconeAppEnv, cmd);
-        ContainerConfig sconeEncrypterConfig = customDockerClient.buildSconeAppContainerConfig(chainTaskId, imageUri, sconeEncrypterEnv, cmd);
-
-        if (sconeAppConfig == null || sconeEncrypterConfig == null) {
-            stdout = "Could not build scone container config";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
-            return Pair.of(COMPUTE_FAILED, stdout);
-        }
+        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(chainTaskId)
+                .imageUri(imageUri)
+                .cmd(cmd.split(" "))
+                .containerName(chainTaskId)
+                .maxExecutionTime(maxExecutionTime)
+                .env(sconeAppEnv)
+                .build();
 
         // run computation
-        stdout = customDockerClient.dockerRun(chainTaskId, sconeAppConfig, maxExecutionTime);
+        stdout = customDockerClient.runTeeTaskContainer(dockerExecutionConfig);
 
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
@@ -141,7 +148,8 @@ public class ComputationService {
         }
 
         // encrypt result
-        stdout += customDockerClient.dockerRun(chainTaskId, sconeEncrypterConfig, maxExecutionTime);
+        dockerExecutionConfig.setEnv(sconeEncrypterEnv);
+        stdout += customDockerClient.runTeeTaskContainer(dockerExecutionConfig);
         return Pair.of(COMPUTED, stdout);
     }
 }

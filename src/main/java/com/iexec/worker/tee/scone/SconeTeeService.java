@@ -14,9 +14,9 @@ import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.CustomDockerClient;
+import com.iexec.worker.docker.DockerExecutionConfig;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
-import com.spotify.docker.client.messages.ContainerConfig;
 
 import org.springframework.stereotype.Service;
 
@@ -53,12 +53,14 @@ public class SconeTeeService {
     }
 
     public void startLasService() {
-        String imageUri = sconeLasConfiguration.getImageUri();
-        String port = sconeLasConfiguration.getPort();
-        String lasContainerName = sconeLasConfiguration.getContainerName();
+        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(sconeLasConfiguration.getContainerName())
+                .imageUri(sconeLasConfiguration.getImageUri())
+                .containerPort(sconeLasConfiguration.getPort())
+                .containerName(sconeLasConfiguration.getContainerName())
+                .build();
 
-        ContainerConfig lasContainerConfig = customDockerClient.buildSconeLasContainerConfig(imageUri, port);
-        customDockerClient.runContainerAsAService(lasContainerName, lasContainerConfig);
+        customDockerClient.runLasContainer(dockerExecutionConfig);
     }
 
     public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
