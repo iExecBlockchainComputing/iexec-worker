@@ -123,7 +123,6 @@ public class ComputationService {
         }
 
         resultService.saveResult(chainTaskId, taskDescription, stdout);
-
         return true;
     }
 
@@ -180,6 +179,8 @@ public class ComputationService {
         // encrypt result
         dockerExecutionConfig.setEnv(sconeEncrypterEnv);
         stdout += customDockerClient.runTeeTaskContainer(dockerExecutionConfig);
+
+        resultService.saveResult(chainTaskId, taskDescription, stdout);
         return  true;
     }
 
