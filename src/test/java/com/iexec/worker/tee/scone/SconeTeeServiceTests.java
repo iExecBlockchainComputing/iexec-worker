@@ -121,7 +121,7 @@ public class SconeTeeServiceTests {
         String s = "0x14e53d7cd66ec0a1cfe330b1e16e460ae354d33fb84cf9d62213b10c109f0db5";
         int v = 27;
 
-        Signature enclaveSignature = new Signature(BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s), (byte) v);
+        Signature enclaveSignature = new Signature(BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s), new byte[]{(byte) v});
 
         assertThat(sconeTeeService.isEnclaveSignatureValid(resultHash, resultSeal, enclaveSignature, enclaveAddress)).isTrue();
     }
@@ -141,7 +141,7 @@ public class SconeTeeServiceTests {
         String s = "0x14e53d7cd66ec0a1cfe330b1e16e460ae354d33fb84cf9d62213b10c109f0db5";
         int v = 27;
 
-        Signature enclaveSignature = new Signature(BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s), (byte) v);
+        Signature enclaveSignature = new Signature(BytesUtils.stringToBytes(r), BytesUtils.stringToBytes(s), new byte[]{(byte) v});
 
         assertThat(sconeTeeService.isEnclaveSignatureValid(resultHash, resultSeal, enclaveSignature, enclaveAddress)).isFalse();
     }
