@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Optional;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
@@ -52,15 +55,22 @@ public class SconeTeeService {
         this.smsService = smsService;
     }
 
+    @PostConstruct
     public void startLasService() {
+        // start LAS if worker is TEE enabled
+        if (!workerConfigurationService.isTeeEnabled()) {
+            return;
+        }
+
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
-                .chainTaskId(sconeLasConfiguration.getContainerName())
                 .imageUri(sconeLasConfiguration.getImageUri())
                 .containerPort(sconeLasConfiguration.getPort())
                 .containerName(sconeLasConfiguration.getContainerName())
+                .isSgx(true)
+                .maxExecutionTime(0)
                 .build();
 
-        customDockerClient.runLasContainer(dockerExecutionConfig);
+        customDockerClient.execute(dockerExecutionConfig);
     }
 
     public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
@@ -72,7 +82,9 @@ public class SconeTeeService {
 
         // generate secure session
         Optional<SconeSecureSession> oSconeSecureSession = smsService.getSconeSecureSession(contributionAuth);
-        if (!oSconeSecureSession.isPresent()) return "";
+        if (!oSconeSecureSession.isPresent()) {
+            return "";
+        }
 
         SconeSecureSession sconeSecureSession = oSconeSecureSession.get();
 
@@ -107,5 +119,12 @@ public class SconeTeeService {
                                            Signature enclaveSignature, String enclaveAddress) {
         byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
         return SignatureUtils.isSignatureValid(message, enclaveSignature, enclaveAddress);
+    }
+
+    @PreDestroy
+    void stopLasService() {
+        if (workerConfigurationService.isTeeEnabled()) {
+            customDockerClient.stopAndRemoveContainer(sconeLasConfiguration.getContainerName());
+        }
     }
 }

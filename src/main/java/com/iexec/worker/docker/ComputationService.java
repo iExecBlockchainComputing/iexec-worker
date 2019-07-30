@@ -3,7 +3,7 @@ package com.iexec.worker.docker;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.task.TaskDescription;
-
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @Slf4j
@@ -37,19 +39,21 @@ public class ComputationService {
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
     private ResultService resultService;
+    private WorkerConfigurationService workerConfigurationService;
 
     public ComputationService(SmsService smsService,
                               DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
-                              ResultService resultService) {
+                              ResultService resultService,
+                              WorkerConfigurationService workerConfigurationService) {
 
         this.smsService = smsService;
         this.dataService = dataService;
         this.customDockerClient = customDockerClient;
         this.sconeTeeService = sconeTeeService;
-
         this.resultService = resultService;
+        this.workerConfigurationService = workerConfigurationService;
     }
 
     public boolean isValidAppType(String chainTaskId, DappType type) {
@@ -76,7 +80,7 @@ public class ComputationService {
     }
 
     public boolean runNonTeeComputation(TaskDescription taskDescription,
-                                                                   ContributionAuthorization contributionAuth) {
+                                        ContributionAuthorization contributionAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         String imageUri = taskDescription.getAppUri();
         String cmd = taskDescription.getCmd();
@@ -105,16 +109,24 @@ public class ComputationService {
 
         // compute
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
+        List<String> env = getContainerEnvVariables(datasetFilename, taskDescription);
+
+        Map<String, String> bindPaths = new HashMap<>();
+        bindPaths.put(workerConfigurationService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
+        bindPaths.put(workerConfigurationService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigurationService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
+
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .imageUri(imageUri)
                 .cmd(cmd.split(" "))
-                .containerName(chainTaskId)
                 .maxExecutionTime(maxExecutionTime)
-                .env(getContainerEnvVariables(datasetFilename, taskDescription))
+                .env(env)
+                .bindPaths(bindPaths)
+                .isSgx(false)
                 .build();
 
-        stdout = customDockerClient.runNonTeeTaskContainer(dockerExecutionConfig);
+        stdout = customDockerClient.execute(dockerExecutionConfig);
 
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
@@ -127,7 +139,7 @@ public class ComputationService {
     }
 
     public boolean runTeeComputation(TaskDescription taskDescription,
-                                                           ContributionAuthorization contributionAuth) {
+                                     ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         String imageUri = taskDescription.getAppUri();
         String datasetUri = taskDescription.getDatasetUri();
@@ -158,17 +170,23 @@ public class ComputationService {
             sconeEncrypterEnv.add(envVar);
         }
 
+        Map<String, String> bindPaths = new HashMap<>();
+        bindPaths.put(workerConfigurationService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
+        bindPaths.put(workerConfigurationService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigurationService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
+
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .imageUri(imageUri)
                 .cmd(cmd.split(" "))
-                .containerName(chainTaskId)
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeAppEnv)
+                .bindPaths(bindPaths)
+                .isSgx(true)
                 .build();
 
         // run computation
-        stdout = customDockerClient.runTeeTaskContainer(dockerExecutionConfig);
+        stdout = customDockerClient.execute(dockerExecutionConfig);
 
         if (stdout.isEmpty()) {
             stdout = "Failed to start computation";
@@ -178,7 +196,7 @@ public class ComputationService {
 
         // encrypt result
         dockerExecutionConfig.setEnv(sconeEncrypterEnv);
-        stdout += customDockerClient.runTeeTaskContainer(dockerExecutionConfig);
+        stdout += customDockerClient.execute(dockerExecutionConfig);
 
         resultService.saveResult(chainTaskId, taskDescription, stdout);
         return  true;

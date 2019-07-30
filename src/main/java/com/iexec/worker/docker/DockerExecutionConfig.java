@@ -1,6 +1,7 @@
 package com.iexec.worker.docker;
 
 import java.util.List;
+import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,4 +22,6 @@ public class DockerExecutionConfig {
     private List<String> env;
     private long maxExecutionTime;
     private String containerPort;
+    private Map<String, String> bindPaths;
+    private boolean isSgx;
 }
