@@ -2,7 +2,7 @@ package com.iexec.worker.feign;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.config.PublicConfiguration;
-import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateDetails;
@@ -86,7 +86,7 @@ public class CustomFeignClient {
     }
 
     //TODO: Make registerWorker return Worker
-    public void registerWorker(WorkerConfigurationModel model) {
+    public void registerWorker(WorkerModel model) {
         try {
             workerClient.registerWorker(tokenService.getToken(), model);
         } catch (FeignException e) {

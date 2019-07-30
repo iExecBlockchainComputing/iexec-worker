@@ -2,7 +2,7 @@ package com.iexec.worker;
 
 
 import com.iexec.common.config.PublicConfiguration;
-import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.common.config.WorkerModel;
 import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
@@ -14,7 +14,6 @@ import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -65,7 +64,7 @@ public class Application implements CommandLineRunner {
     @Override
     public void run(String... args) {
         String workerAddress = credentialsService.getCredentials().getAddress();
-        WorkerConfigurationModel model = WorkerConfigurationModel.builder()
+        WorkerModel model = WorkerModel.builder()
                 .name(workerConfig.getWorkerName())
                 .walletAddress(workerAddress)
                 .os(workerConfig.getOS())

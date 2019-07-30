@@ -2,7 +2,7 @@ package com.iexec.worker.feign;
 
 
 import com.iexec.common.config.PublicConfiguration;
-import com.iexec.common.config.WorkerConfigurationModel;
+import com.iexec.common.config.WorkerModel;
 import com.iexec.common.security.Signature;
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -24,7 +24,7 @@ public interface WorkerClient {
 
     @PostMapping("/workers/register")
     void registerWorker(@RequestHeader("Authorization") String bearerToken,
-                        @RequestBody WorkerConfigurationModel model) throws FeignException;
+                        @RequestBody WorkerModel model) throws FeignException;
 
     @GetMapping("/workers/currenttasks")
     List<String> getCurrentTasks(@RequestHeader("Authorization") String bearerToken) throws FeignException;
