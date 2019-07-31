@@ -28,18 +28,19 @@ public class SgxService {
     }
 
     public boolean isSgxEnabled() {
+        log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SGX_DRIVER_PATH).exists();
 
         if (!isSgxDriverFound) {
-            log.debug("SGX driver not found");
+            log.info("SGX driver not found");
             return false;
         }
 
         boolean isSgxDeviceFound = isSgxDeviceFound();
 
         if (!isSgxDeviceFound) {
-            String message = "SGX driver is installed but no SGX device found. SGX not enabled?\n";
-            message += "We'll continue without TEE support";
+            String message = "SGX driver is installed but no SGX device found (SGX not enabled?)";
+            message += " We'll continue without TEE support";
             LoggingUtils.printHighlightedMessage(message);
             return false;
         }
@@ -48,47 +49,21 @@ public class SgxService {
         return true;
     }
 
-    public boolean checkSgxDriver() {
-        boolean isSgxDriverFound = new File(SGX_DRIVER_PATH).exists();
-
-        if (!isSgxDriverFound) {
-            log.debug("SGX driver not found");
-            return false;
-        }
-
-        boolean isSgxDeviceFound = isSgxDeviceFound();
-
-        if (!isSgxDeviceFound) {
-            String message = "SGX driver is installed but no SGX device found. SGX not enabled?\n";
-            message += "We'll continue without TEE support";
-            LoggingUtils.printHighlightedMessage(message);
-            return false;
-        }
-
-        log.info("SGX is enabled, worker can execute TEE tasks");
-        return true;
-    }
-
-    public boolean isSgxDeviceFound() {
-        String cmd = "ls /dev/isgx >/dev/null 2>1 && echo true || echo false";
+    private boolean isSgxDeviceFound() {
+        String cmd = "find /dev -name isgx -exec echo true ;";
 
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put("/dev", "/dev");
 
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
-                .imageUri("alpine:lates")
+                .imageUri("alpine:latest")
                 .cmd(cmd.split(" "))
                 .containerName("sgxCheck")
-                .maxExecutionTime(300) // 5min
+                .maxExecutionTime(300000) // 5min (in millis)
                 .bindPaths(bindPaths)
                 .build();
 
         String stdout = customDockerClient.execute(dockerExecutionConfig);
-        if (stdout.isEmpty()) {
-            log.error("Could not check SGX device, will run worker without SGX support");
-            return false;
-        }
-
-        return stdout.equals("true") ? true : false;
+        return (stdout != null && stdout.equals("true")) ? true : false;
     }
 }

@@ -212,11 +212,11 @@ public class CustomDockerClient {
      */
     private String runContainer(String containerName, ContainerConfig containerConfig, long maxExecutionTime) {
         if (containerConfig == null) {
-            log.error("Could not run computation, container config is null [containerName:{}]", containerName);
+            log.error("Could not run container, container config is null [containerName:{}]", containerName);
             return "";
         }
 
-        log.info("Running computation [containerName:{}, image:{}, cmd:{}]",
+        log.info("Running container [containerName:{}, image:{}, cmd:{}]",
                 containerName, containerConfig.image(), containerConfig.cmd());
 
         // remove possible duplication
@@ -243,7 +243,7 @@ public class CustomDockerClient {
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(containerName, containerId, executionTimeoutDate);
-        log.info("Computation completed [containerName:{}]", containerName);
+        log.info("End of execution [containerName:{}]", containerName);
 
         // docker container stop
         stopContainer(containerId);
@@ -308,7 +308,7 @@ public class CustomDockerClient {
         }
 
         while (!isComputed && !isTimeout) {
-            log.info("Computing [containerName:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
+            log.info("Running [containerName:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
                     containerName, containerId, getContainerStatus(containerId), isComputed, isTimeout);
 
             WaitUtils.sleep(1);

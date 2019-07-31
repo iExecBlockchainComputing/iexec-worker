@@ -3,7 +3,6 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.config.PublicConfigurationService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;

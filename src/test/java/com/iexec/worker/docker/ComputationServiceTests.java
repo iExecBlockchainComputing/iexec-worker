@@ -52,7 +52,7 @@ public class ComputationServiceTests {
                 .appUri("appUri")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
-                .maxExecutionTime(500)
+                .maxExecutionTime(500000) // 5min
                 .cmd("ls")
                 .inputFiles(new ArrayList<>())
                 .build();
