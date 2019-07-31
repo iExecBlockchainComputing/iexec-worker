@@ -63,7 +63,7 @@ public class SgxService {
                 .bindPaths(bindPaths)
                 .build();
 
-        String stdout = customDockerClient.execute(dockerExecutionConfig);
+        String stdout = customDockerClient.execute(dockerExecutionConfig).trim();
         return (stdout != null && stdout.equals("true")) ? true : false;
     }
 }
