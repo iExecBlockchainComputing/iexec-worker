@@ -107,7 +107,7 @@ public class CustomDockerClient {
         removeContainer(containerId);
     }
 
-    private ContainerConfig buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
+    public ContainerConfig buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
         String imageUri = dockerExecutionConfig.getImageUri();
         String[] cmd = dockerExecutionConfig.getCmd();
         List<String> env = dockerExecutionConfig.getEnv();
@@ -256,14 +256,14 @@ public class CustomDockerClient {
         return stdout;
     }
 
-    private String createContainer(String containerName, ContainerConfig containerConfig) {
+    public String createContainer(String containerName, ContainerConfig containerConfig) {
         log.debug("Creating container [containerName:{}]", containerName);
 
-        ContainerCreation containerCreation;
         if (containerConfig == null) {
             return "";
         }
 
+        ContainerCreation containerCreation;
         try {
             containerCreation = docker.createContainer(containerConfig, containerName);
         } catch (DockerException | InterruptedException e) {
@@ -274,6 +274,7 @@ public class CustomDockerClient {
         }
 
         if (containerCreation == null) {
+            log.error("Error creating container [containerName:{}]", containerName);
             return "";
         }
 
@@ -283,7 +284,7 @@ public class CustomDockerClient {
         return containerCreation.id() != null ? containerCreation.id() : "";
     }
 
-    private boolean startContainer(String containerId) {
+    public boolean startContainer(String containerId) {
         log.debug("Starting container [containerId:{}]", containerId);
 
         try {
@@ -299,7 +300,7 @@ public class CustomDockerClient {
         return true;
     }
 
-    private void waitContainer(String containerName, String containerId, Date executionTimeoutDate) {
+    public void waitContainer(String containerName, String containerId, Date executionTimeoutDate) {
         boolean isComputed = false;
         boolean isTimeout = false;
 
@@ -322,7 +323,7 @@ public class CustomDockerClient {
         }
     }
 
-    private boolean stopContainer(String containerId) {
+    public boolean stopContainer(String containerId) {
         log.debug("Stopping container [containerId:{}]", containerId);
 
         try {
@@ -337,7 +338,7 @@ public class CustomDockerClient {
         return true;
     }
 
-    private String getContainerLogs(String containerId) {
+    public String getContainerLogs(String containerId) {
         log.debug("Getting container logs [containerId:{}]", containerId);
         String stdout = "";
 
@@ -353,7 +354,7 @@ public class CustomDockerClient {
         return stdout;
     }
 
-    private boolean removeContainer(String containerId) {
+    public boolean removeContainer(String containerId) {
         log.debug("Removing container [containerId:{}]", containerId);
         try {
             docker.removeContainer(containerId);

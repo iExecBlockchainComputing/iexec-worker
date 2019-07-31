@@ -111,18 +111,13 @@ public class ComputationService {
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
         List<String> env = getContainerEnvVariables(datasetFilename, taskDescription);
 
-        Map<String, String> bindPaths = new HashMap<>();
-        bindPaths.put(workerConfigurationService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
-        bindPaths.put(workerConfigurationService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
-        bindPaths.put(workerConfigurationService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
-
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .imageUri(imageUri)
                 .cmd(cmd.split(" "))
                 .maxExecutionTime(maxExecutionTime)
                 .env(env)
-                .bindPaths(bindPaths)
+                .bindPaths(getDefaultBindPaths(chainTaskId))
                 .isSgx(false)
                 .build();
 
@@ -170,18 +165,13 @@ public class ComputationService {
             sconeEncrypterEnv.add(envVar);
         }
 
-        Map<String, String> bindPaths = new HashMap<>();
-        bindPaths.put(workerConfigurationService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
-        bindPaths.put(workerConfigurationService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
-        bindPaths.put(workerConfigurationService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
-
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .imageUri(imageUri)
                 .cmd(cmd.split(" "))
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeAppEnv)
-                .bindPaths(bindPaths)
+                .bindPaths(getSconeBindPaths(chainTaskId))
                 .isSgx(true)
                 .build();
 
@@ -220,5 +210,18 @@ public class ComputationService {
         list.add(IEXEC_INPUT_FILES_FOLDER_ENV_PROPERTY + "=" + FileHelper.SLASH_IEXEC_IN);
 
         return list;
+    }
+
+    private Map<String, String> getDefaultBindPaths(String chainTaskId) {
+        Map<String, String> bindPaths = new HashMap<>();
+        bindPaths.put(workerConfigurationService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
+        bindPaths.put(workerConfigurationService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        return bindPaths;
+    }
+
+    private Map<String, String> getSconeBindPaths(String chainTaskId) {
+        Map<String, String> bindPaths = getDefaultBindPaths(chainTaskId);
+        bindPaths.put(workerConfigurationService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
+        return bindPaths;
     }
 }
