@@ -13,11 +13,10 @@ services:
       - IEXEC_CORE_HOST=core
       - IEXEC_CORE_PORT=18090
       - IEXEC_WORKER_NAME=worker
-      - IEXEC_TEE_ENABLED:false
       - IEXEC_WORKER_WALLET_PATH=/iexec-wallets/encrypted-wallet_worker1.json
       - IEXEC_WORKER_BASE_DIR=/tmp/iexec-worker
       - IEXEC_SCONE_LAS_HOST=iexec-las
-      - IEXEC_SCONE_LAS_PORT=18766
+      - IEXEC_LAS_PORT=18766
     ports:
       - 18091:18091
     volumes:
