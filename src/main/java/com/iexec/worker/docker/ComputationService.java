@@ -2,7 +2,9 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 
 @Slf4j
@@ -40,6 +43,7 @@ public class ComputationService {
     private SconeTeeService sconeTeeService;
     private ResultService resultService;
     private WorkerConfigurationService workerConfigurationService;
+    private PublicConfigurationService publicConfigurationService;
 
     public ComputationService(SmsService smsService,
                               DataService dataService,
@@ -88,9 +92,15 @@ public class ComputationService {
         String stdout = "";
 
         // fetch task secrets from SMS
-        boolean isFetched = smsService.fetchTaskSecrets(contributionAuth);
-        if (!isFetched) {
+        Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(contributionAuth);
+        if (!oTaskSecrets.isPresent()) {
             log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
+        } else {
+            String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
+            String beneficiarySecretFilePath = workerConfigurationService.getBeneficiarySecretFilePath(chainTaskId);
+            String enclaveSecretFilePath = workerConfigurationService.getEnclaveSecretFilePath(chainTaskId);
+            smsService.saveSecrets(chainTaskId, oTaskSecrets.get(), datasetSecretFilePath,
+                    beneficiarySecretFilePath, enclaveSecretFilePath);
         }
 
         // decrypt data
@@ -153,8 +163,10 @@ public class ComputationService {
             return false;
         }
 
-        ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app");
-        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption");
+        ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
+                publicConfigurationService.getSconeCasURL());
+        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption",
+                publicConfigurationService.getSconeCasURL());
 
         if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
             stdout = "Could not create scone docker environment";
