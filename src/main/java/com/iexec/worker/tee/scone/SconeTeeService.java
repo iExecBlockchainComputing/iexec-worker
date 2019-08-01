@@ -13,7 +13,6 @@ import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.DockerExecutionConfig;
 import com.iexec.worker.sgx.SgxService;
@@ -37,18 +36,15 @@ public class SconeTeeService {
     private boolean isLasStarted;
 
     private SconeLasConfiguration sconeLasConfiguration;
-    private PublicConfigurationService publicConfigurationService;
     private CustomDockerClient customDockerClient;
     private SmsService smsService;
 
     public SconeTeeService(SconeLasConfiguration sconeLasConfiguration,
-                           PublicConfigurationService publicConfigurationService,
                            CustomDockerClient customDockerClient,
                            SgxService sgxService,
                            SmsService smsService) {
 
         this.sconeLasConfiguration = sconeLasConfiguration;
-        this.publicConfigurationService = publicConfigurationService;
         this.customDockerClient = customDockerClient;
         this.smsService = smsService;
 
@@ -108,10 +104,10 @@ public class SconeTeeService {
         return sessionId;
     }
 
-    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId) {
+    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl) {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfiguration.getUrl())
-                .sconeCasAddress(publicConfigurationService.getSconeCasURL())
+                .sconeCasAddress(sconeCasUrl)
                 .sconeConfigId(sconeConfigId)
                 .build();
 

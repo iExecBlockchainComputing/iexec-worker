@@ -2,6 +2,7 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -21,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 
 public class ComputationServiceTests {
@@ -87,8 +89,9 @@ public class ComputationServiceTests {
     @Test
     public void shouldComputeNonTeeTaskWithoutDecryptingDataset() {
         TaskDescription task = getStubTaskDescription(false);
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
 
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
         when(customDockerClient.execute(any())).thenReturn("Computed successfully !");
 
@@ -102,8 +105,9 @@ public class ComputationServiceTests {
     @Test
     public void shouldDecryptDatasetAndComputeNonTeeTask() {
         TaskDescription task = getStubTaskDescription(false);
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
 
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
         when(customDockerClient.execute(any())).thenReturn("Computed successfully !");
@@ -118,9 +122,10 @@ public class ComputationServiceTests {
     @Test
     public void shouldNotComputeNonTeeTaskSinceCouldNotDecryptDataset() {
         TaskDescription task = getStubTaskDescription(false);
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
         String expectedStdout = "Failed to decrypt dataset, URI:" + task.getDatasetUri();
 
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
         when(customDockerClient.execute(any())).thenReturn(expectedStdout);
@@ -144,7 +149,7 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
+        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn("Computed successfully!")
                                                .thenReturn("Encrypted successfully!");
 
@@ -173,7 +178,7 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(new ArrayList<>());
+        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(new ArrayList<>());
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
         assertThat(isComputed).isFalse();
@@ -189,7 +194,7 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
+        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn("");
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
