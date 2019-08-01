@@ -50,19 +50,21 @@ public class SgxService {
     }
 
     private boolean isSgxDeviceFound() {
+        String alpineLatest = "alpine:latest";
         String cmd = "find /dev -name isgx -exec echo true ;";
 
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put("/dev", "/dev");
 
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
-                .imageUri("alpine:latest")
+                .imageUri(alpineLatest)
                 .cmd(cmd.split(" "))
                 .containerName("sgxCheck")
                 .maxExecutionTime(300000) // 5min (in millis)
                 .bindPaths(bindPaths)
                 .build();
 
+        customDockerClient.pullImage("checkSgx", alpineLatest);
         String stdout = customDockerClient.execute(dockerExecutionConfig).trim();
         return (stdout != null && stdout.equals("true")) ? true : false;
     }
