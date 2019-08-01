@@ -42,9 +42,9 @@ public class SconeTeeService {
     private SmsService smsService;
 
     public SconeTeeService(SconeLasConfiguration sconeLasConfiguration,
-                           SgxService sgxService,
                            PublicConfigurationService publicConfigurationService,
                            CustomDockerClient customDockerClient,
+                           SgxService sgxService,
                            SmsService smsService) {
 
         this.sconeLasConfiguration = sconeLasConfiguration;
