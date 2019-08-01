@@ -142,7 +142,10 @@ public class ComputationService {
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String stdout = "";
 
-        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+        String fspfFolderPath = workerConfigurationService.getTaskSconeDir(chainTaskId);
+        String beneficiaryKeyFolderPath = workerConfigurationService.getTaskIexecOutDir(chainTaskId);
+        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth,
+                fspfFolderPath, beneficiaryKeyFolderPath);
 
         if (secureSessionId.isEmpty()) {
             stdout = "Could not generate scone secure session for tee computation";

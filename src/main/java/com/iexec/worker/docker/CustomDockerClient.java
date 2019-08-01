@@ -87,24 +87,27 @@ public class CustomDockerClient {
         }
 
         String containerName = dockerExecutionConfig.getContainerName();
-        long maxExecutionTime = dockerExecutionConfig.getMaxExecutionTime();
-
         if (containerName == null || containerName.isEmpty()) {
             containerName = dockerExecutionConfig.getChainTaskId();
         }
 
-        return runContainer(containerName, containerConfig, maxExecutionTime);
+        long maxExecutionTime = dockerExecutionConfig.getMaxExecutionTime();
+        return runContainerAndGetLogs(containerName, containerConfig, maxExecutionTime);
     }
 
-    public void stopAndRemoveContainer(String containerName) {
-        Container container = getContainerByName(containerName);
-        if (container == null) {
-            return;
+    public boolean startService(DockerExecutionConfig dockerExecutionConfig) {
+        ContainerConfig containerConfig = buildContainerConfig(dockerExecutionConfig);
+        if (containerConfig == null) {
+            return false;
         }
 
-        String containerId = container.id();
-        stopContainer(containerId);
-        removeContainer(containerId);
+        String containerName = dockerExecutionConfig.getContainerName();
+        if (containerName == null || containerName.isEmpty()) {
+            containerName = dockerExecutionConfig.getChainTaskId();
+        }
+
+        String containerId = runContainer(containerName, containerConfig);
+        return containerId.isEmpty() ? false : true;
     }
 
     public ContainerConfig buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
@@ -210,37 +213,8 @@ public class CustomDockerClient {
      * 
      * In the latter case we return the stdout logs as a string.
      */
-    private String runContainer(String containerName, ContainerConfig containerConfig, long maxExecutionTime) {
-        if (containerConfig == null) {
-            log.error("Could not run container, container config is null [containerName:{}]", containerName);
-            return "";
-        }
-
-        log.info("Running container [containerName:{}, image:{}, cmd:{}]",
-                containerName, containerConfig.image(), containerConfig.cmd());
-
-        // remove possible duplication
-        removeDuplicateContainer(containerName);
-        
-        // docker container create
-        String containerId = createContainer(containerName, containerConfig);
-        if (containerId.isEmpty()) {
-            return "";
-        }
-
-        // docker container start
-        boolean isContainerStarted = startContainer(containerId);
-        if (!isContainerStarted) {
-            removeContainer(containerId);
-            return "";
-        }
-
-        if (maxExecutionTime == 0) {
-            // when the worker runs as a service,
-            // we do not wait or stop it
-            return  "";
-        }
-
+    private String runContainerAndGetLogs(String containerName, ContainerConfig containerConfig, long maxExecutionTime) {
+        String containerId = runContainer(containerName, containerConfig);
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(containerName, containerId, executionTimeoutDate);
         log.info("End of execution [containerName:{}]", containerName);
@@ -254,6 +228,34 @@ public class CustomDockerClient {
         // docker container rm
         removeContainer(containerId);
         return stdout;
+    }
+
+    public String runContainer(String containerName, ContainerConfig containerConfig) {
+        if (containerConfig == null) {
+            log.error("Could not run container, container config is null [containerName:{}]", containerName);
+            return "";
+        }
+
+        log.info("Running container [containerName:{}, image:{}, cmd:{}]",
+                containerName, containerConfig.image(), containerConfig.cmd());
+
+        // remove possible duplication
+        removeDuplicateContainer(containerName);
+
+        // docker container create
+        String containerId = createContainer(containerName, containerConfig);
+        if (containerId.isEmpty()) {
+            return "";
+        }
+
+        // docker container start
+        boolean isContainerStarted = startContainer(containerId);
+        if (!isContainerStarted) {
+            removeContainer(containerId);
+            return "";
+        }
+
+        return containerId;
     }
 
     public String createContainer(String containerName, ContainerConfig containerConfig) {
@@ -366,6 +368,17 @@ public class CustomDockerClient {
 
         log.debug("Removed container [containerId:{}]", containerId);
         return true;
+    }
+
+    public void stopAndRemoveContainer(String containerName) {
+        Container container = getContainerByName(containerName);
+        if (container == null) {
+            return;
+        }
+
+        String containerId = container.id();
+        stopContainer(containerId);
+        removeContainer(containerId);
     }
 
     private void removeDuplicateContainer(String containerName) {
