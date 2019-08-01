@@ -15,7 +15,6 @@ services:
       - IEXEC_WORKER_NAME=worker
       - IEXEC_WORKER_WALLET_PATH=/iexec-wallets/encrypted-wallet_worker1.json
       - IEXEC_WORKER_BASE_DIR=/tmp/iexec-worker
-      - IEXEC_SCONE_LAS_HOST=iexec-las
       - IEXEC_LAS_PORT=18766
     ports:
       - 18091:18091
