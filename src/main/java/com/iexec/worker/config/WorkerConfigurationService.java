@@ -71,6 +71,21 @@ public class WorkerConfigurationService {
         return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_SCONE;
     }
 
+    public String getDatasetSecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/input/dataset.secret
+        return getTaskInputDir(chainTaskId) + File.separator + "dataset.secret";
+    }
+
+    public String getBeneficiarySecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/beneficiary.secret
+        return getTaskBaseDir(chainTaskId) + File.separator + "beneficiary.secret";
+    }
+
+    public String getEnclaveSecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/enclave.secret
+        return getTaskBaseDir(chainTaskId) + File.separator + "enclave.secret";
+    }
+
     public String getOS() {
         return System.getProperty("os.name").trim();
     }
