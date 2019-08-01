@@ -142,7 +142,7 @@ public class ComputationServiceTests {
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn("Computed successfully!")
@@ -158,7 +158,8 @@ public class ComputationServiceTests {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth)).thenReturn("");
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
+                .thenReturn("");
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
         assertThat(isComputed).isFalse();
@@ -170,7 +171,7 @@ public class ComputationServiceTests {
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
         String awesomeSessionId = "awesomeSessionId";
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(new ArrayList<>());
 
@@ -186,7 +187,7 @@ public class ComputationServiceTests {
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn("");
