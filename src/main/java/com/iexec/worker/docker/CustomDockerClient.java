@@ -390,7 +390,7 @@ public class CustomDockerClient {
         }
 
         log.info("Found duplicate container, will remove it [containerName:{}]", containerName);
-        removeContainer(container.id());
+        stopAndRemoveContainer(containerName);
     }
 
     private Container getContainerByName(String containerName) {

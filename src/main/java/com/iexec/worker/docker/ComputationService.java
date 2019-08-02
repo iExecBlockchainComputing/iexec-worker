@@ -50,7 +50,8 @@ public class ComputationService {
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
                               ResultService resultService,
-                              WorkerConfigurationService workerConfigurationService) {
+                              WorkerConfigurationService workerConfigurationService,
+                              PublicConfigurationService publicConfigurationService) {
 
         this.smsService = smsService;
         this.dataService = dataService;
@@ -58,6 +59,7 @@ public class ComputationService {
         this.sconeTeeService = sconeTeeService;
         this.resultService = resultService;
         this.workerConfigurationService = workerConfigurationService;
+        this.publicConfigurationService = publicConfigurationService;
     }
 
     public boolean isValidAppType(String chainTaskId, DappType type) {
