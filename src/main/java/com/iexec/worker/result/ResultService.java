@@ -9,7 +9,6 @@ import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -47,20 +46,17 @@ public class ResultService {
     private ResultRepoService resultRepoService;
     private CredentialsService credentialsService;
     private IexecHubService iexecHubService;
-    private SmsService smsService;
 
     private Map<String, ResultInfo> resultInfoMap;
 
     public ResultService(WorkerConfigurationService configurationService,
                          ResultRepoService resultRepoService,
                          CredentialsService credentialsService,
-                         IexecHubService iexecHubService,
-                         SmsService smsService) {
+                         IexecHubService iexecHubService) {
         this.workerConfigurationService = configurationService;
         this.resultRepoService = resultRepoService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
-        this.smsService = smsService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -312,7 +308,7 @@ public class ResultService {
     }
 
     public boolean isResultEncryptionNeeded(String chainTaskId) {
-        String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
+        String beneficiarySecretFilePath = workerConfigurationService.getBeneficiarySecretFilePath(chainTaskId);
 
         if (!new File(beneficiarySecretFilePath).exists()) {
             log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
@@ -323,7 +319,7 @@ public class ResultService {
     }
 
     public boolean encryptResult(String chainTaskId) {
-        String beneficiarySecretFilePath = smsService.getBeneficiarySecretFilePath(chainTaskId);
+        String beneficiarySecretFilePath = workerConfigurationService.getBeneficiarySecretFilePath(chainTaskId);
         String resultZipFilePath = getResultZipFilePath(chainTaskId);
         String taskOutputDir = workerConfigurationService.getTaskOutputDir(chainTaskId);
 

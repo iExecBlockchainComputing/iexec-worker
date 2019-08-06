@@ -22,13 +22,23 @@ import org.springframework.stereotype.Component;
 @AllArgsConstructor
 public class SconeLasConfiguration {
 
-    @Value("${scone.las.host}")
-    private String host;
+    @Value("${scone.las.image}")
+    private String image;
+
+    @Value("${scone.las.version}")
+    private String version;
 
     @Value("${scone.las.port}")
     private String port;
 
-    public String getURL() {
-        return host + ":" + port;
+    @Value("${scone.las.containerName}")
+    private String containerName;
+
+    public String getImageUri() {
+        return image + ":" + version;
+    }
+
+    public String getUrl() {
+        return containerName + ":" + port;
     }
 }

@@ -13,6 +13,10 @@ public class PublicConfigurationService {
         this.publicConfiguration = customFeignClient.getPublicConfiguration();
     }
 
+    public PublicConfiguration getPublicConfiguration() {
+        return publicConfiguration;
+    }
+
     public Integer getChainId() {
         return publicConfiguration.getChainId();
     }
