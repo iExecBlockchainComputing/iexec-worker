@@ -1,5 +1,6 @@
 package com.iexec.worker.docker;
 
+import com.google.common.collect.ImmutableList;
 import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.Device;
@@ -135,10 +136,10 @@ public class CustomDockerClientTests {
         assertThat(containerConfig.env()).isEqualTo(ENV);
         assertThat(containerConfig.hostConfig().devices()).isNull();
 
-        String inputBind = containerConfig.hostConfig().binds().get(0);
-        String outputBind = containerConfig.hostConfig().binds().get(1);
-        assertThat(inputBind).isEqualTo(getDockerInput() + ":/iexec_in");
-        assertThat(outputBind).isEqualTo(getDockerIexecOut() + ":/iexec_out");
+        ImmutableList<String> binds = containerConfig.hostConfig().binds();
+        assertThat(binds).contains(
+                getDockerInput() + ":/iexec_in",
+                getDockerIexecOut() + ":/iexec_out");
     }
 
     @Test
@@ -154,12 +155,11 @@ public class CustomDockerClientTests {
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD[0]);
         assertThat(containerConfig.env()).isEqualTo(ENV);
 
-        String sconeBind = containerConfig.hostConfig().binds().get(0);
-        String inputBind = containerConfig.hostConfig().binds().get(1);
-        String outputBind = containerConfig.hostConfig().binds().get(2);
-        assertThat(inputBind).isEqualTo(getDockerInput() + ":/iexec_in");
-        assertThat(outputBind).isEqualTo(getDockerIexecOut() + ":/iexec_out");
-        assertThat(sconeBind).isEqualTo(getDockerScone()+ ":/scone");
+        ImmutableList<String> binds = containerConfig.hostConfig().binds();
+        assertThat(binds).contains(
+                getDockerInput() + ":/iexec_in",
+                getDockerIexecOut() + ":/iexec_out",
+                getDockerScone()+ ":/scone");
 
         Device sgxDevice = containerConfig.hostConfig().devices().get(0);
         assertThat(sgxDevice.pathOnHost()).isEqualTo(SGX_DEVICE_PATH);

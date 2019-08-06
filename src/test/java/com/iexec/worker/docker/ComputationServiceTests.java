@@ -5,6 +5,7 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
@@ -33,6 +34,7 @@ public class ComputationServiceTests {
     @Mock private SconeTeeService sconeTeeService;
     @Mock private ResultService resultService;
     @Mock private WorkerConfigurationService workerConfigurationService;
+    @Mock private PublicConfigurationService publicConfigurationService;
 
 
     @InjectMocks
