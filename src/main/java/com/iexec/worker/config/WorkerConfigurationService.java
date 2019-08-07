@@ -1,6 +1,7 @@
 package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,14 +27,15 @@ public class WorkerConfigurationService {
     @Value("${worker.gasPriceCap}")
     private long gasPriceCap;
 
-    @Value("${worker.teeEnabled}")
-    private boolean isTeeEnabled;
-
     @Value("${worker.overrideBlockchainNodeAddress}")
     private String overrideBlockchainNodeAddress;
 
-    public WorkerConfigurationService(CredentialsService credentialsService) {
+    private boolean isTeeEnabled;
+
+    public WorkerConfigurationService(CredentialsService credentialsService,
+                                      SconeTeeService sconeTeeService) {
         this.credentialsService = credentialsService;
+        this.isTeeEnabled = sconeTeeService.isLasStarted();
     }
 
     public String getWorkerName() {
@@ -67,6 +69,21 @@ public class WorkerConfigurationService {
 
     public String getTaskSconeDir(String chainTaskId) {
         return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_SCONE;
+    }
+
+    public String getDatasetSecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/input/dataset.secret
+        return getTaskInputDir(chainTaskId) + File.separator + "dataset.secret";
+    }
+
+    public String getBeneficiarySecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/beneficiary.secret
+        return getTaskBaseDir(chainTaskId) + File.separator + "beneficiary.secret";
+    }
+
+    public String getEnclaveSecretFilePath(String chainTaskId) {
+        // /worker-base-dir/chainTaskId/enclave.secret
+        return getTaskBaseDir(chainTaskId) + File.separator + "enclave.secret";
     }
 
     public String getOS() {

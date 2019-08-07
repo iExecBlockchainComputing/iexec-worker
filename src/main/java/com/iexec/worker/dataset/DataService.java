@@ -1,7 +1,6 @@
 package com.iexec.worker.dataset;
 
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,12 +22,9 @@ public class DataService {
     private String scriptFilePath;
 
     private final WorkerConfigurationService workerConfigurationService;
-    private final SmsService smsService;
 
-    public DataService(WorkerConfigurationService workerConfigurationService,
-                       SmsService smsService) {
+    public DataService(WorkerConfigurationService workerConfigurationService) {
         this.workerConfigurationService = workerConfigurationService;
-        this.smsService = smsService;
     }
 
     /*
@@ -60,7 +56,7 @@ public class DataService {
     }
 
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {
-        String datasetSecretFilePath = smsService.getDatasetSecretFilePath(chainTaskId);
+        String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
 
         if (!new File(datasetSecretFilePath).exists()) {
             log.info("No dataset secret file found, will continue without decrypting dataset [chainTaskId:{}]", chainTaskId);
@@ -73,7 +69,7 @@ public class DataService {
     public boolean decryptDataset(String chainTaskId, String datasetUri) {
         String datasetFileName = Paths.get(datasetUri).getFileName().toString();
         String datasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + datasetFileName;
-        String datasetSecretFilePath = smsService.getDatasetSecretFilePath(chainTaskId);
+        String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
 
         log.info("Decrypting dataset file [datasetFile:{}, secretFile:{}]", datasetFilePath, datasetSecretFilePath);
 

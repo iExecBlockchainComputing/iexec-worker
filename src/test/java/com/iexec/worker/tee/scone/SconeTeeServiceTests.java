@@ -14,7 +14,7 @@ import com.iexec.common.sms.scone.SconeSecureSessionResponse;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.PublicConfigurationService;
-import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 
 import static com.iexec.worker.chain.ContributionService.computeResultHash;
@@ -40,9 +40,9 @@ public class SconeTeeServiceTests {
     @Rule public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
 
     @Mock private SconeLasConfiguration sconeLasConfiguration;
-    @Mock private WorkerConfigurationService workerConfigurationService;
     @Mock private PublicConfigurationService publicConfigurationService;
     @Mock private SmsService smsService;
+    @Mock private SgxService sgxService;
 
     @InjectMocks
     private SconeTeeService sconeTeeService;
@@ -71,10 +71,8 @@ public class SconeTeeServiceTests {
                 .build();
 
         when(smsService.getSconeSecureSession(contributionAuth)).thenReturn(Optional.of(session));
-        when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID)).thenReturn(tmpFolderPath);
-        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(tmpFolderPath);
 
-        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth, tmpFolderPath, tmpFolderPath);
         List<String> lines = Files.readAllLines(Paths.get(keyFilePath));
 
         assertThat(new File(fspfFilePath)).exists();
@@ -96,10 +94,8 @@ public class SconeTeeServiceTests {
                 .build();
 
         when(smsService.getSconeSecureSession(contributionAuth)).thenReturn(Optional.empty());
-        when(workerConfigurationService.getTaskSconeDir(CHAIN_TASK_ID)).thenReturn(tmpFolderPath);
-        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(tmpFolderPath);
 
-        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth, tmpFolderPath, tmpFolderPath);
 
         assertThat(new File(fspfFilePath)).doesNotExist();
         assertThat(new File(keyFilePath)).doesNotExist();

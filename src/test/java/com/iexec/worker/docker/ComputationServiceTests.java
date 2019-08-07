@@ -2,28 +2,28 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-import com.spotify.docker.client.messages.ContainerConfig;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static com.iexec.common.replicate.ReplicateStatus.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 
 public class ComputationServiceTests {
@@ -33,6 +33,9 @@ public class ComputationServiceTests {
     @Mock private CustomDockerClient customDockerClient;
     @Mock private SconeTeeService sconeTeeService;
     @Mock private ResultService resultService;
+    @Mock private WorkerConfigurationService workerConfigurationService;
+    @Mock private PublicConfigurationService publicConfigurationService;
+
 
     @InjectMocks
     private ComputationService computationService;
@@ -53,7 +56,7 @@ public class ComputationServiceTests {
                 .appUri("appUri")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
-                .maxExecutionTime(500)
+                .maxExecutionTime(500000) // 5min
                 .cmd("ls")
                 .inputFiles(new ArrayList<>())
                 .build();
@@ -64,6 +67,11 @@ public class ComputationServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge(enclaveChallenge)
                 .build();
+    }
+
+    @Test
+    public void ShouldAppTypeBeDocker() {
+        assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
     }
 
     @Test
@@ -83,15 +91,11 @@ public class ComputationServiceTests {
     @Test
     public void shouldComputeNonTeeTaskWithoutDecryptingDataset() {
         TaskDescription task = getStubTaskDescription(false);
-        ContainerConfig containerConfig = mock(ContainerConfig.class);
-        String expectedStdout = "Computed successfully !";
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
 
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
-                .thenReturn(containerConfig);
-        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
-                .thenReturn(expectedStdout);
+        when(customDockerClient.execute(any())).thenReturn("Computed successfully !");
 
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
@@ -103,16 +107,12 @@ public class ComputationServiceTests {
     @Test
     public void shouldDecryptDatasetAndComputeNonTeeTask() {
         TaskDescription task = getStubTaskDescription(false);
-        ContainerConfig containerConfig = mock(ContainerConfig.class);
-        String expectedStdout = "Computed successfully !";
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
 
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
-        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
-                .thenReturn(containerConfig);
-        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
-                .thenReturn(expectedStdout);
+        when(customDockerClient.execute(any())).thenReturn("Computed successfully !");
 
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
@@ -122,18 +122,15 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldNotComputeNonTeeTaskSinceCouldnotDecryptDataset() {
+    public void shouldNotComputeNonTeeTaskSinceCouldNotDecryptDataset() {
         TaskDescription task = getStubTaskDescription(false);
-        ContainerConfig containerConfig = mock(ContainerConfig.class);
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
         String expectedStdout = "Failed to decrypt dataset, URI:" + task.getDatasetUri();
 
-        when(smsService.fetchTaskSecrets(any())).thenReturn(true);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
-        when(customDockerClient.buildContainerConfig(any(), any(), any(), any()))
-                .thenReturn(containerConfig);
-        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
-                .thenReturn(expectedStdout);
+        when(customDockerClient.execute(any())).thenReturn(expectedStdout);
 
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
@@ -148,21 +145,15 @@ public class ComputationServiceTests {
     public void shouldComputeTeeTask() {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-        ContainerConfig containerConfig = mock(ContainerConfig.class);
-        String expectedStdout1 = "Computed successfully 1 !";
-        String expectedStdout2 = "Computed successfully 1 !";
         String awesomeSessionId = "awesomeSessionId";
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
-        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
-                .thenReturn(containerConfig);
-        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
-                .thenReturn(expectedStdout1)
-                .thenReturn(expectedStdout2);
+        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
+        when(customDockerClient.execute(any())).thenReturn("Computed successfully!")
+                                               .thenReturn("Encrypted successfully!");
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
@@ -173,12 +164,11 @@ public class ComputationServiceTests {
     public void shouldNotComputeTeeTaskSinceFailedToCreateSconeSession() {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-        String expectedStdout = "Could not generate scone secure session for tee computation";
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth)).thenReturn("");
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
+                .thenReturn("");
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
-
         assertThat(isComputed).isFalse();
     }
 
@@ -186,34 +176,13 @@ public class ComputationServiceTests {
     public void shouldNotComputeTeeTaskSinceFailedToBuildSconeDockerEnv() {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-        String expectedStdout = "Could not create scone docker environment";
         String awesomeSessionId = "awesomeSessionId";
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(new ArrayList<>());
+        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(new ArrayList<>());
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
-
-        assertThat(isComputed).isFalse();
-    }
-
-    @Test
-    public void shouldNotComputeTeeTaskSinceFailedToBuildSconeContainerConfig() {
-        TaskDescription task = getStubTaskDescription(false);
-        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-        String expectedStdout = "Could not build scone container config";
-        String awesomeSessionId = "awesomeSessionId";
-        ArrayList<String> stubSconeEnv = new ArrayList<>();
-        stubSconeEnv.add("fooBar");
-
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
-                .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
-        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any())).thenReturn(null);
-
-        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
-
         assertThat(isComputed).isFalse();
     }
 
@@ -221,28 +190,17 @@ public class ComputationServiceTests {
     public void shouldNotComputeTeeTaskSinceFirstRunFailed() {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-        ContainerConfig containerConfig = mock(ContainerConfig.class);
-        String expectedStdout = "Failed to start computation";
         String awesomeSessionId = "awesomeSessionId";
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
 
-        when(sconeTeeService.createSconeSecureSession(contributionAuth))
+        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(anyString())).thenReturn(stubSconeEnv);
-        when(customDockerClient.buildSconeContainerConfig(any(), any(), any(), any()))
-                .thenReturn(containerConfig);
-        when(customDockerClient.dockerRun(CHAIN_TASK_ID, containerConfig, task.getMaxExecutionTime()))
-                .thenReturn("");
+        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
+        when(customDockerClient.execute(any())).thenReturn("");
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
         assertThat(isComputed).isFalse();
     }
-
-    @Test
-    public void ShouldAppTypeBeDocker() {
-        assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
-    }
-
 }

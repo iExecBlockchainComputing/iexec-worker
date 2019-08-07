@@ -7,6 +7,7 @@ import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.CoreConfigurationService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.result.ResultService;
@@ -41,6 +42,8 @@ public class Application implements CommandLineRunner {
 
     @Autowired
     private WorkerConfigurationService workerConfig;
+
+    @Autowired PublicConfigurationService publicConfigService;
 
     @Autowired
     private CredentialsService credentialsService;
@@ -79,26 +82,12 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        String workerAddress = credentialsService.getCredentials().getAddress();
-        WorkerModel model = WorkerModel.builder()
-                .name(workerConfig.getWorkerName())
-                .walletAddress(workerAddress)
-                .os(workerConfig.getOS())
-                .cpu(workerConfig.getCPU())
-                .cpuNb(workerConfig.getNbCPU())
-                .memorySize(workerConfig.getMemorySize())
-                .teeEnabled(workerConfig.isTeeEnabled())
-                .build();
-
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
-
-        log.info("Address of the core [address:{}]", coreConfService.getUrl());
-        log.info("Version of the core [version:{}]", customFeignClient.getCoreVersion());
-        PublicConfiguration publicConfiguration = customFeignClient.getPublicConfiguration();
-        log.info("Get configuration of the core [config:{}]", publicConfiguration);
-        if (workerConfig.getHttpProxyHost() != null && workerConfig.getHttpProxyPort() != null) {
-            log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
-        }
+        log.info("Core URL [url:{}]", coreConfService.getUrl());
+        log.info("Core version [version:{}]", customFeignClient.getCoreVersion());
+        log.info("Getting public configuration from the core");
+        PublicConfiguration publicConfiguration = publicConfigService.getPublicConfiguration();
+        log.info("Got public configuration from the core [config:{}]", publicConfiguration);
 
         if (!publicConfiguration.getRequiredWorkerVersion().isEmpty() &&
                 !versionService.getVersion().equals(publicConfiguration.getRequiredWorkerVersion())) {
@@ -110,11 +99,27 @@ public class Application implements CommandLineRunner {
             System.exit(0);
         }
 
+        if (workerConfig.getHttpProxyHost() != null && workerConfig.getHttpProxyPort() != null) {
+            log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfig.getHttpProxyHost(), workerConfig.getHttpProxyPort());
+        }
+
+        String workerAddress = credentialsService.getCredentials().getAddress();
+
         if (!iexecHubService.hasEnoughGas()) {
             String noEnoughGas = String.format("No enough gas! please refill your wallet [walletAddress:%s]", workerAddress);
             LoggingUtils.printHighlightedMessage(noEnoughGas);
             System.exit(0);
         }
+
+        WorkerModel model = WorkerModel.builder()
+                .name(workerConfig.getWorkerName())
+                .walletAddress(workerAddress)
+                .os(workerConfig.getOS())
+                .cpu(workerConfig.getCPU())
+                .cpuNb(workerConfig.getNbCPU())
+                .memorySize(workerConfig.getMemorySize())
+                .teeEnabled(workerConfig.isTeeEnabled())
+                .build();
 
         customFeignClient.registerWorker(model);
         log.info("Registered the worker to the core [worker:{}]", model);
