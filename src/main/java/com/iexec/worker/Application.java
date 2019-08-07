@@ -19,9 +19,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.annotation.Bean;
 import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.List;
 
@@ -62,6 +65,19 @@ public class Application implements CommandLineRunner {
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
+    }
+
+    /**
+     * IMPORTANT: By default the size of the ThreadPool that is managing all the @Scheduled methods is 1.
+     * For us this is a problem since we want those methods to run in different threads in parallel, so we need to
+     * declare this method to set the size of the ThreadPoolTaskScheduler. If an @Scheduled method is added in the
+     * project, the pool size should be increased.
+     */
+    @Bean
+    public TaskScheduler taskScheduler() {
+        final ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(2);
+        return scheduler;
     }
 
     @Override
