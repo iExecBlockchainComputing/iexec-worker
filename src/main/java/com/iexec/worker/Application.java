@@ -64,10 +64,16 @@ public class Application implements CommandLineRunner {
         SpringApplication.run(Application.class, args);
     }
 
+    /**
+     * IMPORTANT: By default the size of the ThreadPool that is managing all the @Scheduled methods is 1.
+     * For us this is a problem since we want those methods to run in different threads in parallel, so we need to
+     * declare this method to set the size of the ThreadPoolTaskScheduler. If an @Scheduled method is added in the
+     * project, the pool size should be increased.
+     */
     @Bean
     public TaskScheduler taskScheduler() {
         final ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(10);
+        scheduler.setPoolSize(2);
         return scheduler;
     }
 
