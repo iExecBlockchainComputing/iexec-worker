@@ -64,11 +64,14 @@ public class SgxService {
                 // when running multiple workers on the same machine
                 .imageUri(alpineLatest)
                 .cmd(cmd.split(" "))
-                .maxExecutionTime(60000) // 1 min (in millis)
+                .maxExecutionTime(60000) // 1 min
                 .bindPaths(bindPaths)
                 .build();
 
-        customDockerClient.pullImage(chainTaskId, alpineLatest);
+        if (!customDockerClient.pullImage(chainTaskId, alpineLatest)) {
+            return false;
+        }
+
         DockerExecutionResult executionResult = customDockerClient.execute(dockerExecutionConfig);
         if (!executionResult.isSuccess()) {
             log.error("Failed to check SGX device, will continue without TEE support");

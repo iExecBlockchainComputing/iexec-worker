@@ -75,7 +75,10 @@ public class SconeTeeService {
                 .maxExecutionTime(0)
                 .build();
 
-        customDockerClient.pullImage(chainTaskId, sconeLasConfiguration.getImageUri());
+        if (!customDockerClient.pullImage(chainTaskId, sconeLasConfiguration.getImageUri())) {
+            return false;
+        }
+
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(dockerExecutionConfig);
 
         if (!dockerExecutionResult.isSuccess()) {

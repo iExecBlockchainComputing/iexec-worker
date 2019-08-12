@@ -87,5 +87,5 @@ public class ReplicateRecoveryService {
         }
 
         return recoveredChainTaskIds;
-    }    
+    }
 }
