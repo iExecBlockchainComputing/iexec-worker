@@ -119,12 +119,13 @@ public class CustomDockerClient {
         log.info("End of execution [containerName:{}]", containerName);
 
         String stdout = getContainerLogs(containerId);
+        stopAndRemoveContainer(containerName);
+
         if (stdout == null) {
             log.error("Couldn't get execution logs [chainTaskId:{}]", chainTaskId);
             return DockerExecutionResult.failure();
         }
 
-        stopAndRemoveContainer(containerName);
         return DockerExecutionResult.success(stdout, containerName);
 
     }
