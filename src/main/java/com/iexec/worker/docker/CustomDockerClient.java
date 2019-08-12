@@ -293,7 +293,6 @@ public class CustomDockerClient {
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to start container [containerId:{}]", containerId);
             e.printStackTrace();
-            removeContainer(containerId);
             return false;
         }
 
