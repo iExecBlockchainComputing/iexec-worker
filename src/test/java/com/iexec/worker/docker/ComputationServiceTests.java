@@ -95,7 +95,9 @@ public class ComputationServiceTests {
 
         when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(customDockerClient.execute(any())).thenReturn("Computed successfully !");
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"));
+        when(resultService.saveResult(any(), any(), any())).thenReturn(true);
 
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
@@ -112,7 +114,10 @@ public class ComputationServiceTests {
         when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
-        when(customDockerClient.execute(any())).thenReturn("Computed successfully !");
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"));
+        when(resultService.saveResult(any(), any(), any())).thenReturn(true);
+
 
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
@@ -125,12 +130,11 @@ public class ComputationServiceTests {
     public void shouldNotComputeNonTeeTaskSinceCouldNotDecryptDataset() {
         TaskDescription task = getStubTaskDescription(false);
         TaskSecrets mockSecrets = mock(TaskSecrets.class);
-        String expectedStdout = "Failed to decrypt dataset, URI:" + task.getDatasetUri();
 
         when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
-        when(customDockerClient.execute(any())).thenReturn(expectedStdout);
+        when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());
 
         boolean isComputed = computationService.runNonTeeComputation(task,
                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
@@ -152,8 +156,10 @@ public class ComputationServiceTests {
         when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
-        when(customDockerClient.execute(any())).thenReturn("Computed successfully!")
-                                               .thenReturn("Encrypted successfully!");
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"))
+                .thenReturn(DockerExecutionResult.success("Encrypted successfully !", "containerName"));
+        when(resultService.saveResult(any(), any(), any())).thenReturn(true);
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
@@ -197,7 +203,7 @@ public class ComputationServiceTests {
         when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
-        when(customDockerClient.execute(any())).thenReturn("");
+        when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
 
