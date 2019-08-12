@@ -185,8 +185,8 @@ public class CustomDockerClientTests {
         DockerExecutionConfig config = getDockerExecutionConfigStub();
         config.setCmd("echo Hello from Docker alpine!".split(" "));
 
-        String stdout = customDockerClient.execute(config);
-        assertThat(stdout).contains("Hello from Docker alpine!");
+        DockerExecutionResult dockerExecutionResult = customDockerClient.execute(config);
+        assertThat(dockerExecutionResult.getStdout()).contains("Hello from Docker alpine!");
     }
 
     @Test
@@ -197,16 +197,16 @@ public class CustomDockerClientTests {
         config.setCmd(cmdArray);
         config.setMaxExecutionTime(5 * SECOND);
 
-        String stdout = customDockerClient.execute(config);
-        assertThat(stdout).isEmpty();
+        DockerExecutionResult dockerExecutionResult = customDockerClient.execute(config);
+        assertThat(dockerExecutionResult.getStdout()).isEmpty();
     }
 
     // createContainer()
 
     @Test
     public void shouldNotCreateContainerWithNullConfig() {
-        String containerId = customDockerClient.createContainer(CHAIN_TASK_ID, null);
-        assertThat(containerId).isEmpty();
+        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, null);
+        assertThat(containerInfo).isNull();
     }
 
     // startContainer()
@@ -243,7 +243,8 @@ public class CustomDockerClientTests {
                 .image(ALPINE_LATEST)
                 .build();
 
-        String containerId = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
+        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
+        String containerId = containerInfo.getContainerId();
         assertThat(containerId).isNotEmpty();
         boolean isStopped = customDockerClient.stopContainer(containerId);
         assertThat(isStopped).isTrue();
@@ -255,13 +256,13 @@ public class CustomDockerClientTests {
     @Test
     public void shouldNotGetLogsOfContainerWithEmptyId() {
         String dockerLogs = customDockerClient.getContainerLogs("");
-        assertThat(dockerLogs).isEqualTo("Failed to get computation logs");
+        assertThat(dockerLogs).isEqualTo(null);
     }
 
     @Test
     public void shouldNotGetLogsOfContainerWithBadId() {
         String dockerLogs = customDockerClient.getContainerLogs(CHAIN_TASK_ID);
-        assertThat(dockerLogs).isEqualTo("Failed to get computation logs");
+        assertThat(dockerLogs).isNull();
     }
 
     // removeContainer()
@@ -276,7 +277,8 @@ public class CustomDockerClientTests {
         ContainerConfig containerConfig = 
                 customDockerClient.buildContainerConfig(config);
 
-        String containerId = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
+        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
+        String containerId = containerInfo.getContainerId();
         assertThat(containerId).isNotEmpty();
 
         boolean isStarted = customDockerClient.startContainer(containerId);
