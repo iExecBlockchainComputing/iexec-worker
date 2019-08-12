@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 public class DockerExecutionConfig {
 
     private String chainTaskId;
+    // when containerName is not specified,
+    // docker will generate one.
     private String containerName;
     private String imageUri;
     private String[] cmd;
