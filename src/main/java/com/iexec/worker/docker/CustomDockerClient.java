@@ -116,10 +116,12 @@ public class CustomDockerClient {
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
         waitContainer(containerName, containerId, executionTimeoutDate);
-        log.info("End of execution [containerName:{}]", containerName);
+        log.info("End of execution [containerName:{}, containerId:{}]",
+                containerName, containerId);
 
+        stopContainer(containerId);
         String stdout = getContainerLogs(containerId);
-        stopAndRemoveContainer(containerName);
+        removeContainer(containerId);
 
         if (stdout == null) {
             log.error("Couldn't get execution logs [chainTaskId:{}]", chainTaskId);
@@ -372,7 +374,7 @@ public class CustomDockerClient {
             return false;
         }
 
-        log.debug("Removed container [containerId:{}]", containerId);
+        log.info("Removed container [containerId:{}]", containerId);
         return true;
     }
 
@@ -406,11 +408,13 @@ public class CustomDockerClient {
         }
 
         List<Container> containerList = new ArrayList<>();
-
         try {
             containerList = docker.listContainers(ListContainersParam.allContainers())
                     .stream()
-                    .filter(container -> container.names().contains("/" + containerName))
+                    .filter(container -> container.names().contains("/" + containerName)
+                            || container.names().contains(containerName))
+                            // we do this because the behavior of
+                            // the docker library is not clear
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
