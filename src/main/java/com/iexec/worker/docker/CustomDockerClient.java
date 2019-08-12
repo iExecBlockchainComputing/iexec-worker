@@ -229,15 +229,14 @@ public class CustomDockerClient {
         }
 
         // docker container create
-        String containerId = createContainer(containerName, containerConfig);
-        if (containerId.isEmpty()) {
+        CustomContainerInfo customContainerInfo = createContainer(containerName, containerConfig);
+        if (customContainerInfo == null) {
             return null;
         }
 
-        // if the name wasn't specified, get the generated one
-        if (containerName == null || containerName.isEmpty()) {
-            Container container = getContainerById(containerId);
-            containerName = container != null ? container.names().get(0) : "";
+        String containerId = customContainerInfo.getContainerId();
+        if (containerId.isEmpty()) {
+            return null;
         }
 
         // docker container start
@@ -247,17 +246,14 @@ public class CustomDockerClient {
             return null;
         }
 
-        return CustomContainerInfo.builder()
-                .containerId(containerId)
-                .containerName(containerName)
-                .build();
+        return customContainerInfo;
     }
 
-    public String createContainer(String containerName, ContainerConfig containerConfig) {
+    public CustomContainerInfo createContainer(String containerName, ContainerConfig containerConfig) {
         log.debug("Creating container [containerName:{}]", containerName);
 
         if (containerConfig == null) {
-            return "";
+            return null;
         }
 
         ContainerCreation containerCreation;
@@ -271,18 +267,29 @@ public class CustomDockerClient {
             log.error("Failed to create container [containerName:{}, image:{}, cmd:{}]",
                     containerName, containerConfig.image(), containerConfig.cmd());
             e.printStackTrace();
-            return "";
+            return null;
         }
 
         if (containerCreation == null) {
             log.error("Error creating container [containerName:{}]", containerName);
-            return "";
+            return null;
+        }
+
+        String containerId = containerCreation.id();
+
+        // if the name wasn't specified, get the generated one
+        if (containerName == null || containerName.isEmpty()) {
+            Container container = getContainerById(containerId);
+            containerName = container != null ? container.names().get(0) : "";
         }
 
         log.info("Created container [containerName:{}, containerId:{}]",
-                containerName, containerCreation.id());
+                containerName, containerId);
 
-        return containerCreation.id() != null ? containerCreation.id() : "";
+        return CustomContainerInfo.builder()
+                .containerId(containerId)
+                .containerName(containerName)
+                .build();
     }
 
     public boolean startContainer(String containerId) {
