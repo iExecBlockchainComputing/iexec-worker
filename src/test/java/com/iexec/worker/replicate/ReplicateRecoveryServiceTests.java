@@ -149,5 +149,4 @@ public class ReplicateRecoveryServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .build());
     }
-    
 }
