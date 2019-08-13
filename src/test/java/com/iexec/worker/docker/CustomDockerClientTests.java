@@ -206,8 +206,9 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldNotCreateContainerWithNullConfig() {
-        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, null).get();
-        assertThat(containerInfo).isNull();
+        Optional<CustomContainerInfo> containerInfo =
+                customDockerClient.createContainer(CHAIN_TASK_ID, null);
+        assertThat(containerInfo).isEmpty();
     }
 
     // startContainer()
