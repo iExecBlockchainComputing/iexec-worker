@@ -1,7 +1,6 @@
 package com.iexec.worker.config;
 
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,12 +29,8 @@ public class WorkerConfigurationService {
     @Value("${worker.overrideBlockchainNodeAddress}")
     private String overrideBlockchainNodeAddress;
 
-    private boolean isTeeEnabled;
-
-    public WorkerConfigurationService(CredentialsService credentialsService,
-                                      SconeTeeService sconeTeeService) {
+    public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
-        this.isTeeEnabled = sconeTeeService.isLasStarted();
     }
 
     public String getWorkerName() {
@@ -109,10 +104,6 @@ public class WorkerConfigurationService {
 
     public long getGasPriceCap() {
         return gasPriceCap;
-    }
-
-    public boolean isTeeEnabled() {
-        return isTeeEnabled;
     }
 
     public String getOverrideBlockchainNodeAddress() {
