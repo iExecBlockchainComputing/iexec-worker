@@ -3,6 +3,9 @@ package com.iexec.worker.tee.scone;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import com.iexec.worker.config.WorkerConfigurationService;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -33,8 +36,16 @@ public class SconeLasConfiguration {
 
     private String containerName;
 
-    public void setContainerName(String containerName) {
-        this.containerName = containerName;
+    private WorkerConfigurationService workerConfigService;
+
+    public SconeLasConfiguration(WorkerConfigurationService workerConfigService) {
+        // We use "worker-name-iexec-las" as containerName to avoid conflict
+        // when running multiple workers on the same machine.
+        containerName = workerConfigService.getWorkerName() + "-iexec-las";
+    }
+
+    public String getContainerName() {
+        return containerName;
     }
 
     public String getImageUri() {

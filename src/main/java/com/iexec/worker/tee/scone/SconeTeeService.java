@@ -32,62 +32,54 @@ public class SconeTeeService {
     // metadata file used by scone enclave. It contains the hash and encryption key
     // for each file in the protected filesystem regions.
     private static final String FSPF_FILENAME = "volume.fspf";
+
+    // beneficiary public key used when encrypting result
     private static final String BENEFICIARY_KEY_FILENAME = "public.key";
 
     private boolean isLasStarted;
 
-    private SconeLasConfiguration sconeLasConfiguration;
+    private SconeLasConfiguration sconeLasConfig;
     private CustomDockerClient customDockerClient;
     private SmsService smsService;
-    private SgxService sgxService;
 
-    public SconeTeeService(SconeLasConfiguration sconeLasConfiguration,
+    public SconeTeeService(SconeLasConfiguration sconeLasConfig,
                            CustomDockerClient customDockerClient,
                            SgxService sgxService,
                            SmsService smsService) {
 
-        this.sconeLasConfiguration = sconeLasConfiguration;
+        this.sconeLasConfig = sconeLasConfig;
         this.customDockerClient = customDockerClient;
         this.smsService = smsService;
-        this.sgxService = sgxService;
+        isLasStarted = sgxService.isSgxEnabled() ? startLasService() : false;
     }
 
-    public boolean isLasStarted() {
-        isLasStarted = startLasService();
+    public boolean isTeeEnabled() {
         return isLasStarted;
     }
 
-    public boolean startLasService() {
-        isLasStarted = false;
-
-        if (!sgxService.isSgxEnabled()) {
-            return false;
-        }
-
+    private boolean startLasService() {
         String chainTaskId = "iexec-las";
+
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
-                // don't add containerName here it creates conflict
-                // when running multiple workers on the same machine
-                .imageUri(sconeLasConfiguration.getImageUri())
-                .containerPort(sconeLasConfiguration.getPort())
+                .containerName(sconeLasConfig.getContainerName())
+                .imageUri(sconeLasConfig.getImageUri())
+                .containerPort(sconeLasConfig.getPort())
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();
 
-        if (!customDockerClient.pullImage(chainTaskId, sconeLasConfiguration.getImageUri())) {
+        if (!customDockerClient.pullImage(chainTaskId, sconeLasConfig.getImageUri())) {
             return false;
         }
 
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(dockerExecutionConfig);
 
         if (!dockerExecutionResult.isSuccess()) {
-            log.error("Couldn't start LAS service, will continue without TEE support");
+            log.error("Couldn't start LAS service, will continue without TEE support.");
             return false;
         }
 
-        sconeLasConfiguration.setContainerName(dockerExecutionResult.getContainerName());
-        isLasStarted = true;
         return true;
     }
 
@@ -126,7 +118,7 @@ public class SconeTeeService {
 
     public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl) {
         SconeConfig sconeConfig = SconeConfig.builder()
-                .sconeLasAddress(sconeLasConfiguration.getUrl())
+                .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(sconeCasUrl)
                 .sconeConfigId(sconeConfigId)
                 .build();
@@ -143,7 +135,7 @@ public class SconeTeeService {
     @PreDestroy
     void stopLasService() {
         if (isLasStarted) {
-            customDockerClient.stopAndRemoveContainer(sconeLasConfiguration.getContainerName());
+            customDockerClient.stopAndRemoveContainer(sconeLasConfig.getContainerName());
         }
     }
 }

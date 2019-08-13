@@ -22,13 +22,20 @@ public class SgxService {
     public static final String SGX_CGROUP_PERMISSIONS = "rwm";
     private static final String SGX_DRIVER_PATH = "/sys/module/isgx/version";
 
+    private boolean isSgxEnabled;
+
     private CustomDockerClient customDockerClient;
 
     public SgxService(CustomDockerClient customDockerClient) {
         this.customDockerClient = customDockerClient;
+        isSgxEnabled = checkSgxSupport();
     }
 
     public boolean isSgxEnabled() {
+        return isSgxEnabled;
+    }
+
+    private boolean checkSgxSupport() {
         log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SGX_DRIVER_PATH).exists();
 
