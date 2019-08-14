@@ -31,8 +31,11 @@ public class SconeLasConfiguration {
     @Value("${scone.las.port}")
     private String port;
 
-    @Value("${scone.las.containerName}")
     private String containerName;
+
+    public void setContainerName(String containerName) {
+        this.containerName = containerName;
+    }
 
     public String getImageUri() {
         return image + ":" + version;

@@ -42,24 +42,24 @@ public class ComputationService {
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
     private ResultService resultService;
-    private WorkerConfigurationService workerConfigurationService;
-    private PublicConfigurationService publicConfigurationService;
+    private WorkerConfigurationService workerConfigService;
+    private PublicConfigurationService publicConfigService;
 
     public ComputationService(SmsService smsService,
                               DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
                               ResultService resultService,
-                              WorkerConfigurationService workerConfigurationService,
-                              PublicConfigurationService publicConfigurationService) {
+                              WorkerConfigurationService workerConfigService,
+                              PublicConfigurationService publicConfigService) {
 
         this.smsService = smsService;
         this.dataService = dataService;
         this.customDockerClient = customDockerClient;
         this.sconeTeeService = sconeTeeService;
         this.resultService = resultService;
-        this.workerConfigurationService = workerConfigurationService;
-        this.publicConfigurationService = publicConfigurationService;
+        this.workerConfigService = workerConfigService;
+        this.publicConfigService = publicConfigService;
     }
 
     public boolean isValidAppType(String chainTaskId, DappType type) {
@@ -91,16 +91,15 @@ public class ComputationService {
         String imageUri = taskDescription.getAppUri();
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
-        String stdout = "";
 
         // fetch task secrets from SMS
         Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(contributionAuth);
         if (!oTaskSecrets.isPresent()) {
             log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
         } else {
-            String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
-            String beneficiarySecretFilePath = workerConfigurationService.getBeneficiarySecretFilePath(chainTaskId);
-            String enclaveSecretFilePath = workerConfigurationService.getEnclaveSecretFilePath(chainTaskId);
+            String datasetSecretFilePath = workerConfigService.getDatasetSecretFilePath(chainTaskId);
+            String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
+            String enclaveSecretFilePath = workerConfigService.getEnclaveSecretFilePath(chainTaskId);
             smsService.saveSecrets(chainTaskId, oTaskSecrets.get(), datasetSecretFilePath,
                     beneficiarySecretFilePath, enclaveSecretFilePath);
         }
@@ -114,8 +113,8 @@ public class ComputationService {
         }
 
         if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
-            stdout = "Failed to decrypt dataset, URI:" + taskDescription.getDatasetUri();
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            log.error("Failed to decrypt dataset [chainTaskId:{}, uri:{}]",
+                    chainTaskId, taskDescription.getDatasetUri());
             return false;
         }
 
@@ -125,6 +124,7 @@ public class ComputationService {
 
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
+                .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(imageUri)
                 .cmd(cmd.split(" "))
                 .maxExecutionTime(maxExecutionTime)
@@ -133,16 +133,14 @@ public class ComputationService {
                 .isSgx(false)
                 .build();
 
-        stdout = customDockerClient.execute(dockerExecutionConfig);
+        DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
 
-        if (stdout.isEmpty()) {
-            stdout = "Failed to start computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+        if (!appExecutionResult.isSuccess()) {
+            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        resultService.saveResult(chainTaskId, taskDescription, stdout);
-        return true;
+        return resultService.saveResult(chainTaskId, taskDescription, appExecutionResult.getStdout());
     }
 
     public boolean runTeeComputation(TaskDescription taskDescription,
@@ -152,27 +150,25 @@ public class ComputationService {
         String datasetUri = taskDescription.getDatasetUri();
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
-        String stdout = "";
 
-        String fspfFolderPath = workerConfigurationService.getTaskSconeDir(chainTaskId);
-        String beneficiaryKeyFolderPath = workerConfigurationService.getTaskIexecOutDir(chainTaskId);
+        String fspfFolderPath = workerConfigService.getTaskSconeDir(chainTaskId);
+        String beneficiaryKeyFolderPath = workerConfigService.getTaskIexecOutDir(chainTaskId);
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth,
                 fspfFolderPath, beneficiaryKeyFolderPath);
 
         if (secureSessionId.isEmpty()) {
-            stdout = "Could not generate scone secure session for tee computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            String msg = "Could not generate scone secure session for tee computation";
+            log.error(msg + " [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
-                publicConfigurationService.getSconeCasURL());
+                publicConfigService.getSconeCasURL());
         ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption",
-                publicConfigurationService.getSconeCasURL());
+                publicConfigService.getSconeCasURL());
 
         if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
-            stdout = "Could not create scone docker environment";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+            log.error("Could not create scone docker environment [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
@@ -184,6 +180,7 @@ public class ComputationService {
 
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
+                .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(imageUri)
                 .cmd(cmd.split(" "))
                 .maxExecutionTime(maxExecutionTime)
@@ -193,20 +190,22 @@ public class ComputationService {
                 .build();
 
         // run computation
-        stdout = customDockerClient.execute(dockerExecutionConfig);
-
-        if (stdout.isEmpty()) {
-            stdout = "Failed to start computation";
-            log.error(stdout + " [chainTaskId:{}]", chainTaskId);
+        DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        if (!appExecutionResult.isSuccess()) {
+            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         // encrypt result
         dockerExecutionConfig.setEnv(sconeEncrypterEnv);
-        stdout += customDockerClient.execute(dockerExecutionConfig);
+        DockerExecutionResult encryptionExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        if (!encryptionExecutionResult.isSuccess()) {
+            log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
 
-        resultService.saveResult(chainTaskId, taskDescription, stdout);
-        return  true;
+        String stdout = appExecutionResult.getStdout() + encryptionExecutionResult.getStdout();
+        return resultService.saveResult(chainTaskId, taskDescription, stdout);
     }
 
     private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription){
@@ -231,14 +230,21 @@ public class ComputationService {
 
     private Map<String, String> getDefaultBindPaths(String chainTaskId) {
         Map<String, String> bindPaths = new HashMap<>();
-        bindPaths.put(workerConfigurationService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
-        bindPaths.put(workerConfigurationService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
+        bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
         return bindPaths;
     }
 
     private Map<String, String> getSconeBindPaths(String chainTaskId) {
         Map<String, String> bindPaths = getDefaultBindPaths(chainTaskId);
-        bindPaths.put(workerConfigurationService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
+        bindPaths.put(workerConfigService.getTaskSconeDir(chainTaskId), FileHelper.SLASH_SCONE);
         return bindPaths;
+    }
+
+    // We use the name "worker1-0xabc123" for app container to avoid
+    // conflicts when running multiple workers on the same machine.
+    // Exp: integration tests
+    private String getTaskContainerName(String chainTaskId) {
+        return workerConfigService.getWorkerName() + "-" + chainTaskId;
     }
 }

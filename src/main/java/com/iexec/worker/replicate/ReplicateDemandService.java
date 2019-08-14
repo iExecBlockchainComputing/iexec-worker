@@ -72,7 +72,7 @@ public class ReplicateDemandService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.error("task NOT initialized onchain [chainTaskId:{}]", chainTaskId);
+            log.error("Task NOT initialized onchain [chainTaskId:{}]", chainTaskId);
             return;
         }
 

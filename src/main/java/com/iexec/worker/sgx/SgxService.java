@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.DockerExecutionConfig;
+import com.iexec.worker.docker.DockerExecutionResult;
 import com.iexec.worker.utils.LoggingUtils;
 
 import org.springframework.stereotype.Service;
@@ -50,6 +51,7 @@ public class SgxService {
     }
 
     private boolean isSgxDeviceFound() {
+        String chainTaskId = "sgxCheck";
         String alpineLatest = "alpine:latest";
         String cmd = "find /dev -name isgx -exec echo true ;";
 
@@ -57,15 +59,26 @@ public class SgxService {
         bindPaths.put("/dev", "/dev");
 
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(chainTaskId)
+                // don't add containerName here it creates conflict
+                // when running multiple workers on the same machine
                 .imageUri(alpineLatest)
                 .cmd(cmd.split(" "))
-                .containerName("sgxCheck")
-                .maxExecutionTime(300000) // 5min (in millis)
+                .maxExecutionTime(60000) // 1 min
                 .bindPaths(bindPaths)
                 .build();
 
-        customDockerClient.pullImage("checkSgx", alpineLatest);
-        String stdout = customDockerClient.execute(dockerExecutionConfig).trim();
+        if (!customDockerClient.pullImage(chainTaskId, alpineLatest)) {
+            return false;
+        }
+
+        DockerExecutionResult executionResult = customDockerClient.execute(dockerExecutionConfig);
+        if (!executionResult.isSuccess()) {
+            log.error("Failed to check SGX device, will continue without TEE support");
+            return false;
+        }
+
+        String stdout = executionResult.getStdout().trim();
         return (stdout != null && stdout.equals("true")) ? true : false;
     }
 }

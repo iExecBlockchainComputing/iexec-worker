@@ -15,6 +15,7 @@ import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.DockerExecutionConfig;
+import com.iexec.worker.docker.DockerExecutionResult;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.utils.FileHelper;
@@ -38,6 +39,7 @@ public class SconeTeeService {
     private SconeLasConfiguration sconeLasConfiguration;
     private CustomDockerClient customDockerClient;
     private SmsService smsService;
+    private SgxService sgxService;
 
     public SconeTeeService(SconeLasConfiguration sconeLasConfiguration,
                            CustomDockerClient customDockerClient,
@@ -47,28 +49,46 @@ public class SconeTeeService {
         this.sconeLasConfiguration = sconeLasConfiguration;
         this.customDockerClient = customDockerClient;
         this.smsService = smsService;
-
-        // start LAS if the worker is SGX enabled
-        isLasStarted = sgxService.isSgxEnabled() ? startLasService() : false;
+        this.sgxService = sgxService;
     }
 
     public boolean isLasStarted() {
+        isLasStarted = startLasService();
         return isLasStarted;
     }
 
     public boolean startLasService() {
-        String chainTaskId = "LAS";
+        isLasStarted = false;
+
+        if (!sgxService.isSgxEnabled()) {
+            return false;
+        }
+
+        String chainTaskId = "iexec-las";
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
+                // don't add containerName here it creates conflict
+                // when running multiple workers on the same machine
                 .imageUri(sconeLasConfiguration.getImageUri())
                 .containerPort(sconeLasConfiguration.getPort())
-                .containerName(sconeLasConfiguration.getContainerName())
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();
 
-        customDockerClient.pullImage(chainTaskId, sconeLasConfiguration.getImageUri());
-        return customDockerClient.startService(dockerExecutionConfig);
+        if (!customDockerClient.pullImage(chainTaskId, sconeLasConfiguration.getImageUri())) {
+            return false;
+        }
+
+        DockerExecutionResult dockerExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+
+        if (!dockerExecutionResult.isSuccess()) {
+            log.error("Couldn't start LAS service, will continue without TEE support");
+            return false;
+        }
+
+        sconeLasConfiguration.setContainerName(dockerExecutionResult.getContainerName());
+        isLasStarted = true;
+        return true;
     }
 
     public String createSconeSecureSession(ContributionAuthorization contributionAuth,

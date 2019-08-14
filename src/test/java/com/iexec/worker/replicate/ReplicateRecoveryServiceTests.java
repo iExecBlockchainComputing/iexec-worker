@@ -1,4 +1,4 @@
-package com.iexec.worker.amnesia;
+package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
@@ -26,21 +26,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 
-public class AmnesiaRecoveryServiceTests {
+public class ReplicateRecoveryServiceTests {
 
-    @Mock
-    private CustomFeignClient customFeignClient;
-    @Mock
-    private ResultService resultService;
-    @Mock
-    private IexecHubService iexecHubService;
-    @Mock
-    private SubscriptionService subscriptionService;
-    @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    @Mock private CustomFeignClient customFeignClient;
+    @Mock private ResultService resultService;
+    @Mock private IexecHubService iexecHubService;
+    @Mock private SubscriptionService subscriptionService;
+    @Mock private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
-    AmnesiaRecoveryService amnesiaRecoveryService;
+    ReplicateRecoveryService replicateRecoveryService;
 
     private final static String CHAIN_TASK_ID = "0xfoobar";
     long blockNumber = 5;
@@ -57,7 +52,7 @@ public class AmnesiaRecoveryServiceTests {
         when(customFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.emptyList());
 
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
+        List<String> recovered = replicateRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isEmpty();
     }
@@ -71,7 +66,7 @@ public class AmnesiaRecoveryServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
 
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
+        List<String> recovered = replicateRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isEmpty();
 
@@ -88,7 +83,7 @@ public class AmnesiaRecoveryServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
+        List<String> recovered = replicateRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isEmpty();
 
@@ -105,7 +100,7 @@ public class AmnesiaRecoveryServiceTests {
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
+        List<String> recovered = replicateRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isEmpty();
 
@@ -123,7 +118,7 @@ public class AmnesiaRecoveryServiceTests {
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
 
-        List<String> recovered = amnesiaRecoveryService.recoverInterruptedReplicates();
+        List<String> recovered = replicateRecoveryService.recoverInterruptedReplicates();
 
         assertThat(recovered).isNotEmpty();
         assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
@@ -154,5 +149,4 @@ public class AmnesiaRecoveryServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .build());
     }
-
 }

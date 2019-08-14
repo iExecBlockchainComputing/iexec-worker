@@ -1,4 +1,4 @@
-package com.iexec.worker.amnesia;
+package com.iexec.worker.replicate;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
@@ -16,14 +16,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-
 /*
  * This service is used to remind the worker of possible interrupted works
- * after a restart and how to deal with each interruption
+ * after a restart and how to deal with each interruption.
  */
 @Slf4j
 @Service
-public class AmnesiaRecoveryService {
+public class ReplicateRecoveryService {
 
     private CustomFeignClient customFeignClient;
     private SubscriptionService subscriptionService;
@@ -31,7 +30,7 @@ public class AmnesiaRecoveryService {
     private IexecHubService iexecHubService;
     private ApplicationEventPublisher applicationEventPublisher;
 
-    public AmnesiaRecoveryService(CustomFeignClient customFeignClient,
+    public ReplicateRecoveryService(CustomFeignClient customFeignClient,
                                   SubscriptionService subscriptionService,
                                   ResultService resultService,
                                   IexecHubService iexecHubService,

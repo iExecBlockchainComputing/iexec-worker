@@ -3,13 +3,13 @@ package com.iexec.worker;
 
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
-import com.iexec.worker.amnesia.AmnesiaRecoveryService;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.replicate.ReplicateRecoveryService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
@@ -58,7 +58,7 @@ public class Application implements CommandLineRunner {
     private ResultService resultService;
 
     @Autowired
-    private AmnesiaRecoveryService amnesiaRecoveryService;
+    private ReplicateRecoveryService replicateRecoveryService;
 
     @Autowired
     private VersionService versionService;
@@ -127,7 +127,7 @@ public class Application implements CommandLineRunner {
         log.info("Cool, your iexec-worker is all set!");
 
         // ask core for interrupted replicates
-        List<String> recoveredTasks = amnesiaRecoveryService.recoverInterruptedReplicates();
+        List<String> recoveredTasks = replicateRecoveryService.recoverInterruptedReplicates();
 
         // clean the results folder
         resultService.cleanUnusedResultFolders(recoveredTasks);
