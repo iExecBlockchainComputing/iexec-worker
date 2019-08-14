@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -129,7 +130,7 @@ public class CustomDockerClientTests {
         DockerExecutionConfig config = getDockerExecutionConfigStub();
 
         ContainerConfig containerConfig = 
-                customDockerClient.buildContainerConfig(config);
+                customDockerClient.buildContainerConfig(config).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD[0]);
@@ -149,7 +150,7 @@ public class CustomDockerClientTests {
         config.getBindPaths().put(getDockerScone(), FileHelper.SLASH_SCONE);
 
         ContainerConfig containerConfig = 
-                customDockerClient.buildContainerConfig(config);
+                customDockerClient.buildContainerConfig(config).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD[0]);
@@ -172,10 +173,10 @@ public class CustomDockerClientTests {
         DockerExecutionConfig config = getDockerExecutionConfigStub();
         config.setImageUri("");
 
-        ContainerConfig containerConfig = 
+        Optional<ContainerConfig> containerConfig = 
                 customDockerClient.buildContainerConfig(config);
 
-        assertThat(containerConfig).isNull();
+        assertThat(containerConfig).isEmpty();
     }
 
     // execute()
@@ -205,8 +206,9 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldNotCreateContainerWithNullConfig() {
-        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, null);
-        assertThat(containerInfo).isNull();
+        Optional<CustomContainerInfo> containerInfo =
+                customDockerClient.createContainer(CHAIN_TASK_ID, null);
+        assertThat(containerInfo).isEmpty();
     }
 
     // startContainer()
@@ -243,7 +245,9 @@ public class CustomDockerClientTests {
                 .image(ALPINE_LATEST)
                 .build();
 
-        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
+        CustomContainerInfo containerInfo =
+                customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig).get();
+
         String containerId = containerInfo.getContainerId();
         assertThat(containerId).isNotEmpty();
         boolean isStopped = customDockerClient.stopContainer(containerId);
@@ -255,14 +259,14 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldNotGetLogsOfContainerWithEmptyId() {
-        String dockerLogs = customDockerClient.getContainerLogs("");
-        assertThat(dockerLogs).isEqualTo(null);
+        Optional<String> dockerLogs = customDockerClient.getContainerLogs("");
+        assertThat(dockerLogs).isEmpty();;
     }
 
     @Test
     public void shouldNotGetLogsOfContainerWithBadId() {
-        String dockerLogs = customDockerClient.getContainerLogs(CHAIN_TASK_ID);
-        assertThat(dockerLogs).isNull();
+        Optional<String> dockerLogs = customDockerClient.getContainerLogs(CHAIN_TASK_ID);
+        assertThat(dockerLogs).isEmpty();
     }
 
     // removeContainer()
@@ -275,9 +279,11 @@ public class CustomDockerClientTests {
         config.setCmd(cmdArray);
 
         ContainerConfig containerConfig = 
-                customDockerClient.buildContainerConfig(config);
+                customDockerClient.buildContainerConfig(config).get();
 
-        CustomContainerInfo containerInfo = customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig);
+        CustomContainerInfo containerInfo =
+                customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig).get();
+
         String containerId = containerInfo.getContainerId();
         assertThat(containerId).isNotEmpty();
 

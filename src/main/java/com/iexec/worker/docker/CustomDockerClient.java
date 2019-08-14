@@ -32,6 +32,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
@@ -96,19 +98,21 @@ public class CustomDockerClient {
         log.info("Executing [image:{}, cmd:{}]", dockerExecutionConfig.getImageUri(),
                 dockerExecutionConfig.getCmd());
 
-        ContainerConfig containerConfig = buildContainerConfig(dockerExecutionConfig);
-        if (containerConfig == null) {
+        Optional<ContainerConfig> oContainerConfig = buildContainerConfig(dockerExecutionConfig);
+        if (oContainerConfig.isEmpty()) {
             log.error("Cannot execute since container config is null");
             return DockerExecutionResult.failure();
         }
 
-        CustomContainerInfo customContainerInfo = createAndStartContainer(containerName, containerConfig);
-        if (customContainerInfo == null) {
+        Optional<CustomContainerInfo> oCustomContainerInfo =
+                createAndStartContainer(containerName, oContainerConfig.get());
+
+        if (oCustomContainerInfo.isEmpty()) {
             return DockerExecutionResult.failure();
         }
 
-        containerName = customContainerInfo.getContainerName();
-        String containerId = customContainerInfo.getContainerId();
+        containerName = oCustomContainerInfo.get().getContainerName();
+        String containerId = oCustomContainerInfo.get().getContainerId();
 
         if (maxExecutionTime == 0) {
             return DockerExecutionResult.success("", containerName);
@@ -120,19 +124,19 @@ public class CustomDockerClient {
                 containerName, containerId);
 
         stopContainer(containerId);
-        String stdout = getContainerLogs(containerId);
+        Optional<String> oStdout = getContainerLogs(containerId);
         removeContainer(containerId);
 
-        if (stdout == null) {
+        if (oStdout == null) {
             log.error("Couldn't get execution logs [chainTaskId:{}]", chainTaskId);
             return DockerExecutionResult.failure();
         }
 
-        return DockerExecutionResult.success(stdout, containerName);
+        return DockerExecutionResult.success(oStdout.get(), containerName);
 
     }
 
-    public ContainerConfig buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
+    public Optional<ContainerConfig> buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
         String imageUri = dockerExecutionConfig.getImageUri();
         String[] cmd = dockerExecutionConfig.getCmd();
         List<String> env = dockerExecutionConfig.getEnv();
@@ -142,13 +146,13 @@ public class CustomDockerClient {
 
         HostConfig hostConfig = createHostConfig(dockerExecutionConfig.getBindPaths(), isSgx);
         if (hostConfig == null) {
-            return null;
+            return Optional.empty();
         }
 
         containerConfigBuilder.hostConfig(hostConfig);
         
         if (imageUri == null || imageUri.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         containerConfigBuilder.image(imageUri);
@@ -170,7 +174,7 @@ public class CustomDockerClient {
         Map<String, EndpointConfig> endpointConfigMap = Map.of(WORKER_DOCKER_NETWORK, endpointConfig);
         NetworkingConfig networkingConfig = NetworkingConfig.create(endpointConfigMap);
         containerConfigBuilder.networkingConfig(networkingConfig);
-        return containerConfigBuilder.build();
+        return Optional.of(containerConfigBuilder.build());
     }
 
     private HostConfig createHostConfig(Map<String, String> bindPaths, boolean isSgx) {
@@ -221,42 +225,44 @@ public class CustomDockerClient {
                 .build();
     }
 
-    public CustomContainerInfo createAndStartContainer(String containerName, ContainerConfig containerConfig) {
+    public Optional<CustomContainerInfo> createAndStartContainer(String containerName,
+                                                                 ContainerConfig containerConfig) {
         if (containerConfig == null) {
             log.error("Cannot create container since config is null [containerName:{}]", containerName);
-            return null;
+            return Optional.empty();
         }
 
-        if (containerName != null && !containerName.isEmpty()) {
-            removeDuplicateContainer(containerName);
+        if (containerName != null && !containerName.isEmpty() && getContainer(byName(containerName)).isPresent()) {
+            log.info("Found duplicate container with the same name, will remove it [containerName:{}]", containerName);
+            stopAndRemoveContainer(containerName);
         }
 
         // docker container create
-        CustomContainerInfo customContainerInfo = createContainer(containerName, containerConfig);
-        if (customContainerInfo == null) {
-            return null;
+        Optional<CustomContainerInfo> oCustomContainerInfo = createContainer(containerName, containerConfig);
+        if (oCustomContainerInfo.isEmpty()) {
+            return Optional.empty();
         }
 
-        String containerId = customContainerInfo.getContainerId();
+        String containerId = oCustomContainerInfo.get().getContainerId();
         if (containerId.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         // docker container start
         boolean isContainerStarted = startContainer(containerId);
         if (!isContainerStarted) {
             removeContainer(containerId);
-            return null;
+            return Optional.empty();
         }
 
-        return customContainerInfo;
+        return Optional.of(oCustomContainerInfo.get());
     }
 
-    public CustomContainerInfo createContainer(String containerName, ContainerConfig containerConfig) {
+    public Optional<CustomContainerInfo> createContainer(String containerName, ContainerConfig containerConfig) {
         log.debug("Creating container [containerName:{}]", containerName);
 
         if (containerConfig == null) {
-            return null;
+            return Optional.empty();
         }
 
         ContainerCreation containerCreation;
@@ -270,29 +276,31 @@ public class CustomDockerClient {
             log.error("Failed to create container [containerName:{}, image:{}, cmd:{}]",
                     containerName, containerConfig.image(), containerConfig.cmd());
             e.printStackTrace();
-            return null;
+            return Optional.empty();
         }
 
         if (containerCreation == null) {
             log.error("Error creating container [containerName:{}]", containerName);
-            return null;
+            return Optional.empty();
         }
 
         String containerId = containerCreation.id();
 
         // if the name wasn't specified, get the generated one
         if (containerName == null || containerName.isEmpty()) {
-            Container container = getContainerById(containerId);
-            containerName = container != null ? container.names().get(0) : "";
+            Optional<Container> oContainer = getContainer(byId(containerId));
+            containerName = oContainer.isPresent() ? oContainer.get().names().get(0) : "";
         }
 
         log.info("Created container [containerName:{}, containerId:{}]",
                 containerName, containerId);
 
-        return CustomContainerInfo.builder()
+        CustomContainerInfo customContainerInfo = CustomContainerInfo.builder()
                 .containerId(containerId)
                 .containerName(containerName)
                 .build();
+
+        return Optional.of(customContainerInfo);
     }
 
     public boolean startContainer(String containerId) {
@@ -348,7 +356,7 @@ public class CustomDockerClient {
         return true;
     }
 
-    public String getContainerLogs(String containerId) {
+    public Optional<String> getContainerLogs(String containerId) {
         log.debug("Getting container logs [containerId:{}]", containerId);
         String stdout = "";
 
@@ -357,11 +365,11 @@ public class CustomDockerClient {
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to get container logs [containerId:{}]", containerId);
             e.printStackTrace();
-            return null;
+            return Optional.empty();
         }
 
         log.debug("Got container logs [containerId:{}]", containerId);
-        return stdout;
+        return Optional.of(stdout);
     }
 
     public boolean removeContainer(String containerId) {
@@ -379,75 +387,48 @@ public class CustomDockerClient {
     }
 
     public void stopAndRemoveContainer(String containerName) {
-        Container container = getContainerByName(containerName);
-        if (container == null) {
-            return;
+        Optional<Container> oContainer = getContainer(byName(containerName));
+        if (oContainer.isPresent()) {
+            String containerId = oContainer.get().id();
+            stopContainer(containerId);
+            removeContainer(containerId);
         }
-
-        String containerId = container.id();
-        stopContainer(containerId);
-        removeContainer(containerId);
     }
 
-    private void removeDuplicateContainer(String containerName) {
-        log.debug("Trying to remove duplicate container [containerName:{}]", containerName);
-        Container container = getContainerByName(containerName);
-        if (container == null) {
-            return;
+    private Optional<Container> getContainer(Predicate<Container> predicate) {
+        List<Container> containerList = new ArrayList<>();
+        try {
+            containerList = docker.listContainers(ListContainersParam.allContainers())
+                    .stream()
+                    .filter(predicate)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Failed to get container");
+            e.printStackTrace();
+            return Optional.empty();
         }
 
-        log.info("Found duplicate container, will remove it [containerName:{}]", containerName);
-        stopAndRemoveContainer(containerName);
+        return !containerList.isEmpty() ? Optional.of(containerList.get(0)) : Optional.empty();
     }
 
-    private Container getContainerByName(String containerName) {
-        log.debug("Getting container by name [containerName:{}]", containerName);
-
+    private Predicate<Container> byName(String containerName) {
         if (containerName == null || containerName.isEmpty()) {
-            return null;
+            return (container) -> false;
         }
 
-        List<Container> containerList = new ArrayList<>();
-        try {
-            containerList = docker.listContainers(ListContainersParam.allContainers())
-                    .stream()
-                    .filter(container -> container.names().contains("/" + containerName)
-                            || container.names().contains(containerName))
-                            // we do this because the behavior of
-                            // the docker library is not clear
-                    .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            log.error("Failed to get container by name [containerName:{}]", containerName);
-            e.printStackTrace();
-            return null;
-        }
-
-        return containerList.isEmpty() ? null : containerList.get(0);
+        // We test the name with "/" and without it because
+        // the behavior of the docker library is not clear
+        return (container) -> container.names().contains("/" + containerName) ||
+                              container.names().contains(containerName);
     }
 
-    private Container getContainerById(String containerId) {
-        log.debug("Getting container by id [containerId:{}]", containerId);
-
+    private Predicate<Container> byId(String containerId) {
         if (containerId == null || containerId.isEmpty()) {
-            return null;
+            return (container) -> false;
         }
 
-        List<Container> containerList = new ArrayList<>();
-
-        try {
-            containerList = docker.listContainers(ListContainersParam.allContainers())
-                    .stream()
-                    .filter(container -> container.id().equals(containerId))
-                    .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            log.error("Failed to get container by id [containerId:{}]", containerId);
-            e.printStackTrace();
-            return null;
-        }
-
-        return containerList.isEmpty() ? null : containerList.get(0);
+        return (container) -> container.id().equals(containerId);
     }
 
     private boolean isContainerExited(String containerId) {
