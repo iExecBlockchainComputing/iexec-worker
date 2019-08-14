@@ -76,7 +76,7 @@ public class SconeTeeService {
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(dockerExecutionConfig);
 
         if (!dockerExecutionResult.isSuccess()) {
-            log.error("Couldn't start LAS service, will continue without TEE support.");
+            log.error("Couldn't start LAS service, will continue without TEE support");
             return false;
         }
 
