@@ -1,10 +1,9 @@
 package com.iexec.worker.tee.scone;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import com.iexec.worker.config.WorkerConfigurationService;
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 /**
  * LAS: local attestation service.
@@ -16,10 +15,7 @@ import org.springframework.stereotype.Component;
  * MREnclave: an enclave identifier, created by hashing all its
  * code. It guarantees that a code behaves exactly as expected.
  */
-@Component
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Service
 public class SconeLasConfiguration {
 
     @Value("${scone.las.image}")
@@ -33,8 +29,14 @@ public class SconeLasConfiguration {
 
     private String containerName;
 
-    public void setContainerName(String containerName) {
-        this.containerName = containerName;
+    public SconeLasConfiguration(WorkerConfigurationService workerConfigService) {
+        // "wallet-address-iexec-las" as containerName to avoid naming conflict
+        // when running multiple workers on the same machine.
+        containerName = workerConfigService.getWorkerWalletAddress() + "-iexec-las";
+    }
+
+    public String getContainerName() {
+        return containerName;
     }
 
     public String getImageUri() {
@@ -43,5 +45,9 @@ public class SconeLasConfiguration {
 
     public String getUrl() {
         return containerName + ":" + port;
+    }
+
+    public String getPort() {
+        return port;
     }
 }

@@ -11,6 +11,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomFeignClient;
 import com.iexec.worker.replicate.ReplicateRecoveryService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +63,9 @@ public class Application implements CommandLineRunner {
 
     @Autowired
     private VersionService versionService;
+
+    @Autowired
+    private SconeTeeService sconeTeeService;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -118,7 +122,7 @@ public class Application implements CommandLineRunner {
                 .cpu(workerConfig.getCPU())
                 .cpuNb(workerConfig.getNbCPU())
                 .memorySize(workerConfig.getMemorySize())
-                .teeEnabled(workerConfig.isTeeEnabled())
+                .teeEnabled(sconeTeeService.isTeeEnabled())
                 .build();
 
         customFeignClient.registerWorker(model);

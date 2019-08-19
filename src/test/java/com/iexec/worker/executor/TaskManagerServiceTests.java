@@ -86,7 +86,7 @@ public class TaskManagerServiceTests {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(getStubTaskDescription(false));
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(workerConfigurationService.isTeeEnabled()).thenReturn(false);
+        when(sconeTeeService.isTeeEnabled()).thenReturn(false);
 
         boolean isStarted = taskManagerService.start(CHAIN_TASK_ID);
 

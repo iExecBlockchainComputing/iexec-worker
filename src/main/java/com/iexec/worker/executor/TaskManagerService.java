@@ -104,7 +104,7 @@ public class TaskManagerService {
             return false;
         }
 
-        if (taskDescription.isTeeTask() && !workerConfigurationService.isTeeEnabled()) {
+        if (taskDescription.isTeeTask() && !sconeTeeService.isTeeEnabled()) {
             log.error("Cant start (tee task but not supported) [chainTaskId:{}]", chainTaskId);
             return false;
         }
