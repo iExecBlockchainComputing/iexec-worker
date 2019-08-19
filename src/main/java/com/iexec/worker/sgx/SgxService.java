@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.DockerExecutionConfig;
 import com.iexec.worker.docker.DockerExecutionResult;
@@ -22,20 +23,23 @@ public class SgxService {
     public static final String SGX_CGROUP_PERMISSIONS = "rwm";
     private static final String SGX_DRIVER_PATH = "/sys/module/isgx/version";
 
-    private boolean isSgxEnabled;
+    private boolean isSgxSupported;
 
     private CustomDockerClient customDockerClient;
+    private WorkerConfigurationService workerConfigService;
 
-    public SgxService(CustomDockerClient customDockerClient) {
+    public SgxService(CustomDockerClient customDockerClient,
+                      WorkerConfigurationService workerConfigService) {
         this.customDockerClient = customDockerClient;
-        isSgxEnabled = checkSgxSupport();
+        this.workerConfigService = workerConfigService;
+        isSgxSupported = isSgxSupported();
     }
 
     public boolean isSgxEnabled() {
-        return isSgxEnabled;
+        return isSgxSupported;
     }
 
-    private boolean checkSgxSupport() {
+    private boolean isSgxSupported() {
         log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SGX_DRIVER_PATH).exists();
 
@@ -58,7 +62,10 @@ public class SgxService {
     }
 
     private boolean isSgxDeviceFound() {
-        String chainTaskId = "sgxCheck";
+        String chainTaskId = "sgx-check";
+        // "wallet-address-sgx-check" as containerName to avoid naming conflict
+        // when running multiple workers on the same machine.
+        String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
         String alpineLatest = "alpine:latest";
         String cmd = "find /dev -name isgx -exec echo true ;";
 
@@ -67,8 +74,7 @@ public class SgxService {
 
         DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
-                // don't add containerName here it creates conflict
-                // when running multiple workers on the same machine
+                .containerName(containerName)
                 .imageUri(alpineLatest)
                 .cmd(cmd.split(" "))
                 .maxExecutionTime(60000) // 1 min
