@@ -68,7 +68,7 @@ public class TaskNotificationService {
 
         switch (action) {
             case PLEASE_START:
-                updateStatusAndGetNextAction(chainTaskId, RUNNING);
+                updateStatusAndGetNextAction(chainTaskId, STARTING);
                 boolean isStarted = taskManagerService.start(chainTaskId);
                 if (!isStarted) {
                     updateStatusAndGetNextAction(chainTaskId, START_FAILED);
