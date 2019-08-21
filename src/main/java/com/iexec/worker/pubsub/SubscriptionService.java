@@ -152,11 +152,11 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
                 }
 
                 TaskNotification taskNotification = (TaskNotification) payload;
-                boolean isForEveryone = taskNotification.getWorkersAddress().isEmpty();
-                boolean isForMe = taskNotification.getWorkersAddress()
+                boolean isNotifForEveryone = taskNotification.getWorkersAddress().isEmpty();
+                boolean isNotifForMe = taskNotification.getWorkersAddress()
                         .contains(workerConfigurationService.getWorkerWalletAddress());
 
-                if (!isForEveryone && !isForMe) {
+                if (!isNotifForEveryone && !isNotifForMe) {
                     return;
                 }
 
