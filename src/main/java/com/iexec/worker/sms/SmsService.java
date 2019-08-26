@@ -14,7 +14,7 @@ import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.feign.CustomSmsFeignClient;
 import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.retry.annotation.Recover;
@@ -31,11 +31,11 @@ import lombok.extern.slf4j.Slf4j;
 public class SmsService {
 
     private CredentialsService credentialsService;
-    private CustomCoreFeignClient customCoreFeignClient;
+    private CustomSmsFeignClient customSmsFeignClient;
 
-    public SmsService(CredentialsService credentialsService, CustomCoreFeignClient customCoreFeignClient) {
+    public SmsService(CredentialsService credentialsService, CustomSmsFeignClient customSmsFeignClient) {
         this.credentialsService = credentialsService;
-        this.customCoreFeignClient = customCoreFeignClient;
+        this.customSmsFeignClient = customSmsFeignClient;
     }
 
     @Retryable(value = FeignException.class)
@@ -43,7 +43,7 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-        SmsSecretResponse smsResponse = customCoreFeignClient.getTaskSecretsFromSms(smsRequest);
+        SmsSecretResponse smsResponse = customSmsFeignClient.getTaskSecretsFromSms(smsRequest);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
@@ -111,7 +111,7 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        SconeSecureSessionResponse smsResponse = customCoreFeignClient.generateSecureSession(smsRequest);
+        SconeSecureSessionResponse smsResponse = customSmsFeignClient.generateSecureSession(smsRequest);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);

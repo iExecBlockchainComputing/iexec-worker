@@ -10,7 +10,7 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.feign.CustomResultFeignClient;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class ResultService {
     private PublicConfigurationService publicConfigService;
     private CredentialsService credentialsService;
     private IexecHubService iexecHubService;
-    private CustomCoreFeignClient customCoreFeignClient;
+    private CustomResultFeignClient customResultFeignClient;
 
     private Map<String, ResultInfo> resultInfoMap;
 
@@ -56,12 +56,12 @@ public class ResultService {
                          PublicConfigurationService publicConfigService,
                          CredentialsService credentialsService,
                          IexecHubService iexecHubService,
-                         CustomCoreFeignClient customCoreFeignClient) {
+                         CustomResultFeignClient customResultFeignClient) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
-        this.customCoreFeignClient = customCoreFeignClient;
+        this.customResultFeignClient = customResultFeignClient;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -372,7 +372,7 @@ public class ResultService {
 
     public String uploadResult(String chainTaskId) {
         Integer chainId = publicConfigService.getChainId();
-        Optional<Eip712Challenge> oEip712Challenge = customCoreFeignClient.getResultChallenge(chainId);
+        Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
         if (!oEip712Challenge.isPresent()) {
             return "";
@@ -388,7 +388,7 @@ public class ResultService {
             return "";
         }
 
-        return customCoreFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+        return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
     }
 
 
