@@ -14,8 +14,7 @@ public class CustomSmsFeignClient extends BaseFeignClient {
     private LoginService loginService;
     private SmsClient smsClient;
 
-    public CustomSmsFeignClient(LoginService loginService,
-                                SmsClient smsClient) {
+    public CustomSmsFeignClient(SmsClient smsClient, LoginService loginService) {
         this.loginService = loginService;
         this.smsClient = smsClient;
     }

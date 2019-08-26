@@ -25,8 +25,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     private LoginService loginService;
     private CoreClient coreClient;
 
-    public CustomCoreFeignClient(LoginService loginService,
-                                 CoreClient coreClient) {
+    public CustomCoreFeignClient(CoreClient coreClient, LoginService loginService) {
         this.loginService = loginService;
         this.coreClient = coreClient;
     }

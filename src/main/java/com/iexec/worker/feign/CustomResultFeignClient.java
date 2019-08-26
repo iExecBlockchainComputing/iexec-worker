@@ -15,8 +15,7 @@ public class CustomResultFeignClient extends BaseFeignClient {
     private LoginService loginService;
     private ResultClient resultClient;
 
-    public CustomResultFeignClient(LoginService loginService,
-                                   ResultClient resultClient) {
+    public CustomResultFeignClient(ResultClient resultClient, LoginService loginService) {
         this.loginService = loginService;
         this.resultClient = resultClient;
     }
@@ -55,7 +54,7 @@ public class CustomResultFeignClient extends BaseFeignClient {
         Object[] arguments = new Object[] {authorizationToken, resultModel};
 
         HttpCall<String> httpCall = (args) ->
-                resultClient.uploadResult((String) args[0], (ResultModel) args[0]);
+                resultClient.uploadResult((String) args[0], (ResultModel) args[1]);
 
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
         return isOk(response) ? response.getBody() : "";
