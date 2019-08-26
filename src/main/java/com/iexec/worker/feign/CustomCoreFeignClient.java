@@ -8,14 +8,7 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.result.ResultModel;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.sms.SmsRequest;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse;
-import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.worker.feign.client.CoreClient;
-import com.iexec.worker.feign.client.ResultClient;
-import com.iexec.worker.feign.client.SmsClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -31,17 +24,11 @@ public class CustomCoreFeignClient extends BaseFeignClient {
 
     private LoginService loginService;
     private CoreClient coreClient;
-    private SmsClient smsClient;
-    private ResultClient resultClient;
 
     public CustomCoreFeignClient(LoginService loginService,
-                             CoreClient coreClient,
-                             SmsClient smsClient,
-                             ResultClient resultClient) {
+                                 CoreClient coreClient) {
         this.loginService = loginService;
         this.coreClient = coreClient;
-        this.smsClient = smsClient;
-        this.resultClient = resultClient;
     }
 
     @Override
@@ -148,41 +135,5 @@ public class CustomCoreFeignClient extends BaseFeignClient {
 
         log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
         return response.getBody();
-    }
-
-    // sms
-
-    public SmsSecretResponse getTaskSecretsFromSms(SmsRequest smsRequest) {
-        Object[] arguments = new Object[] {smsRequest};
-        HttpCall<SmsSecretResponse> httpCall = (args) -> smsClient.getTaskSecretsFromSms((SmsRequest) args[0]);
-        ResponseEntity<SmsSecretResponse> response = makeHttpCall(httpCall, arguments, "getTaskSecretsFromSms");
-        return isOk(response) ? response.getBody() : null;
-    }
-
-    public SconeSecureSessionResponse generateSecureSession(SmsRequest smsRequest) {
-        Object[] arguments = new Object[] {smsRequest};
-        HttpCall<SconeSecureSessionResponse> httpCall = (args) -> smsClient.generateSecureSession((SmsRequest) args[0]);
-        ResponseEntity<SconeSecureSessionResponse> response = 
-                makeHttpCall(httpCall, arguments, "generateSecureSession");
-        return isOk(response) ? response.getBody() : null;
-    }
-
-    // result
-
-    public Optional<Eip712Challenge> getResultChallenge(Integer chainId) {
-        Object[] arguments = new Object[] {chainId};
-        HttpCall<Eip712Challenge> httpCall = (args) -> resultClient.getChallenge((Integer) args[0]);
-        ResponseEntity<Eip712Challenge> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
-        return isOk(response) ? Optional.of(response.getBody()) : Optional.empty();
-    }
-
-    public String uploadResult(String authorizationToken, ResultModel resultModel) {
-        Object[] arguments = new Object[] {authorizationToken, resultModel};
-
-        HttpCall<String> httpCall = (args) ->
-                resultClient.uploadResult((String) args[0], (ResultModel) args[0]);
-
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
-        return isOk(response) ? response.getBody() : "";
     }
 }
