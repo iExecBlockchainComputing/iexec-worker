@@ -14,7 +14,7 @@ import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.SmsClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.retry.annotation.Recover;
@@ -30,12 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SmsService {
 
-    private SmsClient smsClient;
     private CredentialsService credentialsService;
+    private CustomCoreFeignClient customCoreFeignClient;
 
-    public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
-        this.smsClient = smsClient;
+    public SmsService(CredentialsService credentialsService, CustomCoreFeignClient customCoreFeignClient) {
         this.credentialsService = credentialsService;
+        this.customCoreFeignClient = customCoreFeignClient;
     }
 
     @Retryable(value = FeignException.class)
@@ -43,7 +43,7 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-        SmsSecretResponse smsResponse = smsClient.getTaskSecretsFromSms(smsRequest);
+        SmsSecretResponse smsResponse = customCoreFeignClient.getTaskSecretsFromSms(smsRequest);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
@@ -111,7 +111,7 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        SconeSecureSessionResponse smsResponse = smsClient.generateSecureSession(smsRequest);
+        SconeSecureSessionResponse smsResponse = customCoreFeignClient.generateSecureSession(smsRequest);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);

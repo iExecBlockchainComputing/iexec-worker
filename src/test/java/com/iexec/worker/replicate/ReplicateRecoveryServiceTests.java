@@ -6,7 +6,7 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import org.junit.Before;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 public class ReplicateRecoveryServiceTests {
 
-    @Mock private CustomFeignClient customFeignClient;
+    @Mock private CustomCoreFeignClient customCoreFeignClient;
     @Mock private ResultService resultService;
     @Mock private IexecHubService iexecHubService;
     @Mock private SubscriptionService subscriptionService;
@@ -49,7 +49,7 @@ public class ReplicateRecoveryServiceTests {
     @Test
     public void shouldNotRecoverSinceNothingToRecover() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.emptyList());
 
         List<String> recovered = replicateRecoveryService.recoverInterruptedReplicates();
@@ -61,7 +61,7 @@ public class ReplicateRecoveryServiceTests {
     public void shouldNotRecoverSinceCannotGetTaskDescriptionFromChain() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
         when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
@@ -78,7 +78,7 @@ public class ReplicateRecoveryServiceTests {
     public void shouldNotRecoverByRevealingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
@@ -95,7 +95,7 @@ public class ReplicateRecoveryServiceTests {
     public void shouldNotRecoverByUploadingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_UPLOAD);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
@@ -113,7 +113,7 @@ public class ReplicateRecoveryServiceTests {
     public void shouldNotificationPassedToSubscriptionService() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif = getStubInterruptedTask(TaskNotificationType.PLEASE_COMPLETE);
-        when(customFeignClient.getMissedTaskNotifications(blockNumber))
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
