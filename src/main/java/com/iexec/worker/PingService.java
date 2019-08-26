@@ -1,7 +1,7 @@
 package com.iexec.worker;
 
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class PingService {
 
-    private CustomFeignClient feignClient;
+    private CustomCoreFeignClient customCoreFeignClient;
     private CoreConfigurationService coreConfigurationService;
     private RestartService restartService;
 
-    public PingService(CustomFeignClient feignClient,
+    public PingService(CustomCoreFeignClient customCoreFeignClient,
                        CoreConfigurationService coreConfigurationService,
                        RestartService restartService) {
-        this.feignClient = feignClient;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.coreConfigurationService = coreConfigurationService;
         this.restartService = restartService;
     }
@@ -25,7 +25,7 @@ public class PingService {
     @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
         log.debug("Send ping to scheduler");
-        String sessionId = feignClient.ping();
+        String sessionId = customCoreFeignClient.ping();
         String currentSessionId = coreConfigurationService.getCoreSessionId();
         if (currentSessionId == null || currentSessionId.isEmpty()){
             log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
@@ -33,14 +33,15 @@ public class PingService {
             return;
         }
 
-        if(sessionId != null && sessionId.equals("")){
-            log.warn("The worker cannot ping the core!");
+        if(sessionId == null || sessionId.isEmpty()) {
+            log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
             return;
         }
 
-        if (sessionId != null && !sessionId.equalsIgnoreCase(currentSessionId)){
+        if (!sessionId.equalsIgnoreCase(currentSessionId)) {
             // need to reconnect to the core by restarting the worker
-            log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]", currentSessionId, sessionId);
+            log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]",
+                    currentSessionId, sessionId);
             log.warn("The worker will restart now!");
             restartService.restartApp();
         }

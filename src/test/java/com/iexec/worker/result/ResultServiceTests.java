@@ -22,7 +22,7 @@ public class ResultServiceTests {
     private final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker";
 
     @Mock private WorkerConfigurationService workerConfigurationService;
-    @Mock private ResultRepoService resultRepoService;
+//     @Mock private ResultRepoService resultRepoService;
     @Mock private CredentialsService credentialsService;
     @Mock private IexecHubService iexecHubService;
     @Mock private SmsService smsService;

@@ -1,4 +1,4 @@
-package com.iexec.worker.feign;
+package com.iexec.worker.feign.config;
 
 import javax.net.ssl.SSLContext;
 

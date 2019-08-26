@@ -8,7 +8,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.replicate.ReplicateRecoveryService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -50,7 +50,7 @@ public class Application implements CommandLineRunner {
     private CredentialsService credentialsService;
 
     @Autowired
-    private CustomFeignClient customFeignClient;
+    private CustomCoreFeignClient customCoreFeignClient;
 
     @Autowired
     private IexecHubService iexecHubService;
@@ -88,7 +88,7 @@ public class Application implements CommandLineRunner {
     public void run(String... args) {
         log.info("Number of tasks that can run in parallel on this machine [tasks:{}]", workerConfig.getNbCPU() / 2);
         log.info("Core URL [url:{}]", coreConfService.getUrl());
-        log.info("Core version [version:{}]", customFeignClient.getCoreVersion());
+        log.info("Core version [version:{}]", customCoreFeignClient.getCoreVersion());
         log.info("Getting public configuration from the core");
         PublicConfiguration publicConfiguration = publicConfigService.getPublicConfiguration();
         log.info("Got public configuration from the core [config:{}]", publicConfiguration);
@@ -125,7 +125,7 @@ public class Application implements CommandLineRunner {
                 .teeEnabled(sconeTeeService.isTeeEnabled())
                 .build();
 
-        customFeignClient.registerWorker(model);
+        customCoreFeignClient.registerWorker(model);
         log.info("Registered the worker to the core [worker:{}]", model);
 
         log.info("Cool, your iexec-worker is all set!");

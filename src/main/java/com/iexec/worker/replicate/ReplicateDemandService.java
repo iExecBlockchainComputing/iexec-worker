@@ -7,7 +7,7 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.executor.TaskManagerService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@ import java.util.Optional;
 @Service
 public class ReplicateDemandService {
 
-    private final CustomFeignClient customFeignClient;
+    private final CustomCoreFeignClient customCoreFeignClient;
     private TaskManagerService taskManagerService;
     private IexecHubService iexecHubService;
     private SubscriptionService subscriptionService;
@@ -32,12 +32,12 @@ public class ReplicateDemandService {
 
     @Autowired
     public ReplicateDemandService(IexecHubService iexecHubService,
-                                  CustomFeignClient customFeignClient,
+                                  CustomCoreFeignClient customCoreFeignClient,
                                   SubscriptionService subscriptionService,
                                   ContributionService contributionService,
                                   ApplicationEventPublisher applicationEventPublisher,
                                   TaskManagerService taskManagerService) {
-        this.customFeignClient = customFeignClient;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.iexecHubService = iexecHubService;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
@@ -61,15 +61,15 @@ public class ReplicateDemandService {
         }
 
         Optional<ContributionAuthorization> oContributionAuth =
-                customFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
+                customCoreFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
 
         if (!oContributionAuth.isPresent()) {
             return;
         }
 
         ContributionAuthorization contributionAuth = oContributionAuth.get();
-
         String chainTaskId = contributionAuth.getChainTaskId();
+        log.info("Received new task [chainTaskId:{}]", chainTaskId);
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
             log.error("Task NOT initialized onchain [chainTaskId:{}]", chainTaskId);

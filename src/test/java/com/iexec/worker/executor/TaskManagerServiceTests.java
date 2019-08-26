@@ -15,7 +15,7 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -39,7 +39,7 @@ public class TaskManagerServiceTests {
     @Mock private DataService dataService;
     @Mock private ResultService resultService;
     @Mock private ContributionService contributionService;
-    @Mock private CustomFeignClient customFeignClient;
+    @Mock private CustomCoreFeignClient customCoreFeignClient;
     @Mock private WorkerConfigurationService workerConfigurationService;
     @Mock private SconeTeeService sconeTeeService;
     @Mock private IexecHubService iexecHubService;
@@ -301,7 +301,7 @@ public class TaskManagerServiceTests {
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
         assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isFalse();
-        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, OUT_OF_GAS);
+        verify(customCoreFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, OUT_OF_GAS);
     }
 
     @Test

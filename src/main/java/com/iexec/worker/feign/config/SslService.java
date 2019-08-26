@@ -1,4 +1,4 @@
-package com.iexec.worker.feign;
+package com.iexec.worker.feign.config;
 
 import java.io.File;
 

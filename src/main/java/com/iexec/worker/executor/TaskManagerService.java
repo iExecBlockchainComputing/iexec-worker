@@ -13,7 +13,7 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -37,7 +37,7 @@ public class TaskManagerService {
     private DataService dataService;
     private ResultService resultService;
     private ContributionService contributionService;
-    private CustomFeignClient customFeignClient;
+    private CustomCoreFeignClient customCoreFeignClient;
     private WorkerConfigurationService workerConfigurationService;
     private SconeTeeService sconeTeeService;
     private IexecHubService iexecHubService;
@@ -48,7 +48,7 @@ public class TaskManagerService {
     public TaskManagerService(DataService dataService,
                               ResultService resultService,
                               ContributionService contributionService,
-                              CustomFeignClient customFeignClient,
+                              CustomCoreFeignClient customCoreFeignClient,
                               WorkerConfigurationService workerConfigurationService,
                               SconeTeeService sconeTeeService,
                               IexecHubService iexecHubService,
@@ -57,7 +57,7 @@ public class TaskManagerService {
         this.dataService = dataService;
         this.resultService = resultService;
         this.contributionService = contributionService;
-        this.customFeignClient = customFeignClient;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.workerConfigurationService = workerConfigurationService;
         this.sconeTeeService = sconeTeeService;
         this.iexecHubService = iexecHubService;
@@ -354,7 +354,7 @@ public class TaskManagerService {
             return true;
         }
 
-        customFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
+        customCoreFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
         String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
                 workerConfigurationService.getWorkerWalletAddress());
         LoggingUtils.printHighlightedMessage(noEnoughGas);

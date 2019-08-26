@@ -6,7 +6,7 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.worker.chain.ContributionService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,20 +22,20 @@ import static com.iexec.common.replicate.ReplicateStatus.*;
 public class TaskNotificationService {
 
     private TaskManagerService taskManagerService;
-    private CustomFeignClient customFeignClient;
+    private CustomCoreFeignClient customCoreFeignClient;
     private ApplicationEventPublisher applicationEventPublisher;
     private SubscriptionService subscriptionService;
     private ContributionService contributionService;
 
 
     public TaskNotificationService(TaskManagerService taskManagerService,
-                                   CustomFeignClient customFeignClient,
+                                   CustomCoreFeignClient customCoreFeignClient,
                                    ApplicationEventPublisher applicationEventPublisher,
                                    SubscriptionService subscriptionService,
                                    ContributionService contributionService
                                    ) {
         this.taskManagerService = taskManagerService;
-        this.customFeignClient = customFeignClient;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
@@ -167,7 +167,7 @@ public class TaskNotificationService {
                     .build()
             );
         } else {
-            log.warn("No more action to do [chainTaskId:{}]", chainTaskId);
+            log.warn("No more actions to do [chainTaskId:{}]", chainTaskId);
         }
 
     }
@@ -180,12 +180,12 @@ public class TaskNotificationService {
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {
-        log.info("updateReplicateStatus request [chainTaskId:{}, status:{}, details:{}]", chainTaskId, status, details);
+        log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]", chainTaskId, status, details);
         if (details == null){
             details = ReplicateDetails.builder().build();
         }
-        TaskNotificationType next = customFeignClient.updateReplicateStatus(chainTaskId, status, details);
-        log.info("updateReplicateStatus response [chainTaskId:{}, status:{}, next:{}]", chainTaskId, status, next);
+        TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, status, details);
+        log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]", chainTaskId, status, next);
         return next;
     }
 
