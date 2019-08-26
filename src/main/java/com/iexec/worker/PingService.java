@@ -33,7 +33,7 @@ public class PingService {
             return;
         }
 
-        if(sessionId.isEmpty()) {
+        if(sessionId == null || sessionId.isEmpty()) {
             log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
             return;
         }
