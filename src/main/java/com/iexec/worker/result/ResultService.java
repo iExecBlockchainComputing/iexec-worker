@@ -8,7 +8,9 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -42,21 +44,24 @@ public class ResultService {
     private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
 
-    private WorkerConfigurationService workerConfigurationService;
-    private ResultRepoService resultRepoService;
+    private WorkerConfigurationService workerConfigService;
+    private PublicConfigurationService publicConfigService;
     private CredentialsService credentialsService;
     private IexecHubService iexecHubService;
+    private CustomCoreFeignClient customCoreFeignClient;
 
     private Map<String, ResultInfo> resultInfoMap;
 
-    public ResultService(WorkerConfigurationService configurationService,
-                         ResultRepoService resultRepoService,
+    public ResultService(WorkerConfigurationService workerConfigService,
+                         PublicConfigurationService publicConfigService,
                          CredentialsService credentialsService,
-                         IexecHubService iexecHubService) {
-        this.workerConfigurationService = configurationService;
-        this.resultRepoService = resultRepoService;
+                         IexecHubService iexecHubService,
+                         CustomCoreFeignClient customCoreFeignClient) {
+        this.workerConfigService = workerConfigService;
+        this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -121,11 +126,11 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId) {
-        return workerConfigurationService.getTaskOutputDir(chainTaskId);
+        return workerConfigService.getTaskOutputDir(chainTaskId);
     }
 
     public String getEncryptedResultFilePath(String chainTaskId) {
-        return workerConfigurationService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        return workerConfigService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
     }
 
     public boolean isResultZipFound(String chainTaskId) {
@@ -165,7 +170,7 @@ public class ResultService {
     }
 
     public List<String> getAllChainTaskIdsInResultFolder() {
-        File resultsFolder = new File(workerConfigurationService.getWorkerBaseDir());
+        File resultsFolder = new File(workerConfigService.getWorkerBaseDir());
         String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
 
         if (chainTaskIdFolders == null || chainTaskIdFolders.length == 0) {
@@ -186,7 +191,7 @@ public class ResultService {
 
     private String getNonTeeDeterminismHash(String chainTaskId) {
         String hash = "";
-        String filePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+        String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + DETERMINIST_FILE_NAME;
 
         Path determinismFilePath = Paths.get(filePath);
@@ -250,7 +255,7 @@ public class ResultService {
     }
 
     public Optional<SconeEnclaveSignatureFile> readSconeEnclaveSignatureFile(String chainTaskId) {
-        String enclaveSignatureFilePath = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+        String enclaveSignatureFilePath = workerConfigService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
 
         File enclaveSignatureFile = new File(enclaveSignatureFilePath);
@@ -285,7 +290,7 @@ public class ResultService {
     public String getCallbackDataFromFile(String chainTaskId) {
         String hexaString = "";
         try {
-            String callbackFilePathName = workerConfigurationService.getTaskIexecOutDir(chainTaskId)
+            String callbackFilePathName = workerConfigService.getTaskIexecOutDir(chainTaskId)
                     + File.separator + CALLBACK_FILE_NAME;
 
             Path callbackFilePath = Paths.get(callbackFilePathName);
@@ -308,7 +313,7 @@ public class ResultService {
     }
 
     public boolean isResultEncryptionNeeded(String chainTaskId) {
-        String beneficiarySecretFilePath = workerConfigurationService.getBeneficiarySecretFilePath(chainTaskId);
+        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
 
         if (!new File(beneficiarySecretFilePath).exists()) {
             log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
@@ -319,9 +324,9 @@ public class ResultService {
     }
 
     public boolean encryptResult(String chainTaskId) {
-        String beneficiarySecretFilePath = workerConfigurationService.getBeneficiarySecretFilePath(chainTaskId);
+        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
         String resultZipFilePath = getResultZipFilePath(chainTaskId);
-        String taskOutputDir = workerConfigurationService.getTaskOutputDir(chainTaskId);
+        String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
 
         log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
                 resultZipFilePath, beneficiarySecretFilePath);
@@ -366,7 +371,8 @@ public class ResultService {
     }
 
     public String uploadResult(String chainTaskId) {
-        Optional<Eip712Challenge> oEip712Challenge = resultRepoService.getChallenge();
+        Integer chainId = publicConfigService.getChainId();
+        Optional<Eip712Challenge> oEip712Challenge = customCoreFeignClient.getResultChallenge(chainId);
 
         if (!oEip712Challenge.isPresent()) {
             return "";
@@ -376,13 +382,13 @@ public class ResultService {
 
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
         String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                workerConfigurationService.getWorkerWalletAddress(), ecKeyPair);
+                workerConfigService.getWorkerWalletAddress(), ecKeyPair);
 
         if (authorizationToken.isEmpty()) {
             return "";
         }
 
-        return resultRepoService.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+        return customCoreFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
     }
 
 
