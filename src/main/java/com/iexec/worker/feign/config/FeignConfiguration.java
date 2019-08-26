@@ -1,4 +1,4 @@
-package com.iexec.worker.feign;
+package com.iexec.worker.feign.config;
 
 import feign.Client;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;

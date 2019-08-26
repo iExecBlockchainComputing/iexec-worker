@@ -1,11 +1,14 @@
-package com.iexec.worker.feign;
+package com.iexec.worker.feign.client;
 
 
 import com.iexec.common.sms.SmsRequest;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
+import com.iexec.worker.feign.config.FeignConfiguration;
+
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -16,8 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface SmsClient {
 
     @PostMapping("/secure")
-    SmsSecretResponse getTaskSecretsFromSms(@RequestBody SmsRequest smsRequest) throws FeignException;
+    ResponseEntity<SmsSecretResponse> getTaskSecretsFromSms(@RequestBody SmsRequest smsRequest) throws FeignException;
 
     @PostMapping("/secure")
-    SconeSecureSessionResponse generateSecureSession(@RequestBody SmsRequest smsRequest) throws FeignException;
+    ResponseEntity<SconeSecureSessionResponse> generateSecureSession(@RequestBody SmsRequest smsRequest) throws FeignException;
 }
