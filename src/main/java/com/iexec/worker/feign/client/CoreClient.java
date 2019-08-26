@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 
 @FeignClient(name = "CoreClient",
-        url = "${core.protocol}://${core.host}:${core.port}",
+        url = "#{coreConfigurationService.url}",
         configuration = FeignConfiguration.class)
 public interface CoreClient {
 
