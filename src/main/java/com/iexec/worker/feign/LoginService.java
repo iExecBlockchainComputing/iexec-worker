@@ -35,6 +35,7 @@ public class LoginService extends BaseFeignClient {
     @Override
     public boolean login() {
         expireToken();
+
         String workerAddress = credentialsService.getCredentials().getAddress();
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
