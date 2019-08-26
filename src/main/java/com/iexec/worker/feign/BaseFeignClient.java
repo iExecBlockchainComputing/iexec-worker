@@ -4,9 +4,6 @@ import java.util.function.Function;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -28,39 +25,73 @@ public abstract class BaseFeignClient {
      */
     abstract boolean login();
 
-
-    private final int MAX_ATTEMPTS = 5;
+    /*
+     * Retry configuration values (max attempts, back off delay...) 
+     */
+    private final int MAX_ATTEMPTS = 3;
     private final int BACK_OFF_DELAY = 2000; // 2s
 
-    @Retryable(value = FeignException.class,
-               maxAttempts = MAX_ATTEMPTS, 
-               backoff = @Backoff(delay = BACK_OFF_DELAY))
-
+    /*
+     * Generic method to make http calls.
+     * If "infiniteRetry" is true or the status of the call is -1
+     * the method will retry infinitely until it gets a valid
+     * response.
+     */
     <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Object[] args, String action) {
-        try {
-            ResponseEntity<T> response = call.apply(args);
-            return response;
-        } catch (FeignException e) {
-            if (isUnauthorized(e.status())) {
-                login();
-                // return httpCallFunction(function, args, action);
-            }
-
-            throw e;
-        }
+        return makeHttpCall(call, args, action, false);
     }
 
-    @Recover
-    private <T> ResponseEntity<T> makeHttpCall(FeignException e, HttpCall<T> call, Object[] args, String action) {
-        log.error("Failed while making http call [action:{}, status:{}, httpCallArgs:{}, attempts:{}]",
-                action, HttpStatus.valueOf(e.status()), args, MAX_ATTEMPTS);
-        e.printStackTrace();
-        return ResponseEntity.status(e.status()).build();
+    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Object[] args, String action, boolean infiniteRetry) {
+        int attempt = 0;
+        int status = -1;
+
+        while (shouldRetry(infiniteRetry, attempt, status)) {
+            try {
+                return call.apply(args);
+            } catch (FeignException e) {
+                status = e.status();
+
+                log.error("Failed to make http call [action:{}, status:{}, "
+                        + "httpCallArgs:{}, attempt:{}]", action,
+                        toHttpStatus(e.status()), args, MAX_ATTEMPTS);
+
+                if (isUnauthorized(e.status())) {
+                    login();
+                }
+            }
+
+            attempt++;
+            sleep(BACK_OFF_DELAY);
+        }
+
+        return ResponseEntity.status(status).build();
+    }
+
+    private boolean shouldRetry(boolean infiniteRetry, int attempt, int status) {
+        return infiniteRetry || attempt < MAX_ATTEMPTS || status < 0;
+    }
+
+    private String toHttpStatus(int status) {
+        if (status <= 0) {
+            return String.valueOf(status);
+        }
+
+        return HttpStatus.valueOf(status).toString();
+    }
+
+    private void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            log.error("Error while sleeping");
+            e.printStackTrace();
+        }
     }
 
     boolean isOk(ResponseEntity<?> response) {
         return isOk(response.getStatusCodeValue());
     }
+
     boolean isOk(int status) {
         return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
     }
