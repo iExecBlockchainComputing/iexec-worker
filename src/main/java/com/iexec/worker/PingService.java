@@ -2,6 +2,8 @@ package com.iexec.worker;
 
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.worker.WorkerService;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -12,14 +14,14 @@ public class PingService {
 
     private CustomCoreFeignClient customCoreFeignClient;
     private CoreConfigurationService coreConfigurationService;
-    private RestartService restartService;
+    private WorkerService workerService;
 
     public PingService(CustomCoreFeignClient customCoreFeignClient,
                        CoreConfigurationService coreConfigurationService,
-                       RestartService restartService) {
+                       WorkerService workerService) {
         this.customCoreFeignClient = customCoreFeignClient;
         this.coreConfigurationService = coreConfigurationService;
-        this.restartService = restartService;
+        this.workerService = workerService;
     }
 
     @Scheduled(fixedRate = 10000)
@@ -43,7 +45,7 @@ public class PingService {
             log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]",
                     currentSessionId, sessionId);
             log.warn("The worker will restart now!");
-            restartService.restartApp();
+            workerService.restartApp();
         }
     }
 }

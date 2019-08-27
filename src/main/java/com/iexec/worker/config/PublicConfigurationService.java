@@ -52,4 +52,8 @@ public class PublicConfigurationService {
     public String getSconeCasURL() {
         return publicConfiguration.getSconeCasURL();
     }
+
+    public String getRequiredWorkerVersion() {
+        return publicConfiguration.getRequiredWorkerVersion();
+    }
 }
