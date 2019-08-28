@@ -9,8 +9,7 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateDetails;
-import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
 import com.iexec.worker.feign.config.FeignConfiguration;
 
@@ -68,6 +67,5 @@ public interface CoreClient {
     ResponseEntity<TaskNotificationType> updateReplicateStatus(
             @RequestHeader("Authorization") String bearerToken,
             @PathVariable(name = "chainTaskId") String chainTaskId,
-            @RequestParam(name = "replicateStatus") ReplicateStatus replicateStatus,
-            @RequestBody ReplicateDetails details) throws FeignException;
+            @RequestBody ReplicateStatusUpdate replicateStatusUpdate) throws FeignException;
 }
