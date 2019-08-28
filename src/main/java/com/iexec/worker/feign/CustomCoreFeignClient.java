@@ -106,15 +106,6 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return Optional.of(response.getBody());
     }
 
-    // public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
-    //     return updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().build());
-    // }
-
-    // public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
-    //     ReplicateDetails replicateDetails = ReplicateDetails.builder().replicateStatusCause(cause).build();
-    //     return updateReplicateStatus(chainTaskId, status, replicateDetails);
-    // }
-
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
 
         Object[] arguments = new Object[] {loginService.getToken(), chainTaskId, replicateStatusUpdate};
