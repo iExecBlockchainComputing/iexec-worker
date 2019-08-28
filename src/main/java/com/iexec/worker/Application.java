@@ -3,6 +3,7 @@ package com.iexec.worker;
 
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.replicate.ReplicateRecoveryService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -39,6 +40,9 @@ public class Application implements CommandLineRunner {
     private IexecHubService iexecHubService;
 
     @Autowired
+    private LoginService loginService;
+
+    @Autowired
     private WorkerService workerService;
 
     @Autowired
@@ -72,6 +76,11 @@ public class Application implements CommandLineRunner {
             String noEnoughGas = String.format("No enough gas! please refill your wallet [walletAddress:%s]",
                     workerAddress);
             LoggingUtils.printHighlightedMessage(noEnoughGas);
+            System.exit(0);
+        }
+
+        boolean isLoggedIn = loginService.login();
+        if (!isLoggedIn) {
             System.exit(0);
         }
 
