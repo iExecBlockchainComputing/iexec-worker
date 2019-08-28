@@ -11,17 +11,11 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
 
-import lombok.extern.slf4j.Slf4j;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 
 @Slf4j
@@ -63,7 +57,7 @@ public class ComputationService {
     }
 
     public boolean isValidAppType(String chainTaskId, DappType type) {
-        if (type.equals(DappType.DOCKER)){
+        if (type.equals(DappType.DOCKER)) {
             return true;
         }
 
@@ -74,7 +68,7 @@ public class ComputationService {
 
     public boolean downloadApp(String chainTaskId, TaskDescription taskDescription) {
         boolean isValidAppType = isValidAppType(chainTaskId, taskDescription.getAppType());
-        if (!isValidAppType){
+        if (!isValidAppType) {
             return false;
         }
 
@@ -151,10 +145,10 @@ public class ComputationService {
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
 
-        String fspfFolderPath = workerConfigService.getTaskSconeDir(chainTaskId);
-        String beneficiaryKeyFolderPath = workerConfigService.getTaskIexecOutDir(chainTaskId);
-        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth,
-                fspfFolderPath, beneficiaryKeyFolderPath);
+
+        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+
+        log.info("Secure session created [chainTaskId:{}, secureSessionId:{}]", chainTaskId, secureSessionId);
 
         if (secureSessionId.isEmpty()) {
             String msg = "Could not generate scone secure session for tee computation";
@@ -173,7 +167,7 @@ public class ComputationService {
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        for(String envVar : getContainerEnvVariables(datasetFilename, taskDescription)){
+        for (String envVar : getContainerEnvVariables(datasetFilename, taskDescription)) {
             sconeAppEnv.add(envVar);
             sconeEncrypterEnv.add(envVar);
         }
@@ -208,7 +202,7 @@ public class ComputationService {
         return resultService.saveResult(chainTaskId, taskDescription, stdout);
     }
 
-    private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription){
+    private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription) {
         List<String> list = new ArrayList<>();
         list.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
         list.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
@@ -218,7 +212,7 @@ public class ComputationService {
         list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + nbFiles);
 
         int inputFileIndex = 1;
-        for(String inputFile : taskDescription.getInputFiles()) {
+        for (String inputFile : taskDescription.getInputFiles()) {
             list.add(IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX + inputFileIndex + "=" + FilenameUtils.getName(inputFile));
             inputFileIndex++;
         }

@@ -153,7 +153,7 @@ public class ComputationServiceTests {
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
 
-        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
+        when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any()))
@@ -171,7 +171,7 @@ public class ComputationServiceTests {
         TaskDescription task = getStubTaskDescription(false);
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
 
-        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
+        when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn("");
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
@@ -184,7 +184,7 @@ public class ComputationServiceTests {
         ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
         String awesomeSessionId = "awesomeSessionId";
 
-        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
+        when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(new ArrayList<>());
 
@@ -200,7 +200,7 @@ public class ComputationServiceTests {
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
 
-        when(sconeTeeService.createSconeSecureSession(any(), any(), any()))
+        when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());

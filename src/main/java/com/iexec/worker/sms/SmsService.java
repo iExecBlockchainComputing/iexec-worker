@@ -7,7 +7,6 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.sms.secrets.SmsSecret;
 import com.iexec.common.sms.SmsRequest;
 import com.iexec.common.sms.SmsRequestData;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse;
 import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.common.sms.secrets.TaskSecrets;
@@ -17,6 +16,7 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.SmsClient;
 import com.iexec.worker.utils.FileHelper;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
@@ -107,29 +107,18 @@ public class SmsService {
     }
 
     @Retryable(value = FeignException.class)
-    public Optional<SconeSecureSession> getSconeSecureSession(ContributionAuthorization contributionAuth) {
+    public String getSconeSecureSession(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        SconeSecureSessionResponse smsResponse = smsClient.generateSecureSession(smsRequest);
+        ResponseEntity<String> sessionIdResponse = smsClient.generateSecureSession(smsRequest);
 
-        if (smsResponse == null) {
-            log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        if (!smsResponse.isOk()) {
-            log.error("An error occurred while generating secure session [chainTaskId:{}, errorMessage:{}]",
-                    chainTaskId, smsResponse.getErrorMessage());
-            return Optional.empty();
-        }
-
-        if (smsResponse.getData() == null) {
+        if (sessionIdResponse.getBody() == null) {
             log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
+            return "";
         }
 
-        return Optional.of(smsResponse.getData());
+        return sessionIdResponse.getBody();
     }
 
     @Recover
