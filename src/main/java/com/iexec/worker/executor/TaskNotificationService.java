@@ -10,6 +10,8 @@ import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.result.ResultUploadDetails;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -127,12 +129,16 @@ public class TaskNotificationService {
                 break;
             case PLEASE_UPLOAD:
                 updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
-                ReplicateStatusDetails uploadDetails = taskManagerService.uploadResult(chainTaskId);
+                ResultUploadDetails uploadDetails = taskManagerService.uploadResult(chainTaskId);
                 if (uploadDetails == null) {
                     updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED);
                     return;
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADED, uploadDetails);
+                ReplicateStatusDetails details = ReplicateStatusDetails.builder()
+                        .resultLink(uploadDetails.getResultLink())
+                        .chainCallbackData(uploadDetails.getChainCallbackData())
+                        .build();
+                nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADED, details);
                 break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
