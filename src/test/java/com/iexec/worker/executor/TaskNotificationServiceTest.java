@@ -3,8 +3,8 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateDetails;
-import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
@@ -17,7 +17,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationEventPublisher;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
-import static com.iexec.common.replicate.ReplicateStatus.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -54,7 +53,7 @@ public class TaskNotificationServiceTest {
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(customCoreFeignClient, Mockito.times(0))
-                .updateReplicateStatus(anyString(), any(ReplicateStatus.class), any(ReplicateDetails.class));
+                .updateReplicateStatus(anyString(), any(ReplicateStatusUpdate.class));
         verify(subscriptionService, Mockito.times(0)).handleSubscription(any());
         verify(applicationEventPublisher, Mockito.times(0)).publishEvent(any());
     }
@@ -78,7 +77,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_START)
                 .build();
         when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, STARTED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
                 .thenReturn(PLEASE_DOWNLOAD_APP);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -98,7 +97,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
                 .build();
         when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, APP_DOWNLOADED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
                 .thenReturn(PLEASE_DOWNLOAD_DATA);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -118,7 +117,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_DOWNLOAD_DATA)
                 .build();
         when(taskManagerService.downloadData(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, DATA_DOWNLOADED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -138,7 +137,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_COMPUTE)
                 .build();
         when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, COMPUTED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
                 .thenReturn(PLEASE_CONTINUE);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -158,7 +157,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_CONTRIBUTE)
                 .build();
         when(taskManagerService.contribute(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, CONTRIBUTED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // CONTRIBUTED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -179,7 +178,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
                 .build();
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra())).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, REVEALED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // REVEALED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -199,9 +198,10 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_UPLOAD)
                 .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
                 .build();
-        ReplicateDetails details = ReplicateDetails.builder().resultLink("link").build();
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder().resultLink("link").build();
+
         when(taskManagerService.uploadResult(CHAIN_TASK_ID)).thenReturn(details);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, RESULT_UPLOADED, details))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -221,7 +221,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_COMPLETE)
                 .build();
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, COMPLETED, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -237,7 +237,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_ABORT_CONSENSUS_REACHED)
                 .build();
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
-        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, ABORTED_ON_CONTRIBUTION_TIMEOUT, ReplicateDetails.builder().build()))
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
@@ -246,8 +246,5 @@ public class TaskNotificationServiceTest {
         verify(applicationEventPublisher, Mockito.times(0))
                 .publishEvent(any());
     }
-
-
-
 }
 

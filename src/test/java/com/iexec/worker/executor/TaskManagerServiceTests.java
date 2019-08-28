@@ -4,7 +4,9 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateDetails;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
@@ -22,6 +24,7 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -194,7 +197,7 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldUploadResultWithoutEncrypting() {
-        ReplicateDetails details = ReplicateDetails.builder()
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                 .resultLink("resultUri")
                 .chainCallbackData("callbackData")
                 .build();
@@ -210,7 +213,7 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldEncryptAndUploadResult() {
-        ReplicateDetails details = ReplicateDetails.builder()
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                 .resultLink("resultUri")
                 .chainCallbackData("callbackData")
                 .build();
@@ -300,8 +303,14 @@ public class TaskManagerServiceTests {
     @Test
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
-        assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isFalse();
-        verify(customCoreFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, OUT_OF_GAS);
+        ArgumentCaptor<ReplicateStatusUpdate> argumentCaptor = ArgumentCaptor.forClass(ReplicateStatusUpdate.class);
+
+        boolean isEnoughGas = taskManagerService.checkGasBalance(CHAIN_TASK_ID);
+        
+        verify(customCoreFeignClient, times(1)).updateReplicateStatus(anyString(), argumentCaptor.capture());
+        assertThat(isEnoughGas).isFalse();
+        assertThat(argumentCaptor.getValue().getStatus()).isEqualTo(ABORTED);
+        assertThat(argumentCaptor.getValue().getDetails().getCause()).isEqualTo(ReplicateStatusCause.OUT_OF_GAS);
     }
 
     @Test

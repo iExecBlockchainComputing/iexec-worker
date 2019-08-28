@@ -5,9 +5,7 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateDetails;
-import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.feign.client.CoreClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -108,31 +106,19 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return Optional.of(response.getBody());
     }
 
-    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status) {
-        return updateReplicateStatus(chainTaskId, status, ReplicateDetails.builder().build());
-    }
+    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
 
-    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status,
-                                                      ReplicateStatusCause cause) {
-        ReplicateDetails replicateDetails = ReplicateDetails.builder().replicateStatusCause(cause).build();
-        return updateReplicateStatus(chainTaskId, status, replicateDetails);
-    }
-
-    public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatus status,
-                                                      ReplicateDetails details) {
-
-        Object[] arguments = new Object[] {loginService.getToken(), chainTaskId, status, details};
+        Object[] arguments = new Object[] {loginService.getToken(), chainTaskId, replicateStatusUpdate};
 
         HttpCall<TaskNotificationType> httpCall = (args) ->
-                coreClient.updateReplicateStatus((String) args[0], (String) args[1],
-                        (ReplicateStatus) args[2], (ReplicateDetails) args[3]);
+                coreClient.updateReplicateStatus((String) args[0], (String) args[1], (ReplicateStatusUpdate) args[2]);
 
         ResponseEntity<TaskNotificationType> response = makeHttpCall(httpCall, arguments, "updateReplicateStatus");
         if (!isOk(response)) {
             return null;
         }
 
-        log.info(status.toString() + " [chainTaskId:{}]", chainTaskId);
+        log.info(replicateStatusUpdate.getStatus().toString() + " [chainTaskId:{}]", chainTaskId);
         return response.getBody();
     }
 }
