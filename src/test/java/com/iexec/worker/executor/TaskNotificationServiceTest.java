@@ -3,11 +3,12 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.result.ResultUploadDetails;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -198,7 +199,7 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_UPLOAD)
                 .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
                 .build();
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder().resultLink("link").build();
+        ResultUploadDetails details = ResultUploadDetails.builder().resultLink("link").build();
 
         when(taskManagerService.uploadResult(CHAIN_TASK_ID)).thenReturn(details);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
