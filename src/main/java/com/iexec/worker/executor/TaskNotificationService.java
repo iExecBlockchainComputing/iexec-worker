@@ -3,8 +3,10 @@ package com.iexec.worker.executor;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateDetails;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
@@ -15,6 +17,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.common.replicate.ReplicateStatusUpdate.*;
 
 
 @Slf4j
@@ -123,7 +127,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_UPLOAD:
                 updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
-                ReplicateDetails uploadDetails = taskManagerService.uploadResult(chainTaskId);
+                ReplicateStatusDetails uploadDetails = taskManagerService.uploadResult(chainTaskId);
                 if (uploadDetails == null) {
                     updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED);
                     return;
@@ -145,14 +149,14 @@ public class TaskNotificationService {
                 if (!isAborted) {
                     return;
                 }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED_ON_CONTRIBUTION_TIMEOUT);
+                updateStatusAndGetNextAction(chainTaskId, ABORTED, CONTRIBUTION_TIMEOUT);
                 break;
             case PLEASE_ABORT_CONSENSUS_REACHED:
                 boolean isAbortedAfterConsensusReached = taskManagerService.abort(chainTaskId);
                 if (!isAbortedAfterConsensusReached) {
                     return;
                 }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
+                updateStatusAndGetNextAction(chainTaskId, ABORTED, CONSENSUS_REACHED);
                 break;
             default:
                 break;
@@ -179,17 +183,35 @@ public class TaskNotificationService {
         return true;
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {
-        log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]", chainTaskId, status, details);
-        if (details == null){
-            details = ReplicateDetails.builder().build();
-        }
-        TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, status, details);
-        log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]", chainTaskId, status, next);
-        return next;
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateStatus status) {
+        ReplicateStatusUpdate statusUpdate = workerRequest(status);
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatus status) {
-        return updateStatusAndGetNextAction(chainTaskId, status, null);
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateStatus status,
+                                                              ReplicateStatusCause cause) {
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder().cause(cause).build();
+        ReplicateStatusUpdate statusUpdate = workerRequest(status, details);
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+    }
+
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateStatus status,
+                                                              ReplicateStatusDetails details) {
+        ReplicateStatusUpdate statusUpdate = workerRequest(status, details);
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+    }
+
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+        log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
+                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetails());
+
+        TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
+
+        log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]",
+                chainTaskId, statusUpdate.getStatus(), next);
+        return next;
     }
 }

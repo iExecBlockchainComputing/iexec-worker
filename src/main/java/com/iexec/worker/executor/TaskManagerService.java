@@ -3,7 +3,8 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateDetails;
+import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.SignatureUtils;
@@ -26,7 +27,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.iexec.common.replicate.ReplicateStatus.OUT_OF_GAS;
+import static com.iexec.common.replicate.ReplicateStatusCause.OUT_OF_GAS;
+import static com.iexec.common.replicate.ReplicateStatus.ABORTED;
 
 
 @Slf4j
@@ -277,7 +279,7 @@ public class TaskManagerService {
         return isValidChainReceipt(chainTaskId, oChainReceipt);
     }
 
-    ReplicateDetails uploadResult(String chainTaskId) {
+    ReplicateStatusDetails uploadResult(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
 
         boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
@@ -302,7 +304,7 @@ public class TaskManagerService {
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]", chainTaskId, resultLink, callbackData);
 
-        return ReplicateDetails.builder()
+        return ReplicateStatusDetails.builder()
                 .resultLink(resultLink)
                 .chainCallbackData(callbackData)
                 .build();
@@ -354,7 +356,8 @@ public class TaskManagerService {
             return true;
         }
 
-        customCoreFeignClient.updateReplicateStatus(chainTaskId, OUT_OF_GAS);
+        ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.workerRequest(ABORTED, OUT_OF_GAS);
+        customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
                 workerConfigurationService.getWorkerWalletAddress());
         LoggingUtils.printHighlightedMessage(noEnoughGas);
