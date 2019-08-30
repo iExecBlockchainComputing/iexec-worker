@@ -3,7 +3,6 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
@@ -16,6 +15,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.result.ResultUploadDetails;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -279,7 +279,7 @@ public class TaskManagerService {
         return isValidChainReceipt(chainTaskId, oChainReceipt);
     }
 
-    ReplicateStatusDetails uploadResult(String chainTaskId) {
+    ResultUploadDetails uploadResult(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
 
         boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
@@ -304,7 +304,7 @@ public class TaskManagerService {
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]", chainTaskId, resultLink, callbackData);
 
-        return ReplicateStatusDetails.builder()
+        return ResultUploadDetails.builder()
                 .resultLink(resultLink)
                 .chainCallbackData(callbackData)
                 .build();
