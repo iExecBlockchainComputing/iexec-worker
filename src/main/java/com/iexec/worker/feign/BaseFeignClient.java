@@ -51,9 +51,8 @@ public abstract class BaseFeignClient {
             } catch (FeignException e) {
                 status = e.status();
 
-                log.error("Failed to make http call [action:{}, status:{}, "
-                        + "httpCallArgs:{}, attempt:{}]", action,
-                        toHttpStatus(e.status()), args, MAX_ATTEMPTS);
+                log.error("Failed to make http call [action:{}, status:{}, attempt:{}]",
+                        action, toHttpStatus(e.status()), attempt);
 
                 if (isUnauthorized(e.status())) {
                     login();
