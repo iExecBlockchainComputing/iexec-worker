@@ -25,10 +25,15 @@ public class LoginService extends BaseFeignClient {
     LoginService(CredentialsService credentialsService, CoreClient coreClient) {
         this.credentialsService = credentialsService;
         this.coreClient = coreClient;
+        login();
     }
 
     public String getToken() {
         return jwtToken;
+    }
+
+    public boolean isLoggedIn() {
+        return jwtToken != null && !jwtToken.isEmpty();
     }
 
     @Override

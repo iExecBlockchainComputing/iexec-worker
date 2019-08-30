@@ -73,19 +73,21 @@ public class Application implements CommandLineRunner {
         String workerAddress = credentialsService.getCredentials().getAddress();
 
         if (!iexecHubService.hasEnoughGas()) {
-            String noEnoughGas = String.format("No enough gas! please refill your wallet [walletAddress:%s]",
-                    workerAddress);
-            LoggingUtils.printHighlightedMessage(noEnoughGas);
+            String noEnoughGas = "No enough gas! please refill your wallet [walletAddress:%s]";
+            String formatted = String.format(noEnoughGas, workerAddress);
+            LoggingUtils.printHighlightedMessage(formatted);
             System.exit(0);
         }
 
-        boolean isLoggedIn = loginService.login();
-        if (!isLoggedIn) {
+        if (!loginService.isLoggedIn()) {
+            String message = "Worker wasn't able to login, stopping...";
+            LoggingUtils.printHighlightedMessage(message);
             System.exit(0);
         }
 
-        boolean isRegistered = workerService.registerWorker();
-        if (!isRegistered) {
+        if (!workerService.registerWorker()) {
+            String message = "Worker couldn't be registered, stopping...";
+            LoggingUtils.printHighlightedMessage(message);
             System.exit(0);
         }
 
