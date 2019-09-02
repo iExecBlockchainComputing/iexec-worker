@@ -10,7 +10,6 @@ import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import com.iexec.worker.result.ResultUploadDetails;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -57,6 +56,7 @@ public class TaskNotificationService {
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
+        ReplicateStatusUpdate statusUpdate = null;
         TaskNotificationType nextAction = null;
         log.info("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
 
@@ -75,79 +75,43 @@ public class TaskNotificationService {
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
-                boolean isStarted = taskManagerService.start(chainTaskId);
-                if (!isStarted) {
-                    updateStatusAndGetNextAction(chainTaskId, START_FAILED);
-                    return;
-                }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, STARTED);
+                statusUpdate = taskManagerService.start(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_DOWNLOAD_APP:
                 updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
-                boolean isAppDownloaded = taskManagerService.downloadApp(chainTaskId);
-                if (!isAppDownloaded) {
-                    updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOAD_FAILED);
-                    return;
-                }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADED);
+                statusUpdate = taskManagerService.downloadApp(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_DOWNLOAD_DATA:
                 updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
-                boolean isDataDownloaded = taskManagerService.downloadData(chainTaskId);
-                if (!isDataDownloaded) {
-                    updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOAD_FAILED);
-                    return;
-                }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADED);
+                statusUpdate = taskManagerService.downloadData(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
-                boolean isComputed = taskManagerService.compute(chainTaskId);
-                if (!isComputed) {
-                    updateStatusAndGetNextAction(chainTaskId, COMPUTE_FAILED);
-                    return;
-                }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED);
+                statusUpdate = taskManagerService.compute(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_CONTRIBUTE:
                 updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
-                boolean isContributed = taskManagerService.contribute(chainTaskId);
-                if (!isContributed) {
-                    updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_FAILED);
-                    return;
-                }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTED);
+                statusUpdate = taskManagerService.contribute(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_REVEAL:
                 updateStatusAndGetNextAction(chainTaskId, REVEALING);
-                boolean isRevealed = taskManagerService.reveal(chainTaskId, extra);
-                if (!isRevealed) {
-                    updateStatusAndGetNextAction(chainTaskId, REVEAL_FAILED);
-                    return;
-                }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, REVEALED);
+                statusUpdate = taskManagerService.reveal(chainTaskId, extra);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_UPLOAD:
                 updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
-                ResultUploadDetails uploadDetails = taskManagerService.uploadResult(chainTaskId);
-                if (uploadDetails == null) {
-                    updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED);
-                    return;
-                }
-                ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                        .resultLink(uploadDetails.getResultLink())
-                        .chainCallbackData(uploadDetails.getChainCallbackData())
-                        .build();
-                nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADED, details);
+                statusUpdate = taskManagerService.uploadResult(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
-                boolean isCompleted = taskManagerService.complete(chainTaskId);
-                if (!isCompleted) {
-                    updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED);
-                    return;
-                }
-                updateStatusAndGetNextAction(chainTaskId, COMPLETED);
+                statusUpdate = taskManagerService.complete(chainTaskId);
+                updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
             //TODO merge abort
             case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
@@ -199,13 +163,6 @@ public class TaskNotificationService {
                                                               ReplicateStatus status,
                                                               ReplicateStatusCause cause) {
         ReplicateStatusDetails details = ReplicateStatusDetails.builder().cause(cause).build();
-        ReplicateStatusUpdate statusUpdate = workerRequest(status, details);
-        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
-    }
-
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status,
-                                                              ReplicateStatusDetails details) {
         ReplicateStatusUpdate statusUpdate = workerRequest(status, details);
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
