@@ -3,11 +3,11 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
+import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import com.iexec.worker.result.ResultUploadDetails;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -18,6 +18,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationEventPublisher;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
+import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.common.replicate.ReplicateStatusUpdate.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -77,7 +79,7 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
                 .build();
-        when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(true);
+        when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(workerRequest(STARTED));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
                 .thenReturn(PLEASE_DOWNLOAD_APP);
 
@@ -97,7 +99,7 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
                 .build();
-        when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(true);
+        when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(workerRequest(APP_DOWNLOADED));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
                 .thenReturn(PLEASE_DOWNLOAD_DATA);
 
@@ -117,7 +119,7 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_DATA)
                 .build();
-        when(taskManagerService.downloadData(CHAIN_TASK_ID)).thenReturn(true);
+        when(taskManagerService.downloadData(CHAIN_TASK_ID)).thenReturn(workerRequest(DATA_DOWNLOADED));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
 
@@ -137,7 +139,7 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPUTE)
                 .build();
-        when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(true);
+        when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(workerRequest(COMPUTED));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -157,7 +159,9 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTRIBUTE)
                 .build();
-        when(taskManagerService.contribute(CHAIN_TASK_ID)).thenReturn(true);
+        ReplicateStatusDetails details = new ReplicateStatusDetails();
+        when(taskManagerService.contribute(CHAIN_TASK_ID))
+                .thenReturn(workerRequest(CONTRIBUTED, details));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // CONTRIBUTED
                 .thenReturn(PLEASE_WAIT);
 
@@ -178,7 +182,9 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_REVEAL)
                 .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
                 .build();
-        when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra())).thenReturn(true);
+        ReplicateStatusDetails details = new ReplicateStatusDetails();
+        when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
+                .thenReturn(workerRequest(REVEALED, details));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // REVEALED
                 .thenReturn(PLEASE_WAIT);
 
@@ -199,9 +205,13 @@ public class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_UPLOAD)
                 .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
                 .build();
-        ResultUploadDetails details = ResultUploadDetails.builder().resultLink("link").build();
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
+                .resultLink("resultLink")
+                .chainCallbackData("callbackData")
+                .build();
 
-        when(taskManagerService.uploadResult(CHAIN_TASK_ID)).thenReturn(details);
+        when(taskManagerService.uploadResult(CHAIN_TASK_ID))
+                .thenReturn(workerRequest(RESULT_UPLOADED, details));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
                 .thenReturn(PLEASE_WAIT);
 
@@ -221,7 +231,7 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPLETE)
                 .build();
-        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(true);
+        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(workerRequest(COMPLETED));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
                 .thenReturn(PLEASE_WAIT);
 

@@ -91,9 +91,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(sconeTeeService.isTeeEnabled()).thenReturn(false);
 
-        boolean isStarted = taskManagerService.start(CHAIN_TASK_ID);
+        ReplicateStatusUpdate statusUpdate = taskManagerService.start(CHAIN_TASK_ID);
 
-        assertThat(isStarted).isTrue();
+        assertThat(statusUpdate.getStatus()).isEqualTo(STARTED);
     }
 
     @Test
@@ -103,9 +103,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(computationService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
 
-        boolean isAppDownloaded = taskManagerService.downloadApp(CHAIN_TASK_ID);
+        ReplicateStatusUpdate statusUpdate = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
-        assertThat(isAppDownloaded).isTrue();
+        assertThat(statusUpdate.getStatus()).isEqualTo(APP_DOWNLOADED);
     }
 
     @Test
@@ -115,9 +115,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
 
-        boolean isDataDownloaded = taskManagerService.downloadData(CHAIN_TASK_ID);
+        ReplicateStatusUpdate statusUpdate = taskManagerService.downloadData(CHAIN_TASK_ID);
 
-        assertThat(isDataDownloaded).isTrue();
+        assertThat(statusUpdate.getStatus()).isEqualTo(DATA_DOWNLOADED);
     }
 
     @Test
@@ -130,9 +130,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
         when(computationService.runNonTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        boolean isComputed = taskManagerService.compute(CHAIN_TASK_ID);
+        ReplicateStatusUpdate statusUpdate = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(isComputed).isTrue();
+        assertThat(statusUpdate.getStatus()).isEqualTo(COMPUTED);
         verify(computationService, never()).runTeeComputation(any(), any());
     }
 
@@ -146,9 +146,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
         when(computationService.runTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        boolean isComputed = taskManagerService.compute(CHAIN_TASK_ID);
+        ReplicateStatusUpdate statusUpdate = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(isComputed).isTrue();
+        assertThat(statusUpdate.getStatus()).isEqualTo(COMPUTED);
         verify(computationService, never()).runNonTeeComputation(any(), any());
     }
 
@@ -170,9 +170,9 @@ public class TaskManagerServiceTests {
         when(contributionService.contribute(contributionAuthorization, hash, SignatureUtils.emptySignature()))
                 .thenReturn(Optional.of(ChainReceipt.builder().blockNumber(10).build()));
 
-        boolean isContributed = taskManagerService.contribute(CHAIN_TASK_ID);
+        ReplicateStatusUpdate statusUpdate = taskManagerService.contribute(CHAIN_TASK_ID);
 
-        assertThat(isContributed).isTrue();
+        assertThat(statusUpdate.getStatus()).isEqualTo(CONTRIBUTED);
     }
 
     @Test

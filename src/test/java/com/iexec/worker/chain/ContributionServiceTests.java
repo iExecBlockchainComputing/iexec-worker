@@ -121,7 +121,7 @@ public class ContributionServiceTests {
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).get())
-                .isEqualTo(AFTER_DEADLINE);
+                .isEqualTo(CONTRIBUTION_TIMEOUT);
     }
 
     @Test
