@@ -29,7 +29,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
 
-import static com.iexec.common.replicate.ReplicateStatus.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -91,7 +90,7 @@ public class TaskManagerServiceTests {
 
         ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
 
-        assertThat(actionResponse.getStatus()).isEqualTo(STARTED);
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -103,7 +102,7 @@ public class TaskManagerServiceTests {
 
         ReplicateActionResponse actionResponse = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
-        assertThat(actionResponse.getStatus()).isEqualTo(APP_DOWNLOADED);
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -115,7 +114,7 @@ public class TaskManagerServiceTests {
 
         ReplicateActionResponse actionResponse = taskManagerService.downloadData(CHAIN_TASK_ID);
 
-        assertThat(actionResponse.getStatus()).isEqualTo(DATA_DOWNLOADED);
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -130,7 +129,7 @@ public class TaskManagerServiceTests {
 
         ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(actionResponse.getStatus()).isEqualTo(COMPUTED);
+        assertThat(actionResponse.isSuccess()).isTrue();
         verify(computationService, never()).runTeeComputation(any(), any());
     }
 
@@ -146,7 +145,7 @@ public class TaskManagerServiceTests {
 
         ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(actionResponse.getStatus()).isEqualTo(COMPUTED);
+        assertThat(actionResponse.isSuccess()).isTrue();
         verify(computationService, never()).runNonTeeComputation(any(), any());
     }
 
@@ -170,7 +169,7 @@ public class TaskManagerServiceTests {
 
         ReplicateActionResponse actionResponse = taskManagerService.contribute(CHAIN_TASK_ID);
 
-        assertThat(actionResponse.getStatus()).isEqualTo(CONTRIBUTED);
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
