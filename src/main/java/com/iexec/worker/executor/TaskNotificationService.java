@@ -3,9 +3,9 @@ package com.iexec.worker.executor;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
-import static com.iexec.common.replicate.ReplicateStatusUpdate.*;
 
 
 @Slf4j
@@ -56,7 +55,7 @@ public class TaskNotificationService {
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
-        ReplicateStatusUpdate statusUpdate = null;
+        ReplicateActionResponse actionResponse = null;
         TaskNotificationType nextAction = null;
         log.info("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
 
@@ -75,43 +74,43 @@ public class TaskNotificationService {
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
-                statusUpdate = taskManagerService.start(chainTaskId);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.start(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_DOWNLOAD_APP:
                 updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
-                statusUpdate = taskManagerService.downloadApp(chainTaskId);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.downloadApp(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_DOWNLOAD_DATA:
                 updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
-                statusUpdate = taskManagerService.downloadData(chainTaskId);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.downloadData(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
-                statusUpdate = taskManagerService.compute(chainTaskId);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.compute(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_CONTRIBUTE:
                 updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
-                statusUpdate = taskManagerService.contribute(chainTaskId);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.contribute(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_REVEAL:
                 updateStatusAndGetNextAction(chainTaskId, REVEALING);
-                statusUpdate = taskManagerService.reveal(chainTaskId, extra);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.reveal(chainTaskId, extra);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_UPLOAD:
                 updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
-                statusUpdate = taskManagerService.uploadResult(chainTaskId);
-                nextAction = updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.uploadResult(chainTaskId);
+                nextAction = updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
-                statusUpdate = taskManagerService.complete(chainTaskId);
-                updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+                actionResponse = taskManagerService.complete(chainTaskId);
+                updateStatusAndGetNextAction(chainTaskId, actionResponse);
                 break;
             //TODO merge abort
             case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
@@ -155,15 +154,24 @@ public class TaskNotificationService {
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
                                                               ReplicateStatus status) {
-        ReplicateStatusUpdate statusUpdate = workerRequest(status);
+        ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
                                                               ReplicateStatus status,
                                                               ReplicateStatusCause cause) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder().cause(cause).build();
-        ReplicateStatusUpdate statusUpdate = workerRequest(status, details);
+        ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status, cause);
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+    }
+
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateActionResponse actionResponse) {
+        ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.builder()
+                .status(actionResponse.getStatus())
+                .details(actionResponse.getDetails())
+                .build();
+
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 

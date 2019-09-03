@@ -4,9 +4,8 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusDetails;
-import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
@@ -24,7 +23,6 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -91,9 +89,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(sconeTeeService.isTeeEnabled()).thenReturn(false);
 
-        ReplicateStatusUpdate statusUpdate = taskManagerService.start(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
 
-        assertThat(statusUpdate.getStatus()).isEqualTo(STARTED);
+        assertThat(actionResponse.getStatus()).isEqualTo(STARTED);
     }
 
     @Test
@@ -103,9 +101,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(computationService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
 
-        ReplicateStatusUpdate statusUpdate = taskManagerService.downloadApp(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
-        assertThat(statusUpdate.getStatus()).isEqualTo(APP_DOWNLOADED);
+        assertThat(actionResponse.getStatus()).isEqualTo(APP_DOWNLOADED);
     }
 
     @Test
@@ -115,9 +113,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
 
-        ReplicateStatusUpdate statusUpdate = taskManagerService.downloadData(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.downloadData(CHAIN_TASK_ID);
 
-        assertThat(statusUpdate.getStatus()).isEqualTo(DATA_DOWNLOADED);
+        assertThat(actionResponse.getStatus()).isEqualTo(DATA_DOWNLOADED);
     }
 
     @Test
@@ -130,9 +128,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
         when(computationService.runNonTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        ReplicateStatusUpdate statusUpdate = taskManagerService.compute(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(statusUpdate.getStatus()).isEqualTo(COMPUTED);
+        assertThat(actionResponse.getStatus()).isEqualTo(COMPUTED);
         verify(computationService, never()).runTeeComputation(any(), any());
     }
 
@@ -146,9 +144,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
         when(computationService.runTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        ReplicateStatusUpdate statusUpdate = taskManagerService.compute(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(statusUpdate.getStatus()).isEqualTo(COMPUTED);
+        assertThat(actionResponse.getStatus()).isEqualTo(COMPUTED);
         verify(computationService, never()).runNonTeeComputation(any(), any());
     }
 
@@ -170,9 +168,9 @@ public class TaskManagerServiceTests {
         when(contributionService.contribute(contributionAuthorization, hash, SignatureUtils.emptySignature()))
                 .thenReturn(Optional.of(ChainReceipt.builder().blockNumber(10).build()));
 
-        ReplicateStatusUpdate statusUpdate = taskManagerService.contribute(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.contribute(CHAIN_TASK_ID);
 
-        assertThat(statusUpdate.getStatus()).isEqualTo(CONTRIBUTED);
+        assertThat(actionResponse.getStatus()).isEqualTo(CONTRIBUTED);
     }
 
     @Test
@@ -303,14 +301,7 @@ public class TaskManagerServiceTests {
     @Test
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
-        ArgumentCaptor<ReplicateStatusUpdate> argumentCaptor = ArgumentCaptor.forClass(ReplicateStatusUpdate.class);
-
-        boolean isEnoughGas = taskManagerService.checkGasBalance(CHAIN_TASK_ID);
-        
-        verify(customCoreFeignClient, times(1)).updateReplicateStatus(anyString(), argumentCaptor.capture());
-        assertThat(isEnoughGas).isFalse();
-        assertThat(argumentCaptor.getValue().getStatus()).isEqualTo(ABORTED);
-        assertThat(argumentCaptor.getValue().getDetails().getCause()).isEqualTo(ReplicateStatusCause.OUT_OF_GAS);
+        assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isFalse();
     }
 
     @Test
