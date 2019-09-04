@@ -43,7 +43,7 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-        SmsSecretResponse smsResponse = smsClient.getTaskSecretsFromSms(smsRequest);
+        SmsSecretResponse smsResponse = smsClient.getUnTeeSecrets(smsRequest);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
@@ -111,7 +111,7 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        ResponseEntity<String> sessionIdResponse = smsClient.generateSecureSession(smsRequest);
+        ResponseEntity<String> sessionIdResponse = smsClient.generateTeeSession(smsRequest);
 
         if (sessionIdResponse.getBody() == null) {
             log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
