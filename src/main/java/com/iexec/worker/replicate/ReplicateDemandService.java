@@ -60,6 +60,11 @@ public class ReplicateDemandService {
             return;
         }
 
+        if (!iexecHubService.hasEnoughGas()) {
+            log.warn("The worker is out of gas, it cannot accept more tasks");
+            return;
+        }
+
         Optional<ContributionAuthorization> oContributionAuth =
                 customCoreFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
 
