@@ -58,7 +58,7 @@ public class TaskNotificationService {
         TaskNotificationType action = notification.getTaskNotificationType();
         ReplicateActionResponse actionResponse = null;
         TaskNotificationType nextAction = null;
-        log.info("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
+        log.debug("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
 
         if (action == null) {
             log.error("No action to do [chainTaskId:{}]", chainTaskId);
@@ -166,7 +166,7 @@ public class TaskNotificationService {
 
         subscriptionService.handleSubscription(notification);
         if (nextAction != null){
-            log.info("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
+            log.debug("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
             applicationEventPublisher.publishEvent(TaskNotification.builder()
                     .chainTaskId(chainTaskId)
                     .taskNotificationType(nextAction)
