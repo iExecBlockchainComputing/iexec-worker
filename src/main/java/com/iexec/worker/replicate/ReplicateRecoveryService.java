@@ -62,7 +62,7 @@ public class ReplicateRecoveryService {
             log.info("Recovering interrupted task [chainTaskId:{}, taskNotificationType:{}]",
                     chainTaskId, taskNotificationType);
 
-            if (!isResultAvailable && taskNotificationType != TaskNotificationType.PLEASE_CONTRIBUTE) {
+            if (!isResultAvailable) {
                 log.error("Could not recover task, result not found [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
