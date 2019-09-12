@@ -172,7 +172,7 @@ public class ComputationService {
             sconeEncrypterEnv.add(envVar);
         }
 
-        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+        DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(imageUri)
@@ -184,21 +184,43 @@ public class ComputationService {
                 .build();
 
         // run computation
-        DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
         if (!appExecutionResult.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
+        //TODO: Remove logs before merge
+        System.out.println("****** App");
+        System.out.println(appExecutionResult.getStdout());
+
+
+        DockerExecutionConfig signerExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(chainTaskId)
+                .containerName(getSignerTaskContainerName(chainTaskId))
+                .imageUri("nexus.iex.ec/tee-signer:1.0.0")
+                .cmd("python /signer/signer.py encrypt".split(" "))
+                .maxExecutionTime(maxExecutionTime)
+                .env(sconeAppEnv)
+                .bindPaths(getSconeBindPaths(chainTaskId))
+                .isSgx(true)
+                .build();
+
         // encrypt result
-        dockerExecutionConfig.setEnv(sconeEncrypterEnv);
-        DockerExecutionResult encryptionExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        signerExecutionConfig.setEnv(sconeEncrypterEnv);
+        DockerExecutionResult encryptionExecutionResult = customDockerClient.execute(signerExecutionConfig);
         if (!encryptionExecutionResult.isSuccess()) {
             log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
+        //TODO: Remove logs before merge
+        System.out.println("****** Encryption");
+        System.out.println(encryptionExecutionResult.getStdout());
+
         String stdout = appExecutionResult.getStdout() + encryptionExecutionResult.getStdout();
+
+
         return resultService.saveResult(chainTaskId, taskDescription, stdout);
     }
 
@@ -240,5 +262,9 @@ public class ComputationService {
     // Exp: integration tests
     private String getTaskContainerName(String chainTaskId) {
         return workerConfigService.getWorkerName() + "-" + chainTaskId;
+    }
+
+    private String getSignerTaskContainerName(String chainTaskId) {
+        return getTaskContainerName(chainTaskId) + "-signer";
     }
 }
