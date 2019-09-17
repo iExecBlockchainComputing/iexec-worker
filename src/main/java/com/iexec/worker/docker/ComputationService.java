@@ -160,6 +160,8 @@ public class ComputationService {
                 publicConfigService.getSconeCasURL());
         ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption",
                 publicConfigService.getSconeCasURL());
+        ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/uploader",
+                publicConfigService.getSconeCasURL());
 
         if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
             log.error("Could not create scone docker environment [chainTaskId:{}]", chainTaskId);
@@ -218,7 +220,30 @@ public class ComputationService {
         System.out.println("****** Encryption");
         System.out.println(encryptionExecutionResult.getStdout());
 
-        String stdout = appExecutionResult.getStdout() + encryptionExecutionResult.getStdout();
+
+        //sconeUploaderEnv.add("LOCAL_FILE_PATH=/scone/"+ chainTaskId + "_result.zip");
+        DockerExecutionConfig uploaderExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(chainTaskId)
+                .containerName(getTaskUploaderContainerName(chainTaskId))
+                .imageUri("nexus.iex.ec/tee-dropbox-uploader:1.0.0")
+                .cmd("".split(" "))
+                .maxExecutionTime(maxExecutionTime)
+                .env(sconeUploaderEnv)
+                .bindPaths(getSconeBindPaths(chainTaskId))
+                .isSgx(true)
+                .build();
+        DockerExecutionResult uploaderExecutionResult = customDockerClient.execute(uploaderExecutionConfig);
+        if (!encryptionExecutionResult.isSuccess()) {
+            log.error("Failed to upload result [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+        System.out.println("****** Uploader");
+        System.out.println(uploaderExecutionResult.getStdout());
+
+
+        String stdout = appExecutionResult.getStdout()
+                + encryptionExecutionResult.getStdout()
+                + uploaderExecutionResult.getStdout();
 
 
         return resultService.saveResult(chainTaskId, taskDescription, stdout);
@@ -266,5 +291,9 @@ public class ComputationService {
 
     private String getSignerTaskContainerName(String chainTaskId) {
         return getTaskContainerName(chainTaskId) + "-signer";
+    }
+
+    private String getTaskUploaderContainerName(String chainTaskId) {
+        return getTaskContainerName(chainTaskId) + "-uploader";
     }
 }
