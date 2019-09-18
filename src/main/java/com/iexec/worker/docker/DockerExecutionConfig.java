@@ -15,7 +15,6 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Slf4j
 public class DockerExecutionConfig {
 
     private String chainTaskId;

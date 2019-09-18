@@ -192,7 +192,7 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldStopComputingIfTooLong() {
-        String cmd = "sh -c sleep 10 && echo Hello from Docker alpine!";
+        String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
         DockerExecutionConfig config = getDockerExecutionConfigStub();
         config.setCmd(cmd);
         config.setMaxExecutionTime(5 * SECOND);
@@ -272,7 +272,7 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldNotRemoveRunningContainer() {
-        String cmd = "sh -c sleep 10 && echo Hello from Docker alpine!";
+        String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
         DockerExecutionConfig config = getDockerExecutionConfigStub();
         config.setCmd(cmd);
 
