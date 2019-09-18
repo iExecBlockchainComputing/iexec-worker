@@ -36,7 +36,7 @@ public class CustomDockerClientTests {
     private static final String ALPINE_LATEST = "alpine:latest";
     private static final String ALPINE_BLABLA = "alpine:blabla";
     private static final String BLABLA_LATEST = "blabla:latest";
-    private static final String[] CMD = "cmd".split(" ");
+    private static final String CMD = "cmd";
     private static final List<String> ENV = Arrays.asList("FOO=bar");
 
     private static final String SGX_DEVICE_PATH = "/dev/isgx";
@@ -133,7 +133,7 @@ public class CustomDockerClientTests {
                 customDockerClient.buildContainerConfig(config).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
-        assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD[0]);
+        assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
         assertThat(containerConfig.env()).isEqualTo(ENV);
         assertThat(containerConfig.hostConfig().devices()).isNull();
 
@@ -153,7 +153,7 @@ public class CustomDockerClientTests {
                 customDockerClient.buildContainerConfig(config).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
-        assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD[0]);
+        assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
         assertThat(containerConfig.env()).isEqualTo(ENV);
 
         ImmutableList<String> binds = containerConfig.hostConfig().binds();
@@ -184,7 +184,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldExecute() {
         DockerExecutionConfig config = getDockerExecutionConfigStub();
-        config.setCmd("echo Hello from Docker alpine!".split(" "));
+        config.setCmd("echo Hello from Docker alpine!");
 
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(config);
         assertThat(dockerExecutionResult.getStdout()).contains("Hello from Docker alpine!");
@@ -192,10 +192,9 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldStopComputingIfTooLong() {
-        String cmd = "sleep 10 && echo Hello from Docker alpine!";
-        String[] cmdArray = new String[] {"sh", "-c", cmd};
+        String cmd = "sh -c sleep 10 && echo Hello from Docker alpine!";
         DockerExecutionConfig config = getDockerExecutionConfigStub();
-        config.setCmd(cmdArray);
+        config.setCmd(cmd);
         config.setMaxExecutionTime(5 * SECOND);
 
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(config);
@@ -273,10 +272,9 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldNotRemoveRunningContainer() {
-        String cmd = "sleep 10 && echo Hello from Docker alpine!";
-        String[] cmdArray = new String[] {"sh", "-c", cmd};
+        String cmd = "sh -c sleep 10 && echo Hello from Docker alpine!";
         DockerExecutionConfig config = getDockerExecutionConfigStub();
-        config.setCmd(cmdArray);
+        config.setCmd(cmd);
 
         ContainerConfig containerConfig = 
                 customDockerClient.buildContainerConfig(config).get();
