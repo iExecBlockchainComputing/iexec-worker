@@ -96,7 +96,7 @@ public class CustomDockerClient {
         long maxExecutionTime = dockerExecutionConfig.getMaxExecutionTime();
 
         log.info("Executing [image:{}, cmd:{}]", dockerExecutionConfig.getImageUri(),
-                dockerExecutionConfig.getCmd());
+                dockerExecutionConfig.getStringArgsCmd());
 
         Optional<ContainerConfig> oContainerConfig = buildContainerConfig(dockerExecutionConfig);
         if (oContainerConfig.isEmpty()) {
@@ -138,7 +138,7 @@ public class CustomDockerClient {
 
     public Optional<ContainerConfig> buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
         String imageUri = dockerExecutionConfig.getImageUri();
-        String[] cmd = dockerExecutionConfig.getCmd();
+        String[] arrayArgsCmd = dockerExecutionConfig.getArrayArgsCmd();
         List<String> env = dockerExecutionConfig.getEnv();
         String port = dockerExecutionConfig.getContainerPort();
         boolean isSgx = dockerExecutionConfig.isSgx();
@@ -157,8 +157,8 @@ public class CustomDockerClient {
 
         containerConfigBuilder.image(imageUri);
 
-        if (cmd != null && cmd.length != 0) {
-            containerConfigBuilder.cmd(cmd);
+        if (arrayArgsCmd != null && arrayArgsCmd.length != 0) {
+            containerConfigBuilder.cmd(arrayArgsCmd);
         }
 
         if (port != null && !port.isEmpty()) {

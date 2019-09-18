@@ -76,7 +76,7 @@ public class SgxService {
                 .chainTaskId(chainTaskId)
                 .containerName(containerName)
                 .imageUri(alpineLatest)
-                .cmd(cmd.split(" "))
+                .cmd(cmd)
                 .maxExecutionTime(60000) // 1 min
                 .bindPaths(bindPaths)
                 .build();
