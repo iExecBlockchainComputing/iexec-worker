@@ -38,3 +38,7 @@ management:
   endpoint:
     restart:
       enabled: true
+
+graylog:
+  host: ${IEXEC_CORE_GRAYLOG_HOST:localhost}
+  port: ${IEXEC_CORE_GRAYLOG_PORT:12201}
