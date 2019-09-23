@@ -257,8 +257,6 @@ public class ComputationService {
     }
 
     private boolean shouldPrintDeveloperLogs(TaskDescription taskDescription) {
-        System.out.println(workerConfigService.isDeveloperLoggerEnabled());
-        System.out.println(taskDescription.isDeveloperLoggerEnabled());
         return workerConfigService.isDeveloperLoggerEnabled() && taskDescription.isDeveloperLoggerEnabled();
     }
 
