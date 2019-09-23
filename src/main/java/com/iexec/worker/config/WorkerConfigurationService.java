@@ -29,6 +29,9 @@ public class WorkerConfigurationService {
     @Value("${worker.overrideBlockchainNodeAddress}")
     private String overrideBlockchainNodeAddress;
 
+    @Value("${worker.developerLoggerEnabled}")
+    private boolean developerLoggerEnabled;
+
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -108,6 +111,10 @@ public class WorkerConfigurationService {
 
     public String getOverrideBlockchainNodeAddress() {
         return overrideBlockchainNodeAddress;
+    }
+
+    public boolean isDeveloperLoggerEnabled() {
+        return developerLoggerEnabled;
     }
 
     public String getHttpProxyHost() {
