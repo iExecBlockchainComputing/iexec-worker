@@ -39,8 +39,8 @@ public class SconeConfig {
             "SCONE_CONFIG_ID="  + sconeConfigId,
             "SCONE_HEAP="       + sconeHeap,
             "SCONE_LOG="        + sconeLog,
-            "SCONE_VERSION="    + sconeVersion,
-            "SCONE_MPROTECT="    + 1
+            "SCONE_VERSION="    + sconeVersion//,
+            //"SCONE_MPROTECT="    + 1
         );
 
         return new ArrayList<String>(list);
