@@ -155,7 +155,7 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
+        when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"))
                 .thenReturn(DockerExecutionResult.success("Encrypted successfully !", "containerName"));
@@ -186,7 +186,7 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(new ArrayList<>());
+        when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(new ArrayList<>());
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
         assertThat(isComputed).isFalse();
@@ -202,7 +202,7 @@ public class ComputationServiceTests {
 
         when(sconeTeeService.createSconeSecureSession(any()))
                 .thenReturn(awesomeSessionId);
-        when(sconeTeeService.buildSconeDockerEnv(any(), any())).thenReturn(stubSconeEnv);
+        when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());
 
         boolean isComputed = computationService.runTeeComputation(task, contributionAuth);

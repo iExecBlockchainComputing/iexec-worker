@@ -89,11 +89,12 @@ public class SconeTeeService {
         return sessionId;
     }
 
-    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl) {
+    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(sconeCasUrl)
                 .sconeConfigId(sconeConfigId)
+                .sconeHeap(sconeHeap)
                 .build();
 
         return sconeConfig.toDockerEnv();

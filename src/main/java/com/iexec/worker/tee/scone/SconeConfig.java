@@ -15,19 +15,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SconeConfig {
 
-    String sconeCasAddress;
-    String sconeLasAddress;
-    String sconeConfigId;
+    private String sconeCasAddress;
+    private String sconeLasAddress;
+    private String sconeConfigId;
+    private String sconeHeap;
 
-    @Builder.Default String sconeHeap = "1G";
     @Builder.Default int sconeLog = 7;
     @Builder.Default int sconeVersion = 1;
 
-    public SconeConfig(String sconeCasAddress, String sconeLasAddress, String sconeConfigId) {
+    public SconeConfig(String sconeCasAddress, String sconeLasAddress, String sconeConfigId, String sconeHeap) {
         this.sconeCasAddress = sconeCasAddress;
         this.sconeLasAddress = sconeLasAddress;
         this.sconeConfigId = sconeConfigId;
-        this.sconeHeap = "1G";
+        this.sconeHeap = sconeHeap;
         this.sconeLog = 7;
         this.sconeVersion = 1;
     }

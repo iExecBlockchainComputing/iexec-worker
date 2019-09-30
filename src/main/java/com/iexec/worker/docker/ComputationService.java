@@ -157,11 +157,11 @@ public class ComputationService {
         }
 
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
-                publicConfigService.getSconeCasURL());
+                publicConfigService.getSconeCasURL(), "1G");
         ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption",
-                publicConfigService.getSconeCasURL());
+                publicConfigService.getSconeCasURL(), "1G");
         ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/uploader",
-                publicConfigService.getSconeCasURL());
+                publicConfigService.getSconeCasURL(), "3G");
 
         if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
             log.error("Could not create scone docker environment [chainTaskId:{}]", chainTaskId);
