@@ -1,7 +1,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.contract.generated.mainnet.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
