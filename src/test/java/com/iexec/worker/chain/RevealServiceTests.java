@@ -3,7 +3,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
-import com.iexec.common.contract.generated.mainnet.IexecHubABILegacy;
+import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.utils.HashUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.Before;
