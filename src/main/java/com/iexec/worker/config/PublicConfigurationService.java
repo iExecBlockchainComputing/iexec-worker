@@ -29,6 +29,10 @@ public class PublicConfigurationService {
         return publicConfiguration.getIexecHubAddress();
     }
 
+    public boolean isSidechain() {
+        return publicConfiguration.isSidechain();
+    }
+
     public String getWorkerPoolAddress() {
         return publicConfiguration.getWorkerPoolAddress();
     }
