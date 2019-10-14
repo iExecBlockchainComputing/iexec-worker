@@ -4,7 +4,8 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateDetails;
+import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
@@ -15,7 +16,7 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -28,7 +29,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
 
-import static com.iexec.common.replicate.ReplicateStatus.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -39,7 +39,7 @@ public class TaskManagerServiceTests {
     @Mock private DataService dataService;
     @Mock private ResultService resultService;
     @Mock private ContributionService contributionService;
-    @Mock private CustomFeignClient customFeignClient;
+    @Mock private CustomCoreFeignClient customCoreFeignClient;
     @Mock private WorkerConfigurationService workerConfigurationService;
     @Mock private SconeTeeService sconeTeeService;
     @Mock private IexecHubService iexecHubService;
@@ -88,9 +88,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(sconeTeeService.isTeeEnabled()).thenReturn(false);
 
-        boolean isStarted = taskManagerService.start(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
 
-        assertThat(isStarted).isTrue();
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -100,9 +100,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(computationService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
 
-        boolean isAppDownloaded = taskManagerService.downloadApp(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
-        assertThat(isAppDownloaded).isTrue();
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -112,9 +112,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
 
-        boolean isDataDownloaded = taskManagerService.downloadData(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.downloadData(CHAIN_TASK_ID);
 
-        assertThat(isDataDownloaded).isTrue();
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -127,9 +127,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
         when(computationService.runNonTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        boolean isComputed = taskManagerService.compute(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(isComputed).isTrue();
+        assertThat(actionResponse.isSuccess()).isTrue();
         verify(computationService, never()).runTeeComputation(any(), any());
     }
 
@@ -143,9 +143,9 @@ public class TaskManagerServiceTests {
         when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
         when(computationService.runTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
 
-        boolean isComputed = taskManagerService.compute(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
-        assertThat(isComputed).isTrue();
+        assertThat(actionResponse.isSuccess()).isTrue();
         verify(computationService, never()).runNonTeeComputation(any(), any());
     }
 
@@ -167,9 +167,9 @@ public class TaskManagerServiceTests {
         when(contributionService.contribute(contributionAuthorization, hash, SignatureUtils.emptySignature()))
                 .thenReturn(Optional.of(ChainReceipt.builder().blockNumber(10).build()));
 
-        boolean isContributed = taskManagerService.contribute(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.contribute(CHAIN_TASK_ID);
 
-        assertThat(isContributed).isTrue();
+        assertThat(actionResponse.isSuccess()).isTrue();
     }
 
     @Test
@@ -194,7 +194,7 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldUploadResultWithoutEncrypting() {
-        ReplicateDetails details = ReplicateDetails.builder()
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                 .resultLink("resultUri")
                 .chainCallbackData("callbackData")
                 .build();
@@ -210,7 +210,7 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldEncryptAndUploadResult() {
-        ReplicateDetails details = ReplicateDetails.builder()
+        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                 .resultLink("resultUri")
                 .chainCallbackData("callbackData")
                 .build();
@@ -301,7 +301,6 @@ public class TaskManagerServiceTests {
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
         assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isFalse();
-        verify(customFeignClient, times(1)).updateReplicateStatus(CHAIN_TASK_ID, OUT_OF_GAS);
     }
 
     @Test

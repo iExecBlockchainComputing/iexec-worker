@@ -132,29 +132,42 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     }
 
     public void subscribeToTopic(String chainTaskId) {
-        if (!chainTaskIdToSubscription.containsKey(chainTaskId)) {
-            StompSession.Subscription subscription = session.subscribe(getTaskTopicName(chainTaskId), new StompFrameHandler() {
-                @Override
-                public Type getPayloadType(StompHeaders headers) {
-                    return TaskNotification.class;
+        if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
+            log.info("Already subscribed to topic [chainTaskId:{}, topic:{}]",
+                    chainTaskId, getTaskTopicName(chainTaskId));
+            return;
+        }
+
+        StompFrameHandler stompFrameHandler = new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return TaskNotification.class;
+            }
+
+            @Override
+            public void handleFrame(StompHeaders headers, @Nullable Object payload) {
+                if (payload == null) {
+                    log.info("Payload of TaskNotification is null [chainTaskId:{}]", chainTaskId);
+                    return;
                 }
 
-                @Override
-                public void handleFrame(StompHeaders headers, @Nullable Object payload) {
-                    if (payload != null) {
-                        TaskNotification taskNotification = (TaskNotification) payload;
-                        log.info("PubSub service received taskNotification [chainTaskId:{}, type:{}]", chainTaskId, taskNotification.getTaskNotificationType());
-                        applicationEventPublisher.publishEvent(taskNotification);
-                    } else {
-                        log.info("Payload of TaskNotification is null [chainTaskId:{}]", chainTaskId);
-                    }
+                TaskNotification taskNotification = (TaskNotification) payload;
+                boolean isNotifForEveryone = taskNotification.getWorkersAddress().isEmpty();
+                boolean isNotifForMe = taskNotification.getWorkersAddress()
+                        .contains(workerConfigurationService.getWorkerWalletAddress());
+
+                if (!isNotifForEveryone && !isNotifForMe) {
+                    return;
                 }
-            });
-            chainTaskIdToSubscription.put(chainTaskId, subscription);
-            log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
-        } else {
-            log.info("Already subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
-        }
+
+                log.info("PubSub service received taskNotification [chainTaskId:{}, type:{}]", chainTaskId, taskNotification.getTaskNotificationType());
+                applicationEventPublisher.publishEvent(taskNotification);
+            }
+        };
+
+        StompSession.Subscription subscription = session.subscribe(getTaskTopicName(chainTaskId), stompFrameHandler);
+        chainTaskIdToSubscription.put(chainTaskId, subscription);
+        log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
     }
 
 

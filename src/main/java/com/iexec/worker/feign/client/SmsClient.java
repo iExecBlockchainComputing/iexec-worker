@@ -1,8 +1,10 @@
-package com.iexec.worker.feign;
+package com.iexec.worker.feign.client;
 
 
 import com.iexec.common.sms.SmsRequest;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
+import com.iexec.worker.feign.config.FeignConfiguration;
+
 import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
@@ -20,4 +22,5 @@ public interface SmsClient {
 
     @PostMapping("/tee/sessions")
     ResponseEntity<String> generateTeeSession(@RequestBody SmsRequest smsRequest) throws FeignException;
+
 }

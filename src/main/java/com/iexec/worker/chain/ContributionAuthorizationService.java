@@ -1,9 +1,6 @@
 package com.iexec.worker.chain;
 
-import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
-import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.security.Signature;
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
@@ -12,13 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 
 @Slf4j

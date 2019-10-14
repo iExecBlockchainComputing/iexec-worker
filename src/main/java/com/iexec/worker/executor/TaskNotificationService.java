@@ -3,11 +3,15 @@ package com.iexec.worker.executor;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateDetails;
+import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.chain.ContributionService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -15,6 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 
 @Slf4j
@@ -22,20 +27,20 @@ import static com.iexec.common.replicate.ReplicateStatus.*;
 public class TaskNotificationService {
 
     private TaskManagerService taskManagerService;
-    private CustomFeignClient customFeignClient;
+    private CustomCoreFeignClient customCoreFeignClient;
     private ApplicationEventPublisher applicationEventPublisher;
     private SubscriptionService subscriptionService;
     private ContributionService contributionService;
 
 
     public TaskNotificationService(TaskManagerService taskManagerService,
-                                   CustomFeignClient customFeignClient,
+                                   CustomCoreFeignClient customCoreFeignClient,
                                    ApplicationEventPublisher applicationEventPublisher,
                                    SubscriptionService subscriptionService,
                                    ContributionService contributionService
                                    ) {
         this.taskManagerService = taskManagerService;
-        this.customFeignClient = customFeignClient;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
@@ -51,8 +56,9 @@ public class TaskNotificationService {
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
+        ReplicateActionResponse actionResponse = null;
         TaskNotificationType nextAction = null;
-        log.info("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
+        log.debug("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
 
         if (action == null) {
             log.error("No action to do [chainTaskId:{}]", chainTaskId);
@@ -69,75 +75,75 @@ public class TaskNotificationService {
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
-                boolean isStarted = taskManagerService.start(chainTaskId);
-                if (!isStarted) {
-                    updateStatusAndGetNextAction(chainTaskId, START_FAILED);
-                    return;
+                actionResponse = taskManagerService.start(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, STARTED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, START_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, STARTED);
                 break;
             case PLEASE_DOWNLOAD_APP:
                 updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
-                boolean isAppDownloaded = taskManagerService.downloadApp(chainTaskId);
-                if (!isAppDownloaded) {
-                    updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOAD_FAILED);
-                    return;
+                actionResponse = taskManagerService.downloadApp(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOAD_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADED);
                 break;
             case PLEASE_DOWNLOAD_DATA:
                 updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
-                boolean isDataDownloaded = taskManagerService.downloadData(chainTaskId);
-                if (!isDataDownloaded) {
-                    updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOAD_FAILED);
-                    return;
+                actionResponse = taskManagerService.downloadData(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOAD_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADED);
                 break;
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
-                boolean isComputed = taskManagerService.compute(chainTaskId);
-                if (!isComputed) {
-                    updateStatusAndGetNextAction(chainTaskId, COMPUTE_FAILED);
-                    return;
+                actionResponse = taskManagerService.compute(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED);
                 break;
             case PLEASE_CONTRIBUTE:
                 updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
-                boolean isContributed = taskManagerService.contribute(chainTaskId);
-                if (!isContributed) {
-                    updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_FAILED);
-                    return;
+                actionResponse = taskManagerService.contribute(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTED);
                 break;
             case PLEASE_REVEAL:
                 updateStatusAndGetNextAction(chainTaskId, REVEALING);
-                boolean isRevealed = taskManagerService.reveal(chainTaskId, extra);
-                if (!isRevealed) {
-                    updateStatusAndGetNextAction(chainTaskId, REVEAL_FAILED);
-                    return;
+                actionResponse = taskManagerService.reveal(chainTaskId, extra);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, REVEALED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, REVEAL_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, REVEALED);
                 break;
             case PLEASE_UPLOAD:
                 updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
-                ReplicateDetails uploadDetails = taskManagerService.uploadResult(chainTaskId);
-                if (uploadDetails == null) {
-                    updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED);
-                    return;
+                actionResponse = taskManagerService.uploadResult(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED, actionResponse.getDetails());
                 }
-                nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADED, uploadDetails);
                 break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
-                boolean isCompleted = taskManagerService.complete(chainTaskId);
-                if (!isCompleted) {
-                    updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED);
-                    return;
+                actionResponse = taskManagerService.complete(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETED, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
                 }
-                updateStatusAndGetNextAction(chainTaskId, COMPLETED);
                 break;
             //TODO merge abort
             case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
@@ -145,14 +151,14 @@ public class TaskNotificationService {
                 if (!isAborted) {
                     return;
                 }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED_ON_CONTRIBUTION_TIMEOUT);
+                updateStatusAndGetNextAction(chainTaskId, ABORTED, CONTRIBUTION_TIMEOUT);
                 break;
             case PLEASE_ABORT_CONSENSUS_REACHED:
                 boolean isAbortedAfterConsensusReached = taskManagerService.abort(chainTaskId);
                 if (!isAbortedAfterConsensusReached) {
                     return;
                 }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED_ON_CONSENSUS_REACHED);
+                updateStatusAndGetNextAction(chainTaskId, ABORTED, CONSENSUS_REACHED);
                 break;
             default:
                 break;
@@ -160,14 +166,14 @@ public class TaskNotificationService {
 
         subscriptionService.handleSubscription(notification);
         if (nextAction != null){
-            log.info("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
+            log.debug("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
             applicationEventPublisher.publishEvent(TaskNotification.builder()
                     .chainTaskId(chainTaskId)
                     .taskNotificationType(nextAction)
                     .build()
             );
         } else {
-            log.warn("No more action to do [chainTaskId:{}]", chainTaskId);
+            log.warn("No more actions to do [chainTaskId:{}]", chainTaskId);
         }
 
     }
@@ -179,17 +185,38 @@ public class TaskNotificationService {
         return true;
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatus status, ReplicateDetails details) {
-        log.info("updateReplicateStatus request [chainTaskId:{}, status:{}, details:{}]", chainTaskId, status, details);
-        if (details == null){
-            details = ReplicateDetails.builder().build();
-        }
-        TaskNotificationType next = customFeignClient.updateReplicateStatus(chainTaskId, status, details);
-        log.info("updateReplicateStatus response [chainTaskId:{}, status:{}, next:{}]", chainTaskId, status, next);
-        return next;
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateStatus status) {
+        ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatus status) {
-        return updateStatusAndGetNextAction(chainTaskId, status, null);
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateStatus status,
+                                                              ReplicateStatusCause cause) {
+        ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status, cause);
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+    }
+
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
+                                                              ReplicateStatus status,
+                                                              ReplicateStatusDetails details) {
+        ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.builder()
+                .status(status)
+                .details(details)
+                .build();
+
+        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+    }
+
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+        log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
+                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetails());
+
+        TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
+
+        log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]",
+                chainTaskId, statusUpdate.getStatus(), next);
+        return next;
     }
 }

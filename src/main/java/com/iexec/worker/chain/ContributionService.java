@@ -8,13 +8,10 @@ import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
 
-import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
@@ -62,7 +59,7 @@ public class ContributionService {
         }
 
         if (!isBeforeContributionDeadlineToContribute(chainTask)) {
-            return Optional.of(AFTER_DEADLINE);
+            return Optional.of(CONTRIBUTION_TIMEOUT);
         }
 
         if (!isContributionUnsetToContribute(chainTask)) {
@@ -70,7 +67,7 @@ public class ContributionService {
         }
 
         if (!isContributionAuthorizationPresent(chainTaskId)) {
-            return Optional.of(CONTRIBUTION_AUTHORIZATION_MISSING);
+            return Optional.of(CONTRIBUTION_AUTHORIZATION_NOT_FOUND);
         }
 
         return Optional.empty();

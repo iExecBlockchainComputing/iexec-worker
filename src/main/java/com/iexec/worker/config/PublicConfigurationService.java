@@ -1,7 +1,7 @@
 package com.iexec.worker.config;
 
 import com.iexec.common.config.PublicConfiguration;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -9,8 +9,8 @@ public class PublicConfigurationService {
 
     private PublicConfiguration publicConfiguration;
 
-    public PublicConfigurationService(CustomFeignClient customFeignClient) {
-        this.publicConfiguration = customFeignClient.getPublicConfiguration();
+    public PublicConfigurationService(CustomCoreFeignClient customCoreFeignClient) {
+        this.publicConfiguration = customCoreFeignClient.getPublicConfiguration();
     }
 
     public PublicConfiguration getPublicConfiguration() {
@@ -27,6 +27,10 @@ public class PublicConfigurationService {
 
     public String getIexecHubAddress() {
         return publicConfiguration.getIexecHubAddress();
+    }
+
+    public boolean isSidechain() {
+        return publicConfiguration.isSidechain();
     }
 
     public String getWorkerPoolAddress() {
@@ -51,5 +55,9 @@ public class PublicConfigurationService {
 
     public String getSconeCasURL() {
         return publicConfiguration.getSconeCasURL();
+    }
+
+    public String getRequiredWorkerVersion() {
+        return publicConfiguration.getRequiredWorkerVersion();
     }
 }

@@ -11,10 +11,13 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.FileHelper;
+
+import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.util.*;
 
 
@@ -120,7 +123,7 @@ public class ComputationService {
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(imageUri)
-                .cmd(cmd.split(" "))
+                .cmd(cmd)
                 .maxExecutionTime(maxExecutionTime)
                 .env(env)
                 .bindPaths(getDefaultBindPaths(chainTaskId))
@@ -128,6 +131,10 @@ public class ComputationService {
                 .build();
 
         DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        if (shouldPrintDeveloperLogs(taskDescription)){
+            log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
+                    getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
+        }
 
         if (!appExecutionResult.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
@@ -178,7 +185,7 @@ public class ComputationService {
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(imageUri)
-                .cmd(cmd.split(" "))
+                .cmd(cmd)
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeAppEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
@@ -187,6 +194,12 @@ public class ComputationService {
 
         // run computation
         DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
+
+        if (shouldPrintDeveloperLogs(taskDescription)){
+            log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
+                    getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
+        }
+
         if (!appExecutionResult.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return false;
@@ -201,7 +214,6 @@ public class ComputationService {
                 .chainTaskId(chainTaskId)
                 .containerName(getSignerTaskContainerName(chainTaskId))
                 .imageUri("nexus.iex.ec/tee-signer:1.0.0")
-                .cmd("python /signer/signer.py encrypt".split(" "))
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeAppEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
@@ -211,6 +223,12 @@ public class ComputationService {
         // encrypt result
         signerExecutionConfig.setEnv(sconeEncrypterEnv);
         DockerExecutionResult encryptionExecutionResult = customDockerClient.execute(signerExecutionConfig);
+
+        if (shouldPrintDeveloperLogs(taskDescription)){
+            log.info("Developer logs of encryption stage [chainTaskId:{}, logs:{}]", chainTaskId,
+                    getDockerExecutionDeveloperLogs(chainTaskId, encryptionExecutionResult));
+        }
+
         if (!encryptionExecutionResult.isSuccess()) {
             log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
             return false;
@@ -226,7 +244,6 @@ public class ComputationService {
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskUploaderContainerName(chainTaskId))
                 .imageUri("nexus.iex.ec/tee-dropbox-uploader:1.0.0")
-                .cmd("".split(" "))
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeUploaderEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
@@ -295,5 +312,18 @@ public class ComputationService {
 
     private String getTaskUploaderContainerName(String chainTaskId) {
         return getTaskContainerName(chainTaskId) + "-uploader";
+    }
+
+    private boolean shouldPrintDeveloperLogs(TaskDescription taskDescription) {
+        return workerConfigService.isDeveloperLoggerEnabled() && taskDescription.isDeveloperLoggerEnabled();
+    }
+
+    private String getDockerExecutionDeveloperLogs(String chainTaskId, DockerExecutionResult dockerExecutionResult) {
+        String iexecInTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskInputDir(chainTaskId)));
+        iexecInTree = iexecInTree.replace("├── input/", "├── iexec_in/");//confusing for developers if not replaced
+        String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
+        String stdout = dockerExecutionResult.getStdout();
+
+        return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout);
     }
 }

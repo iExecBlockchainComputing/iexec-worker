@@ -13,7 +13,7 @@ import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.SmsClient;
+import com.iexec.worker.feign.CustomSmsFeignClient;
 import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.http.ResponseEntity;
@@ -30,12 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SmsService {
 
-    private SmsClient smsClient;
     private CredentialsService credentialsService;
+    private CustomSmsFeignClient customSmsFeignClient;
 
-    public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
-        this.smsClient = smsClient;
+    public SmsService(CredentialsService credentialsService, CustomSmsFeignClient customSmsFeignClient) {
         this.credentialsService = credentialsService;
+        this.customSmsFeignClient = customSmsFeignClient;
     }
 
     @Retryable(value = FeignException.class)
@@ -43,7 +43,9 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
 
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-        SmsSecretResponse smsResponse = smsClient.getUnTeeSecrets(smsRequest);
+
+        SmsSecretResponse smsResponse = customSmsFeignClient.getUnTeeSecrets(smsRequest);
+
 
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
@@ -110,8 +112,8 @@ public class SmsService {
     public String getSconeSecureSession(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-
-        ResponseEntity<String> sessionIdResponse = smsClient.generateTeeSession(smsRequest);
+        
+        ResponseEntity<String> sessionIdResponse = customSmsFeignClient.generateTeeSession(smsRequest);
 
         if (sessionIdResponse.getBody() == null) {
             log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);

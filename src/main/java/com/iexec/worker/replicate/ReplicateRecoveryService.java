@@ -4,7 +4,7 @@ import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.feign.CustomFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
@@ -24,18 +24,18 @@ import java.util.Optional;
 @Service
 public class ReplicateRecoveryService {
 
-    private CustomFeignClient customFeignClient;
+    private CustomCoreFeignClient customCoreFeignClient;
     private SubscriptionService subscriptionService;
     private ResultService resultService;
     private IexecHubService iexecHubService;
     private ApplicationEventPublisher applicationEventPublisher;
 
-    public ReplicateRecoveryService(CustomFeignClient customFeignClient,
+    public ReplicateRecoveryService(CustomCoreFeignClient customCoreFeignClient,
                                   SubscriptionService subscriptionService,
                                   ResultService resultService,
                                   IexecHubService iexecHubService,
                                   ApplicationEventPublisher applicationEventPublisher) {
-        this.customFeignClient = customFeignClient;
+        this.customCoreFeignClient = customCoreFeignClient;
         this.subscriptionService = subscriptionService;
         this.resultService = resultService;
         this.iexecHubService = iexecHubService;
@@ -45,7 +45,7 @@ public class ReplicateRecoveryService {
     //TODO clean that
     public List<String> recoverInterruptedReplicates() {
         long latestAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
-        List<TaskNotification> missedTaskNotifications = customFeignClient.getMissedTaskNotifications(
+        List<TaskNotification> missedTaskNotifications = customCoreFeignClient.getMissedTaskNotifications(
                 latestAvailableBlockNumber);
         List<String> recoveredChainTaskIds = new ArrayList<>();
 
@@ -62,7 +62,7 @@ public class ReplicateRecoveryService {
             log.info("Recovering interrupted task [chainTaskId:{}, taskNotificationType:{}]",
                     chainTaskId, taskNotificationType);
 
-            if (!isResultAvailable && taskNotificationType != TaskNotificationType.PLEASE_CONTRIBUTE) {
+            if (!isResultAvailable) {
                 log.error("Could not recover task, result not found [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
