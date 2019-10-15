@@ -12,7 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 
@@ -54,22 +56,21 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     // core
 
     public PublicConfiguration getPublicConfiguration() {
-        Object[] arguments = new Object[0];
         HttpCall<PublicConfiguration> httpCall = (args) -> coreClient.getPublicConfiguration();
-        ResponseEntity<PublicConfiguration> response = makeHttpCall(httpCall, arguments, "getPublicConfig");
+        ResponseEntity<PublicConfiguration> response = makeHttpCall(httpCall, null, "getPublicConfig");
         return isOk(response) ? response.getBody() : null;
     }
 
     public String getCoreVersion() {
-        Object[] arguments = new Object[0];
         HttpCall<String> httpCall = (args) -> coreClient.getCoreVersion();
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getCoreVersion");
+        ResponseEntity<String> response = makeHttpCall(httpCall, null, "getCoreVersion");
         return isOk(response) ? response.getBody() : null;
     }
 
     public String ping() {
-        Object[] arguments = new Object[] {loginService.getToken()};
-        HttpCall<String> httpCall = (args) -> coreClient.ping((String) args[0]);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("token", loginService.getToken());
+        HttpCall<String> httpCall = (args) -> coreClient.ping((String) args.get("token"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "ping");
         return isOk(response) && response.getBody() != null ? response.getBody() : "";
     }

@@ -1,5 +1,6 @@
 package com.iexec.worker.feign;
 
+import java.util.Map;
 import java.util.function.Function;
 
 import org.springframework.http.HttpStatus;
@@ -17,7 +18,7 @@ public abstract class BaseFeignClient {
      * T: type of the response body. It can be Void.
      * Object[]: array of the call arguments
      */
-    public interface HttpCall<T> extends Function<Object[], ResponseEntity<T>> {}
+    public interface HttpCall<T> extends Function<Map<String, Object>, ResponseEntity<T>> {}
 
     /*
      * This method should be overridden in
@@ -37,11 +38,11 @@ public abstract class BaseFeignClient {
      * the method will retry infinitely until it gets a valid
      * response.
      */
-    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Object[] args, String action) {
+    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Map<String, Object> args, String action) {
         return makeHttpCall(call, args, action, false);
     }
 
-    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Object[] args, String action, boolean infiniteRetry) {
+    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Map<String, Object> args, String action, boolean infiniteRetry) {
         int attempt = 0;
         int status = -1;
 
