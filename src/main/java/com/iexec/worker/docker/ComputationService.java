@@ -213,7 +213,8 @@ public class ComputationService {
         DockerExecutionConfig signerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getSignerTaskContainerName(chainTaskId))
-                .imageUri("nexus.iex.ec/tee-signer:1.0.0")
+                //.imageUri("nexus.iex.ec/tee-signer:1.0.0")//TODO: read that from request params or get default
+                .imageUri("nexus.iex.ec/tee-encrypter-only:1.0.0")//TODO: read that from request params or get default
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeAppEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
@@ -238,12 +239,11 @@ public class ComputationService {
         System.out.println("****** Encryption");
         System.out.println(encryptionExecutionResult.getStdout());
 
-
-        //sconeUploaderEnv.add("LOCAL_FILE_PATH=/scone/"+ chainTaskId + "_result.zip");
         DockerExecutionConfig uploaderExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskUploaderContainerName(chainTaskId))
-                .imageUri("nexus.iex.ec/tee-dropbox-uploader:1.0.0")
+                //.imageUri("nexus.iex.ec/tee-dropbox-uploader:1.0.0")//TODO: read that from request params or get default
+                .imageUri("nexus.iex.ec/tee-post-compute:1.0.0")//TODO: read that from request params or get default
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeUploaderEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))

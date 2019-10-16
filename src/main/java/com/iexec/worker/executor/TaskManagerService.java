@@ -7,6 +7,7 @@ import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
@@ -15,7 +16,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
 
 
 @Slf4j
@@ -235,7 +236,7 @@ public class TaskManagerService {
                 contributionService.getContributionAuthorization(chainTaskId);
 
         String enclaveChallenge = contributionAuthorization.getEnclaveChallenge();
-        Optional<Signature> enclaveSignature = getVerifiedEnclaveSignature(chainTaskId, enclaveChallenge);
+        Optional<Signature> enclaveSignature = getVerifiedEnclaveChallengeSignature(chainTaskId, enclaveChallenge);
         if (enclaveSignature.isEmpty()) {//could be 0x0
             log.error("Cannot contribute enclave signature not found [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);
@@ -337,32 +338,34 @@ public class TaskManagerService {
 
 
     //TODO Move that to result service
-    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String signerAddress) {
+    Optional<Signature> getVerifiedEnclaveChallengeSignature(String chainTaskId, String expectedSigner) {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
         if (!isTeeTask) {
             return Optional.of(SignatureUtils.emptySignature());
         }
 
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                resultService.readSconeEnclaveSignatureFile(chainTaskId);
-        if (oSconeEnclaveSignatureFile.isEmpty()) {
+        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
+                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
+        if (optionalTeeEnclaveChallengeSignature.isEmpty()) {
             log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
-        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = oSconeEnclaveSignatureFile.get();
-        Signature enclaveSignature = new Signature(sconeEnclaveSignatureFile.getSignature());
-        String resultHash = sconeEnclaveSignatureFile.getResultHash();
-        String resultSeal = sconeEnclaveSignatureFile.getResultSalt();
+        TeeEnclaveChallengeSignature enclaveChallengeSignature = optionalTeeEnclaveChallengeSignature.get();
 
-        boolean isValid = sconeTeeService.isEnclaveSignatureValid(resultHash, resultSeal,
-                enclaveSignature, signerAddress);
+        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(
+                enclaveChallengeSignature.getResultHash(),
+                enclaveChallengeSignature.getResultSeal());
 
-        if (!isValid) {
+        boolean isExpectedSigner = resultService.isExpectedSignerOnSignature(messageHash,
+                enclaveChallengeSignature.getSignature(),
+                expectedSigner);
+
+        if (!isExpectedSigner) {
             log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
 
-        return Optional.of(enclaveSignature);
+        return Optional.of(enclaveChallengeSignature.getSignature());
     }
 
     boolean checkGasBalance(String chainTaskId) {

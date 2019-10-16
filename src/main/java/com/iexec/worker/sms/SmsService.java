@@ -112,7 +112,7 @@ public class SmsService {
     public String getSconeSecureSession(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-        
+
         ResponseEntity<String> sessionIdResponse = customSmsFeignClient.generateTeeSession(smsRequest);
 
         if (sessionIdResponse.getBody() == null) {
