@@ -378,7 +378,22 @@ public class ResultService {
         }
     }
 
-    public String uploadResult(String chainTaskId) {
+    public String uploadResultAndGetLink(String chainTaskId) {
+
+        if (iexecHubService.isTeeTask(chainTaskId)){//result is already uploaded
+            String resultStorageProvider = iexecHubService.getTaskDescription(chainTaskId).getResultStorageProvider();
+            String requester = iexecHubService.getTaskDescription(chainTaskId).getRequester();
+            if (resultStorageProvider == null || resultStorageProvider.isEmpty()){
+                resultStorageProvider = "dropbox";
+            }
+            return String.format("{" +
+                    "\"resultStorageProvider\":\"%s\", " +
+                    "\"resultStoragePrivateSpaceOwner\":\"%s\", " +
+                    "\"taskId\":\"%s\"" +
+                    "}", resultStorageProvider, requester , chainTaskId);
+        }
+
+
         Integer chainId = publicConfigService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 

@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
-import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
 
 
 @Slf4j
@@ -308,7 +307,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
         }
 
-        String resultLink = resultService.uploadResult(chainTaskId);
+        String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
         if (resultLink.isEmpty()) {
             log.error("Cannot upload, resultLink missing [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(RESULT_LINK_MISSING);

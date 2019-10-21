@@ -200,7 +200,7 @@ public class TaskManagerServiceTests {
                 .build();
 
         when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
         when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
@@ -217,7 +217,7 @@ public class TaskManagerServiceTests {
 
         when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
         when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
@@ -232,7 +232,7 @@ public class TaskManagerServiceTests {
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
 
-        verify(resultService, never()).uploadResult(CHAIN_TASK_ID);
+        verify(resultService, never()).uploadResultAndGetLink(CHAIN_TASK_ID);
     }
 
 
