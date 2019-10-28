@@ -1,8 +1,8 @@
 package com.iexec.worker.docker;
 
+import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.utils.FileHelper;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient.ListContainersParam;
 import com.spotify.docker.client.DockerClient.ListNetworksParam;

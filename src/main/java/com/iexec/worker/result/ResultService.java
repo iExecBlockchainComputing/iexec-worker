@@ -8,12 +8,12 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
-import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,8 +31,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
+import static com.iexec.common.utils.FileHelper.createFileWithContent;
 import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
-import static com.iexec.worker.utils.FileHelper.createFileWithContent;
 
 @Slf4j
 @Service

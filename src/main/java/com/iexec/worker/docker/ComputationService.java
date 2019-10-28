@@ -4,13 +4,13 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-import com.iexec.worker.utils.FileHelper;
 
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;

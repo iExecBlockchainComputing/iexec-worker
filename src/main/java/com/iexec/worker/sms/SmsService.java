@@ -11,10 +11,10 @@ import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.CustomSmsFeignClient;
-import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Recover;
