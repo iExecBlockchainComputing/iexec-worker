@@ -165,12 +165,10 @@ public class ComputationService {
 
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
                 publicConfigService.getSconeCasURL(), "1G");
-        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption",
-                publicConfigService.getSconeCasURL(), "1G");
-        ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/uploader",
+        ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");
 
-        if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
+        if (sconeAppEnv.isEmpty()) {
             log.error("Could not create scone docker environment [chainTaskId:{}]", chainTaskId);
             return false;
         }
@@ -178,7 +176,6 @@ public class ComputationService {
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
         for (String envVar : getContainerEnvVariables(datasetFilename, taskDescription)) {
             sconeAppEnv.add(envVar);
-            sconeEncrypterEnv.add(envVar);
         }
 
         DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
@@ -209,61 +206,26 @@ public class ComputationService {
         System.out.println("****** App");
         System.out.println(appExecutionResult.getStdout());
 
-        /*
-
-        DockerExecutionConfig signerExecutionConfig = DockerExecutionConfig.builder()
+        DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
-                .containerName(getSignerTaskContainerName(chainTaskId))
-                //.imageUri("nexus.iex.ec/tee-signer:1.0.0")//TODO: read that from request params or get default
-                .imageUri("nexus.iex.ec/tee-encrypter-only:1.0.0")//TODO: read that from request params or get default
-                .maxExecutionTime(maxExecutionTime)
-                .env(sconeAppEnv)
-                .bindPaths(getSconeBindPaths(chainTaskId))
-                .isSgx(true)
-                .build();
-
-        // encrypt result
-        signerExecutionConfig.setEnv(sconeEncrypterEnv);
-        DockerExecutionResult encryptionExecutionResult = customDockerClient.execute(signerExecutionConfig);
-
-        if (shouldPrintDeveloperLogs(taskDescription)){
-            log.info("Developer logs of encryption stage [chainTaskId:{}, logs:{}]", chainTaskId,
-                    getDockerExecutionDeveloperLogs(chainTaskId, encryptionExecutionResult));
-        }
-
-        if (!encryptionExecutionResult.isSuccess()) {
-            log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        //TODO: Remove logs before merge
-        System.out.println("****** Encryption");
-        System.out.println(encryptionExecutionResult.getStdout());
-
-        */
-
-        DockerExecutionConfig uploaderExecutionConfig = DockerExecutionConfig.builder()
-                .chainTaskId(chainTaskId)
-                .containerName(getTaskUploaderContainerName(chainTaskId))
-                //.imageUri("nexus.iex.ec/tee-dropbox-uploader:1.0.0")//TODO: read that from request params or get default
+                .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                 .imageUri("nexus.iex.ec/tee-worker-post-compute:1.0.0")//TODO: read that from request params or get default
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeUploaderEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
                 .isSgx(true)
                 .build();
-        DockerExecutionResult uploaderExecutionResult = customDockerClient.execute(uploaderExecutionConfig);
-        if (!uploaderExecutionResult.isSuccess()) {
-            log.error("Failed to upload result [chainTaskId:{}]", chainTaskId);
+        DockerExecutionResult teePostComputeExecutionResult = customDockerClient.execute(teePostComputeExecutionConfig);
+        if (!teePostComputeExecutionResult.isSuccess()) {
+            log.error("Failed to process post-compute on result [chainTaskId:{}]", chainTaskId);
             return false;
         }
-        System.out.println("****** Uploader");
-        System.out.println(uploaderExecutionResult.getStdout());
+        System.out.println("****** Tee post-compute");
+        System.out.println(teePostComputeExecutionResult.getStdout());
 
 
         String stdout = appExecutionResult.getStdout()
-                //+ encryptionExecutionResult.getStdout()
-                + uploaderExecutionResult.getStdout();
+                + teePostComputeExecutionResult.getStdout();
 
 
         return resultService.saveResult(chainTaskId, taskDescription, stdout);
@@ -313,8 +275,8 @@ public class ComputationService {
         return getTaskContainerName(chainTaskId) + "-signer";
     }
 
-    private String getTaskUploaderContainerName(String chainTaskId) {
-        return getTaskContainerName(chainTaskId) + "-uploader";
+    private String getTaskTeePostComputeContainerName(String chainTaskId) {
+        return getTaskContainerName(chainTaskId) + "-tee-post-compute";
     }
 
     private boolean shouldPrintDeveloperLogs(TaskDescription taskDescription) {
