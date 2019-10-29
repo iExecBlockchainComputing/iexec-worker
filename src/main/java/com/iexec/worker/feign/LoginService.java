@@ -1,5 +1,8 @@
 package com.iexec.worker.feign;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
@@ -37,7 +40,7 @@ public class LoginService extends BaseFeignClient {
     }
 
     @Override
-    public boolean login() {
+    public String login() {
         expireToken();
 
         String workerAddress = credentialsService.getCredentials().getAddress();
@@ -46,18 +49,18 @@ public class LoginService extends BaseFeignClient {
         String challenge = getLoginChallenge(workerAddress);
         if (challenge.isEmpty()) {
             log.error("Cannot login since challenge is empty [challenge:{}]", challenge);
-            return false;
+            return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
         String token = requestLogin(workerAddress, signature);
         if (token.isEmpty()) {
             log.error("Cannot login since token is empty [token:{}]", token);
-            return false;
+            return "";
         }
 
         jwtToken = TOKEN_PREFIX + token;
-        return true;
+        return jwtToken;
     }
 
     private void expireToken() {
@@ -65,15 +68,18 @@ public class LoginService extends BaseFeignClient {
     }
 
     private String getLoginChallenge(String workerAddress) {
-        Object[] arguments = new Object[] {workerAddress};
-        HttpCall<String> httpCall = (args) -> coreClient.getChallenge((String) args[0]);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("workerAddress", workerAddress);
+        HttpCall<String> httpCall = (args) -> coreClient.getChallenge((String) args.get("workerAddress"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getLoginChallenge");
         return isOk(response) && response.getBody() != null ? response.getBody() : "";
     }
 
     private String requestLogin(String workerAddress, Signature signature) {
-        Object[] arguments = new Object[] {workerAddress, signature};
-        HttpCall<String> httpCall = (args) -> coreClient.login((String) args[0], (Signature) args[1]);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("workerAddress", workerAddress);
+        arguments.put("signature", signature);
+        HttpCall<String> httpCall = (args) -> coreClient.login((String) args.get("workerAddress"), (Signature) args.get("signature"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "requestLogin");
         return isOk(response) && response.getBody() != null ? response.getBody() : "";
     }

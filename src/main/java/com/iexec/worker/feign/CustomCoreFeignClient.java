@@ -31,7 +31,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     @Override
-    boolean login() {
+    String login() {
         return loginService.login();
     }
 
@@ -41,19 +41,16 @@ public class CustomCoreFeignClient extends BaseFeignClient {
      * body and it can be Void. We send it along with the arguments
      * to the generic "makeHttpCall()" method. If the call was
      * successful, we return a ResponseEntity<T> with the response
-     * body, otherwise, we return a ResponseEntity with call's failure
+     * body, otherwise, we return a ResponseEntity with the call's failure
      * status.
      * 
      * How to pass call args?
-     * We put method arguments in an array of objects Object[] (or
-     * empty array), we pass the array as an argument
-     * to the lambda expression. Inside the lambda expression we 
-     * cast the arguments into their original types required by the
-     * method to be called (this is safe because we already know
-     * the arguments' types).
+     * We put call params in a Map<String, Object> (see below)
+     * and we pass the Map as an argument to the lambda expression.
+     * Inside the lambda expression we cast the arguments into their
+     * original types required by the method to be called.
+     * (Casting arguments is safe).
      */
-
-    // core
 
     public PublicConfiguration getPublicConfiguration() {
         HttpCall<PublicConfiguration> httpCall = (args) -> coreClient.getPublicConfiguration();
@@ -69,35 +66,41 @@ public class CustomCoreFeignClient extends BaseFeignClient {
 
     public String ping() {
         Map<String, Object> arguments = new HashMap<>();
-        arguments.put("token", loginService.getToken());
-        HttpCall<String> httpCall = (args) -> coreClient.ping((String) args.get("token"));
+        arguments.put("jwtoken", loginService.getToken());
+        HttpCall<String> httpCall = (args) -> coreClient.ping((String) args.get("jwtoken"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "ping");
         return isOk(response) && response.getBody() != null ? response.getBody() : "";
     }
 
     //TODO: Make registerWorker return Worker
     public boolean registerWorker(WorkerModel model) {
-        Object[] arguments = new Object[] {loginService.getToken(), model};
-        HttpCall<Void> httpCall = (args) -> coreClient.registerWorker((String) args[0], (WorkerModel) args[1]);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("jwtoken", loginService.getToken());
+        arguments.put("model", model);
+        HttpCall<Void> httpCall = (args) -> coreClient.registerWorker((String) args.get("jwtoken"), (WorkerModel) args.get("model"));
         ResponseEntity<Void> response = makeHttpCall(httpCall, arguments, "registerWorker");
         return isOk(response);
     }
 
     public List<TaskNotification> getMissedTaskNotifications(long lastAvailableBlockNumber) {
-        Object[] arguments = new Object[] {loginService.getToken(), lastAvailableBlockNumber};
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("jwtoken", loginService.getToken());
+        arguments.put("blockNumber", lastAvailableBlockNumber);
 
         HttpCall<List<TaskNotification>> httpCall = (args) ->
-                coreClient.getMissedTaskNotifications((String) args[0], (long) args[1]);
+                coreClient.getMissedTaskNotifications((String) args.get("jwtoken"), (long) args.get("blockNumber"));
 
         ResponseEntity<List<TaskNotification>> response = makeHttpCall(httpCall, arguments, "getMissedNotifications");
         return isOk(response) ? response.getBody() : Collections.emptyList();
     }
 
     public Optional<ContributionAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
-        Object[] arguments = new Object[] {loginService.getToken(), lastAvailableBlockNumber};
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("jwtoken", loginService.getToken());
+        arguments.put("blockNumber", lastAvailableBlockNumber);
 
         HttpCall<ContributionAuthorization> httpCall = (args) ->
-                coreClient.getAvailableReplicate((String) args[0], (long) args[1]);
+                coreClient.getAvailableReplicate((String) args.get("jwtoken"), (long) args.get("blockNumber"));
 
         ResponseEntity<ContributionAuthorization> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
         if (!isOk(response) || response.getBody() == null) {
@@ -108,11 +111,14 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
-
-        Object[] arguments = new Object[] {loginService.getToken(), chainTaskId, replicateStatusUpdate};
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("jwtoken", loginService.getToken());
+        arguments.put("chainTaskId", chainTaskId);
+        arguments.put("statusUpdate", replicateStatusUpdate);
 
         HttpCall<TaskNotificationType> httpCall = (args) ->
-                coreClient.updateReplicateStatus((String) args[0], (String) args[1], (ReplicateStatusUpdate) args[2]);
+                coreClient.updateReplicateStatus((String) args.get("jwtoken"), (String) args.get("chainTaskId"),
+                        (ReplicateStatusUpdate) args.get("statusUpdate"));
 
         ResponseEntity<TaskNotificationType> response = makeHttpCall(httpCall, arguments, "updateReplicateStatus");
         if (!isOk(response)) {

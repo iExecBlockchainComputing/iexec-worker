@@ -24,7 +24,7 @@ public abstract class BaseFeignClient {
      * This method should be overridden in
      * the subclass to define the login logic.
      */
-    abstract boolean login();
+    abstract String login();
 
     /*
      * Retry configuration values (max attempts, back off delay...) 
@@ -55,8 +55,8 @@ public abstract class BaseFeignClient {
                 log.error("Failed to make http call [action:{}, status:{}, attempt:{}]",
                         action, toHttpStatus(e.status()), attempt);
 
-                if (isUnauthorized(e.status())) {
-                    login();
+                if (isUnauthorized(e.status()) && args != null && args.containsKey("jwtoken")) {
+                    args.put("jwtoken", login()); // login and update token for the next call
                 }
             }
 
