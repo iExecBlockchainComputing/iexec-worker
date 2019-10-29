@@ -30,9 +30,9 @@ public class SconeLasConfiguration {
     private String containerName;
 
     public SconeLasConfiguration(WorkerConfigurationService workerConfigService) {
-        // "wallet-address-iexec-las" as containerName to avoid naming conflict
+        // "iexec-las-0xWalletAddress" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
-        containerName = workerConfigService.getWorkerWalletAddress() + "-iexec-las";
+        containerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
     }
 
     public String getContainerName() {
