@@ -209,6 +209,7 @@ public class ComputationService {
         System.out.println("****** App");
         System.out.println(appExecutionResult.getStdout());
 
+        /*
 
         DockerExecutionConfig signerExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
@@ -239,18 +240,20 @@ public class ComputationService {
         System.out.println("****** Encryption");
         System.out.println(encryptionExecutionResult.getStdout());
 
+        */
+
         DockerExecutionConfig uploaderExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskUploaderContainerName(chainTaskId))
                 //.imageUri("nexus.iex.ec/tee-dropbox-uploader:1.0.0")//TODO: read that from request params or get default
-                .imageUri("nexus.iex.ec/tee-post-compute:1.0.0")//TODO: read that from request params or get default
+                .imageUri("nexus.iex.ec/tee-worker-post-compute:1.0.0")//TODO: read that from request params or get default
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeUploaderEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
                 .isSgx(true)
                 .build();
         DockerExecutionResult uploaderExecutionResult = customDockerClient.execute(uploaderExecutionConfig);
-        if (!encryptionExecutionResult.isSuccess()) {
+        if (!uploaderExecutionResult.isSuccess()) {
             log.error("Failed to upload result [chainTaskId:{}]", chainTaskId);
             return false;
         }
@@ -259,7 +262,7 @@ public class ComputationService {
 
 
         String stdout = appExecutionResult.getStdout()
-                + encryptionExecutionResult.getStdout()
+                //+ encryptionExecutionResult.getStdout()
                 + uploaderExecutionResult.getStdout();
 
 
