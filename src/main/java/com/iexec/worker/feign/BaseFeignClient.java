@@ -1,5 +1,6 @@
 package com.iexec.worker.feign;
 
+import java.util.Map;
 import java.util.function.Function;
 
 import org.springframework.http.HttpStatus;
@@ -17,13 +18,13 @@ public abstract class BaseFeignClient {
      * T: type of the response body. It can be Void.
      * Object[]: array of the call arguments
      */
-    public interface HttpCall<T> extends Function<Object[], ResponseEntity<T>> {}
+    public interface HttpCall<T> extends Function<Map<String, Object>, ResponseEntity<T>> {}
 
     /*
      * This method should be overridden in
      * the subclass to define the login logic.
      */
-    abstract boolean login();
+    abstract String login();
 
     /*
      * Retry configuration values (max attempts, back off delay...) 
@@ -37,11 +38,11 @@ public abstract class BaseFeignClient {
      * the method will retry infinitely until it gets a valid
      * response.
      */
-    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Object[] args, String action) {
+    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Map<String, Object> args, String action) {
         return makeHttpCall(call, args, action, false);
     }
 
-    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Object[] args, String action, boolean infiniteRetry) {
+    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Map<String, Object> args, String action, boolean infiniteRetry) {
         int attempt = 0;
         int status = -1;
 
@@ -54,8 +55,8 @@ public abstract class BaseFeignClient {
                 log.error("Failed to make http call [action:{}, status:{}, attempt:{}]",
                         action, toHttpStatus(e.status()), attempt);
 
-                if (isUnauthorized(e.status())) {
-                    login();
+                if (isUnauthorized(e.status()) && args != null && args.containsKey("jwtoken")) {
+                    args.put("jwtoken", login()); // login and update token for the next call
                 }
             }
 
