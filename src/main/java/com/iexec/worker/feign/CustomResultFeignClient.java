@@ -6,55 +6,45 @@ import com.iexec.worker.feign.client.ResultClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 
 @Service
 public class CustomResultFeignClient extends BaseFeignClient {
 
-    private LoginService loginService;
     private ResultClient resultClient;
 
-    public CustomResultFeignClient(ResultClient resultClient, LoginService loginService) {
-        this.loginService = loginService;
+    public CustomResultFeignClient(ResultClient resultClient) {
         this.resultClient = resultClient;
     }
 
     @Override
-    boolean login() {
-        return loginService.login();
+    String login() {
+        return "";
     }
 
     /*
-     * How does it work?
-     * We create an HttpCall<T>, T being the type of the response
-     * body and it can be Void. We send it along with the arguments
-     * to the generic "makeHttpCall()" method. If the call was
-     * successful, we return a ResponseEntity<T> with the response
-     * body, otherwise, we return a ResponseEntity with call's failure
-     * status.
-     * 
-     * How to pass call args?
-     * We put method arguments in an array of objects Object[] (or
-     * empty array), we pass the array as an argument
-     * to the lambda expression. Inside the lambda expression we 
-     * cast the arguments into their original types required by the
-     * method to be called (this is safe because we already know
-     * the arguments' types).
+     * Please refer to the comment in CustomCoreFeignClient.java
+     * to understand the usage of the generic makeHttpCall() method.
      */
 
     public Optional<Eip712Challenge> getResultChallenge(Integer chainId) {
-        Object[] arguments = new Object[] {chainId};
-        HttpCall<Eip712Challenge> httpCall = (args) -> resultClient.getChallenge((Integer) args[0]);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("chainId", chainId);
+        HttpCall<Eip712Challenge> httpCall = (args) -> resultClient.getChallenge((Integer) args.get("chainId"));
         ResponseEntity<Eip712Challenge> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
         return isOk(response) ? Optional.of(response.getBody()) : Optional.empty();
     }
 
     public String uploadResult(String authorizationToken, ResultModel resultModel) {
-        Object[] arguments = new Object[] {authorizationToken, resultModel};
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("authorizationToken", authorizationToken);
+        arguments.put("resultModel", resultModel);
 
         HttpCall<String> httpCall = (args) ->
-                resultClient.uploadResult((String) args[0], (ResultModel) args[1]);
+                resultClient.uploadResult((String) args.get("authorizationToken"), (ResultModel) args.get("resultModel"));
 
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
         return isOk(response) ? response.getBody() : "";

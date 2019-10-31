@@ -1,6 +1,10 @@
 package com.iexec.worker.feign;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.iexec.common.sms.SmsRequest;
+import com.iexec.common.sms.scone.SconeSecureSessionResponse;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.worker.feign.client.SmsClient;
 import org.springframework.http.ResponseEntity;
@@ -10,42 +14,36 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomSmsFeignClient extends BaseFeignClient {
 
-    private LoginService loginService;
     private SmsClient smsClient;
 
-    public CustomSmsFeignClient(SmsClient smsClient, LoginService loginService) {
-        this.loginService = loginService;
+    public CustomSmsFeignClient(SmsClient smsClient) {
         this.smsClient = smsClient;
     }
 
     @Override
-    boolean login() {
-        return loginService.login();
+    String login() {
+        return "";
     }
 
     /*
-     * How does it work?
-     * We create an HttpCall<T>, T being the type of the response
-     * body and it can be Void. We send it along with the arguments
-     * to the generic "makeHttpCall()" method. If the call was
-     * successful, we return a ResponseEntity<T> with the response
-     * body, otherwise, we return a ResponseEntity with call's failure
-     * status.
-     * 
-     * How to pass call args?
-     * We put method arguments in an array of objects Object[] (or
-     * empty array), we pass the array as an argument
-     * to the lambda expression. Inside the lambda expression we 
-     * cast the arguments into their original types required by the
-     * method to be called (this is safe because we already know
-     * the arguments' types).
+     * Please refer to the comment in CustomCoreFeignClient.java
+     * to understand the usage of the generic makeHttpCall() method.
      */
-
+    
     public SmsSecretResponse getUnTeeSecrets(SmsRequest smsRequest) {
-        return smsClient.getUnTeeSecrets(smsRequest);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("smsRequest", smsRequest);
+        HttpCall<SmsSecretResponse> httpCall = (args) -> smsClient.getUnTeeSecrets((SmsRequest) args.get("smsRequest"));
+        ResponseEntity<SmsSecretResponse> response = makeHttpCall(httpCall, arguments, "getUnTeeSecrets");
+        return isOk(response) ? response.getBody() : null;
     }
 
-    public ResponseEntity<String> generateTeeSession(SmsRequest smsRequest) {
-        return smsClient.generateTeeSession(smsRequest);
+    public String generateTeeSession(SmsRequest smsRequest) {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("smsRequest", smsRequest);
+        HttpCall<String> httpCall = (args) -> smsClient.generateTeeSession((SmsRequest) args.get("smsRequest"));
+        ResponseEntity<String> response =
+                makeHttpCall(httpCall, arguments, "generateTeeSession");
+        return isOk(response) ? response.getBody() : null;
     }
 }

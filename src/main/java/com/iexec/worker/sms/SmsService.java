@@ -113,14 +113,14 @@ public class SmsService {
         String chainTaskId = contributionAuth.getChainTaskId();
         SmsRequest smsRequest = buildSmsRequest(contributionAuth);
 
-        ResponseEntity<String> sessionIdResponse = customSmsFeignClient.generateTeeSession(smsRequest);
+        String sessionId = customSmsFeignClient.generateTeeSession(smsRequest);
 
-        if (sessionIdResponse.getBody() == null) {
+        if (sessionId.isEmpty()) {
             log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
             return "";
         }
 
-        return sessionIdResponse.getBody();
+        return sessionId;
     }
 
     @Recover

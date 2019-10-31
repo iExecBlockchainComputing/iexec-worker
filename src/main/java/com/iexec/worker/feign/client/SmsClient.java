@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface SmsClient {
 
     @PostMapping("/untee/secrets")
-    SmsSecretResponse getUnTeeSecrets(@RequestBody SmsRequest smsRequest) throws FeignException;
+    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestBody SmsRequest smsRequest) throws FeignException;
 
     @PostMapping("/tee/sessions")
     ResponseEntity<String> generateTeeSession(@RequestBody SmsRequest smsRequest) throws FeignException;
