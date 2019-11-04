@@ -61,7 +61,9 @@ dependencies {
     // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
-    compile "org.springframework.boot:spring-boot-starter"
+    compile("org.springframework.boot:spring-boot-starter") {
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging' //required for Graylog
+    }
     compile "org.springframework.boot:spring-boot-starter-web"
     compile "org.springframework.boot:spring-boot-starter-websocket"
     compile "org.springframework.boot:spring-boot-starter-actuator"
@@ -79,6 +81,8 @@ dependencies {
     // Removes 'warning: unknown enum constant When.MAYBE'
     compile 'com.google.code.findbugs:annotations:3.0.1'
 
+    //graylog
+    compile 'biz.paluch.logging:logstash-gelf:1.5.1'
 
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
