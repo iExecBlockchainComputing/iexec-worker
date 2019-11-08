@@ -55,13 +55,13 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     public PublicConfiguration getPublicConfiguration() {
         HttpCall<PublicConfiguration> httpCall = (args) -> coreClient.getPublicConfiguration();
         ResponseEntity<PublicConfiguration> response = makeHttpCall(httpCall, null, "getPublicConfig");
-        return isOk(response) ? response.getBody() : null;
+        return is2xxSuccess(response) ? response.getBody() : null;
     }
 
     public String getCoreVersion() {
         HttpCall<String> httpCall = (args) -> coreClient.getCoreVersion();
         ResponseEntity<String> response = makeHttpCall(httpCall, null, "getCoreVersion");
-        return isOk(response) ? response.getBody() : null;
+        return is2xxSuccess(response) ? response.getBody() : null;
     }
 
     public String ping() {
@@ -69,7 +69,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         arguments.put("jwtoken", loginService.getToken());
         HttpCall<String> httpCall = (args) -> coreClient.ping((String) args.get("jwtoken"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "ping");
-        return isOk(response) && response.getBody() != null ? response.getBody() : "";
+        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
 
     //TODO: Make registerWorker return Worker
@@ -79,7 +79,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         arguments.put("model", model);
         HttpCall<Void> httpCall = (args) -> coreClient.registerWorker((String) args.get("jwtoken"), (WorkerModel) args.get("model"));
         ResponseEntity<Void> response = makeHttpCall(httpCall, arguments, "registerWorker");
-        return isOk(response);
+        return is2xxSuccess(response);
     }
 
     public List<TaskNotification> getMissedTaskNotifications(long lastAvailableBlockNumber) {
@@ -91,7 +91,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
                 coreClient.getMissedTaskNotifications((String) args.get("jwtoken"), (long) args.get("blockNumber"));
 
         ResponseEntity<List<TaskNotification>> response = makeHttpCall(httpCall, arguments, "getMissedNotifications");
-        return isOk(response) ? response.getBody() : Collections.emptyList();
+        return is2xxSuccess(response) ? response.getBody() : Collections.emptyList();
     }
 
     public Optional<ContributionAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
@@ -103,7 +103,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
                 coreClient.getAvailableReplicate((String) args.get("jwtoken"), (long) args.get("blockNumber"));
 
         ResponseEntity<ContributionAuthorization> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
-        if (!isOk(response) || response.getBody() == null) {
+        if (!is2xxSuccess(response) || response.getBody() == null) {
             return Optional.empty();
         }
 
@@ -121,7 +121,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
                         (ReplicateStatusUpdate) args.get("statusUpdate"));
 
         ResponseEntity<TaskNotificationType> response = makeHttpCall(httpCall, arguments, "updateReplicateStatus");
-        if (!isOk(response)) {
+        if (!is2xxSuccess(response)) {
             return null;
         }
 

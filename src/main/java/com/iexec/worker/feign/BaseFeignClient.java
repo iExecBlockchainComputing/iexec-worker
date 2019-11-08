@@ -52,11 +52,10 @@ public abstract class BaseFeignClient {
             } catch (FeignException e) {
                 status = e.status();
 
-                log.error("Failed to make http call [action:{}, status:{}, attempt:{}]",
-                        action, toHttpStatus(e.status()), attempt);
-
-                if (isUnauthorized(e.status()) && args != null && args.containsKey("jwtoken")) {
-                    args.put("jwtoken", login()); // login and update token for the next call
+                if (is4xxClientError(status) && args != null && args.containsKey("jwtoken")) {
+                    // login and update token for the next call
+                    String newJwToken = login();
+                    args.put("jwtoken", newJwToken);
                 }
             }
 
@@ -64,6 +63,8 @@ public abstract class BaseFeignClient {
             sleep(BACK_OFF_DELAY);
         }
 
+        log.error("Failed to make http call [action:{}, status:{}, attempts:{}]",
+                action, toHttpStatus(status), attempt);
         return ResponseEntity.status(status).build();
     }
 
@@ -79,6 +80,15 @@ public abstract class BaseFeignClient {
         return HttpStatus.valueOf(status).toString();
     }
 
+    boolean is2xxSuccess(ResponseEntity<?> response) {
+        int status = response.getStatusCodeValue();
+        return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
+    }
+
+    boolean is4xxClientError(int status) {
+        return HttpStatus.valueOf(status).is4xxClientError();
+    }
+
     private void sleep(int millis) {
         try {
             Thread.sleep(millis);
@@ -86,21 +96,5 @@ public abstract class BaseFeignClient {
             log.error("Error while sleeping");
             e.printStackTrace();
         }
-    }
-
-    boolean isOk(ResponseEntity<?> response) {
-        return isOk(response.getStatusCodeValue());
-    }
-
-    boolean isOk(int status) {
-        return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
-    }
-
-    boolean isUnauthorized(int status) {
-        return status > 0 && HttpStatus.valueOf(status).equals(HttpStatus.UNAUTHORIZED);
-    }
-
-    boolean isForbidden(int status) {
-        return status > 0 && HttpStatus.valueOf(status).equals(HttpStatus.FORBIDDEN);
     }
 }

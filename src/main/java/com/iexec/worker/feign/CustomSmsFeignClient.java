@@ -35,7 +35,7 @@ public class CustomSmsFeignClient extends BaseFeignClient {
         arguments.put("smsRequest", smsRequest);
         HttpCall<SmsSecretResponse> httpCall = (args) -> smsClient.getTaskSecretsFromSms((SmsRequest) args.get("smsRequest"));
         ResponseEntity<SmsSecretResponse> response = makeHttpCall(httpCall, arguments, "getTaskSecretsFromSms");
-        return isOk(response) ? response.getBody() : null;
+        return is2xxSuccess(response) ? response.getBody() : null;
     }
 
     public SconeSecureSessionResponse generateSecureSession(SmsRequest smsRequest) {
@@ -44,6 +44,6 @@ public class CustomSmsFeignClient extends BaseFeignClient {
         HttpCall<SconeSecureSessionResponse> httpCall = (args) -> smsClient.generateSecureSession((SmsRequest) args.get("smsRequest"));
         ResponseEntity<SconeSecureSessionResponse> response = 
                 makeHttpCall(httpCall, arguments, "generateSecureSession");
-        return isOk(response) ? response.getBody() : null;
+        return is2xxSuccess(response) ? response.getBody() : null;
     }
 }
