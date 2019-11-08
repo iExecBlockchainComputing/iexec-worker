@@ -35,7 +35,7 @@ public class CustomResultFeignClient extends BaseFeignClient {
         arguments.put("chainId", chainId);
         HttpCall<Eip712Challenge> httpCall = (args) -> resultClient.getChallenge((Integer) args.get("chainId"));
         ResponseEntity<Eip712Challenge> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
-        return isOk(response) ? Optional.of(response.getBody()) : Optional.empty();
+        return is2xxSuccess(response) ? Optional.of(response.getBody()) : Optional.empty();
     }
 
     public String uploadResult(String authorizationToken, ResultModel resultModel) {
@@ -47,6 +47,6 @@ public class CustomResultFeignClient extends BaseFeignClient {
                 resultClient.uploadResult((String) args.get("authorizationToken"), (ResultModel) args.get("resultModel"));
 
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
-        return isOk(response) ? response.getBody() : "";
+        return is2xxSuccess(response) ? response.getBody() : "";
     }
 }

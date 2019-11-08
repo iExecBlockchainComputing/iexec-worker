@@ -72,7 +72,7 @@ public class LoginService extends BaseFeignClient {
         arguments.put("workerAddress", workerAddress);
         HttpCall<String> httpCall = (args) -> coreClient.getChallenge((String) args.get("workerAddress"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getLoginChallenge");
-        return isOk(response) && response.getBody() != null ? response.getBody() : "";
+        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
 
     private String requestLogin(String workerAddress, Signature signature) {
@@ -81,6 +81,6 @@ public class LoginService extends BaseFeignClient {
         arguments.put("signature", signature);
         HttpCall<String> httpCall = (args) -> coreClient.login((String) args.get("workerAddress"), (Signature) args.get("signature"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "requestLogin");
-        return isOk(response) && response.getBody() != null ? response.getBody() : "";
+        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
 }
