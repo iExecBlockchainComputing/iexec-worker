@@ -20,6 +20,9 @@ public class WorkerConfigurationService {
     @Value("${worker.workerBaseDir}")
     private String workerBaseDir;
 
+    @Value("${worker.gpuEnabled}")
+    private boolean isGpuEnabled;
+
     @Value("${worker.gasPriceMultiplier}")
     private float gasPriceMultiplier;
 
@@ -42,6 +45,10 @@ public class WorkerConfigurationService {
 
     public String getWorkerWalletAddress() {
         return credentialsService.getCredentials().getAddress();
+    }
+
+    public boolean isGpuEnabled() {
+        return isGpuEnabled;
     }
 
     public String getWorkerBaseDir() {

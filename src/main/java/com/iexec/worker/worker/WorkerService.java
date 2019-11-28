@@ -78,6 +78,7 @@ public class WorkerService {
                 .cpuNb(workerConfigService.getNbCPU())
                 .memorySize(workerConfigService.getMemorySize())
                 .teeEnabled(sconeTeeService.isTeeEnabled())
+                .gpuEnabled(workerConfigService.isGpuEnabled())
                 .build();
 
         customCoreFeignClient.registerWorker(model);
