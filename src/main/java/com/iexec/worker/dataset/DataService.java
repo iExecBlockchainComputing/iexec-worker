@@ -55,6 +55,12 @@ public class DataService {
         return true;
     }
 
+    public boolean unzipDownloadedTeeDataset(String chainTaskId, String datasetUri) {
+        String datasetFilename = Paths.get(datasetUri).getFileName().toString();
+        String taskInputDirPath = workerConfigurationService.getTaskInputDir(chainTaskId);
+        return FileHelper.unZipFile(taskInputDirPath + "/" + datasetFilename, taskInputDirPath);
+    }
+
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {
         String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
 
