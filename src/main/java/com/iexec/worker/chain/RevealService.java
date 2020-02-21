@@ -25,7 +25,17 @@ public class RevealService {
         this.web3jService = web3jService;
     }
 
-    public boolean canReveal(String chainTaskId, String determinismHash) {
+    public boolean repeatCanReveal(String chainTaskId, String determinismHash) {
+        return web3jService.repeatCheck(6, 3, "canReveal",
+                this::canReveal, chainTaskId, determinismHash);
+    }
+
+    /*
+     * params: String chainTaskId, String determinismHash
+     * */
+    public boolean canReveal(String... args) {
+        String chainTaskId = args[0];
+        String determinismHash = args[1];
 
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
@@ -49,7 +59,7 @@ public class RevealService {
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
 
-        if (!determinismHash.isEmpty()) {
+        if (!determinismHash.isEmpty()) {//TODO
             isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, determinismHash));
 
             String walletAddress = credentialsService.getCredentials().getAddress();
