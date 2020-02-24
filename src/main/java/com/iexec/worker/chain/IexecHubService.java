@@ -118,7 +118,7 @@ public class IexecHubService extends IexecHubAbstractService {
             return isStatusValidOnChainAfterPendingReceipt(chainTaskId, pretendedStatus, this::isContributionStatusValidOnChain);
         }
 
-        return false;
+        return true;
     }
 
     IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
