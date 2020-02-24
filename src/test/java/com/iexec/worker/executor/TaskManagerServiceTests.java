@@ -184,7 +184,7 @@ public class TaskManagerServiceTests {
 
         when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
         when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
-        when(revealService.canReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
 
         taskManagerService.reveal(CHAIN_TASK_ID, TaskNotificationExtra.builder().blockNumber(consensusBlock).build());

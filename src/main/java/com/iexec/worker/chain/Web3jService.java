@@ -1,10 +1,13 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.Web3jAbstractService;
+import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.function.Function;
 
 @Slf4j
 @Service
