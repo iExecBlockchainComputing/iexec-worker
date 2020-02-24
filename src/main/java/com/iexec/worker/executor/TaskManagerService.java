@@ -272,7 +272,8 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(BLOCK_NOT_REACHED);
         }
 
-        boolean canReveal = revealService.canReveal(chainTaskId, determinismHash);
+        boolean canReveal = revealService.repeatCanReveal(chainTaskId, determinismHash);
+
         if (!canReveal) {
             log.error("Cannot reveal, one or more conditions are not satisfied [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(CANNOT_REVEAL);
