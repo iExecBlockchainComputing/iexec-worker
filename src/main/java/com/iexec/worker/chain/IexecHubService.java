@@ -6,11 +6,13 @@ import com.iexec.common.contract.generated.IexecHubABILegacy;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.RemoteCall;
+import org.web3j.protocol.core.methods.response.BaseEventResponse;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.util.HashMap;
@@ -97,8 +99,7 @@ public class IexecHubService extends IexecHubAbstractService {
             contributeEvent = contributeEvents.get(0);
         }
 
-        if (contributeEvent != null && contributeEvent.log != null &&
-                isStatusValidOnChainAfterPendingReceipt(chainTaskId, CONTRIBUTED, this::isContributionStatusValidOnChain)) {
+        if (isSuccessTx(chainTaskId, contributeEvent, CONTRIBUTED)) {
             log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}, log:{}]",
                     chainTaskId, resultHash, contributeReceipt.getGasUsed(), contributeEvent.log);
             return contributeEvent;
@@ -106,6 +107,18 @@ public class IexecHubService extends IexecHubAbstractService {
 
         log.error("Failed to contribute [chainTaskId:{}]", chainTaskId);
         return null;
+    }
+
+    private boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
+        if (txEvent == null || txEvent.log == null) {
+            return false;
+        }
+
+        if (txEvent.log.getType() == null || txEvent.log.getType().equals(PENDING_RECEIPT_STATUS)) {
+            return isStatusValidOnChainAfterPendingReceipt(chainTaskId, pretendedStatus, this::isContributionStatusValidOnChain);
+        }
+
+        return true;
     }
 
     IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
@@ -142,8 +155,7 @@ public class IexecHubService extends IexecHubAbstractService {
             revealEvent = revealEvents.get(0);
         }
 
-        if (revealEvent != null && revealEvent.log != null &&
-                isStatusValidOnChainAfterPendingReceipt(chainTaskId, REVEALED, this::isContributionStatusValidOnChain)) {
+        if (isSuccessTx(chainTaskId, revealEvent, REVEALED)) {
             log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}, log:{}]",
                     chainTaskId, resultDigest, revealReceipt.getGasUsed(), revealEvent.log);
             return revealEvent;
@@ -189,7 +201,7 @@ public class IexecHubService extends IexecHubAbstractService {
         long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
         long startTime = System.currentTimeMillis();
 
-        for(long duration = 0L; duration < maxWaitingTime; duration = System.currentTimeMillis() - startTime) {
+        for (long duration = 0L; duration < maxWaitingTime; duration = System.currentTimeMillis() - startTime) {
             try {
                 if (booleanBlockchainReadFunction.apply(chainTaskId)) {
                     return true;
@@ -205,16 +217,16 @@ public class IexecHubService extends IexecHubAbstractService {
         return false;
     }
 
-    Boolean isChainTaskActive(String chainTaskId){
+    Boolean isChainTaskActive(String chainTaskId) {
         Optional<ChainTask> chainTask = getChainTask(chainTaskId);
-        if (chainTask.isPresent()){
-            switch (chainTask.get().getStatus()){
+        if (chainTask.isPresent()) {
+            switch (chainTask.get().getStatus()) {
                 case UNSET:
                     break;//Could happen if node not synchronized. Should wait.
                 case ACTIVE:
                     return true;
                 case REVEALING:
-                    return  false;
+                    return false;
                 case COMPLETED:
                     return false;
                 case FAILLED:
@@ -224,16 +236,16 @@ public class IexecHubService extends IexecHubAbstractService {
         return false;
     }
 
-    public Boolean isChainTaskRevealing(String chainTaskId){
+    public Boolean isChainTaskRevealing(String chainTaskId) {
         Optional<ChainTask> chainTask = getChainTask(chainTaskId);
-        if (chainTask.isPresent()){
-            switch (chainTask.get().getStatus()){
+        if (chainTask.isPresent()) {
+            switch (chainTask.get().getStatus()) {
                 case UNSET:
                     break;//Should not happen
                 case ACTIVE:
                     break;//Could happen if node not synchronized. Should wait.
                 case REVEALING:
-                    return  true;
+                    return true;
                 case COMPLETED:
                     return false;
                 case FAILLED:
@@ -248,7 +260,7 @@ public class IexecHubService extends IexecHubAbstractService {
      *
      */
     public void putTaskDescription(TaskDescription taskDescription) {
-        if (taskDescription != null && taskDescription.getChainTaskId() != null){
+        if (taskDescription != null && taskDescription.getChainTaskId() != null) {
             taskDescriptions.putIfAbsent(taskDescription.getChainTaskId(), taskDescription);
             return;
         }
@@ -256,7 +268,7 @@ public class IexecHubService extends IexecHubAbstractService {
     }
 
     public TaskDescription getTaskDescription(String chainTaskId) {
-        if (taskDescriptions.get(chainTaskId) == null){
+        if (taskDescriptions.get(chainTaskId) == null) {
             Optional<TaskDescription> taskDescriptionFromChain = this.getTaskDescriptionFromChain(chainTaskId);
             taskDescriptionFromChain.ifPresent(this::putTaskDescription);
         }
