@@ -30,11 +30,12 @@ public class CustomSmsFeignClient extends BaseFeignClient {
      */
 
     public SmsSecretResponse getUnTeeSecrets(SmsRequest smsRequest) {
+
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("smsRequest", smsRequest);
         HttpCall<SmsSecretResponse> httpCall = (args) -> smsClient.getUnTeeSecrets((SmsRequest) args.get("smsRequest"));
         ResponseEntity<SmsSecretResponse> response = makeHttpCall(httpCall, arguments, "getUnTeeSecrets");
-        return isOk(response) ? response.getBody() : null;
+        return is2xxSuccess(response) ? response.getBody() : null;
     }
 
     public String generateTeeSession(SmsRequest smsRequest) {
@@ -43,6 +44,6 @@ public class CustomSmsFeignClient extends BaseFeignClient {
         HttpCall<String> httpCall = (args) -> smsClient.generateTeeSession((SmsRequest) args.get("smsRequest"));
         ResponseEntity<String> response =
                 makeHttpCall(httpCall, arguments, "generateTeeSession");
-        return isOk(response) ? response.getBody() : null;
+        return is2xxSuccess(response) ? response.getBody() : null;
     }
 }
