@@ -1,7 +1,7 @@
 package com.iexec.worker.dataset;
 
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -53,6 +53,12 @@ public class DataService {
             }
         }
         return true;
+    }
+
+    public boolean unzipDownloadedTeeDataset(String chainTaskId, String datasetUri) {
+        String datasetFilename = Paths.get(datasetUri).getFileName().toString();
+        String taskInputDirPath = workerConfigurationService.getTaskInputDir(chainTaskId);
+        return FileHelper.unZipFile(taskInputDirPath + "/" + datasetFilename, taskInputDirPath);
     }
 
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {

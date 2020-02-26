@@ -4,13 +4,14 @@ import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.sms.secrets.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-import com.iexec.worker.utils.FileHelper;
+
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -59,7 +60,7 @@ public class ComputationService {
     }
 
     public boolean isValidAppType(String chainTaskId, DappType type) {
-        if (type.equals(DappType.DOCKER)){
+        if (type.equals(DappType.DOCKER)) {
             return true;
         }
 
@@ -70,7 +71,7 @@ public class ComputationService {
 
     public boolean downloadApp(String chainTaskId, TaskDescription taskDescription) {
         boolean isValidAppType = isValidAppType(chainTaskId, taskDescription.getAppType());
-        if (!isValidAppType){
+        if (!isValidAppType) {
             return false;
         }
 
@@ -151,10 +152,10 @@ public class ComputationService {
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
 
-        String fspfFolderPath = workerConfigService.getTaskSconeDir(chainTaskId);
-        String beneficiaryKeyFolderPath = workerConfigService.getTaskIexecOutDir(chainTaskId);
-        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth,
-                fspfFolderPath, beneficiaryKeyFolderPath);
+
+        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+
+        log.info("Secure session created [chainTaskId:{}, secureSessionId:{}]", chainTaskId, secureSessionId);
 
         if (secureSessionId.isEmpty()) {
             String msg = "Could not generate scone secure session for tee computation";
@@ -163,22 +164,21 @@ public class ComputationService {
         }
 
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
-                publicConfigService.getSconeCasURL());
-        ArrayList<String> sconeEncrypterEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/encryption",
-                publicConfigService.getSconeCasURL());
+                publicConfigService.getSconeCasURL(), "1G");
+        ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
+                publicConfigService.getSconeCasURL(), "3G");
 
-        if (sconeAppEnv.isEmpty() || sconeEncrypterEnv.isEmpty()) {
+        if (sconeAppEnv.isEmpty()) {
             log.error("Could not create scone docker environment [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-        for(String envVar : getContainerEnvVariables(datasetFilename, taskDescription)){
+        for (String envVar : getContainerEnvVariables(datasetFilename, taskDescription)) {
             sconeAppEnv.add(envVar);
-            sconeEncrypterEnv.add(envVar);
         }
 
-        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+        DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(imageUri)
@@ -190,33 +190,48 @@ public class ComputationService {
                 .build();
 
         // run computation
-        DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
+
         if (shouldPrintDeveloperLogs(taskDescription)){
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }
+
         if (!appExecutionResult.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        // encrypt result
-        dockerExecutionConfig.setEnv(sconeEncrypterEnv);
-        DockerExecutionResult encryptionExecutionResult = customDockerClient.execute(dockerExecutionConfig);
-        if (shouldPrintDeveloperLogs(taskDescription)){
-            log.info("Developer logs of encryption stage [chainTaskId:{}, logs:{}]", chainTaskId,
-                    getDockerExecutionDeveloperLogs(chainTaskId, encryptionExecutionResult));
-        }
-        if (!encryptionExecutionResult.isSuccess()) {
-            log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
+        //TODO: Remove logs before merge
+        System.out.println("****** App");
+        System.out.println(appExecutionResult.getStdout());
+
+        DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
+                .chainTaskId(chainTaskId)
+                .containerName(getTaskTeePostComputeContainerName(chainTaskId))
+                .imageUri("nexus.iex.ec/tee-worker-post-compute:1.0.0")//TODO: read that from request params or get default
+                .maxExecutionTime(maxExecutionTime)
+                .env(sconeUploaderEnv)
+                .bindPaths(getSconeBindPaths(chainTaskId))
+                .isSgx(true)
+                .build();
+        DockerExecutionResult teePostComputeExecutionResult = customDockerClient.execute(teePostComputeExecutionConfig);
+        if (!teePostComputeExecutionResult.isSuccess()) {
+            log.error("Failed to process post-compute on result [chainTaskId:{}]", chainTaskId);
             return false;
         }
+        System.out.println("****** Tee post-compute");
+        System.out.println(teePostComputeExecutionResult.getStdout());
 
-        String stdout = appExecutionResult.getStdout() + encryptionExecutionResult.getStdout();
+
+        String stdout = appExecutionResult.getStdout()
+                + teePostComputeExecutionResult.getStdout();
+
+
         return resultService.saveResult(chainTaskId, taskDescription, stdout);
     }
 
-    private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription){
+    private List<String> getContainerEnvVariables(String datasetFilename, TaskDescription taskDescription) {
         List<String> list = new ArrayList<>();
         list.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
         list.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
@@ -226,7 +241,7 @@ public class ComputationService {
         list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + nbFiles);
 
         int inputFileIndex = 1;
-        for(String inputFile : taskDescription.getInputFiles()) {
+        for (String inputFile : taskDescription.getInputFiles()) {
             list.add(IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX + inputFileIndex + "=" + FilenameUtils.getName(inputFile));
             inputFileIndex++;
         }
@@ -254,6 +269,14 @@ public class ComputationService {
     // Exp: integration tests
     private String getTaskContainerName(String chainTaskId) {
         return workerConfigService.getWorkerName() + "-" + chainTaskId;
+    }
+
+    private String getSignerTaskContainerName(String chainTaskId) {
+        return getTaskContainerName(chainTaskId) + "-signer";
+    }
+
+    private String getTaskTeePostComputeContainerName(String chainTaskId) {
+        return getTaskContainerName(chainTaskId) + "-tee-post-compute";
     }
 
     private boolean shouldPrintDeveloperLogs(TaskDescription taskDescription) {

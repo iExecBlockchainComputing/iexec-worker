@@ -8,6 +8,7 @@ import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
@@ -18,7 +19,6 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
@@ -200,7 +200,7 @@ public class TaskManagerServiceTests {
                 .build();
 
         when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
         when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
@@ -217,7 +217,7 @@ public class TaskManagerServiceTests {
 
         when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
         when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
         when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
@@ -232,7 +232,7 @@ public class TaskManagerServiceTests {
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
 
-        verify(resultService, never()).uploadResult(CHAIN_TASK_ID);
+        verify(resultService, never()).uploadResultAndGetLink(CHAIN_TASK_ID);
     }
 
 
@@ -246,46 +246,46 @@ public class TaskManagerServiceTests {
         when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(false);
 
         Optional<Signature> sign =
-                taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, NO_TEE_ENCLAVE_CHALLENGE);
+                taskManagerService.getVerifiedEnclaveChallengeSignature(CHAIN_TASK_ID, NO_TEE_ENCLAVE_CHALLENGE);
         assertThat(sign.get()).isEqualTo(SignatureUtils.emptySignature());
     }
 
     @Test
     public void shouldGetTeeVerifiedEnclaveSignature() {
-        SconeEnclaveSignatureFile sconeFile = SconeEnclaveSignatureFile.builder()
-                .signature("signature")
+        TeeEnclaveChallengeSignature sconeFile = TeeEnclaveChallengeSignature.builder()
+                .signature(new Signature())
                 .resultHash("resultHash")
-                .resultSalt("resultSalt")
+                .resultSeal("resultSalt")
                 .build();
 
-        Signature expectedSign = new Signature(sconeFile.getSignature());
+        Signature expectedSign = sconeFile.getSignature();
 
         when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.readSconeEnclaveSignatureFile(CHAIN_TASK_ID))
+        when(resultService.readTeeEnclaveChallengeSignatureFile(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(sconeFile));
-        when(sconeTeeService.isEnclaveSignatureValid(any(), any(), any(), any())).thenReturn(true);
+        when(resultService.isExpectedSignerOnSignature(any(), any(), any())).thenReturn(true);
 
         Optional<Signature> oSign =
-                taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, TEE_ENCLAVE_CHALLENGE);
+                taskManagerService.getVerifiedEnclaveChallengeSignature(CHAIN_TASK_ID, TEE_ENCLAVE_CHALLENGE);
         assertThat(oSign.get()).isEqualTo(expectedSign);
     }
 
     @Test
     public void shouldNotGetTeeEnclaveSignatureSinceNotValid() {
         String enclaveChallenge = "dummyEnclaveChallenge";
-        SconeEnclaveSignatureFile sconeFile = SconeEnclaveSignatureFile.builder()
-                .signature("signature")
+        TeeEnclaveChallengeSignature sconeFile = TeeEnclaveChallengeSignature.builder()
+                .signature(new Signature())
                 .resultHash("resultHash")
-                .resultSalt("resultSalt")
+                .resultSeal("resultSalt")
                 .build();
 
         when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.readSconeEnclaveSignatureFile(CHAIN_TASK_ID))
+        when(resultService.readTeeEnclaveChallengeSignatureFile(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(sconeFile));
-        when(sconeTeeService.isEnclaveSignatureValid(any(), any(), any(), any())).thenReturn(false);
+        when(resultService.isExpectedSignerOnSignature(any(), any(), any())).thenReturn(false);
 
         Optional<Signature> oSign =
-                taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, enclaveChallenge);
+                taskManagerService.getVerifiedEnclaveChallengeSignature(CHAIN_TASK_ID, enclaveChallenge);
         assertThat(oSign.isPresent()).isFalse();
     }
 

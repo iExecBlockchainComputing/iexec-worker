@@ -1,15 +1,11 @@
 package com.iexec.worker.tee.scone;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Optional;
 
 import javax.annotation.PreDestroy;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
@@ -18,7 +14,6 @@ import com.iexec.worker.docker.DockerExecutionConfig;
 import com.iexec.worker.docker.DockerExecutionResult;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.stereotype.Service;
 
@@ -83,44 +78,23 @@ public class SconeTeeService {
         return true;
     }
 
-    public String createSconeSecureSession(ContributionAuthorization contributionAuth,
-                                           String fspfFolderPath,
-                                           String beneficiaryKeyFolderPath) {
-
-        String chainTaskId = contributionAuth.getChainTaskId();
-        String fspfFilePath = fspfFolderPath + File.separator + FSPF_FILENAME;
-        String beneficiaryKeyFilePath = beneficiaryKeyFolderPath + File.separator + BENEFICIARY_KEY_FILENAME;
+    public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
 
         // generate secure session
-        Optional<SconeSecureSession> oSconeSecureSession = smsService.getSconeSecureSession(contributionAuth);
-        if (!oSconeSecureSession.isPresent()) {
-            return "";
-        }
-
-        SconeSecureSession sconeSecureSession = oSconeSecureSession.get();
-
-        byte[] fspfBytes = Base64.getDecoder().decode(sconeSecureSession.getSconeVolumeFspf());
-        String sessionId = sconeSecureSession.getSessionId();
-        String beneficiaryKey = sconeSecureSession.getBeneficiaryKey();
-
-        File fspfFile = FileHelper.createFileWithContent(fspfFilePath, fspfBytes);
-        File keyFile =  FileHelper.createFileWithContent(beneficiaryKeyFilePath,beneficiaryKey);
-
-        if (!fspfFile.exists() || !keyFile.exists()) {
-            log.error("Problem writing scone secure session files "
-                    + "[chainTaskId:{}, sessionId:{}, fspfFileExists:{}, keyFileExists:{}]",
-                    chainTaskId, sessionId, fspfFile.exists(), keyFile.exists());
+        String sessionId = smsService.getSconeSecureSession(contributionAuth);
+        if (sessionId.isEmpty()) {
             return "";
         }
 
         return sessionId;
     }
 
-    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl) {
+    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(sconeCasUrl)
                 .sconeConfigId(sconeConfigId)
+                .sconeHeap(sconeHeap)
                 .build();
 
         return sconeConfig.toDockerEnv();
