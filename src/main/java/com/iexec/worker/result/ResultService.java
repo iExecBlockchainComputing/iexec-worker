@@ -384,8 +384,9 @@ public class ResultService {
             String resultStorageProvider = iexecHubService.getTaskDescription(chainTaskId).getResultStorageProvider();
             String requester = iexecHubService.getTaskDescription(chainTaskId).getRequester();
             if (resultStorageProvider == null || resultStorageProvider.isEmpty()){
-                resultStorageProvider = "dropbox";
+                resultStorageProvider = "ipfs";
             }
+            //TODO Get link
             return String.format("{" +
                     "\"resultStorageProvider\":\"%s\", " +
                     "\"resultStoragePrivateSpaceOwner\":\"%s\", " +
@@ -393,7 +394,12 @@ public class ResultService {
                     "}", resultStorageProvider, requester , chainTaskId);
         }
 
+        String authorizationToken = getIexecUploadToken();
 
+        return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+    }
+
+    public String getIexecUploadToken() {
         Integer chainId = publicConfigService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
@@ -410,8 +416,7 @@ public class ResultService {
         if (authorizationToken.isEmpty()) {
             return "";
         }
-
-        return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+        return authorizationToken;
     }
 
 
