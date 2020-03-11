@@ -209,7 +209,7 @@ public class ComputationService {
         DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskTeePostComputeContainerName(chainTaskId))
-                .imageUri("nexus.iex.ec/tee-worker-post-compute:1.0.0")//TODO: read that from request params or get default
+                .imageUri("nexus.iex.ec/tee-worker-post-compute:1.0.1-SNAPSHOT")//TODO: read that from request params or get default
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeUploaderEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
