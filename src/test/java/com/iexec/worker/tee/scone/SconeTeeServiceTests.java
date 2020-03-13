@@ -70,15 +70,11 @@ public class SconeTeeServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
 
-        when(smsService.getSconeSecureSession(contributionAuth)).thenReturn(Optional.of(session));
+        when(smsService.getSconeSecureSession(contributionAuth)).thenReturn(sessionId);
 
-        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth, tmpFolderPath, tmpFolderPath);
-        List<String> lines = Files.readAllLines(Paths.get(keyFilePath));
+        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
 
-        assertThat(new File(fspfFilePath)).exists();
-        assertThat(new File(keyFilePath)).exists();
         assertThat(returnedSessionId).isEqualTo(sessionId);
-        assertThat(lines.get(0)).isEqualTo(beneficiaryKey);
     }
 
     @Test
@@ -93,12 +89,10 @@ public class SconeTeeServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
 
-        when(smsService.getSconeSecureSession(contributionAuth)).thenReturn(Optional.empty());
+        when(smsService.getSconeSecureSession(contributionAuth)).thenReturn("");
 
-        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth, tmpFolderPath, tmpFolderPath);
-
-        assertThat(new File(fspfFilePath)).doesNotExist();
-        assertThat(new File(keyFilePath)).doesNotExist();
+        String returnedSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+        
         assertThat(returnedSessionId).isEmpty();
     }
 

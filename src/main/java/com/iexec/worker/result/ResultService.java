@@ -4,15 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
+import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
-import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
-import com.iexec.worker.utils.FileHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.utils.BytesUtils.bytesToString;
-import static com.iexec.worker.utils.FileHelper.createFileWithContent;
+import static com.iexec.common.utils.FileHelper.createFileWithContent;
+import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
 
 @Slf4j
 @Service
@@ -240,21 +242,21 @@ public class ResultService {
     }
 
     private String getTeeDeterminismHash(String chainTaskId) {
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                readSconeEnclaveSignatureFile(chainTaskId);
+        Optional<TeeEnclaveChallengeSignature> enclaveChallengeSignature =
+                readTeeEnclaveChallengeSignatureFile(chainTaskId);
 
-        if (!oSconeEnclaveSignatureFile.isPresent()) {
+        if (!enclaveChallengeSignature.isPresent()) {
             log.error("Could not get TEE determinism hash [chainTaskId:{}]", chainTaskId);
             return "";
         }
 
-        String hash = oSconeEnclaveSignatureFile.get().getResult();
+        String hash = enclaveChallengeSignature.get().getResultDigest();
         log.info("Enclave signature file found, result hash retrieved successfully "
                 + "[chainTaskId:{}, hash:{}]", chainTaskId, hash);
         return hash;
     }
 
-    public Optional<SconeEnclaveSignatureFile> readSconeEnclaveSignatureFile(String chainTaskId) {
+    public Optional<TeeEnclaveChallengeSignature> readTeeEnclaveChallengeSignatureFile(String chainTaskId) {
         String enclaveSignatureFilePath = workerConfigService.getTaskIexecOutDir(chainTaskId)
                 + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
 
@@ -267,24 +269,30 @@ public class ResultService {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = null;
+        TeeEnclaveChallengeSignature enclaveChallengeSignature = null;
         try {
-            sconeEnclaveSignatureFile = mapper.readValue(enclaveSignatureFile, SconeEnclaveSignatureFile.class);
+            enclaveChallengeSignature = mapper.readValue(enclaveSignatureFile, TeeEnclaveChallengeSignature.class);
         } catch (IOException e) {
             log.error("File enclaveSig.iexec found but failed to parse it [chainTaskId:{}]", chainTaskId);
             e.printStackTrace();
             return Optional.empty();
         }
 
-        if (sconeEnclaveSignatureFile == null) {
+        if (enclaveChallengeSignature == null) {
             log.error("File enclaveSig.iexec found but was parsed to null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
 
-        log.debug("Content of enclaveSig.iexec file [chainTaskId:{}, sconeEnclaveSignatureFile:{}]",
-                chainTaskId, sconeEnclaveSignatureFile);
+        log.debug("Content of enclaveSig.iexec file [chainTaskId:{}, enclaveChallengeSignature:{}]",
+                chainTaskId, enclaveChallengeSignature);
 
-        return Optional.of(sconeEnclaveSignatureFile);
+        return Optional.of(enclaveChallengeSignature);
+    }
+
+    public boolean isExpectedSignerOnSignature(String messageHash, Signature signature, String expectedSigner) {
+        return isExpectedSignerOnSignedMessageHash(messageHash,
+                signature,
+                expectedSigner);
     }
 
     public String getCallbackDataFromFile(String chainTaskId) {
@@ -370,7 +378,28 @@ public class ResultService {
         }
     }
 
-    public String uploadResult(String chainTaskId) {
+    public String uploadResultAndGetLink(String chainTaskId) {
+
+        if (iexecHubService.isTeeTask(chainTaskId)){//result is already uploaded
+            String resultStorageProvider = iexecHubService.getTaskDescription(chainTaskId).getResultStorageProvider();
+            String requester = iexecHubService.getTaskDescription(chainTaskId).getRequester();
+            if (resultStorageProvider == null || resultStorageProvider.isEmpty()){
+                resultStorageProvider = "ipfs";
+            }
+            //TODO Get link
+            return String.format("{" +
+                    "\"resultStorageProvider\":\"%s\", " +
+                    "\"resultStoragePrivateSpaceOwner\":\"%s\", " +
+                    "\"taskId\":\"%s\"" +
+                    "}", resultStorageProvider, requester , chainTaskId);
+        }
+
+        String authorizationToken = getIexecUploadToken();
+
+        return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+    }
+
+    public String getIexecUploadToken() {
         Integer chainId = publicConfigService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
@@ -387,8 +416,7 @@ public class ResultService {
         if (authorizationToken.isEmpty()) {
             return "";
         }
-
-        return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+        return authorizationToken;
     }
 
 

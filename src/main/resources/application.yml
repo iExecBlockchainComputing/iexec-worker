@@ -30,7 +30,7 @@ wallet:
 scone:
   las:
     image: ${IEXEC_LAS_IMAGE:nexus.iex.ec/iexec-las}
-    version: ${IEXEC_LAS_VERSION:0.0.1}
+    version: ${IEXEC_LAS_VERSION:sdk2.5}
     port: ${IEXEC_LAS_PORT:18766}
 
 decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}

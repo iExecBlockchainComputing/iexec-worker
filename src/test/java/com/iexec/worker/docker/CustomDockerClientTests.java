@@ -1,7 +1,7 @@
 package com.iexec.worker.docker;
 
 import com.google.common.collect.ImmutableList;
-import com.iexec.worker.utils.FileHelper;
+import com.iexec.common.utils.FileHelper;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.Device;
 

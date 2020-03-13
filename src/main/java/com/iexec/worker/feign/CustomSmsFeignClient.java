@@ -1,14 +1,13 @@
 package com.iexec.worker.feign;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.iexec.common.sms.SmsRequest;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.worker.feign.client.SmsClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Service
@@ -30,20 +29,21 @@ public class CustomSmsFeignClient extends BaseFeignClient {
      * to understand the usage of the generic makeHttpCall() method.
      */
 
-    public SmsSecretResponse getTaskSecretsFromSms(SmsRequest smsRequest) {
+    public SmsSecretResponse getUnTeeSecrets(SmsRequest smsRequest) {
+
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("smsRequest", smsRequest);
-        HttpCall<SmsSecretResponse> httpCall = (args) -> smsClient.getTaskSecretsFromSms((SmsRequest) args.get("smsRequest"));
-        ResponseEntity<SmsSecretResponse> response = makeHttpCall(httpCall, arguments, "getTaskSecretsFromSms");
+        HttpCall<SmsSecretResponse> httpCall = (args) -> smsClient.getUnTeeSecrets((SmsRequest) args.get("smsRequest"));
+        ResponseEntity<SmsSecretResponse> response = makeHttpCall(httpCall, arguments, "getUnTeeSecrets");
         return is2xxSuccess(response) ? response.getBody() : null;
     }
 
-    public SconeSecureSessionResponse generateSecureSession(SmsRequest smsRequest) {
+    public String generateTeeSession(SmsRequest smsRequest) {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("smsRequest", smsRequest);
-        HttpCall<SconeSecureSessionResponse> httpCall = (args) -> smsClient.generateSecureSession((SmsRequest) args.get("smsRequest"));
-        ResponseEntity<SconeSecureSessionResponse> response = 
-                makeHttpCall(httpCall, arguments, "generateSecureSession");
+        HttpCall<String> httpCall = (args) -> smsClient.generateTeeSession((SmsRequest) args.get("smsRequest"));
+        ResponseEntity<String> response =
+                makeHttpCall(httpCall, arguments, "generateTeeSession");
         return is2xxSuccess(response) ? response.getBody() : null;
     }
 }

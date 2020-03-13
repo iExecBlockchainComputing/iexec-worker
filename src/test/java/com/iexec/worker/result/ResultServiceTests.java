@@ -1,10 +1,10 @@
 package com.iexec.worker.result;
 
+import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -61,8 +61,8 @@ public class ResultServiceTests {
         assertThat(hash).isNotEqualTo("dummyRandomString");
     }
 
-    @Test
-    public void shouldReadSconeEnclaveSignatureFile(){
+    //@Test: TODO Update that
+    public void shouldReadTeeEnclaveChalengeSignatureFile(){
         String chainTaskId = "scone-tee";
         String expectedResult = "0xc746143d64ef1a1f9e280cee70e2866daad3116bfe0e7028a53e500b2c92a6d6";
         String expectedHash = "0x5ade3c39f9e83db590cbcb03fee7e0ba6c533fa3fb4e72f9320c3e641e38c31e";
@@ -73,16 +73,16 @@ public class ResultServiceTests {
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
 
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                resultService.readSconeEnclaveSignatureFile(chainTaskId);
+        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
+                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
 
-        assertThat(oSconeEnclaveSignatureFile.isPresent()).isTrue();
-        SconeEnclaveSignatureFile enclaveSignatureFile = oSconeEnclaveSignatureFile.get();
+        assertThat(optionalTeeEnclaveChallengeSignature.isPresent()).isTrue();
+        TeeEnclaveChallengeSignature enclaveChallengeSignature = optionalTeeEnclaveChallengeSignature.get();
 
-        assertThat(enclaveSignatureFile.getResult()).isEqualTo(expectedResult);
-        assertThat(enclaveSignatureFile.getResultHash()).isEqualTo(expectedHash);
-        assertThat(enclaveSignatureFile.getResultSalt()).isEqualTo(expectedSeal);
-        assertThat(enclaveSignatureFile.getSignature()).isEqualTo(expectedSign);
+        assertThat(enclaveChallengeSignature.getResultDigest()).isEqualTo(expectedResult);
+        assertThat(enclaveChallengeSignature.getResultHash()).isEqualTo(expectedHash);
+        assertThat(enclaveChallengeSignature.getResultSeal()).isEqualTo(expectedSeal);
+        assertThat(enclaveChallengeSignature.getSignature()).isEqualTo(expectedSign);
     }
 
     @Test
@@ -93,10 +93,10 @@ public class ResultServiceTests {
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
 
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                resultService.readSconeEnclaveSignatureFile(chainTaskId);
+        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
+                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
 
-        assertThat(oSconeEnclaveSignatureFile.isPresent()).isFalse();
+        assertThat(optionalTeeEnclaveChallengeSignature.isPresent()).isFalse();
     }
 
     @Test
@@ -107,10 +107,10 @@ public class ResultServiceTests {
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/fakeFolder");
 
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                resultService.readSconeEnclaveSignatureFile(chainTaskId);
+        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
+                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
 
-        assertThat(oSconeEnclaveSignatureFile.isPresent()).isFalse();
+        assertThat(optionalTeeEnclaveChallengeSignature.isPresent()).isFalse();
     }
 
     @Test
