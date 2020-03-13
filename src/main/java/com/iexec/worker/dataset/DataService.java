@@ -56,6 +56,10 @@ public class DataService {
     }
 
     public boolean unzipDownloadedTeeDataset(String chainTaskId, String datasetUri) {
+        if (datasetUri.isEmpty()){
+            log.info("Failed to unzipDownloadedTeeDataset (empty datasetUri) [chainTaskId:{}, datasetUri:{}]", chainTaskId, datasetUri);
+            return false;
+        }
         String datasetFilename = Paths.get(datasetUri).getFileName().toString();
         String taskInputDirPath = workerConfigurationService.getTaskInputDir(chainTaskId);
         return FileHelper.unZipFile(taskInputDirPath + "/" + datasetFilename, taskInputDirPath);
