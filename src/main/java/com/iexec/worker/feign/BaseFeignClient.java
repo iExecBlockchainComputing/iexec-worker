@@ -86,7 +86,7 @@ public abstract class BaseFeignClient {
     }
 
     boolean is4xxClientError(int status) {
-        return HttpStatus.valueOf(status).is4xxClientError();
+        return status > 0 && HttpStatus.valueOf(status).is4xxClientError();
     }
 
     private void sleep(int millis) {
