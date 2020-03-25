@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.iexec.common.utils.BytesUtils.bytesToString;
 import static com.iexec.common.utils.FileHelper.createFileWithContent;
 import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
+import static com.iexec.common.worker.result.ResultUtils.getCallbackDataFromPath;
 
 @Slf4j
 @Service
@@ -296,28 +297,17 @@ public class ResultService {
     }
 
     public String getCallbackDataFromFile(String chainTaskId) {
-        String hexaString = "";
-        try {
-            String callbackFilePathName = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                    + File.separator + CALLBACK_FILE_NAME;
+        String callbackFilePathName = workerConfigService.getTaskIexecOutDir(chainTaskId)
+                + File.separator + CALLBACK_FILE_NAME;
 
-            Path callbackFilePath = Paths.get(callbackFilePathName);
-
-            if (callbackFilePath.toFile().exists()) {
-                byte[] callbackFileBytes = Files.readAllBytes(callbackFilePath);
-                hexaString = new String(callbackFileBytes);
-                boolean isHexaString = BytesUtils.isHexaString(hexaString);
-                log.info("Callback file exists [chainTaskId:{}, hexaString:{}, isHexaString:{}]", chainTaskId, hexaString, isHexaString);
-                return isHexaString ? hexaString : "";
-            } else {
-                log.info("No callback file [chainTaskId:{}]", chainTaskId);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            log.error("Failed to getCallbackDataFromFile [chainTaskId:{}]", chainTaskId);
+        String callbackData = getCallbackDataFromPath(callbackFilePathName);
+        if (!callbackData.isEmpty()){
+            log.info("Callback file exists [chainTaskId:{}, callbackFilePathName:{}]", chainTaskId, callbackFilePathName);
+        } else {
+            log.info("No callback file [chainTaskId:{}, callbackFilePathName:{}]", chainTaskId, callbackFilePathName);
         }
 
-        return hexaString;
+        return callbackData;
     }
 
     public boolean isResultEncryptionNeeded(String chainTaskId) {
