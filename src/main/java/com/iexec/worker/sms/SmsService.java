@@ -124,11 +124,11 @@ public class SmsService {
     }
 
     @Recover
-    private Optional<SconeSecureSession> getSconeSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
+    private String getSconeSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
         log.error("Failed to generate secure session [chainTaskId:{}, attempts:3]",
                 contributionAuth.getChainTaskId());
         e.printStackTrace();
-        return Optional.empty();
+        return "";
     }
 
     public SmsRequest buildSmsRequest(ContributionAuthorization contributionAuth) {
