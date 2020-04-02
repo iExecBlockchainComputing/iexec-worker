@@ -151,6 +151,7 @@ public class ComputationService {
         String datasetUri = taskDescription.getDatasetUri();
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
+        String teePostComputeImage = taskDescription.getTeePostComputeImage();
 
 
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
@@ -209,7 +210,7 @@ public class ComputationService {
         DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskTeePostComputeContainerName(chainTaskId))
-                .imageUri("nexus.iex.ec/tee-worker-post-compute:1.0.1-SNAPSHOT")//TODO: read that from request params or get default
+                .imageUri(teePostComputeImage)
                 .maxExecutionTime(maxExecutionTime)
                 .env(sconeUploaderEnv)
                 .bindPaths(getSconeBindPaths(chainTaskId))
