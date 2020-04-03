@@ -106,7 +106,7 @@ public class TaskNotificationService {
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED, actionResponse.getDetails());
                 } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTE_FAILED, actionResponse.getDetails());
                 }
                 break;
             case PLEASE_CONTRIBUTE:
