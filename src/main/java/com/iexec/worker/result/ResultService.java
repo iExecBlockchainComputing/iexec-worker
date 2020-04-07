@@ -390,6 +390,7 @@ public class ResultService {
             return "";
         }
 
+        log.info("Got upload authorization token [chainTaskId:{}]", chainTaskId);
         return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
     }
 

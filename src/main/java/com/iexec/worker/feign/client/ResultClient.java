@@ -23,7 +23,7 @@ public interface ResultClient {
                                           @RequestBody String signedEip712Challenge) throws FeignException;
 
     @PostMapping("/results")
-    ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String customToken,
+    ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String authorizationToken,
                                         @RequestBody ResultModel resultModel);
 
 }
