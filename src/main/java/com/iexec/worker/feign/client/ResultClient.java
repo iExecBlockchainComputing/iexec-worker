@@ -18,8 +18,12 @@ public interface ResultClient {
     @GetMapping("/results/challenge")
     ResponseEntity<Eip712Challenge> getChallenge(@RequestParam(name = "chainId") Integer chainId) throws FeignException;
 
+    @GetMapping("/results/login")
+    ResponseEntity<String> login(@RequestParam(name = "chainId") Integer chainId,
+                                          @RequestBody String signedEip712Challenge) throws FeignException;
+
     @PostMapping("/results")
-    ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String customToken,
+    ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String authorizationToken,
                                         @RequestBody ResultModel resultModel);
 
 }

@@ -385,11 +385,17 @@ public class ResultService {
         }
 
         String authorizationToken = getIexecUploadToken();
+        if (authorizationToken.isEmpty()) {
+            log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
+            return "";
+        }
 
+        log.info("Got upload authorization token [chainTaskId:{}]", chainTaskId);
         return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
     }
 
     public String getIexecUploadToken() {
+        // get challenge
         Integer chainId = publicConfigService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
@@ -399,16 +405,18 @@ public class ResultService {
 
         Eip712Challenge eip712Challenge = oEip712Challenge.get();
 
+        // sign challenge
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String authorizationToken = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+        String signedEip712Challenge = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
                 workerConfigService.getWorkerWalletAddress(), ecKeyPair);
 
-        if (authorizationToken.isEmpty()) {
+        if (signedEip712Challenge.isEmpty()) {
             return "";
         }
-        return authorizationToken;
-    }
 
+        // login
+        return customResultFeignClient.login(chainId, signedEip712Challenge);
+    }
 
     public boolean isResultAvailable(String chainTaskId) {
         boolean isResultZipFound = isResultZipFound(chainTaskId);
