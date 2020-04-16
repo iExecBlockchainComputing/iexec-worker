@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import javax.annotation.PreDestroy;
 
-import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
@@ -13,7 +12,6 @@ import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.DockerExecutionConfig;
 import com.iexec.worker.docker.DockerExecutionResult;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.sms.SmsService;
 
 import org.springframework.stereotype.Service;
 
@@ -24,27 +22,15 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SconeTeeService {
 
-    // metadata file used by scone enclave. It contains the hash and encryption key
-    // for each file in the protected filesystem regions.
-    private static final String FSPF_FILENAME = "volume.fspf";
-
-    // beneficiary public key used when encrypting result
-    private static final String BENEFICIARY_KEY_FILENAME = "public.key";
-
-    private boolean isLasStarted;
-
     private SconeLasConfiguration sconeLasConfig;
     private CustomDockerClient customDockerClient;
-    private SmsService smsService;
+    private boolean isLasStarted;
 
     public SconeTeeService(SconeLasConfiguration sconeLasConfig,
                            CustomDockerClient customDockerClient,
-                           SgxService sgxService,
-                           SmsService smsService) {
-
+                           SgxService sgxService) {
         this.sconeLasConfig = sconeLasConfig;
         this.customDockerClient = customDockerClient;
-        this.smsService = smsService;
         isLasStarted = sgxService.isSgxEnabled() ? startLasService() : false;
     }
 
@@ -78,17 +64,6 @@ public class SconeTeeService {
         return true;
     }
 
-    public String createSconeSecureSession(ContributionAuthorization contributionAuth) {
-
-        // generate secure session
-        String sessionId = smsService.getSconeSecureSession(contributionAuth);
-        if (sessionId.isEmpty()) {
-            return "";
-        }
-
-        return sessionId;
-    }
-
     public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
@@ -98,12 +73,6 @@ public class SconeTeeService {
                 .build();
 
         return sconeConfig.toDockerEnv();
-    }
-
-    public boolean isEnclaveSignatureValid(String resultHash, String resultSeal,
-                                           Signature enclaveSignature, String enclaveAddress) {
-        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
-        return SignatureUtils.isSignatureValid(message, enclaveSignature, enclaveAddress);
     }
 
     @PreDestroy
