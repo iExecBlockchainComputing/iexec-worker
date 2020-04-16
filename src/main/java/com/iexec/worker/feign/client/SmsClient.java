@@ -1,16 +1,17 @@
 package com.iexec.worker.feign.client;
 
 
-import com.iexec.common.sms.SmsRequest;
+import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.worker.feign.config.FeignConfiguration;
 
-import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
+import feign.FeignException;
 
 @FeignClient(name = "SmsClient",
         url = "#{publicConfigurationService.smsURL}",
@@ -18,9 +19,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface SmsClient {
 
     @PostMapping("/untee/secrets")
-    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestBody SmsRequest smsRequest) throws FeignException;
+    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestHeader("Authorization") String workerSignature,
+                                                      @RequestBody ContributionAuthorization contributionAuth) throws FeignException;
 
     @PostMapping("/tee/sessions")
-    ResponseEntity<String> generateTeeSession(@RequestBody SmsRequest smsRequest) throws FeignException;
+    ResponseEntity<String> createTeeSession(@RequestHeader("Authorization") String workerSignature,
+                                              @RequestBody ContributionAuthorization contributionAuth) throws FeignException;
 
 }

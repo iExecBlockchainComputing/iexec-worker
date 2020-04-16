@@ -3,24 +3,17 @@ package com.iexec.worker.sms;
 import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.security.Signature;
 import com.iexec.common.sms.secrets.SmsSecret;
-import com.iexec.common.sms.SmsRequest;
-import com.iexec.common.sms.SmsRequestData;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
 import com.iexec.common.sms.secrets.SmsSecretResponse;
 import com.iexec.common.sms.secrets.TaskSecrets;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.CustomSmsFeignClient;
+import com.iexec.worker.feign.client.SmsClient;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Sign;
 
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -31,22 +24,23 @@ import lombok.extern.slf4j.Slf4j;
 public class SmsService {
 
     private CredentialsService credentialsService;
-    private CustomSmsFeignClient customSmsFeignClient;
+    private SmsClient smsClient;
 
-    public SmsService(CredentialsService credentialsService, CustomSmsFeignClient customSmsFeignClient) {
+    public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
         this.credentialsService = credentialsService;
-        this.customSmsFeignClient = customSmsFeignClient;
+        this.smsClient = smsClient;
     }
 
     @Retryable(value = FeignException.class)
     public Optional<TaskSecrets> fetchTaskSecrets(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
+        String workerSignature = getSmsAuthorizationString(contributionAuth);
+        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(workerSignature, contributionAuth);
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            return Optional.empty();
+        }
 
-        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-
-        SmsSecretResponse smsResponse = customSmsFeignClient.getUnTeeSecrets(smsRequest);
-
-
+        SmsSecretResponse smsResponse = response.getBody();
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
@@ -70,8 +64,8 @@ public class SmsService {
 
     @Recover
     private boolean fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
-                contributionAuth.getChainTaskId());
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, attempts:3]",
+                contributionAuth.getChainTaskId(), e.status());
         e.printStackTrace();
         return false;
     }
@@ -109,43 +103,22 @@ public class SmsService {
     }
 
     @Retryable(value = FeignException.class)
-    public String getSconeSecureSession(ContributionAuthorization contributionAuth) {
-        String chainTaskId = contributionAuth.getChainTaskId();
-        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-
-        String sessionId = customSmsFeignClient.generateTeeSession(smsRequest);
-
-        if (sessionId.isEmpty()) {
-            log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
-            return "";
-        }
-
-        return sessionId;
+    public String createTeeSession(ContributionAuthorization contributionAuth) {
+        String workerSignature = getSmsAuthorizationString(contributionAuth);
+        ResponseEntity<String> response = smsClient.createTeeSession(workerSignature, contributionAuth);
+        return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
     }
 
     @Recover
-    private String getSconeSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to generate secure session [chainTaskId:{}, attempts:3]",
-                contributionAuth.getChainTaskId());
+    private String createTeeSession(FeignException e, ContributionAuthorization contributionAuth) {
+        log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, attempts:3]",
+                contributionAuth.getChainTaskId(), e.status());
         e.printStackTrace();
         return "";
     }
 
-    public SmsRequest buildSmsRequest(ContributionAuthorization contributionAuth) {
-        String hash = HashUtils.concatenateAndHash(contributionAuth.getWorkerWallet(),
-                contributionAuth.getChainTaskId(), contributionAuth.getEnclaveChallenge());
-
-        Sign.SignatureData workerSignature = Sign.signPrefixedMessage(
-                BytesUtils.stringToBytes(hash), credentialsService.getCredentials().getEcKeyPair());
-
-        SmsRequestData smsRequestData = SmsRequestData.builder()
-            .chainTaskId(contributionAuth.getChainTaskId())
-            .workerAddress(contributionAuth.getWorkerWallet())
-            .enclaveChallenge(contributionAuth.getEnclaveChallenge())
-            .coreSignature(contributionAuth.getSignature().getValue())
-            .workerSignature(new Signature(workerSignature).getValue())
-            .build();
-
-        return new SmsRequest(smsRequestData);
+    public String getSmsAuthorizationString(ContributionAuthorization contributionAuth) {
+        String challenge = contributionAuth.getHash();
+        return credentialsService.hashAndSignMessage(challenge).getValue();
     }
 }
