@@ -4,10 +4,6 @@ import java.util.ArrayList;
 
 import javax.annotation.PreDestroy;
 
-import com.iexec.common.security.Signature;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.HashUtils;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.docker.CustomDockerClient;
 import com.iexec.worker.docker.DockerExecutionConfig;
 import com.iexec.worker.docker.DockerExecutionResult;
