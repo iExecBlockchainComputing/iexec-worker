@@ -154,7 +154,7 @@ public class ComputationService {
         String teePostComputeImage = taskDescription.getTeePostComputeImage();
 
 
-        String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
+        String secureSessionId = smsService.createTeeSession(contributionAuth);
 
         log.info("Secure session created [chainTaskId:{}, secureSessionId:{}]", chainTaskId, secureSessionId);
 
