@@ -153,17 +153,13 @@ public class ComputationService {
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String teePostComputeImage = taskDescription.getTeePostComputeImage();
 
-
         String secureSessionId = smsService.createTeeSession(contributionAuth);
-
-        log.info("Secure session created [chainTaskId:{}, secureSessionId:{}]", chainTaskId, secureSessionId);
-
         if (secureSessionId.isEmpty()) {
-            String msg = "Could not generate scone secure session for tee computation";
-            log.error(msg + " [chainTaskId:{}]", chainTaskId);
+            log.error("Cannot compute TEE task without secure session [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
+        log.info("Secure session created [chainTaskId:{}, secureSessionId:{}]", chainTaskId, secureSessionId);
         ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
                 publicConfigService.getSconeCasURL(), "1G");
         ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",

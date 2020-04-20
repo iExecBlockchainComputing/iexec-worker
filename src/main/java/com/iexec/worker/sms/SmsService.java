@@ -63,11 +63,10 @@ public class SmsService {
     }
 
     @Recover
-    private boolean fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
+    private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
         log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, attempts:3]",
                 contributionAuth.getChainTaskId(), e.status());
-        e.printStackTrace();
-        return false;
+        return Optional.empty();
     }
 
     public void saveSecrets(String chainTaskId,
@@ -111,9 +110,8 @@ public class SmsService {
 
     @Recover
     private String createTeeSession(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, attempts:3]",
-                contributionAuth.getChainTaskId(), e.status());
-        e.printStackTrace();
+        log.error("Failed to create secure session [chainTaskId:{}, attempts:3, httpStatus:{}, exception:{}]",
+                contributionAuth.getChainTaskId(), e.status(), e.getMessage());
         return "";
     }
 
