@@ -153,6 +153,12 @@ public class ComputationService {
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String teePostComputeImage = taskDescription.getTeePostComputeImage();
 
+        if (!customDockerClient.pullImage(chainTaskId, teePostComputeImage)) {
+            String msg = "runTeeComputation failed (pullImage teePostComputeImage)";
+            log.error(msg + " [chainTaskId:{},teePostComputeImage:{}]", chainTaskId, teePostComputeImage);
+            return false;
+        }
+
         String secureSessionId = smsService.createTeeSession(contributionAuth);
         if (secureSessionId.isEmpty()) {
             log.error("Cannot compute TEE task without secure session [chainTaskId:{}]", chainTaskId);

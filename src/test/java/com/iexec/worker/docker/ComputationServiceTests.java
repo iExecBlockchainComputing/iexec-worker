@@ -59,6 +59,7 @@ public class ComputationServiceTests {
                 .maxExecutionTime(500000) // 5min
                 .cmd("ls")
                 .inputFiles(new ArrayList<>())
+                .teePostComputeImage("registry/post-compute-app:tag")
                 .build();
     }
 
@@ -156,6 +157,7 @@ public class ComputationServiceTests {
         when(smsService.createTeeSession(any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(stubSconeEnv);
+        when(customDockerClient.pullImage(anyString(), anyString())).thenReturn(true);
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"))
                 .thenReturn(DockerExecutionResult.success("Encrypted successfully !", "containerName"));
