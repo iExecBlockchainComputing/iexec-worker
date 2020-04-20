@@ -64,8 +64,8 @@ public class SmsService {
 
     @Recover
     private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, attempts:3]",
-                contributionAuth.getChainTaskId(), e.status());
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
+                contributionAuth.getChainTaskId(), e.status(), e.getMessage());
         return Optional.empty();
     }
 
@@ -110,7 +110,7 @@ public class SmsService {
 
     @Recover
     private String createTeeSession(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to create secure session [chainTaskId:{}, attempts:3, httpStatus:{}, exception:{}]",
+        log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
                 contributionAuth.getChainTaskId(), e.status(), e.getMessage());
         return "";
     }
