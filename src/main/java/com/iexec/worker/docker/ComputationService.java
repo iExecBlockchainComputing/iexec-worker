@@ -153,6 +153,11 @@ public class ComputationService {
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
         String teePostComputeImage = taskDescription.getTeePostComputeImage();
 
+        if (!customDockerClient.pullImage(chainTaskId, teePostComputeImage)) {
+            String msg = "runTeeComputation failed (pullImage teePostComputeImage)";
+            log.error(msg + " [chainTaskId:{},teePostComputeImage:{}]", chainTaskId, teePostComputeImage);
+            return false;
+        }
 
         String secureSessionId = sconeTeeService.createSconeSecureSession(contributionAuth);
 
