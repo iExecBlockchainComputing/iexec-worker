@@ -34,8 +34,8 @@ public class SmsService {
     @Retryable(value = FeignException.class)
     public Optional<TaskSecrets> fetchTaskSecrets(ContributionAuthorization contributionAuth) {
         String chainTaskId = contributionAuth.getChainTaskId();
-        String workerSignature = getAuthorizationString(contributionAuth);
-        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(workerSignature, contributionAuth);
+        String authorization = getAuthorizationString(contributionAuth);
+        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(authorization, contributionAuth);
         if (!response.getStatusCode().is2xxSuccessful()) {
             return Optional.empty();
         }
@@ -103,8 +103,8 @@ public class SmsService {
 
     @Retryable(value = FeignException.class)
     public String createTeeSession(ContributionAuthorization contributionAuth) {
-        String workerSignature = getAuthorizationString(contributionAuth);
-        ResponseEntity<String> response = smsClient.createTeeSession(workerSignature, contributionAuth);
+        String authorization = getAuthorizationString(contributionAuth);
+        ResponseEntity<String> response = smsClient.createTeeSession(authorization, contributionAuth);
         return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
     }
 

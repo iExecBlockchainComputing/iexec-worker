@@ -19,11 +19,11 @@ import feign.FeignException;
 public interface SmsClient {
 
     @PostMapping("/untee/secrets")
-    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestHeader("Authorization") String workerSignature,
+    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestHeader("Authorization") String authorization,
                                                       @RequestBody ContributionAuthorization contributionAuth) throws FeignException;
 
     @PostMapping("/tee/sessions")
-    ResponseEntity<String> createTeeSession(@RequestHeader("Authorization") String workerSignature,
+    ResponseEntity<String> createTeeSession(@RequestHeader("Authorization") String authorization,
                                               @RequestBody ContributionAuthorization contributionAuth) throws FeignException;
 
 }
