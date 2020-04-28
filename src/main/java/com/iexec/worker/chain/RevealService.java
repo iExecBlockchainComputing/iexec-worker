@@ -1,7 +1,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -102,7 +102,7 @@ public class RevealService {
             return Optional.empty();
         }
 
-        IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, determinismHash);
+        IexecHubContract.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, determinismHash);
         if (revealResponse == null) {
             log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();

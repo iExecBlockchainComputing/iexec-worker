@@ -2,7 +2,7 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
@@ -49,7 +49,7 @@ public class IexecHubService extends IexecHubAbstractService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
+    IexecHubContract.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
                                                              String resultHash,
                                                              String resultSeal,
                                                              Signature enclaveSignature) {
@@ -65,7 +65,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth,
+    private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth,
                                                                                     String resultHash,
                                                                                     String resultSeal,
                                                                                     Signature enclaveSignature) {
@@ -92,9 +92,9 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubABILegacy.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
+        List<IexecHubContract.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
 
-        IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
+        IexecHubContract.TaskContributeEventResponse contributeEvent = null;
         if (contributeEvents != null && !contributeEvents.isEmpty()) {
             contributeEvent = contributeEvents.get(0);
         }
@@ -121,7 +121,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return true;
     }
 
-    IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
+    IexecHubContract.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 log.info("Requested  reveal [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
@@ -133,7 +133,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
-    private IexecHubABILegacy.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
+    private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
         TransactionReceipt revealReceipt;
         RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
                 stringToBytes(chainTaskId),
@@ -148,9 +148,9 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubABILegacy.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
+        List<IexecHubContract.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
 
-        IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
+        IexecHubContract.TaskRevealEventResponse revealEvent = null;
         if (revealEvents != null && !revealEvents.isEmpty()) {
             revealEvent = revealEvents.get(0);
         }
