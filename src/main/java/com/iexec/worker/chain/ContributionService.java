@@ -1,7 +1,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
@@ -127,7 +127,7 @@ public class ContributionService {
     public Optional<ChainReceipt> contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
         String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
         String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
-        IexecHubABILegacy.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignature);
+        IexecHubContract.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignature);
 
         if (contributeResponse == null) {
             log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribAuth.getChainTaskId());
