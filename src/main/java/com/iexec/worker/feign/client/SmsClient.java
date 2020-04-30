@@ -2,7 +2,7 @@ package com.iexec.worker.feign.client;
 
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.sms.secrets.SmsSecretResponse;
+import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.worker.feign.config.FeignConfiguration;
 
 import org.springframework.cloud.openfeign.FeignClient;

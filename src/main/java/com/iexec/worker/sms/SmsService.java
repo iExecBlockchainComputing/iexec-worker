@@ -3,9 +3,9 @@ package com.iexec.worker.sms;
 import java.util.Optional;
 
 import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.sms.secrets.SmsSecret;
-import com.iexec.common.sms.secrets.SmsSecretResponse;
-import com.iexec.common.sms.secrets.TaskSecrets;
+import com.iexec.common.sms.secret.SmsSecret;
+import com.iexec.common.sms.secret.SmsSecretResponse;
+import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.SmsClient;

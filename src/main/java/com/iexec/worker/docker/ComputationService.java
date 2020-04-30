@@ -2,7 +2,7 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.chain.ContributionAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.sms.secrets.TaskSecrets;
+import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
