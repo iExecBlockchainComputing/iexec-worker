@@ -200,6 +200,14 @@ public class ResultService {
         Path determinismFilePath = Paths.get(filePath);
 
         try {
+            String callbackFilePathName = workerConfigService.getTaskIexecOutDir(chainTaskId)
+                    + File.separator + CALLBACK_FILE_NAME;
+
+            String callbackData = getCallbackDataFromPath(callbackFilePathName);
+            if (!callbackData.isEmpty()){
+                return Hash.sha3(callbackData);
+            }
+
             if (determinismFilePath.toFile().exists()) {
                 hash = getHashFromDeterminismIexecFile(determinismFilePath);
                 log.info("Determinism file found and its hash has been computed "
