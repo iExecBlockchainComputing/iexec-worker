@@ -227,41 +227,6 @@ public class ResultService {
         return resultDigest;
     }
 
-
-    @Deprecated
-    public Optional<TeeEnclaveChallengeSignature> readTeeEnclaveChallengeSignatureFile(String chainTaskId) {
-        String enclaveSignatureFilePath = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
-
-        File enclaveSignatureFile = new File(enclaveSignatureFilePath);
-
-        if (!enclaveSignatureFile.exists()) {
-            log.error("File enclaveSig.iexec not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
-                    chainTaskId, enclaveSignatureFilePath);
-            return Optional.empty();
-        }
-
-        ObjectMapper mapper = new ObjectMapper();
-        TeeEnclaveChallengeSignature enclaveChallengeSignature = null;
-        try {
-            enclaveChallengeSignature = mapper.readValue(enclaveSignatureFile, TeeEnclaveChallengeSignature.class);
-        } catch (IOException e) {
-            log.error("File enclaveSig.iexec found but failed to parse it [chainTaskId:{}]", chainTaskId);
-            e.printStackTrace();
-            return Optional.empty();
-        }
-
-        if (enclaveChallengeSignature == null) {
-            log.error("File enclaveSig.iexec found but was parsed to null [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        log.debug("Content of enclaveSig.iexec file [chainTaskId:{}, enclaveChallengeSignature:{}]",
-                chainTaskId, enclaveChallengeSignature);
-
-        return Optional.of(enclaveChallengeSignature);
-    }
-
     public boolean isResultEncryptionNeeded(String chainTaskId) {
         String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
 

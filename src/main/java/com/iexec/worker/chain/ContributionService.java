@@ -144,6 +144,10 @@ public class ContributionService {
         return contributionAuthorizationService.getContributionAuthorization(chainTaskId);
     }
 
+    /*
+    * TODO See if it possible to remove useless fields from ContributionAuthorization:
+    * remove/merge, define Contribution/ContributionAuthorization responsibilities
+     */
     //TODO Add unit test
     public Contribution getContribution(ComputedFile computedFile, ContributionAuthorization contributionAuthorization) {
         String chainTaskId = computedFile.getTaskId();
