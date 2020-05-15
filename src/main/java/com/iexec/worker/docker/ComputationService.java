@@ -10,7 +10,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.postcompute.PostComputeResult;
 import com.iexec.worker.docker.precompute.PreComputeResult;
-import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
@@ -42,7 +41,6 @@ public class ComputationService {
     private DataService dataService;
     private CustomDockerClient customDockerClient;
     private SconeTeeService sconeTeeService;
-    private ResultService resultService;
     private WorkerConfigurationService workerConfigService;
     private PublicConfigurationService publicConfigService;
 
@@ -50,7 +48,6 @@ public class ComputationService {
                               DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
-                              ResultService resultService,
                               WorkerConfigurationService workerConfigService,
                               PublicConfigurationService publicConfigService) {
 
@@ -58,7 +55,6 @@ public class ComputationService {
         this.dataService = dataService;
         this.customDockerClient = customDockerClient;
         this.sconeTeeService = sconeTeeService;
-        this.resultService = resultService;
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
     }
@@ -144,7 +140,7 @@ public class ComputationService {
         return true;
     }
 
-    public String runComputation(TaskDescription taskDescription, PreComputeResult preComputeResult) {
+    public ComputeResponse runComputation(TaskDescription taskDescription, PreComputeResult preComputeResult) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = getContainerEnvVariables(taskDescription);
 
@@ -177,13 +173,13 @@ public class ComputationService {
 
         if (!appExecutionResult.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return false;
+            return ComputeResponse.failure();
         }
 
         //TODO: Remove logs before merge
         System.out.println("****** App");
         System.out.println(appExecutionResult.getStdout());
-        return appExecutionResult.getStdout();
+        return ComputeResponse.success(appExecutionResult.getStdout());
     }
 
 
@@ -192,11 +188,11 @@ public class ComputationService {
      * to <SLASH_RESULT>. In TEE mode, those files will be
      * encrypted if requested.
      */
-    public void runPostCompute(TaskDescription taskDescription) {
+    public PostComputeResult runPostCompute(PreComputeResult preComputeResult, TaskDescription taskDescription) {
         if (taskDescription.isTeeTask()) {
-            runTeePostCompute(taskDescription);
+            return runTeePostCompute(preComputeResult.getSecureSessionId(), taskDescription);
         } else {
-            runNonTeePostCompute(taskDescription);
+            return runNonTeePostCompute(taskDescription);
         }
     }
 
@@ -230,180 +226,11 @@ public class ComputationService {
         // return resultService.saveResult(chainTaskId, taskDescription, stdout);
     }
 
-    private boolean runNonTeePostCompute(TaskDescription taskDescription) {
-        // mv files
+    private PostComputeResult runNonTeePostCompute(TaskDescription taskDescription) {
+        // iexec_out -> iexec_result
+
+        return PostComputeResult.success("");
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // #############################################################
-    // #############################################################
-    // #############################################################
-    // #############################################################
-
-
-    // public boolean runNonTeeComputation(TaskDescription taskDescription,
-    //                                     ContributionAuthorization contributionAuth) {
-    //     String chainTaskId = taskDescription.getChainTaskId();
-    //     String imageUri = taskDescription.getAppUri();
-    //     String cmd = taskDescription.getCmd();
-    //     long maxExecutionTime = taskDescription.getMaxExecutionTime();
-
-    //     // fetch task secrets from SMS
-    //     Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(contributionAuth);
-    //     if (!oTaskSecrets.isPresent()) {
-    //         log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
-    //     } else {
-    //         String datasetSecretFilePath = workerConfigService.getDatasetSecretFilePath(chainTaskId);
-    //         String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
-    //         String enclaveSecretFilePath = workerConfigService.getEnclaveSecretFilePath(chainTaskId);
-    //         smsService.saveSecrets(chainTaskId, oTaskSecrets.get(), datasetSecretFilePath,
-    //                 beneficiarySecretFilePath, enclaveSecretFilePath);
-    //     }
-
-    //     // decrypt data
-    //     boolean isDatasetDecryptionNeeded = dataService.isDatasetDecryptionNeeded(chainTaskId);
-    //     boolean isDatasetDecrypted = false;
-
-    //     if (isDatasetDecryptionNeeded) {
-    //         isDatasetDecrypted = dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
-    //     }
-
-    //     if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
-    //         log.error("Failed to decrypt dataset [chainTaskId:{}, uri:{}]",
-    //                 chainTaskId, taskDescription.getDatasetUri());
-    //         return false;
-    //     }
-
-    //     // compute
-    //     String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
-    //     List<String> env = getContainerEnvVariables(datasetFilename, taskDescription);
-
-    //     DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
-    //             .chainTaskId(chainTaskId)
-    //             .containerName(getTaskContainerName(chainTaskId))
-    //             .imageUri(imageUri)
-    //             .cmd(cmd)
-    //             .maxExecutionTime(maxExecutionTime)
-    //             .env(env)
-    //             .bindPaths(getDefaultBindPaths(chainTaskId))
-    //             .isSgx(false)
-    //             .build();
-
-    //     DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
-    //     if (shouldPrintDeveloperLogs(taskDescription)){
-    //         log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
-    //                 getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
-    //     }
-
-    //     if (!appExecutionResult.isSuccess()) {
-    //         log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-    //         return false;
-    //     }
-
-    //     return resultService.saveResult(chainTaskId, taskDescription, appExecutionResult.getStdout());
-    // }
-
-    // public boolean runTeeComputation(TaskDescription taskDescription,
-    //                                  ContributionAuthorization contributionAuth) {
-    //     String chainTaskId = contributionAuth.getChainTaskId();
-    //     String imageUri = taskDescription.getAppUri();
-    //     String datasetUri = taskDescription.getDatasetUri();
-    //     String cmd = taskDescription.getCmd();
-    //     long maxExecutionTime = taskDescription.getMaxExecutionTime();
-    //     String teePostComputeImage = taskDescription.getTeePostComputeImage();
-
-    //     if (!customDockerClient.pullImage(chainTaskId, teePostComputeImage)) {
-    //         String msg = "runTeeComputation failed (pullImage teePostComputeImage)";
-    //         log.error(msg + " [chainTaskId:{},teePostComputeImage:{}]", chainTaskId, teePostComputeImage);
-    //         return false;
-    //     }
-
-    //     String secureSessionId = smsService.createTeeSession(contributionAuth);
-    //     if (secureSessionId.isEmpty()) {
-    //         log.error("Cannot compute TEE task without secure session [chainTaskId:{}]", chainTaskId);
-    //         return false;
-    //     }
-
-    //     log.info("Secure session created [chainTaskId:{}, secureSessionId:{}]", chainTaskId, secureSessionId);
-    //     ArrayList<String> sconeAppEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/app",
-    //             publicConfigService.getSconeCasURL(), "1G");
-    //     ArrayList<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
-    //             publicConfigService.getSconeCasURL(), "3G");
-
-    //     if (sconeAppEnv.isEmpty()) {
-    //         log.error("Could not create scone docker environment [chainTaskId:{}]", chainTaskId);
-    //         return false;
-    //     }
-
-    //     String datasetFilename = FileHelper.getFilenameFromUri(datasetUri);
-    //     for (String envVar : getContainerEnvVariables(datasetFilename, taskDescription)) {
-    //         sconeAppEnv.add(envVar);
-    //     }
-
-    //     DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
-    //             .chainTaskId(chainTaskId)
-    //             .containerName(getTaskContainerName(chainTaskId))
-    //             .imageUri(imageUri)
-    //             .cmd(cmd)
-    //             .maxExecutionTime(maxExecutionTime)
-    //             .env(sconeAppEnv)
-    //             .bindPaths(getTeeComputeBindPaths(chainTaskId))
-    //             .isSgx(true)
-    //             .build();
-
-    //     // run computation
-    //     DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
-
-    //     if (shouldPrintDeveloperLogs(taskDescription)){
-    //         log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
-    //                 getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
-    //     }
-
-    //     if (!appExecutionResult.isSuccess()) {
-    //         log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-    //         return false;
-    //     }
-
-    //     //TODO: Remove logs before merge
-    //     System.out.println("****** App");
-    //     System.out.println(appExecutionResult.getStdout());
-
-    //     DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
-    //             .chainTaskId(chainTaskId)
-    //             .containerName(getTaskTeePostComputeContainerName(chainTaskId))
-    //             .imageUri(teePostComputeImage)
-    //             .maxExecutionTime(maxExecutionTime)
-    //             .env(sconeUploaderEnv)
-    //             .bindPaths(getTeePostComputeBindPaths(chainTaskId))
-    //             .isSgx(true)
-    //             .build();
-    //     DockerExecutionResult teePostComputeExecutionResult = customDockerClient.execute(teePostComputeExecutionConfig);
-    //     if (!teePostComputeExecutionResult.isSuccess()) {
-    //         log.error("Failed to process post-compute on result [chainTaskId:{}]", chainTaskId);
-    //         return false;
-    //     }
-    //     System.out.println("****** Tee post-compute");
-    //     System.out.println(teePostComputeExecutionResult.getStdout());
-
-
-    //     String stdout = appExecutionResult.getStdout()
-    //             + teePostComputeExecutionResult.getStdout();
-
-
-    //     return resultService.saveResult(chainTaskId, taskDescription, stdout);
-    // }
 
     private List<String> getContainerEnvVariables(TaskDescription taskDescription) {
         String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
