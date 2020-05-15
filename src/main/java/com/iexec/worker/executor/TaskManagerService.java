@@ -15,7 +15,10 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.docker.precompute.PreComputeResult;
+import com.iexec.worker.docker.ComputeMeta;
+import com.iexec.worker.docker.ComputeResponse;
+import com.iexec.worker.docker.postcompute.PostComputeResult;
+import com.iexec.worker.docker.precompute.PreComputeResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -193,47 +196,43 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(APP_NOT_FOUND_LOCALLY);
         }
 
-        boolean isComputed;
         ContributionAuthorization contributionAuthorization =
                 contributionService.getContributionAuthorization(chainTaskId);
 
         // ###################
-        PreComputeResult preComputeResult = computationService.runPreCompute(taskDescription, contributionAuthorization);
-        if (!preComputeResult.isSuccess()) {
-            log.error("Failed pre-compute [chainTaskId:{}]", chainTaskId);
+        ComputeMeta computeMeta = ComputeMeta.builder().chainTaskId(chainTaskId).build();
+        computationService.runPreCompute(computeMeta, taskDescription, contributionAuthorization);
+        if (!computeMeta.isSuccessfulPreCompute()) {
+            log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
-
-        // String stdout;
-        boolean in = computationService.runComputation(taskDescription, preComputeResult);
-        if (!in) {
+        ComputeResponse computeResponse = computationService.runComputation(taskDescription, preComputeResponse);
+        if (!computeResponse.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
-
-        boolean post = computationService.runPostCompute();
-        if (!post) {
-            log.error("Failed post-compute [chainTaskId:{}]", chainTaskId);
+        PostComputeResult postComputeResult = computationService.runPostCompute(taskDescription, preComputeResponse);
+        if (!postComputeResult.isSuccess()) {
+            log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
         }
-
+        String stdout = computeResponse.getStdout() + postComputeResult.getStdout();
         resultService.saveResult(chainTaskId, taskDescription, stdout);
-
         return ReplicateActionResponse.success();
         // ###################
 
-        if (taskDescription.isTeeTask()) {
-            isComputed = computationService.runTeeComputation(taskDescription, contributionAuthorization);
-        } else {
-            isComputed = computationService.runNonTeeComputation(taskDescription, contributionAuthorization);
-        }
+        // if (taskDescription.isTeeTask()) {
+        //     isComputed = computationService.runTeeComputation(taskDescription, contributionAuthorization);
+        // } else {
+        //     isComputed = computationService.runNonTeeComputation(taskDescription, contributionAuthorization);
+        // }
 
-        if (!isComputed) {
-            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure();
-        }
+        // if (!isComputed) {
+        //     log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
+        //     return ReplicateActionResponse.failure();
+        // }
 
-        return ReplicateActionResponse.success();
+        // return ReplicateActionResponse.success();
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
@@ -328,19 +327,6 @@ public class TaskManagerService {
 
     ReplicateActionResponse uploadResult(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
-
-        boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
-        boolean isResultEncrypted = false;
-
-        if (isResultEncryptionNeeded) {
-            isResultEncrypted = resultService.encryptResult(chainTaskId);
-        }
-
-        if (isResultEncryptionNeeded && !isResultEncrypted) {
-            log.error("Cannot upload, failed to encrypt result [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
-        }
-
         String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
         if (resultLink.isEmpty()) {
             log.error("Cannot upload, resultLink missing [chainTaskId:{}]", chainTaskId);

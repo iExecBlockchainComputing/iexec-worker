@@ -9,7 +9,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.postcompute.PostComputeResult;
-import com.iexec.worker.docker.precompute.PreComputeResult;
+import com.iexec.worker.docker.precompute.PreComputeResponse;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
@@ -93,14 +93,16 @@ public class ComputationService {
      * non TEE: download secrets && decrypt dataset (TODO: this should be rewritten or removed)
      * 
      */
-    public PreComputeResult runPreCompute(TaskDescription taskDescription, ContributionAuthorization contributionAuth) {
+    public void runPreCompute(ComputeMeta computeMeta, TaskDescription taskDescription,
+                ContributionAuthorization contributionAuth) {
         if (taskDescription.isTeeTask()) {
             String secureSessionId = runTeePreCompute(taskDescription, contributionAuth);
-            return !secureSessionId.isEmpty() ? PreComputeResult.success(secureSessionId) : PreComputeResult.failure();
+            computeMeta.setSuccessfulPreCompute(!secureSessionId.isEmpty());
+            computeMeta.setSecureSessionId(secureSessionId);
+            return;
         }
-
         boolean isSuccess = runNonTeePreCompute(taskDescription, contributionAuth);
-        return isSuccess ? PreComputeResult.success() : PreComputeResult.failure();
+        computeMeta.setSuccessfulPreCompute(isSuccess);
     }
 
     private String runTeePreCompute(TaskDescription taskDescription, ContributionAuthorization contributionAuth) {
@@ -146,17 +148,17 @@ public class ComputationService {
         return true;
     }
 
-    public ComputeResponse runComputation(TaskDescription taskDescription, PreComputeResult preComputeResult) {
+    public void runComputation(ComputeMeta computeMeta, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = getContainerEnvVariables(taskDescription);
         if (taskDescription.isTeeTask()) {
-            List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(preComputeResult.getSecureSessionId() + "/app",
+            List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(computeMeta.getSecureSessionId() + "/app",
                     publicConfigService.getSconeCasURL(), "1G");
             env.addAll(teeEnv);
         }
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(workerConfigService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
-        bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigService.getTaskOutputDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
         DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
@@ -172,35 +174,35 @@ public class ComputationService {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }
-        if (!appExecutionResult.isSuccess()) {
-            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return ComputeResponse.failure();
-        }
+        computeMeta.setSuccess(appExecutionResult.isSuccess());
         //TODO: Remove logs before merge
         System.out.println("****** App");
         System.out.println(appExecutionResult.getStdout());
-        return ComputeResponse.success(appExecutionResult.getStdout());
+        computeMeta.setStdout(appExecutionResult.getStdout());
     }
 
     /*
      * Move files produced by the compute stage in SLASH_IEXEC_OUT
      * to SLASH_IEXEC_RESULT. Encrypt them if requested.
      */
-    public PostComputeResult runPostCompute(PreComputeResult preComputeResult, TaskDescription taskDescription) {
+    public void runPostCompute(ComputeMeta computeMeta, TaskDescription taskDescription) {
         if (taskDescription.isTeeTask()) {
-            return runTeePostCompute(preComputeResult.getSecureSessionId(), taskDescription);
+            runTeePostCompute(computeMeta.getSecureSessionId(), taskDescription);
         } else {
-            return runNonTeePostCompute(taskDescription);
+            runNonTeePostCompute(taskDescription);
         }
+
+        computeMeta.setSuccessfulPostCompute(isSuccessfulPostCompute);
+        computeMeta.setStdout(computeMeta.getStdout() + stdout);
     }
 
-    private PostComputeResult runTeePostCompute(String secureSessionId, TaskDescription taskDescription) {
+    private DockerExecutionResult runTeePostCompute(String secureSessionId, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");
 
         Map<String, String> bindPaths = new HashMap<>();
-        bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigService.getTaskOutputDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
         bindPaths.put(workerConfigService.getTaskResultDir(chainTaskId), FileHelper.SLASH_RESULT);
 
         DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
@@ -214,16 +216,16 @@ public class ComputationService {
                 .build();
 
         DockerExecutionResult teePostComputeExecutionResult = customDockerClient.execute(teePostComputeExecutionConfig);
-        if (!teePostComputeExecutionResult.isSuccess()) {
-            log.error("Failed to process post-compute on result [chainTaskId:{}]", chainTaskId);
-            return PostComputeResult.failure();
-        }
+        // if (!teePostComputeExecutionResult.isSuccess()) {
+        //     log.error("Failed to process post-compute on result [chainTaskId:{}]", chainTaskId);
+        //     return PostComputeResult.failure();
+        // }
         System.out.println("****** Tee post-compute");
         System.out.println(teePostComputeExecutionResult.getStdout());
-        return PostComputeResult.success(teePostComputeExecutionResult.getStdout());
+        return teePostComputeExecutionResult;
     }
 
-    private PostComputeResult runNonTeePostCompute(TaskDescription taskDescription) {
+    private void runNonTeePostCompute(TaskDescription taskDescription) {
         // iexec_out -> iexec_result
         String chainTaskId = taskDescription.getChainTaskId();
         String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
@@ -233,14 +235,15 @@ public class ComputationService {
         }
         if (shouldEncryptResult && !encryptResult(chainTaskId)) {
             log.error("Cannot upload, failed to encrypt result [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
+            // return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
+            return PostComputeResult.failure();
         }
         return PostComputeResult.success("");
     }
 
     public boolean encryptResult(String chainTaskId) {
         String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
-        String resultZipFilePath = getResultZipFilePath(chainTaskId);
+        String resultZipFilePath = workerConfigService.getTaskOutputDir(chainTaskId);
         String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
 
         log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
@@ -248,7 +251,7 @@ public class ComputationService {
 
         encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
 
-        String encryptedResultFilePath = getEncryptedResultFilePath(chainTaskId);
+        String encryptedResultFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
 
         if (!new File(encryptedResultFilePath).exists()) {
             log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",

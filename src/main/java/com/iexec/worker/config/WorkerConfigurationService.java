@@ -60,21 +60,20 @@ public class WorkerConfigurationService {
     }
 
     public String getTaskInputDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_INPUT;
+        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_INPUT;
     }
 
     public String getTaskOutputDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
+        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_OUTPUT;
     }
 
-    public String getTaskIexecOutDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT
-                + FileHelper.SLASH_IEXEC_OUT;
-    }
+    // public String getTaskIexecOutDir(String chainTaskId) {
+    //     return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_OUTPUT + FileHelper.SLASH_IEXEC_OUT;
+    // }
 
-    public String getTaskSconeDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_SCONE;
-    }
+    // public String getTaskResultDir(String chainTaskId) {
+    //     return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_RESULT;
+    // }
 
     public String getDatasetSecretFilePath(String chainTaskId) {
         // /worker-base-dir/chainTaskId/input/dataset.secret
