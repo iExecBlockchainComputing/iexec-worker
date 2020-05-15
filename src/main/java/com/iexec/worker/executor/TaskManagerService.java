@@ -15,6 +15,7 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
+import com.iexec.worker.docker.precompute.PreComputeResult;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -195,6 +196,31 @@ public class TaskManagerService {
         boolean isComputed;
         ContributionAuthorization contributionAuthorization =
                 contributionService.getContributionAuthorization(chainTaskId);
+
+        // ###################
+        PreComputeResult preComputeResult = computationService.runPreCompute(taskDescription, contributionAuthorization);
+        if (!preComputeResult.isSuccess()) {
+            log.error("Failed pre-compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
+        }
+
+        // String stdout;
+        boolean in = computationService.runComputation(taskDescription, preComputeResult);
+        if (!in) {
+            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure();
+        }
+
+        boolean post = computationService.runPostCompute();
+        if (!post) {
+            log.error("Failed post-compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
+        }
+
+        resultService.saveResult(chainTaskId, taskDescription, stdout);
+
+        return ReplicateActionResponse.success();
+        // ###################
 
         if (taskDescription.isTeeTask()) {
             isComputed = computationService.runTeeComputation(taskDescription, contributionAuthorization);
