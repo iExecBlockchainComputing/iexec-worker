@@ -16,9 +16,12 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.util.*;
 
 
@@ -36,6 +39,9 @@ public class ComputationService {
     private static final String IEXEC_NB_INPUT_FILES_ENV_PROPERTY = "IEXEC_NB_INPUT_FILES";
     private static final String IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX = "IEXEC_INPUT_FILE_NAME_";
     private static final String IEXEC_INPUT_FILES_FOLDER_ENV_PROPERTY = "IEXEC_INPUT_FILES_FOLDER";
+
+    @Value("${encryptFilePath}")
+    private String scriptFilePath;
 
     private SmsService smsService;
     private DataService dataService;
@@ -143,17 +149,14 @@ public class ComputationService {
     public ComputeResponse runComputation(TaskDescription taskDescription, PreComputeResult preComputeResult) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = getContainerEnvVariables(taskDescription);
-
         if (taskDescription.isTeeTask()) {
             List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(preComputeResult.getSecureSessionId() + "/app",
                     publicConfigService.getSconeCasURL(), "1G");
             env.addAll(teeEnv);
         }
-
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(workerConfigService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
         bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
-
         DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
@@ -164,29 +167,24 @@ public class ComputationService {
                 .bindPaths(bindPaths)
                 .isSgx(taskDescription.isTeeTask())
                 .build();
-
         DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
         if (shouldPrintDeveloperLogs(taskDescription)){
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }
-
         if (!appExecutionResult.isSuccess()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ComputeResponse.failure();
         }
-
         //TODO: Remove logs before merge
         System.out.println("****** App");
         System.out.println(appExecutionResult.getStdout());
         return ComputeResponse.success(appExecutionResult.getStdout());
     }
 
-
     /*
-     * Move files produced by the compute stage in <SLASH_IEXEC_OUT>
-     * to <SLASH_RESULT>. In TEE mode, those files will be
-     * encrypted if requested.
+     * Move files produced by the compute stage in SLASH_IEXEC_OUT
+     * to SLASH_IEXEC_RESULT. Encrypt them if requested.
      */
     public PostComputeResult runPostCompute(PreComputeResult preComputeResult, TaskDescription taskDescription) {
         if (taskDescription.isTeeTask()) {
@@ -223,13 +221,68 @@ public class ComputationService {
         System.out.println("****** Tee post-compute");
         System.out.println(teePostComputeExecutionResult.getStdout());
         return PostComputeResult.success(teePostComputeExecutionResult.getStdout());
-        // return resultService.saveResult(chainTaskId, taskDescription, stdout);
     }
 
     private PostComputeResult runNonTeePostCompute(TaskDescription taskDescription) {
         // iexec_out -> iexec_result
-
+        String chainTaskId = taskDescription.getChainTaskId();
+        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
+        boolean shouldEncryptResult = !new File(beneficiarySecretFilePath).exists();
+        if (!shouldEncryptResult) {
+            log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
+        }
+        if (shouldEncryptResult && !encryptResult(chainTaskId)) {
+            log.error("Cannot upload, failed to encrypt result [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
+        }
         return PostComputeResult.success("");
+    }
+
+    public boolean encryptResult(String chainTaskId) {
+        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
+        String resultZipFilePath = getResultZipFilePath(chainTaskId);
+        String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
+
+        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
+                resultZipFilePath, beneficiarySecretFilePath);
+
+        encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
+
+        String encryptedResultFilePath = getEncryptedResultFilePath(chainTaskId);
+
+        if (!new File(encryptedResultFilePath).exists()) {
+            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
+                    chainTaskId, encryptedResultFilePath);
+            return false;
+        }
+
+        // replace result file with the encypted one
+        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
+    }
+
+    private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
+        String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
+                taskOutputDir, resultZipFilePath, publicKeyFilePath);
+
+        String cmd = this.scriptFilePath + " " + options;
+
+        ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
+
+        try {
+            Process pr = pb.start();
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+            String line;
+    
+            while ((line = in.readLine()) != null) { log.info(line); }
+    
+            pr.waitFor();
+            in.close();
+        } catch (Exception e) {
+            log.error("Error while trying to encrypt result [resultZipFilePath{}, publicKeyFilePath:{}]",
+                    resultZipFilePath, publicKeyFilePath);
+            e.printStackTrace();
+        }
     }
 
     private List<String> getContainerEnvVariables(TaskDescription taskDescription) {

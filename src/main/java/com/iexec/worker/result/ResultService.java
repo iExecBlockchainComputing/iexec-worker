@@ -15,15 +15,12 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,9 +35,6 @@ import static com.iexec.common.worker.result.ResultUtils.getCallbackDataFromPath
 @Slf4j
 @Service
 public class ResultService {
-
-    @Value("${encryptFilePath}")
-    private String scriptFilePath;
 
     private static final String DETERMINIST_FILE_NAME = "determinism.iexec";
     private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
@@ -133,8 +127,12 @@ public class ResultService {
     }
 
     public String getEncryptedResultFilePath(String chainTaskId) {
-        return workerConfigService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        return getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
     }
+
+    // public String getResultDirPath(String chainTaskId, boolean isTeeTask) {
+    //     return getResultFolderPath(chainTaskId) +
+    // }
 
     public boolean isResultZipFound(String chainTaskId) {
         return new File(getResultZipFilePath(chainTaskId)).exists();
@@ -316,64 +314,6 @@ public class ResultService {
         }
 
         return callbackData;
-    }
-
-    public boolean isResultEncryptionNeeded(String chainTaskId) {
-        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
-
-        if (!new File(beneficiarySecretFilePath).exists()) {
-            log.info("No beneficiary secret file found, will continue without encrypting result [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        return true;
-    }
-
-    public boolean encryptResult(String chainTaskId) {
-        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
-        String resultZipFilePath = getResultZipFilePath(chainTaskId);
-        String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
-
-        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
-                resultZipFilePath, beneficiarySecretFilePath);
-
-        encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
-
-        String encryptedResultFilePath = getEncryptedResultFilePath(chainTaskId);
-
-        if (!new File(encryptedResultFilePath).exists()) {
-            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
-                    chainTaskId, encryptedResultFilePath);
-            return false;
-        }
-
-        // replace result file with the encypted one
-        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
-    }
-
-    private void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
-        String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
-                taskOutputDir, resultZipFilePath, publicKeyFilePath);
-
-        String cmd = this.scriptFilePath + " " + options;
-
-        ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-
-        try {
-            Process pr = pb.start();
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-            String line;
-    
-            while ((line = in.readLine()) != null) { log.info(line); }
-    
-            pr.waitFor();
-            in.close();
-        } catch (Exception e) {
-            log.error("Error while trying to encrypt result [resultZipFilePath{}, publicKeyFilePath:{}]",
-                    resultZipFilePath, publicKeyFilePath);
-            e.printStackTrace();
-        }
     }
 
     public String uploadResultAndGetLink(String chainTaskId) {
