@@ -1,6 +1,6 @@
 package com.iexec.worker.tee.scone;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import javax.annotation.PreDestroy;
 
@@ -60,7 +60,7 @@ public class SconeTeeService {
         return true;
     }
 
-    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
+    public List<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(sconeCasUrl)
