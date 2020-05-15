@@ -1,0 +1,4 @@
+Detected face in image1.jpg
+Detected face in image4.jpg
+Detected face in image5.jpg
+End compute

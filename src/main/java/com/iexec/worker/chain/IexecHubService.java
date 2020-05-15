@@ -3,6 +3,7 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
@@ -49,15 +50,12 @@ public class IexecHubService extends IexecHubAbstractService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubContract.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
-                                                             String resultHash,
-                                                             String resultSeal,
-                                                             Signature enclaveSignature) {
+    IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]",
-                        contribAuth.getChainTaskId(), getWaitingTransactionCount());
-                return sendContributeTransaction(contribAuth, resultHash, resultSeal, enclaveSignature);
+                        contribution.getChainTaskId(), getWaitingTransactionCount());
+                return sendContributeTransaction(contribution);
             }, executor).get();
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -65,24 +63,18 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
-    private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth,
-                                                                                    String resultHash,
-                                                                                    String resultSeal,
-                                                                                    Signature enclaveSignature) {
+    private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(Contribution contribution) {
         TransactionReceipt contributeReceipt;
-        String chainTaskId = contribAuth.getChainTaskId();
-
-        byte[] enclaveSign = BytesUtils.stringToBytes(enclaveSignature.getValue());
-        byte[] workerPoolSign = BytesUtils.stringToBytes(contribAuth.getSignature().getValue());
+        String chainTaskId = contribution.getChainTaskId();
 
         RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
                 stringToBytes(chainTaskId),
-                stringToBytes(resultHash),
-                stringToBytes(resultSeal),
-                contribAuth.getEnclaveChallenge(),
-                enclaveSign,
-                workerPoolSign);
-        log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
+                stringToBytes(contribution.getResultHash()),
+                stringToBytes(contribution.getResultSeal()),
+                contribution.getEnclaveChallenge(),
+                stringToBytes(contribution.getEnclaveSignature()),
+                stringToBytes(contribution.getWorkerPoolSignature()));
+        log.info("Sent contribute [chainTaskId:{}, contribution:{}]", chainTaskId, contribution);
 
         try {
             contributeReceipt = contributeCall.send();
@@ -100,8 +92,8 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         if (isSuccessTx(chainTaskId, contributeEvent, CONTRIBUTED)) {
-            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}, log:{}]",
-                    chainTaskId, resultHash, contributeReceipt.getGasUsed(), contributeEvent.log);
+            log.info("Contributed [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, contribution, contributeReceipt.getGasUsed(), contributeEvent.log);
             return contributeEvent;
         }
 
