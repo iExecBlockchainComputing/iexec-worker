@@ -1,5 +1,7 @@
 package com.iexec.worker.result;
 
+import com.iexec.common.result.ComputedFile;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
@@ -36,119 +38,61 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetContentOfDeterminismFileSinceBytes32(){
-        String chainTaskId = "bytes32";
+    public void shouldGetComputedFileWithWeb2ResultDigestSinceFile(){
+        String chainTaskId = "deterministic-output-file";
 
-        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(false);
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
+        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().isCallbackRequested(false).build());
 
-        String hash = resultService.getTaskDeterminismHash(chainTaskId);
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        String hash = computedFile.getResultDigest();
         // should be equal to the content of the file since it is a byte32
-        assertThat(hash).isEqualTo("0xda9a34f3846cc4434eb31ad870aaf47c8a123225732db003c0c19f3c3f6faa01");
+        assertThat(hash).isEqualTo("0x09b727883db89fa3b3504f83e0c67d04a0d4fc35a9670cc4517c49d2a27ad171");
     }
 
     @Test
-    public void shouldGetHashOfDeterminismFileSinceNotByte32(){
-        String chainTaskId = "notBytes32";
+    public void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree(){
+        String chainTaskId = "deterministic-output-directory";
 
-        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(false);
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
-
-        String hash = resultService.getTaskDeterminismHash(chainTaskId);
-        // should not be equal to the content of the file since it is not a byte32
-        assertThat(hash).isNotEqualTo("dummyRandomString");
-    }
-
-    //@Test: TODO Update that
-    public void shouldReadTeeEnclaveChalengeSignatureFile(){
-        String chainTaskId = "scone-tee";
-        String expectedResult = "0xc746143d64ef1a1f9e280cee70e2866daad3116bfe0e7028a53e500b2c92a6d6";
-        String expectedHash = "0x5ade3c39f9e83db590cbcb03fee7e0ba6c533fa3fb4e72f9320c3e641e38c31e";
-        String expectedSeal = "0x5119fb3770cc545ff3ab0377842ebcd923a3cc02fc4390c285f5368e2b0f3742";
-        String expectedSign = "0xa025ac611f80112c4827f316f2babd92d983c4ebcd4fdcebc57a6f02fd587c4d503264885f0c5aceeccac04c0f6257831bff57890786ceb01dcb9d191a788d711b";
-
-        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
-
-        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
-                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
-
-        assertThat(optionalTeeEnclaveChallengeSignature.isPresent()).isTrue();
-        TeeEnclaveChallengeSignature enclaveChallengeSignature = optionalTeeEnclaveChallengeSignature.get();
-
-        assertThat(enclaveChallengeSignature.getResultDigest()).isEqualTo(expectedResult);
-        assertThat(enclaveChallengeSignature.getResultHash()).isEqualTo(expectedHash);
-        assertThat(enclaveChallengeSignature.getResultSeal()).isEqualTo(expectedSeal);
-        assertThat(enclaveChallengeSignature.getSignature()).isEqualTo(expectedSign);
-    }
-
-    @Test
-    public void shouldNotReadSconeEnclaveSignatureSinceFileCorrupted() {
-        String chainTaskId = "scone-tee-corrupted-file";
-
-        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
-
-        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
-                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
-
-        assertThat(optionalTeeEnclaveChallengeSignature.isPresent()).isFalse();
-    }
-
-    @Test
-    public void shouldNotReadSconeEnclaveSignatureSinceFileMissing() {
-        String chainTaskId = "scone-tee";
-
-        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/fakeFolder");
-
-        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
-                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
-
-        assertThat(optionalTeeEnclaveChallengeSignature.isPresent()).isFalse();
-    }
-
-    @Test
-    public void shouldGetCallbackDataFromFile(){
-        String chainTaskId = "callback";
-        String expected = "0x0000000000000000000000000000000000000000000000000000016a0caa81920000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000004982f5d9a7000000000000000000000000000000000000000000000000000000000000000094254432d5553442d390000000000000000000000000000000000000000000000";
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
-        String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
-        assertThat(callbackDataString).isEqualTo(expected);
-    }
-
-    @Test
-    public void shouldNotGetCallbackDataSinceNotHexa(){
-        String chainTaskId = "callback-fake";
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
-        String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
-        assertThat(callbackDataString).isEqualTo("");
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().isCallbackRequested(false).build());
+
+
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        String hash = computedFile.getResultDigest();
+        System.out.println(hash);
+        // should be equal to the content of the file since it is a byte32
+        assertThat(hash).isEqualTo("0x5efcd74e892340a0c6b0878e846e33aa92abaf23a2415fcdb3036b4b6de3024d");
     }
 
     @Test
-    public void shouldNotGetCallbackDataSinceNoFile(){
-        String chainTaskId = "fake2";
-        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
-        String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
-        assertThat(callbackDataString).isEqualTo("");
+    public void shouldGetComputedFileWithWeb3ResultDigest(){
+        String chainTaskId = "callback-directory";
+
+        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output/iexec_out");
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().isCallbackRequested(true).build());
+
+
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        String hash = computedFile.getResultDigest();
+        System.out.println(hash);
+        // should be equal to the content of the file since it is a byte32
+        assertThat(hash).isEqualTo("0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6");
     }
 
+    //TODO Update after that
     @Test
-    public void shouldNotGetCallbackDataSinceChainTaskIdMissing(){
-        String chainTaskId = "";
-        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
-        String callbackDataString = resultService.getCallbackDataFromFile(chainTaskId);
-        assertThat(callbackDataString).isEqualTo("");
+    public void shouldComputeResultDigest(){
+
     }
+
 
 
 }

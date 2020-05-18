@@ -1,14 +1,18 @@
 package com.iexec.worker.executor;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.utils.SignatureUtils;
+import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -239,24 +243,22 @@ public class TaskManagerService {
             // System.exit(0);
         }
 
-        String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()) {
-            log.error("Cannot contribute, determinism hash not found [chainTaskId:{}]", chainTaskId);
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        if (computedFile == null){
+            log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
         ContributionAuthorization contributionAuthorization =
                 contributionService.getContributionAuthorization(chainTaskId);
 
-        String enclaveChallenge = contributionAuthorization.getEnclaveChallenge();
-        Optional<Signature> enclaveSignature = getVerifiedEnclaveChallengeSignature(chainTaskId, enclaveChallenge);
-        if (enclaveSignature.isEmpty()) {//could be 0x0
-            log.error("Cannot contribute enclave signature not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);
+        Contribution contribution = contributionService.getContribution(computedFile, contributionAuthorization);
+        if (contribution == null){
+            log.error("Failed to getContribution [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
 
-        Optional<ChainReceipt> oChainReceipt =
-                contributionService.contribute(contributionAuthorization, determinismHash, enclaveSignature.get());
+        Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
 
         if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
@@ -268,9 +270,11 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId, TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
 
-        String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()) {
-            log.error("Cannot reveal, determinism hash not found [chainTaskId:{}]", chainTaskId);
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        String resultDigest = computedFile != null ? computedFile.getResultDigest(): "";
+
+        if (resultDigest.isEmpty()) {
+            log.error("Cannot reveal, resultDigest not found [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
@@ -286,7 +290,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(BLOCK_NOT_REACHED);
         }
 
-        boolean canReveal = revealService.repeatCanReveal(chainTaskId, determinismHash);
+        boolean canReveal = revealService.repeatCanReveal(chainTaskId, resultDigest);
 
         if (!canReveal) {
             log.error("Cannot reveal, one or more conditions are not satisfied [chainTaskId:{}]", chainTaskId);
@@ -299,7 +303,7 @@ public class TaskManagerService {
             System.exit(0);
         }
 
-        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, determinismHash);
+        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, resultDigest);
         if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         }
@@ -315,7 +319,8 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
         }
 
-        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        String callbackData = computedFile != null ?  computedFile.getCallbackData(): "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, resultLink, callbackData);
@@ -335,38 +340,6 @@ public class TaskManagerService {
     boolean abort(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
         return resultService.removeResult(chainTaskId);
-    }
-
-
-    //TODO Move that to result service
-    Optional<Signature> getVerifiedEnclaveChallengeSignature(String chainTaskId, String expectedSigner) {
-        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
-        if (!isTeeTask) {
-            return Optional.of(SignatureUtils.emptySignature());
-        }
-
-        Optional<TeeEnclaveChallengeSignature> optionalTeeEnclaveChallengeSignature =
-                resultService.readTeeEnclaveChallengeSignatureFile(chainTaskId);
-        if (optionalTeeEnclaveChallengeSignature.isEmpty()) {
-            log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-        TeeEnclaveChallengeSignature enclaveChallengeSignature = optionalTeeEnclaveChallengeSignature.get();
-
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(
-                enclaveChallengeSignature.getResultHash(),
-                enclaveChallengeSignature.getResultSeal());
-
-        boolean isExpectedSigner = resultService.isExpectedSignerOnSignature(messageHash,
-                enclaveChallengeSignature.getSignature(),
-                expectedSigner);
-
-        if (!isExpectedSigner) {
-            log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        return Optional.of(enclaveChallengeSignature.getSignature());
     }
 
     boolean checkGasBalance(String chainTaskId) {
