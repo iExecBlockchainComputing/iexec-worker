@@ -1,7 +1,7 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
@@ -70,8 +70,8 @@ public class TaskManagerServiceTests {
                 .build();
     }
 
-    ContributionAuthorization getStubAuth(String enclaveChallenge) {
-        return ContributionAuthorization.builder()
+    WorkerpoolAuthorization getStubAuth(String enclaveChallenge) {
+        return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge(enclaveChallenge)
                 .build();
@@ -125,9 +125,9 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(computationService.isAppDownloaded(taskDescription.getAppUri())).thenReturn(true);
-        ContributionAuthorization contributionAuthorization = new ContributionAuthorization();
-        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
-        when(computationService.runNonTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
+        WorkerpoolAuthorization workerpoolAuthorization = new WorkerpoolAuthorization();
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID)).thenReturn(workerpoolAuthorization);
+        when(computationService.runNonTeeComputation(taskDescription, workerpoolAuthorization)).thenReturn(true);
 
         ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 
@@ -141,9 +141,9 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(computationService.isAppDownloaded(taskDescription.getAppUri())).thenReturn(true);
-        ContributionAuthorization contributionAuthorization = new ContributionAuthorization();
-        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
-        when(computationService.runTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
+        WorkerpoolAuthorization workerpoolAuthorization = new WorkerpoolAuthorization();
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID)).thenReturn(workerpoolAuthorization);
+        when(computationService.runTeeComputation(taskDescription, workerpoolAuthorization)).thenReturn(true);
 
         ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
 

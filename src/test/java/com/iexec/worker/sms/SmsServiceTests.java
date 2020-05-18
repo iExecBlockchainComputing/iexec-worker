@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.SmsClient;
@@ -44,13 +44,13 @@ public class SmsServiceTests {
     @Test
     public void shouldCreateTeeSession() throws IOException {
         Signature signatureStub = new Signature("random-signature");
-        ContributionAuthorization contributionAuth = mock(ContributionAuthorization.class);
-        when(credentialsService.hashAndSignMessage(contributionAuth.getHash()))
+        WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
+        when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
-        when(smsClient.createTeeSession(signatureStub.getValue(), contributionAuth))
+        when(smsClient.createTeeSession(signatureStub.getValue(), workerpoolAuthorization))
                 .thenReturn(ResponseEntity.ok(SESSION_ID));
 
-        String returnedSessionId = smsService.createTeeSession(contributionAuth);
+        String returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
         assertThat(returnedSessionId).isEqualTo(SESSION_ID);
     }
 }

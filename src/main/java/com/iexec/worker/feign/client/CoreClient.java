@@ -4,7 +4,7 @@ import feign.FeignException;
 
 import java.util.List;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
@@ -54,7 +54,7 @@ public interface CoreClient {
     // Replicate
 
     @GetMapping("/replicates/available")
-    ResponseEntity<ContributionAuthorization> getAvailableReplicate(
+    ResponseEntity<WorkerpoolAuthorization> getAvailableReplicate(
             @RequestHeader("Authorization") String bearerToken,
             @RequestParam(name = "blockNumber") long blockNumber) throws FeignException;
 

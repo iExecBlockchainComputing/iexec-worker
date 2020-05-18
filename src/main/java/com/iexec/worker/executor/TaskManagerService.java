@@ -1,18 +1,13 @@
 package com.iexec.worker.executor;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -197,13 +192,13 @@ public class TaskManagerService {
         }
 
         boolean isComputed;
-        ContributionAuthorization contributionAuthorization =
-                contributionService.getContributionAuthorization(chainTaskId);
+        WorkerpoolAuthorization workerpoolAuthorization =
+                contributionService.getWorkerpoolAuthorization(chainTaskId);
 
         if (taskDescription.isTeeTask()) {
-            isComputed = computationService.runTeeComputation(taskDescription, contributionAuthorization);
+            isComputed = computationService.runTeeComputation(taskDescription, workerpoolAuthorization);
         } else {
-            isComputed = computationService.runNonTeeComputation(taskDescription, contributionAuthorization);
+            isComputed = computationService.runNonTeeComputation(taskDescription, workerpoolAuthorization);
         }
 
         if (!isComputed) {
@@ -237,16 +232,13 @@ public class TaskManagerService {
         }
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-        if (computedFile == null){
+        if (computedFile == null) {
             log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        ContributionAuthorization contributionAuthorization =
-                contributionService.getContributionAuthorization(chainTaskId);
-
-        Contribution contribution = contributionService.getContribution(computedFile, contributionAuthorization);
-        if (contribution == null){
+        Contribution contribution = contributionService.getContribution(computedFile);
+        if (contribution == null) {
             log.error("Failed to getContribution [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
@@ -264,7 +256,7 @@ public class TaskManagerService {
         unsetTaskUsingCpu(chainTaskId);
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-        String resultDigest = computedFile != null ? computedFile.getResultDigest(): "";
+        String resultDigest = computedFile != null ? computedFile.getResultDigest() : "";
 
         if (resultDigest.isEmpty()) {
             log.error("Cannot reveal, resultDigest not found [chainTaskId:{}]", chainTaskId);
@@ -326,7 +318,7 @@ public class TaskManagerService {
         }
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-        String callbackData = computedFile != null ?  computedFile.getCallbackData(): "";
+        String callbackData = computedFile != null ? computedFile.getCallbackData() : "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, resultLink, callbackData);

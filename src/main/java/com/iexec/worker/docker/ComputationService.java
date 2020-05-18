@@ -1,6 +1,6 @@
 package com.iexec.worker.docker;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
@@ -11,7 +11,6 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -83,14 +82,14 @@ public class ComputationService {
     }
 
     public boolean runNonTeeComputation(TaskDescription taskDescription,
-                                        ContributionAuthorization contributionAuth) {
+                                        WorkerpoolAuthorization workerpoolAuthorization) {
         String chainTaskId = taskDescription.getChainTaskId();
         String imageUri = taskDescription.getAppUri();
         String cmd = taskDescription.getCmd();
         long maxExecutionTime = taskDescription.getMaxExecutionTime();
 
         // fetch task secrets from SMS
-        Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(contributionAuth);
+        Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(workerpoolAuthorization);
         if (!oTaskSecrets.isPresent()) {
             log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
         } else {
@@ -131,7 +130,7 @@ public class ComputationService {
                 .build();
 
         DockerExecutionResult appExecutionResult = customDockerClient.execute(dockerExecutionConfig);
-        if (shouldPrintDeveloperLogs(taskDescription)){
+        if (shouldPrintDeveloperLogs(taskDescription)) {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }
@@ -145,8 +144,8 @@ public class ComputationService {
     }
 
     public boolean runTeeComputation(TaskDescription taskDescription,
-                                     ContributionAuthorization contributionAuth) {
-        String chainTaskId = contributionAuth.getChainTaskId();
+                                     WorkerpoolAuthorization workerpoolAuthorization) {
+        String chainTaskId = workerpoolAuthorization.getChainTaskId();
         String imageUri = taskDescription.getAppUri();
         String datasetUri = taskDescription.getDatasetUri();
         String cmd = taskDescription.getCmd();
@@ -159,7 +158,7 @@ public class ComputationService {
             return false;
         }
 
-        String secureSessionId = smsService.createTeeSession(contributionAuth);
+        String secureSessionId = smsService.createTeeSession(workerpoolAuthorization);
         if (secureSessionId.isEmpty()) {
             log.error("Cannot compute TEE task without secure session [chainTaskId:{}]", chainTaskId);
             return false;
@@ -195,7 +194,7 @@ public class ComputationService {
         // run computation
         DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
 
-        if (shouldPrintDeveloperLogs(taskDescription)){
+        if (shouldPrintDeveloperLogs(taskDescription)) {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }

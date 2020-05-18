@@ -1,6 +1,6 @@
 package com.iexec.worker.replicate;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
@@ -132,14 +132,14 @@ public class ReplicateRecoveryServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(notificationType)
                 .taskNotificationExtra(TaskNotificationExtra.builder()
-                        .contributionAuthorization(getStubAuth())
+                        .workerpoolAuthorization(getStubAuth())
                         .build())
                 .build();
 
     }
 
-    private ContributionAuthorization getStubAuth() {
-        return ContributionAuthorization.builder()
+    private WorkerpoolAuthorization getStubAuth() {
+        return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
     }
