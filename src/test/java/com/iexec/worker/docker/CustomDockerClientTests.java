@@ -52,23 +52,21 @@ public class CustomDockerClientTests {
         MockitoAnnotations.initMocks(this);
     }
 
-    public String getDockerInput() { return DOCKER_TMP_FOLDER + "/input"; }
-    public String getDockerOutput() { return DOCKER_TMP_FOLDER + "/output"; }
-    public String getDockerIexecOut() { return getDockerOutput() + "/iexec_out"; }
-    public String getDockerScone() { return DOCKER_TMP_FOLDER + "/scone"; }
+    public String getDockerInput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_INPUT; }
+    public String getDockerOutput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_OUTPUT; }
+    public String getDockerResult() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_RESULT; }
 
-    public DockerExecutionConfig getDockerExecutionConfigStub() {
+    public DockerExecutionConfig getAppDockerExecutionConfigStub(boolean isSgx) {
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(getDockerInput(), FileHelper.SLASH_IEXEC_IN);
-        bindPaths.put(getDockerIexecOut(), FileHelper.SLASH_IEXEC_OUT);
-
+        bindPaths.put(getDockerOutput(), FileHelper.SLASH_IEXEC_OUT);
         return DockerExecutionConfig.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .imageUri(ALPINE_LATEST)
                 .cmd(CMD)
                 .env(ENV)
                 .bindPaths(bindPaths)
-                .isSgx(false)
+                .isSgx(isSgx)
                 .maxExecutionTime(500000)
                 .build();
     }
@@ -126,9 +124,8 @@ public class CustomDockerClientTests {
     // buildContainerConfig()
 
     @Test
-    public void shouldBuildContainerConfigWithoutSgxDevice() {
-        DockerExecutionConfig config = getDockerExecutionConfigStub();
-
+    public void shouldBuildNonTeeAppContainerConfig() {
+        DockerExecutionConfig config = getAppDockerExecutionConfigStub(false);
         ContainerConfig containerConfig = 
                 customDockerClient.buildContainerConfig(config).get();
 
@@ -136,32 +133,25 @@ public class CustomDockerClientTests {
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
         assertThat(containerConfig.env()).isEqualTo(ENV);
         assertThat(containerConfig.hostConfig().devices()).isNull();
-
         ImmutableList<String> binds = containerConfig.hostConfig().binds();
         assertThat(binds).contains(
-                getDockerInput() + ":/iexec_in",
-                getDockerIexecOut() + ":/iexec_out");
+                getDockerInput()  + ":" + FileHelper.SLASH_IEXEC_IN,
+                getDockerOutput() + ":" + FileHelper.SLASH_IEXEC_OUT);
     }
 
     @Test
-    public void shouldBuildContainerConfigWithSgxDevice() {
-        DockerExecutionConfig config = getDockerExecutionConfigStub();
-        config.setSgx(true);
-        config.getBindPaths().put(getDockerScone(), FileHelper.SLASH_SCONE);
-
+    public void shouldBuildTeeAppContainerConfig() {
+        DockerExecutionConfig config = getAppDockerExecutionConfigStub(true);
         ContainerConfig containerConfig = 
                 customDockerClient.buildContainerConfig(config).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
         assertThat(containerConfig.env()).isEqualTo(ENV);
-
         ImmutableList<String> binds = containerConfig.hostConfig().binds();
         assertThat(binds).contains(
-                getDockerInput() + ":/iexec_in",
-                getDockerIexecOut() + ":/iexec_out",
-                getDockerScone()+ ":/scone");
-
+                getDockerInput()  + ":" + FileHelper.SLASH_IEXEC_IN,
+                getDockerOutput() + ":" + FileHelper.SLASH_IEXEC_OUT);
         Device sgxDevice = containerConfig.hostConfig().devices().get(0);
         assertThat(sgxDevice.pathOnHost()).isEqualTo(SGX_DEVICE_PATH);
         assertThat(sgxDevice.pathInContainer()).isEqualTo(SGX_DEVICE_PATH);
@@ -170,9 +160,8 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldNotBuildContainerConfigWithoutImage() {
-        DockerExecutionConfig config = getDockerExecutionConfigStub();
+        DockerExecutionConfig config = getAppDockerExecutionConfigStub(false);
         config.setImageUri("");
-
         Optional<ContainerConfig> containerConfig = 
                 customDockerClient.buildContainerConfig(config);
 
@@ -183,9 +172,8 @@ public class CustomDockerClientTests {
 
     @Test
     public void shouldExecute() {
-        DockerExecutionConfig config = getDockerExecutionConfigStub();
+        DockerExecutionConfig config = getAppDockerExecutionConfigStub(false);
         config.setCmd("echo Hello from Docker alpine!");
-
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(config);
         assertThat(dockerExecutionResult.getStdout()).contains("Hello from Docker alpine!");
     }
@@ -193,10 +181,9 @@ public class CustomDockerClientTests {
     @Test
     public void shouldStopComputingIfTooLong() {
         String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
-        DockerExecutionConfig config = getDockerExecutionConfigStub();
+        DockerExecutionConfig config = getAppDockerExecutionConfigStub(false);
         config.setCmd(cmd);
         config.setMaxExecutionTime(5 * SECOND);
-
         DockerExecutionResult dockerExecutionResult = customDockerClient.execute(config);
         assertThat(dockerExecutionResult.getStdout()).isEmpty();
     }
@@ -243,7 +230,6 @@ public class CustomDockerClientTests {
         ContainerConfig containerConfig = ContainerConfig.builder()
                 .image(ALPINE_LATEST)
                 .build();
-
         CustomContainerInfo containerInfo =
                 customDockerClient.createContainer(CHAIN_TASK_ID, containerConfig).get();
 
@@ -273,7 +259,7 @@ public class CustomDockerClientTests {
     @Test
     public void shouldNotRemoveRunningContainer() {
         String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
-        DockerExecutionConfig config = getDockerExecutionConfigStub();
+        DockerExecutionConfig config = getAppDockerExecutionConfigStub(false);
         config.setCmd(cmd);
 
         ContainerConfig containerConfig = 
