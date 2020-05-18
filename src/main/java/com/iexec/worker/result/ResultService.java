@@ -1,14 +1,23 @@
 package com.iexec.worker.result;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static com.iexec.common.utils.FileHelper.createFileWithContent;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
-import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
@@ -17,30 +26,16 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
-import org.web3j.crypto.Hash;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.iexec.common.utils.BytesUtils.bytesToString;
-import static com.iexec.common.utils.FileHelper.createFileWithContent;
-import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 public class ResultService {
 
-    private static final String DETERMINIST_FILE_NAME = "determinism.iexec";
-    private static final String TEE_ENCLAVE_SIGNATURE_FILE_NAME = "enclaveSig.iexec";
-    private static final String CALLBACK_FILE_NAME = "callback.iexec";
     private static final String STDOUT_FILENAME = "stdout.txt";
 
     private WorkerConfigurationService workerConfigService;
@@ -62,6 +57,34 @@ public class ResultService {
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
         this.resultInfoMap = new ConcurrentHashMap<>();
+    }
+
+    public ResultInfo getResultInfos(String chainTaskId) {
+        return resultInfoMap.get(chainTaskId);
+    }
+
+    public String getResultFolderPath(String chainTaskId) {
+        return workerConfigService.getTaskResultDir(chainTaskId);
+    }
+
+    public boolean isResultFolderFound(String chainTaskId) {
+        return new File(getResultFolderPath(chainTaskId)).exists();
+    }
+
+    public String getResultZipFilePath(String chainTaskId) {
+        return getResultFolderPath(chainTaskId) + ".zip";
+    }
+
+    public String getEncryptedResultFilePath(String chainTaskId) {
+        return getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+    }
+
+    public boolean isResultZipFound(String chainTaskId) {
+        return new File(getResultZipFilePath(chainTaskId)).exists();
+    }
+
+    public boolean isEncryptedResultZipFound(String chainTaskId) {
+        return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
     public boolean saveResult(String chainTaskId, TaskDescription taskDescription, String stdout) {
@@ -116,38 +139,6 @@ public class ResultService {
                 .zip(zipResultAsBytes)
                 .deterministHash(resultInfo.getDeterministHash())
                 .build();
-    }
-
-    public ResultInfo getResultInfos(String chainTaskId) {
-        return resultInfoMap.get(chainTaskId);
-    }
-
-    public String getResultZipFilePath(String chainTaskId) {
-        return getResultFolderPath(chainTaskId) + ".zip";
-    }
-
-    public String getResultFolderPath(String chainTaskId) {
-        return workerConfigService.getTaskOutputDir(chainTaskId);
-    }
-
-    public String getEncryptedResultFilePath(String chainTaskId) {
-        return getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
-    }
-
-    // public String getResultDirPath(String chainTaskId, boolean isTeeTask) {
-    //     return getResultFolderPath(chainTaskId) +
-    // }
-
-    public boolean isResultZipFound(String chainTaskId) {
-        return new File(getResultZipFilePath(chainTaskId)).exists();
-    }
-
-    public boolean isResultFolderFound(String chainTaskId) {
-        return new File(getResultFolderPath(chainTaskId)).exists();
-    }
-
-    public boolean isEncryptedResultZipFound(String chainTaskId) {
-        return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
     public boolean removeResult(String chainTaskId) {
