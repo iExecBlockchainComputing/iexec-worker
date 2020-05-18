@@ -68,7 +68,7 @@ public class ResultServiceTests {
         String hash = computedFile.getResultDigest();
         System.out.println(hash);
         // should be equal to the content of the file since it is a byte32
-        assertThat(hash).isEqualTo("0x5efcd74e892340a0c6b0878e846e33aa92abaf23a2415fcdb3036b4b6de3024d");
+        assertThat(hash).isEqualTo("0xc6114778cc5c33db5fbbd4d0f9be116ed0232961045341714aba5a72d3ef7402");
     }
 
     @Test

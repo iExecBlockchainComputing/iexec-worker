@@ -1,3 +1,3 @@
 {
-  "deterministic-output": "/iexec_out"
+  "deterministic-output-path": "/iexec_out"
 }
