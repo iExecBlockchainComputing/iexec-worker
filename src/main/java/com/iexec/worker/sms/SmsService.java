@@ -1,22 +1,20 @@
 package com.iexec.worker.sms;
 
-import java.util.Optional;
-
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.sms.secret.SmsSecret;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.SmsClient;
-
+import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
-import feign.FeignException;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
 
 
 @Slf4j
@@ -32,10 +30,10 @@ public class SmsService {
     }
 
     @Retryable(value = FeignException.class)
-    public Optional<TaskSecrets> fetchTaskSecrets(ContributionAuthorization contributionAuth) {
-        String chainTaskId = contributionAuth.getChainTaskId();
-        String authorization = getAuthorizationString(contributionAuth);
-        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(authorization, contributionAuth);
+    public Optional<TaskSecrets> fetchTaskSecrets(WorkerpoolAuthorization workerpoolAuthorization) {
+        String chainTaskId = workerpoolAuthorization.getChainTaskId();
+        String authorization = getAuthorizationString(workerpoolAuthorization);
+        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
         if (!response.getStatusCode().is2xxSuccessful()) {
             return Optional.empty();
         }
@@ -63,17 +61,17 @@ public class SmsService {
     }
 
     @Recover
-    private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
+    private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
         log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
-                contributionAuth.getChainTaskId(), e.status(), e.getMessage());
+                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
         return Optional.empty();
     }
 
     public void saveSecrets(String chainTaskId,
-                             TaskSecrets taskSecrets,
-                             String datasetSecretFilePath,
-                             String beneficiarySecretFilePath,
-                             String enclaveSecretFilePath) {
+                            TaskSecrets taskSecrets,
+                            String datasetSecretFilePath,
+                            String beneficiarySecretFilePath,
+                            String enclaveSecretFilePath) {
 
         SmsSecret datasetSecret = taskSecrets.getDatasetSecret();
         SmsSecret beneficiarySecret = taskSecrets.getBeneficiarySecret();
@@ -102,21 +100,21 @@ public class SmsService {
     }
 
     @Retryable(value = FeignException.class)
-    public String createTeeSession(ContributionAuthorization contributionAuth) {
-        String authorization = getAuthorizationString(contributionAuth);
-        ResponseEntity<String> response = smsClient.createTeeSession(authorization, contributionAuth);
+    public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
+        String authorization = getAuthorizationString(workerpoolAuthorization);
+        ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
         return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
     }
 
     @Recover
-    private String createTeeSession(FeignException e, ContributionAuthorization contributionAuth) {
+    private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
         log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
-                contributionAuth.getChainTaskId(), e.status(), e.getMessage());
+                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
         return "";
     }
 
-    private String getAuthorizationString(ContributionAuthorization contributionAuth) {
-        String challenge = contributionAuth.getHash();
+    private String getAuthorizationString(WorkerpoolAuthorization workerpoolAuthorization) {
+        String challenge = workerpoolAuthorization.getHash();
         return credentialsService.hashAndSignMessage(challenge).getValue();
     }
 }

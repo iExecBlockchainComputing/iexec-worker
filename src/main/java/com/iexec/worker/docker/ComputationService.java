@@ -1,6 +1,6 @@
 package com.iexec.worker.docker;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
@@ -10,7 +10,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -168,7 +167,7 @@ public class ComputationService {
                 .isSgx(taskDescription.isTeeTask())
                 .build();
         DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
-        if (shouldPrintDeveloperLogs(taskDescription)){
+        if (shouldPrintDeveloperLogs(taskDescription)) {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }

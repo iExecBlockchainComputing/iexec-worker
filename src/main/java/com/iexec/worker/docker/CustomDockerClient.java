@@ -57,6 +57,15 @@ public class CustomDockerClient {
 
     public boolean pullImage(String chainTaskId, String image) {
         log.info("Image pull started [chainTaskId:{}, image:{}]", chainTaskId, image);
+        try {
+            docker.pull(image);
+        } catch (DockerException | InterruptedException e) {
+            log.error("Image pull failed [chainTaskId:{}, image:{}]", chainTaskId, image);
+            e.printStackTrace();
+            return false;
+        }
+
+        log.info("Image pull completed [chainTaskId:{}, image:{}]", chainTaskId, image);
         return true;
     }
 

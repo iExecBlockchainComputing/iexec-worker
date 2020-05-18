@@ -1,6 +1,6 @@
 package com.iexec.worker.replicate;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
@@ -65,15 +65,15 @@ public class ReplicateDemandService {
             return;
         }
 
-        Optional<ContributionAuthorization> oContributionAuth =
+        Optional<WorkerpoolAuthorization> oContributionAuth =
                 customCoreFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
 
         if (!oContributionAuth.isPresent()) {
             return;
         }
 
-        ContributionAuthorization contributionAuth = oContributionAuth.get();
-        String chainTaskId = contributionAuth.getChainTaskId();
+        WorkerpoolAuthorization workerpoolAuthorization = oContributionAuth.get();
+        String chainTaskId = workerpoolAuthorization.getChainTaskId();
         log.info("Received new task [chainTaskId:{}]", chainTaskId);
 
         if (!contributionService.isChainTaskInitialized(chainTaskId)) {
@@ -82,7 +82,7 @@ public class ReplicateDemandService {
         }
 
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
-                .contributionAuthorization(contributionAuth)
+                .workerpoolAuthorization(workerpoolAuthorization)
                 .build();
 
         TaskNotification taskNotification = TaskNotification.builder()
