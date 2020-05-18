@@ -14,8 +14,8 @@ import lombok.NoArgsConstructor;
 public class ComputeMeta {
     
     private String chainTaskId;
-    private boolean isSuccessfulPreCompute;
     private boolean isSuccess;
+    private boolean isSuccessfulPreCompute;
     private boolean isSuccessfulPostCompute;
     @Builder.Default private String secureSessionId = "";
     @Builder.Default private String stdout = "";
