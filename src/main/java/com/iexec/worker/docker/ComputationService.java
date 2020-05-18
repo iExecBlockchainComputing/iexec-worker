@@ -91,18 +91,18 @@ public class ComputationService {
      * 
      */
     public void runPreCompute(ComputeMeta computeMeta, TaskDescription taskDescription,
-                ContributionAuthorization contributionAuth) {
+                WorkerpoolAuthorization workerpoolAuth) {
         if (taskDescription.isTeeTask()) {
-            String secureSessionId = runTeePreCompute(taskDescription, contributionAuth);
+            String secureSessionId = runTeePreCompute(taskDescription, workerpoolAuth);
             computeMeta.setSuccessfulPreCompute(!secureSessionId.isEmpty());
             computeMeta.setSecureSessionId(secureSessionId);
             return;
         }
-        boolean isSuccess = runNonTeePreCompute(taskDescription, contributionAuth);
+        boolean isSuccess = runNonTeePreCompute(taskDescription, workerpoolAuth);
         computeMeta.setSuccessfulPreCompute(isSuccess);
     }
 
-    private String runTeePreCompute(TaskDescription taskDescription, ContributionAuthorization contributionAuth) {
+    private String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         if (!customDockerClient.pullImage(chainTaskId, taskDescription.getTeePostComputeImage())) {
             log.error("Cannot pull TEE post compute image [chainTaskId:{}, imageUri:{}]",
@@ -110,7 +110,7 @@ public class ComputationService {
             return "";
         }
 
-        String secureSessionId = smsService.createTeeSession(contributionAuth);
+        String secureSessionId = smsService.createTeeSession(workerpoolAuth);
         if (secureSessionId.isEmpty()) {
             log.error("Cannot compute TEE task without secure session [chainTaskId:{}]", chainTaskId);
         } else {
@@ -119,9 +119,9 @@ public class ComputationService {
         return secureSessionId;
     }
 
-    private boolean runNonTeePreCompute(TaskDescription taskDescription, ContributionAuthorization contributionAuth) {
+    private boolean runNonTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
-        Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(contributionAuth);
+        Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(workerpoolAuth);
         if (!oTaskSecrets.isPresent()) {
             log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
         } else {
