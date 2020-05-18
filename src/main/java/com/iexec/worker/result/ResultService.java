@@ -1,6 +1,7 @@
 package com.iexec.worker.result;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
@@ -9,6 +10,8 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
@@ -33,7 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.iexec.common.utils.BytesUtils.bytesToString;
 import static com.iexec.common.utils.FileHelper.createFileWithContent;
 import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
-import static com.iexec.common.worker.result.ResultUtils.getCallbackDataFromPath;
 
 @Slf4j
 @Service
@@ -91,10 +93,12 @@ public class ResultService {
     }
 
     public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
+        ComputedFile computedFile = getComputedFile(chainTaskId);
+
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
                 .cmd(taskDescription.getCmd())
-                .deterministHash(getTaskDeterminismHash(chainTaskId))
+                .deterministHash(computedFile != null ? computedFile.getResultDigest(): "")
                 .datasetUri(taskDescription.getDatasetUri())
                 .build();
 
@@ -182,140 +186,45 @@ public class ResultService {
         return Arrays.asList(chainTaskIdFolders);
     }
 
-    public String getTaskDeterminismHash(String chainTaskId) {
-        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
+    public ComputedFile getComputedFile(String chainTaskId) {
+        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
+                workerConfigService.getTaskIexecOutDir(chainTaskId));
 
-        if (isTeeTask){
-            return getTeeDeterminismHash(chainTaskId);
-        } else {
-            return getNonTeeDeterminismHash(chainTaskId);
+        if (computedFile == null){
+            log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
+            return null;
         }
+
+        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()){
+            String resultDigest = computeResultDigest(computedFile);
+            if (resultDigest.isEmpty()){
+                log.error("Failed to getComputedFile (resultDigest is empty but cant compute it)" +
+                                "[chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
+                return null;
+            }
+            computedFile.setResultDigest(resultDigest);
+        }
+
+        return computedFile;
     }
 
-    private String getNonTeeDeterminismHash(String chainTaskId) {
-        String hash = "";
-        String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                + File.separator + DETERMINIST_FILE_NAME;
+    private String computeResultDigest(ComputedFile computedFile) {
+        String chainTaskId = computedFile.getTaskId() ;
 
-        Path determinismFilePath = Paths.get(filePath);
+        String resultDigest;
+        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()){
+            resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
+        } else {
+            resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
+                    workerConfigService.getTaskOutputDir(chainTaskId));
+        }
 
-        try {
-            String callbackFilePathName = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                    + File.separator + CALLBACK_FILE_NAME;
-
-            String callbackData = getCallbackDataFromPath(callbackFilePathName);
-            if (!callbackData.isEmpty()){
-                return Hash.sha3(callbackData);
-            }
-
-            if (determinismFilePath.toFile().exists()) {
-                hash = getHashFromDeterminismIexecFile(determinismFilePath);
-                log.info("Determinism file found and its hash has been computed "
-                        + "[chainTaskId:{}, hash:{}]", chainTaskId, hash);
-                return hash;
-            }
-
-            log.info("Determinism file not found, the hash of the result file will be used instead "
-                    + "[chainTaskId:{}]", chainTaskId);
-            String resultFilePathName = getResultZipFilePath(chainTaskId);
-            byte[] content = Files.readAllBytes(Paths.get(resultFilePathName));
-            hash = bytesToString(Hash.sha256(content));
-        } catch (IOException e) {
-            log.error("Failed to compute determinism hash [chainTaskId:{}]", chainTaskId);
-            e.printStackTrace();
+        if (resultDigest.isEmpty()){
+            log.error("Failed to getComputedFile (resultDigest empty)[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
             return "";
         }
-
-        log.info("Computed hash of the result file [chainTaskId:{}, hash:{}]", chainTaskId, hash);
-        return hash;
-    }
-
-    /** This method is to compute the hash of the determinist.iexec file
-     * if the file is a text and if it is a byte32, no need to hash it
-     * if the file is a text and if it is NOT a byte32, it is hashed using sha256
-     * if the file is NOT a text, it is hashed using sha256
-     */
-    private String getHashFromDeterminismIexecFile(Path deterministFilePath) throws IOException {
-        try (Scanner scanner = new Scanner(deterministFilePath.toFile())) {
-            // command to put the content of the whole file into string (\Z is the end of the string anchor)
-            // This ultimately makes the input have one actual token, which is the entire file
-            String contentFile = scanner.useDelimiter("\\Z").next();
-            byte[] content = BytesUtils.stringToBytes(contentFile);
-
-            // if determinism.iexec file is already a byte32, no need to hash it again
-            return bytesToString(BytesUtils.isBytes32(content) ? content : Hash.sha256(content));
-
-        } catch (Exception e) {
-            return bytesToString(Hash.sha256(Files.readAllBytes(deterministFilePath)));
-        }
-    }
-
-    private String getTeeDeterminismHash(String chainTaskId) {
-        Optional<TeeEnclaveChallengeSignature> enclaveChallengeSignature =
-                readTeeEnclaveChallengeSignatureFile(chainTaskId);
-
-        if (!enclaveChallengeSignature.isPresent()) {
-            log.error("Could not get TEE determinism hash [chainTaskId:{}]", chainTaskId);
-            return "";
-        }
-
-        String hash = enclaveChallengeSignature.get().getResultDigest();
-        log.info("Enclave signature file found, result hash retrieved successfully "
-                + "[chainTaskId:{}, hash:{}]", chainTaskId, hash);
-        return hash;
-    }
-
-    public Optional<TeeEnclaveChallengeSignature> readTeeEnclaveChallengeSignatureFile(String chainTaskId) {
-        String enclaveSignatureFilePath = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                + File.separator + TEE_ENCLAVE_SIGNATURE_FILE_NAME;
-
-        File enclaveSignatureFile = new File(enclaveSignatureFilePath);
-
-        if (!enclaveSignatureFile.exists()) {
-            log.error("File enclaveSig.iexec not found [chainTaskId:{}, enclaveSignatureFilePath:{}]",
-                    chainTaskId, enclaveSignatureFilePath);
-            return Optional.empty();
-        }
-
-        ObjectMapper mapper = new ObjectMapper();
-        TeeEnclaveChallengeSignature enclaveChallengeSignature = null;
-        try {
-            enclaveChallengeSignature = mapper.readValue(enclaveSignatureFile, TeeEnclaveChallengeSignature.class);
-        } catch (IOException e) {
-            log.error("File enclaveSig.iexec found but failed to parse it [chainTaskId:{}]", chainTaskId);
-            e.printStackTrace();
-            return Optional.empty();
-        }
-
-        if (enclaveChallengeSignature == null) {
-            log.error("File enclaveSig.iexec found but was parsed to null [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        log.debug("Content of enclaveSig.iexec file [chainTaskId:{}, enclaveChallengeSignature:{}]",
-                chainTaskId, enclaveChallengeSignature);
-
-        return Optional.of(enclaveChallengeSignature);
-    }
-
-    public boolean isExpectedSignerOnSignature(String messageHash, Signature signature, String expectedSigner) {
-        return isExpectedSignerOnSignedMessageHash(messageHash,
-                signature,
-                expectedSigner);
-    }
-
-    public String getCallbackDataFromFile(String chainTaskId) {
-        String callbackFilePathName = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                + File.separator + CALLBACK_FILE_NAME;
-
-        String callbackData = getCallbackDataFromPath(callbackFilePathName);
-        if (!callbackData.isEmpty()){
-            log.info("Callback file exists [chainTaskId:{}, callbackFilePathName:{}]", chainTaskId, callbackFilePathName);
-        } else {
-            log.info("No callback file [chainTaskId:{}, callbackFilePathName:{}]", chainTaskId, callbackFilePathName);
-        }
-
-        return callbackData;
+        return resultDigest;
     }
 
     public boolean isResultEncryptionNeeded(String chainTaskId) {

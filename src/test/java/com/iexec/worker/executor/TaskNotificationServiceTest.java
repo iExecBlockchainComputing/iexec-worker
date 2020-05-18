@@ -1,6 +1,6 @@
 package com.iexec.worker.executor;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
@@ -60,16 +60,16 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldStoreContributionAuthorizationIfPresent() {
+    public void shouldStoreWorkerpoolAuthorizationIfPresent() {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTINUE)
-                .taskNotificationExtra(TaskNotificationExtra.builder().contributionAuthorization(new ContributionAuthorization()).build())
+                .taskNotificationExtra(TaskNotificationExtra.builder().workerpoolAuthorization(new WorkerpoolAuthorization()).build())
                 .build();
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(contributionService, Mockito.times(1))
-                .putContributionAuthorization(any());
+                .putWorkerpoolAuthorization(any());
     }
 
     @Test

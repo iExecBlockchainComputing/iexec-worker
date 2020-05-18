@@ -1,26 +1,44 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
+import com.iexec.common.contribution.Contribution;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.security.Signature;
+import com.iexec.common.tee.TeeEnclaveChallengeSignature;
+import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.SignatureUtils;
+import com.iexec.common.utils.TestUtils;
+import com.iexec.common.worker.result.ResultUtils;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.ECKeyPair;
+import org.web3j.crypto.Keys;
+import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.Date;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Java6Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 public class ContributionServiceTests {
 
     @Mock private IexecHubService iexecHubService;
-    @Mock private ContributionAuthorizationService contributionAuthorizationService;
+    @Mock private WorkerpoolAuthorizationService workerpoolAuthorizationService;
+    @Mock private EnclaveAuthorizationService enclaveAuthorizationService;
+    @Mock private CredentialsService credentialsService;
 
     @InjectMocks
     private ContributionService contributionService;
@@ -171,39 +189,91 @@ public class ContributionServiceTests {
         when(iexecHubService.getChainContribution(chainTaskId))
                 .thenReturn(Optional.of(ChainContribution.builder()
                 .status(ChainContributionStatus.UNSET).build()));
-        when(contributionAuthorizationService.getContributionAuthorization(chainTaskId))
-                .thenReturn(new ContributionAuthorization());
+        when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
+                .thenReturn(new WorkerpoolAuthorization());
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).isEmpty()).isTrue();
     }
 
-    /**
-     *  isContributionAuthorizationValid()
-     *
-     */
+    @Test
+    public void getContribution() {
+        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000002";
+
+        String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
+        String resultSeal = ResultUtils.computeResultSeal(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
+
+        WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
+        when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
+        when(credentialsService.getCredentials()).thenReturn(Credentials.create(TestUtils.WORKER_PRIVATE));
+        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(false);
+
+        ComputedFile computedFile = ComputedFile.builder()
+                .taskId(chainTaskId)
+                .resultDigest(resultDigest)
+                .build();
+        Contribution contribution = contributionService.getContribution(computedFile);
+
+        System.out.println(contribution);
+
+        Assert.assertNotNull(contribution);
+
+        Assert.assertEquals(contribution,
+                Contribution.builder()
+                        .chainTaskId(chainTaskId)
+                        .resultDigest(resultDigest)
+                        .resultHash(resultHash)
+                        .resultSeal(resultSeal)
+                        .enclaveChallenge(teeWorkerpoolAuth.getEnclaveChallenge())
+                        .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                        .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
+                        .build()
+        );
+    }
 
     @Test
-    public void shouldContributionAuthorizationBeValid() {
-        // PRIVATE_KEY_STRING: "a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6";
-        // PUBLIC_KEY_STRING: "0x506bc1dc099358e5137292f4efdd57e400f29ba5132aa5d12b18dac1c1f6aaba645c0b7b58158babbfa6c6cd5a48aa7340a8749176b120e8516216787a13dc76";
-        String signingAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc";
+    public void getContributionWithTee() {
+        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
-        String workerWallet = "0x748e091bf16048cb5103E0E10F9D5a8b7fBDd860";
-        String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-        String enclaveWallet = "0x9a43BB008b7A657e1936ebf5d8e28e5c5E021596";
+        String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
+        String resultSeal = ResultUtils.computeResultSeal(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
-        Signature signature = new Signature(
-                BytesUtils.stringToBytes("0x99f6b19da6aeb2133763a11204b9895c5b7d0478d08ae3d889a6bd6c820b612f"),
-                BytesUtils.stringToBytes("0x0b64b1f9ceb8472f4944da55d3b75947a04618bae5ddd57a7a2a2d14c3802b7e"),
-                new byte[]{(byte) 27});
+        WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
+        teeWorkerpoolAuth.setEnclaveChallenge(TestUtils.ENCLAVE_ADDRESS);
+        when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
+        when(enclaveAuthorizationService.
+                isVerifiedEnclaveSignature(anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(true);
+        when(credentialsService.getCredentials()).thenReturn(Credentials.create(TestUtils.WORKER_PRIVATE));
+        when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
 
-        ContributionAuthorization contribAuth = ContributionAuthorization.builder()
-                .workerWallet(workerWallet)
-                .chainTaskId(chainTaskId)
-                .enclaveChallenge(enclaveWallet)
-                .signature(signature)
+        ComputedFile computedFile = ComputedFile.builder()
+                .taskId(chainTaskId)
+                .resultDigest(resultDigest)
+                .enclaveSignature("0xenclaveSignature")
                 .build();
+        Contribution contribution = contributionService.getContribution(computedFile);
 
-        assertThat(contributionService.isContributionAuthorizationValid(contribAuth, signingAddress)).isTrue();
+        Assert.assertNotNull(contribution);
+        Assert.assertEquals(contribution.getChainTaskId(), chainTaskId);
+        Assert.assertEquals(contribution.getResultDigest(), resultDigest);
+        Assert.assertEquals(contribution.getResultSeal(), resultSeal);
+        Assert.assertEquals(contribution.getEnclaveChallenge(), TestUtils.ENCLAVE_ADDRESS);
+        Assert.assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
+        Assert.assertEquals(contribution.getWorkerPoolSignature(), teeWorkerpoolAuth.getSignature().getValue());
+
+        Contribution expectedContribution = Contribution.builder()
+                .chainTaskId(chainTaskId)
+                .resultDigest(resultDigest)
+                .resultHash(resultHash)
+                .resultSeal(resultSeal)
+                .enclaveChallenge(TestUtils.ENCLAVE_ADDRESS)
+                .enclaveSignature("0xenclaveSignature")
+                .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
+                .build();
+        Assert.assertEquals(contribution, expectedContribution);
+
     }
+
 }

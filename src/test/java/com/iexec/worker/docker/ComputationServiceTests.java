@@ -1,6 +1,6 @@
 package com.iexec.worker.docker;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
@@ -63,8 +63,8 @@ public class ComputationServiceTests {
                 .build();
     }
 
-    ContributionAuthorization getStubAuth(String enclaveChallenge) {
-        return ContributionAuthorization.builder()
+    WorkerpoolAuthorization getStubAuth(String enclaveChallenge) {
+        return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge(enclaveChallenge)
                 .build();
@@ -149,7 +149,7 @@ public class ComputationServiceTests {
     @Test
     public void shouldComputeTeeTask() {
         TaskDescription task = getStubTaskDescription(false);
-        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
         String awesomeSessionId = "awesomeSessionId";
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
@@ -163,7 +163,7 @@ public class ComputationServiceTests {
                 .thenReturn(DockerExecutionResult.success("Encrypted successfully !", "containerName"));
         when(resultService.saveResult(any(), any(), any())).thenReturn(true);
 
-        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
 
         assertThat(isComputed).isTrue();
     }
@@ -171,33 +171,33 @@ public class ComputationServiceTests {
     @Test
     public void shouldNotComputeTeeTaskSinceFailedToCreateSconeSession() {
         TaskDescription task = getStubTaskDescription(false);
-        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
 
         when(smsService.createTeeSession(any()))
                 .thenReturn("");
 
-        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
         assertThat(isComputed).isFalse();
     }
 
     @Test
     public void shouldNotComputeTeeTaskSinceFailedToBuildSconeDockerEnv() {
         TaskDescription task = getStubTaskDescription(false);
-        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
         String awesomeSessionId = "awesomeSessionId";
 
         when(smsService.createTeeSession(any()))
                 .thenReturn(awesomeSessionId);
         when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(new ArrayList<>());
 
-        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
         assertThat(isComputed).isFalse();
     }
 
     @Test
     public void shouldNotComputeTeeTaskSinceFirstRunFailed() {
         TaskDescription task = getStubTaskDescription(false);
-        ContributionAuthorization contributionAuth = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
         String awesomeSessionId = "awesomeSessionId";
         ArrayList<String> stubSconeEnv = new ArrayList<>();
         stubSconeEnv.add("fooBar");
@@ -207,7 +207,7 @@ public class ComputationServiceTests {
         when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(stubSconeEnv);
         when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());
 
-        boolean isComputed = computationService.runTeeComputation(task, contributionAuth);
+        boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
 
         assertThat(isComputed).isFalse();
     }

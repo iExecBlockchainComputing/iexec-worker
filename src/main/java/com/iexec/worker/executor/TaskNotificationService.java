@@ -67,8 +67,8 @@ public class TaskNotificationService {
 
         TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
-        if (!storeContributionAuthorizationFromExtraIfPresent(extra)){
-            log.error("Should storeContributionAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
+        if (!storeWorkerpoolAuthorizationFromExtraIfPresent(extra)){
+            log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
 
@@ -178,9 +178,9 @@ public class TaskNotificationService {
 
     }
 
-    private boolean storeContributionAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
-        if (extra != null && extra.getContributionAuthorization() != null){
-            return contributionService.putContributionAuthorization(extra.getContributionAuthorization());
+    private boolean storeWorkerpoolAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
+        if (extra != null && extra.getWorkerpoolAuthorization() != null){
+            return contributionService.putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
         }
         return true;
     }

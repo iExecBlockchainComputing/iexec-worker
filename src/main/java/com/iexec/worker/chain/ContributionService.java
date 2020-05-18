@@ -2,12 +2,11 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.security.Signature;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.HashUtils;
-import com.iexec.common.utils.SignatureUtils;
-
+import com.iexec.common.worker.result.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -22,20 +21,18 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 public class ContributionService {
 
     private IexecHubService iexecHubService;
-    private ContributionAuthorizationService contributionAuthorizationService;
+    private WorkerpoolAuthorizationService workerpoolAuthorizationService;
+    private EnclaveAuthorizationService enclaveAuthorizationService;
+    private CredentialsService credentialsService;
 
     public ContributionService(IexecHubService iexecHubService,
-                               ContributionAuthorizationService contributionAuthorizationService) {
+                               WorkerpoolAuthorizationService workerpoolAuthorizationService,
+                               EnclaveAuthorizationService enclaveAuthorizationService,
+                               CredentialsService credentialsService) {
         this.iexecHubService = iexecHubService;
-        this.contributionAuthorizationService = contributionAuthorizationService;
-    }
-
-    public static String computeResultSeal(String walletAddress, String chainTaskId, String deterministHash) {
-        return HashUtils.concatenateAndHash(walletAddress, chainTaskId, deterministHash);
-    }
-
-    public static String computeResultHash(String chainTaskId, String deterministHash) {
-        return HashUtils.concatenateAndHash(chainTaskId, deterministHash);
+        this.workerpoolAuthorizationService = workerpoolAuthorizationService;
+        this.enclaveAuthorizationService = enclaveAuthorizationService;
+        this.credentialsService = credentialsService;
     }
 
     public boolean isChainTaskInitialized(String chainTaskId) {
@@ -66,20 +63,20 @@ public class ContributionService {
             return Optional.of(CONTRIBUTION_ALREADY_SET);
         }
 
-        if (!isContributionAuthorizationPresent(chainTaskId)) {
-            return Optional.of(CONTRIBUTION_AUTHORIZATION_NOT_FOUND);
+        if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
+            return Optional.of(CONTRIBUTION_AUTHORIZATION_NOT_FOUND);//TODO Rename status to WORKERPOOL_AUTHORIZATION_NOT_FOUND
         }
 
         return Optional.empty();
     }
 
-    private boolean isContributionAuthorizationPresent(String chainTaskId) {
-        ContributionAuthorization contributionAuthorization =
-                contributionAuthorizationService.getContributionAuthorization(chainTaskId);
-        if (contributionAuthorization != null){
+    private boolean isWorkerpoolAuthorizationPresent(String chainTaskId) {
+        WorkerpoolAuthorization workerpoolAuthorization =
+                workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId);
+        if (workerpoolAuthorization != null) {
             return true;
         }
-        log.error("ContributionAuthorization missing [chainTaskId:{}]", chainTaskId);
+        log.error("WorkerpoolAuthorization missing [chainTaskId:{}]", chainTaskId);
         return false;
     }
 
@@ -108,14 +105,6 @@ public class ContributionService {
         return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
     }
 
-    public boolean isContributionAuthorizationValid(ContributionAuthorization auth, String signerAddress) {
-        // create the hash that was used in the signature in the core
-        byte[] message = BytesUtils.stringToBytes(
-                HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
-
-        return SignatureUtils.isSignatureValid(message, auth.getSignature(), signerAddress);
-    }
-
     public boolean isContributionDeadlineReached(String chainTaskId) {
         Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
         if (!oTask.isPresent()) return true;
@@ -124,30 +113,64 @@ public class ContributionService {
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
-    public Optional<ChainReceipt> contribute(ContributionAuthorization contribAuth, String deterministHash, Signature enclaveSignature) {
-        String resultSeal = computeResultSeal(contribAuth.getWorkerWallet(), contribAuth.getChainTaskId(), deterministHash);
-        String resultHash = computeResultHash(contribAuth.getChainTaskId(), deterministHash);
-        IexecHubContract.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribAuth, resultHash, resultSeal, enclaveSignature);
+    public Optional<ChainReceipt> contribute(Contribution contribution) {
+
+        IexecHubContract.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribution);
 
         if (contributeResponse == null) {
-            log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribAuth.getChainTaskId());
+            log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribution.getChainTaskId());
             return Optional.empty();
         }
 
-        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribAuth.getChainTaskId(),
+        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribution.getChainTaskId(),
                 iexecHubService.getLatestBlockNumber());
-
-
 
         return Optional.of(chainReceipt);
     }
 
-    public boolean putContributionAuthorization(ContributionAuthorization contributionAuthorization) {
-        return contributionAuthorizationService.putContributionAuthorization(contributionAuthorization);
+    public boolean putWorkerpoolAuthorization(WorkerpoolAuthorization workerpoolAuthorization) {
+        return workerpoolAuthorizationService.putWorkerpoolAuthorization(workerpoolAuthorization);
     }
 
-    public ContributionAuthorization getContributionAuthorization(String chainTaskId) {
-        return contributionAuthorizationService.getContributionAuthorization(chainTaskId);
+    public WorkerpoolAuthorization getWorkerpoolAuthorization(String chainTaskId) {
+        return workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId);
+    }
+
+    public Contribution getContribution(ComputedFile computedFile) {
+        String chainTaskId = computedFile.getTaskId();
+        WorkerpoolAuthorization workerpoolAuthorization = workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId);
+        if (workerpoolAuthorization == null) {
+            log.error("Cant getContribution (cant getWorkerpoolAuthorization) [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+
+        String resultDigest = computedFile.getResultDigest();
+        String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
+        String resultSeal = ResultUtils.computeResultSeal(credentialsService.getCredentials().getAddress(), chainTaskId, resultDigest);
+        String workerpoolSignature = workerpoolAuthorization.getSignature().getValue();
+        String enclaveChallenge = workerpoolAuthorization.getEnclaveChallenge();
+        String enclaveSignature = computedFile.getEnclaveSignature();
+
+        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
+        if (isTeeTask) {
+            if (!enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId,
+                    resultHash, resultSeal, enclaveSignature, enclaveChallenge)){
+                log.error("Cant getContribution (isVerifiedEnclaveSignature false) [chainTaskId:{}]", chainTaskId);
+                return null;
+            }
+        } else {
+            enclaveSignature = BytesUtils.EMPTY_HEXASTRING_64;
+        }
+
+        return Contribution.builder()
+                .chainTaskId(chainTaskId)
+                .resultDigest(resultDigest)
+                .resultHash(resultHash)
+                .resultSeal(resultSeal)
+                .enclaveChallenge(enclaveChallenge)
+                .enclaveSignature(enclaveSignature)
+                .workerPoolSignature(workerpoolSignature)
+                .build();
     }
 
 }
