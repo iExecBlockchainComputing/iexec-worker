@@ -1,7 +1,5 @@
 package com.iexec.worker.result;
 
-import static com.iexec.common.utils.FileHelper.createFileWithContent;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,12 +17,12 @@ import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
 
 import org.springframework.stereotype.Service;
@@ -36,13 +34,12 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class ResultService {
 
-    private static final String STDOUT_FILENAME = "stdout.txt";
-
     private WorkerConfigurationService workerConfigService;
     private PublicConfigurationService publicConfigService;
     private CredentialsService credentialsService;
     private IexecHubService iexecHubService;
     private CustomResultFeignClient customResultFeignClient;
+    private ComputationService computationService;
 
     private Map<String, ResultInfo> resultInfoMap;
 
@@ -50,12 +47,14 @@ public class ResultService {
                          PublicConfigurationService publicConfigService,
                          CredentialsService credentialsService,
                          IexecHubService iexecHubService,
-                         CustomResultFeignClient customResultFeignClient) {
+                         CustomResultFeignClient customResultFeignClient,
+                         ComputationService computationService) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
+        this.computationService = computationService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -64,7 +63,7 @@ public class ResultService {
     }
 
     public String getResultFolderPath(String chainTaskId) {
-        return workerConfigService.getTaskResultDir(chainTaskId);
+        return workerConfigService.getTaskIexecOutDir(chainTaskId);
     }
 
     public boolean isResultFolderFound(String chainTaskId) {
@@ -76,7 +75,7 @@ public class ResultService {
     }
 
     public String getEncryptedResultFilePath(String chainTaskId) {
-        return getResultFolderPath(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        return getResultFolderPath(chainTaskId) + ".zip";
     }
 
     public boolean isResultZipFound(String chainTaskId) {
@@ -87,35 +86,12 @@ public class ResultService {
         return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
-    public boolean saveResult(String chainTaskId, TaskDescription taskDescription, String stdout) {
-        try {
-            saveStdoutFileInResultFolder(chainTaskId, stdout);
-            zipResultFolder(chainTaskId);
-            saveResultInfo(chainTaskId, taskDescription);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private File saveStdoutFileInResultFolder(String chainTaskId, String stdoutContent) {
-        log.info("Stdout file added to result folder [chainTaskId:{}]", chainTaskId);
-        String filePath = getResultFolderPath(chainTaskId) + File.separator + STDOUT_FILENAME;
-        return createFileWithContent(filePath, stdoutContent);
-    }
-
-    public void zipResultFolder(String chainTaskId) {
-        File zipFile = FileHelper.zipFolder(getResultFolderPath(chainTaskId));
-        log.info("Zip file has been created [chainTaskId:{}, zipFile:{}]", chainTaskId, zipFile.getAbsolutePath());
-    }
-
     public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
-        ComputedFile computedFile = getComputedFile(chainTaskId);
-
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
                 .cmd(taskDescription.getCmd())
-                .deterministHash(computedFile != null ? computedFile.getResultDigest(): "")
+                .deterministHash(computedFile != null ? computedFile.getResultDigest() : "")
                 .datasetUri(taskDescription.getDatasetUri())
                 .build();
 
@@ -143,7 +119,7 @@ public class ResultService {
 
     public boolean removeResult(String chainTaskId) {
         boolean deletedInMap = resultInfoMap.remove(chainTaskId) != null;
-        boolean deletedTaskFolder = FileHelper.deleteFolder(new File(getResultFolderPath(chainTaskId)).getParent());
+        boolean deletedTaskFolder = FileHelper.deleteFolder(workerConfigService.getTaskBaseDir(chainTaskId));
 
         boolean deleted = deletedInMap && deletedTaskFolder;
         if (deletedTaskFolder) {
@@ -173,47 +149,6 @@ public class ResultService {
             return Collections.emptyList();
         }
         return Arrays.asList(chainTaskIdFolders);
-    }
-
-    public ComputedFile getComputedFile(String chainTaskId) {
-        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
-                workerConfigService.getTaskIexecOutDir(chainTaskId));
-
-        if (computedFile == null){
-            log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-
-        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()){
-            String resultDigest = computeResultDigest(computedFile);
-            if (resultDigest.isEmpty()){
-                log.error("Failed to getComputedFile (resultDigest is empty but cant compute it)" +
-                                "[chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
-                return null;
-            }
-            computedFile.setResultDigest(resultDigest);
-        }
-
-        return computedFile;
-    }
-
-    private String computeResultDigest(ComputedFile computedFile) {
-        String chainTaskId = computedFile.getTaskId() ;
-
-        String resultDigest;
-        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()){
-            resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
-        } else {
-            resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
-                    workerConfigService.getTaskOutputDir(chainTaskId));
-        }
-
-        if (resultDigest.isEmpty()){
-            log.error("Failed to getComputedFile (resultDigest empty)[chainTaskId:{}, computedFile:{}]",
-                    chainTaskId, computedFile);
-            return "";
-        }
-        return resultDigest;
     }
 
     public String uploadResultAndGetLink(String chainTaskId) {
@@ -270,9 +205,13 @@ public class ResultService {
         boolean isResultZipFound = isResultZipFound(chainTaskId);
         boolean isResultFolderFound = isResultFolderFound(chainTaskId);
 
-        if (!isResultZipFound && !isResultFolderFound) return false;
+        if (!isResultZipFound && !isResultFolderFound) {
+            return false;
+        }
 
-        if (!isResultZipFound) zipResultFolder(chainTaskId);
+        if (!isResultZipFound) {
+            ResultUtils.zipIexecOut(getResultFolderPath(chainTaskId));
+        }
 
         return true;
     }
