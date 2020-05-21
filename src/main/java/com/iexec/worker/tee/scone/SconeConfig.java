@@ -1,7 +1,6 @@
 package com.iexec.worker.tee.scone;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -32,17 +31,15 @@ public class SconeConfig {
         this.sconeVersion = 1;
     }
 
-    public ArrayList<String> toDockerEnv() {
-        List<String> list = Arrays.asList(
-            "SCONE_CAS_ADDR="   + sconeCasAddress,
-            "SCONE_LAS_ADDR="   + sconeLasAddress,
-            "SCONE_CONFIG_ID="  + sconeConfigId,
-            "SCONE_HEAP="       + sconeHeap,
-            "SCONE_LOG="        + sconeLog,
-            "SCONE_VERSION="    + sconeVersion//,
-            //"SCONE_MPROTECT="    + 1
-        );
-
-        return new ArrayList<String>(list);
+    public List<String> toDockerEnv() {
+        List<String> list = new ArrayList<>();
+        list.add("SCONE_CAS_ADDR=" + sconeCasAddress);
+        list.add("SCONE_LAS_ADDR="   + sconeLasAddress);
+        list.add("SCONE_CONFIG_ID="  + sconeConfigId);
+        list.add("SCONE_HEAP="       + sconeHeap);
+        list.add("SCONE_LOG="        + sconeLog);
+        list.add("SCONE_VERSION="    + sconeVersion);
+        // list.add("SCONE_MPROTECT="   + 1);
+        return list;
     }
 }

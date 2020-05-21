@@ -14,6 +14,7 @@ import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.ComputationService;
+import com.iexec.worker.docker.ComputeMeta;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -191,21 +192,26 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(APP_NOT_FOUND_LOCALLY);
         }
 
-        boolean isComputed;
         WorkerpoolAuthorization workerpoolAuthorization =
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        if (taskDescription.isTeeTask()) {
-            isComputed = computationService.runTeeComputation(taskDescription, workerpoolAuthorization);
-        } else {
-            isComputed = computationService.runNonTeeComputation(taskDescription, workerpoolAuthorization);
+        ComputeMeta computeMeta = ComputeMeta.builder().chainTaskId(chainTaskId).build();
+        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuthorization);
+        if (!computeMeta.isPreComputed()) {
+            log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
-
-        if (!isComputed) {
+        computationService.runComputation(computeMeta, taskDescription);
+        if (!computeMeta.isComputed()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
-
+        computationService.runPostCompute(computeMeta, taskDescription);
+        if (!computeMeta.isPostComputed()) {
+            log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
+        }
+        resultService.saveResultInfo(chainTaskId, taskDescription);
         return ReplicateActionResponse.success();
     }
 
@@ -231,7 +237,7 @@ public class TaskManagerService {
             // System.exit(0);
         }
 
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         if (computedFile == null) {
             log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
@@ -255,7 +261,7 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId, TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
 
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         String resultDigest = computedFile != null ? computedFile.getResultDigest() : "";
 
         if (resultDigest.isEmpty()) {
@@ -298,26 +304,13 @@ public class TaskManagerService {
 
     ReplicateActionResponse uploadResult(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
-
-        boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
-        boolean isResultEncrypted = false;
-
-        if (isResultEncryptionNeeded) {
-            isResultEncrypted = resultService.encryptResult(chainTaskId);
-        }
-
-        if (isResultEncryptionNeeded && !isResultEncrypted) {
-            log.error("Cannot upload, failed to encrypt result [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
-        }
-
         String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
         if (resultLink.isEmpty()) {
             log.error("Cannot upload, resultLink missing [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
         }
 
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         String callbackData = computedFile != null ? computedFile.getCallbackData() : "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
