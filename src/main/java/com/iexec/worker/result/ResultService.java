@@ -17,7 +17,6 @@ import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
@@ -202,17 +201,6 @@ public class ResultService {
     }
 
     public boolean isResultAvailable(String chainTaskId) {
-        boolean isResultZipFound = isResultZipFound(chainTaskId);
-        boolean isResultFolderFound = isResultFolderFound(chainTaskId);
-
-        if (!isResultZipFound && !isResultFolderFound) {
-            return false;
-        }
-
-        if (!isResultZipFound) {
-            ResultUtils.zipIexecOut(getResultFolderPath(chainTaskId));
-        }
-
-        return true;
+        return isResultZipFound(chainTaskId);
     }
 }
