@@ -197,17 +197,17 @@ public class TaskManagerService {
 
         ComputeMeta computeMeta = ComputeMeta.builder().chainTaskId(chainTaskId).build();
         computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuthorization);
-        if (!computeMeta.isSuccessfulPreCompute()) {
+        if (!computeMeta.isPreComputed()) {
             log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
         computationService.runComputation(computeMeta, taskDescription);
-        if (!computeMeta.isSuccessfulCompute()) {
+        if (!computeMeta.isComputed()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
         computationService.runPostCompute(computeMeta, taskDescription);
-        if (!computeMeta.isSuccessfulPostCompute()) {
+        if (!computeMeta.isPostComputed()) {
             log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
         }

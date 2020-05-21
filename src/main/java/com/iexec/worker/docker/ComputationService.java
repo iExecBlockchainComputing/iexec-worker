@@ -105,18 +105,18 @@ public class ComputationService {
      *     TEE: download post-compute image && create secure session
      * 
      */
-    public void runPreCompute(ComputeMeta computeMeta, TaskDescription taskDescription,
-                WorkerpoolAuthorization workerpoolAuth) {
+    public void runPreCompute(ComputeMeta computeMeta, TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         log.info("Running pre-compute [chainTaskId:{}, isTee:{}]", taskDescription.getChainTaskId(),
                 taskDescription.isTeeTask());
+        boolean isSuccess;
         if (taskDescription.isTeeTask()) {
             String secureSessionId = runTeePreCompute(taskDescription, workerpoolAuth);
-            computeMeta.setSuccessfulPreCompute(!secureSessionId.isEmpty());
             computeMeta.setSecureSessionId(secureSessionId);
-            return;
+            isSuccess = !secureSessionId.isEmpty();
+        } else {
+            isSuccess = runNonTeePreCompute(taskDescription, workerpoolAuth);
         }
-        boolean isSuccess = runNonTeePreCompute(taskDescription, workerpoolAuth);
-        computeMeta.setSuccessfulPreCompute(isSuccess);
+        computeMeta.setPreComputed(isSuccess);
     }
 
     private String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
@@ -189,7 +189,7 @@ public class ComputationService {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }
-        computeMeta.setSuccessfulCompute(appExecutionResult.isSuccess());
+        computeMeta.setComputed(appExecutionResult.isSuccess());
         computeMeta.setStdout(appExecutionResult.getStdout());
         //TODO: Remove logs before merge
         System.out.println("****** App");
@@ -216,7 +216,7 @@ public class ComputationService {
         } else {
             isSuccessfulPostCompute = runNonTeePostCompute(taskDescription);
         }
-        computeMeta.setSuccessfulPostCompute(isSuccessfulPostCompute);
+        computeMeta.setPostComputed(isSuccessfulPostCompute);
         computeMeta.setStdout(computeMeta.getStdout() + "\n" + postComputeStdout);
         // save /output/stdout.txt file
         String stdoutFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + File.separator + STDOUT_FILENAME;
