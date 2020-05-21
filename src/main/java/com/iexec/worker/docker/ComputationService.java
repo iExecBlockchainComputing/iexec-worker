@@ -197,7 +197,7 @@ public class ComputationService {
     }
 
     /*
-     * - Copy computed.json file produced by the compute stage to /iexec
+     * - Copy computed.json file produced by the compute stage to /output
      * - Zip iexec_out folder
      * For TEE tasks, worker-tee-post-compute will do those two steps since
      * all files in are protected.
