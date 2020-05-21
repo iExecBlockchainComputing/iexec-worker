@@ -195,7 +195,6 @@ public class TaskManagerService {
         WorkerpoolAuthorization workerpoolAuthorization =
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        // ###################
         ComputeMeta computeMeta = ComputeMeta.builder().chainTaskId(chainTaskId).build();
         computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuthorization);
         if (!computeMeta.isSuccessfulPreCompute()) {
@@ -203,7 +202,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
         computationService.runComputation(computeMeta, taskDescription);
-        if (!computeMeta.isSuccess()) {
+        if (!computeMeta.isSuccessfulCompute()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
@@ -212,7 +211,7 @@ public class TaskManagerService {
             log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
         }
-        resultService.saveResult(chainTaskId, taskDescription, computeMeta.getStdout());
+        resultService.saveResultInfo(chainTaskId, taskDescription);
         return ReplicateActionResponse.success();
     }
 
@@ -238,7 +237,7 @@ public class TaskManagerService {
             // System.exit(0);
         }
 
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         if (computedFile == null) {
             log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
@@ -262,7 +261,7 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId, TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
 
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         String resultDigest = computedFile != null ? computedFile.getResultDigest() : "";
 
         if (resultDigest.isEmpty()) {
@@ -311,7 +310,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
         }
 
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
         String callbackData = computedFile != null ? computedFile.getCallbackData() : "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",

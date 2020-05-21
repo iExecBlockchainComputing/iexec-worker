@@ -67,12 +67,8 @@ public class WorkerConfigurationService {
         return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_OUTPUT;
     }
 
-    public String getTaskResultDir(String chainTaskId) {
-        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_RESULT;
-    }
-
     public String getTaskIexecOutDir(String chainTaskId) {
-        return getTaskResultDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT;
+        return getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT;
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {

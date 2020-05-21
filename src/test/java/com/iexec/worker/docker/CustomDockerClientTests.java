@@ -52,9 +52,8 @@ public class CustomDockerClientTests {
         MockitoAnnotations.initMocks(this);
     }
 
-    public String getDockerInput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_INPUT; }
-    public String getDockerOutput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_OUTPUT; }
-    public String getDockerResult() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_RESULT; }
+    private String getDockerInput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_INPUT; }
+    private String getDockerOutput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_OUTPUT; }
 
     public DockerExecutionConfig getAppDockerExecutionConfigStub(boolean isSgx) {
         Map<String, String> bindPaths = new HashMap<>();

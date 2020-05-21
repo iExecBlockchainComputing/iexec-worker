@@ -1,30 +1,42 @@
 package com.iexec.worker.docker;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
-import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
 @Service
 public class ComputationService {
+
+    private static final String STDOUT_FILENAME = "stdout.txt";
 
     // env variables that will be injected in the container of a task computation
     private static final String IEXEC_IN_ENV_PROPERTY = "IEXEC_IN";
@@ -46,13 +58,15 @@ public class ComputationService {
     private SconeTeeService sconeTeeService;
     private WorkerConfigurationService workerConfigService;
     private PublicConfigurationService publicConfigService;
+    private IexecHubService iexecHubService;
 
     public ComputationService(SmsService smsService,
                               DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
                               WorkerConfigurationService workerConfigService,
-                              PublicConfigurationService publicConfigService) {
+                              PublicConfigurationService publicConfigService,
+                              IexecHubService iexecHubService) {
 
         this.smsService = smsService;
         this.dataService = dataService;
@@ -60,6 +74,7 @@ public class ComputationService {
         this.sconeTeeService = sconeTeeService;
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
+        this.iexecHubService = iexecHubService;
     }
 
     public boolean isValidAppType(String chainTaskId, DappType type) {
@@ -92,6 +107,8 @@ public class ComputationService {
      */
     public void runPreCompute(ComputeMeta computeMeta, TaskDescription taskDescription,
                 WorkerpoolAuthorization workerpoolAuth) {
+        log.info("Running pre-compute [chainTaskId:{}, isTee:{}]", taskDescription.getChainTaskId(),
+                taskDescription.isTeeTask());
         if (taskDescription.isTeeTask()) {
             String secureSessionId = runTeePreCompute(taskDescription, workerpoolAuth);
             computeMeta.setSuccessfulPreCompute(!secureSessionId.isEmpty());
@@ -147,6 +164,7 @@ public class ComputationService {
 
     public void runComputation(ComputeMeta computeMeta, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
+        log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
         List<String> env = getContainerEnvVariables(taskDescription);
         if (taskDescription.isTeeTask()) {
             List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(computeMeta.getSecureSessionId() + "/app",
@@ -155,7 +173,7 @@ public class ComputationService {
         }
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(workerConfigService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
-        bindPaths.put(workerConfigService.getTaskOutputDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
         DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
@@ -171,7 +189,7 @@ public class ComputationService {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                     getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
         }
-        computeMeta.setSuccess(appExecutionResult.isSuccess());
+        computeMeta.setSuccessfulCompute(appExecutionResult.isSuccess());
         computeMeta.setStdout(appExecutionResult.getStdout());
         //TODO: Remove logs before merge
         System.out.println("****** App");
@@ -179,10 +197,16 @@ public class ComputationService {
     }
 
     /*
-     * Move files produced by the compute stage in /output (SLASH_IEXEC_OUT)
-     * to /result (SLASH_IEXEC_RESULT). Encrypt them if requested.
+     * - Copy computed.json file produced by the compute stage to /iexec
+     * - Zip iexec_out folder
+     * For TEE tasks, worker-tee-post-compute will do those two steps since
+     * all files in are protected.
+     * 
+     * - Save stdout file
      */
     public void runPostCompute(ComputeMeta computeMeta, TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
+        log.info("Running post-compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
         boolean isSuccessfulPostCompute;
         String postComputeStdout = "";
         if (taskDescription.isTeeTask()) {
@@ -193,7 +217,30 @@ public class ComputationService {
             isSuccessfulPostCompute = runNonTeePostCompute(taskDescription);
         }
         computeMeta.setSuccessfulPostCompute(isSuccessfulPostCompute);
-        computeMeta.setStdout(computeMeta.getStdout() + postComputeStdout);
+        computeMeta.setStdout(computeMeta.getStdout() + "\n" + postComputeStdout);
+        // save /output/stdout.txt file
+        String stdoutFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + File.separator + STDOUT_FILENAME;
+        File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath, computeMeta.getStdout());
+        log.info("Saved stdout file [path:{}]", stdoutFile.getAbsolutePath());
+    }
+
+
+    public ComputedFile getComputedFile(String chainTaskId) {
+        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
+                workerConfigService.getTaskOutputDir(chainTaskId));
+        if (computedFile == null) {
+            log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
+        }
+        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()){
+            String resultDigest = computeResultDigest(computedFile);
+            if (resultDigest.isEmpty()){
+                log.error("Failed to getComputedFile (resultDigest is empty but cant compute it)" +
+                                "[chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
+                return null;
+            }
+            computedFile.setResultDigest(resultDigest);
+        }
+        return computedFile;
     }
 
     private DockerExecutionResult runTeePostCompute(String secureSessionId, TaskDescription taskDescription) {
@@ -201,8 +248,8 @@ public class ComputationService {
         List<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");
         Map<String, String> bindPaths = new HashMap<>();
-        bindPaths.put(workerConfigService.getTaskOutputDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
-        bindPaths.put(workerConfigService.getTaskResultDir(chainTaskId), FileHelper.SLASH_IEXEC_RESULT);
+        bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
+        bindPaths.put(workerConfigService.getTaskOutputDir(chainTaskId), FileHelper.SLASH_OUTPUT);
         DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskTeePostComputeContainerName(chainTaskId))
@@ -220,11 +267,16 @@ public class ComputationService {
     }
 
     private boolean runNonTeePostCompute(TaskDescription taskDescription) {
+        // create /output/iexec_out.zip
         String chainTaskId = taskDescription.getChainTaskId();
-        // copy all files in /output to /result/iexec_out
-        String outputDir = workerConfigService.getTaskOutputDir(chainTaskId);
-        String iexecOutDir = workerConfigService.getTaskIexecOutDir(chainTaskId);
-        FileHelper.copyFolder(outputDir, iexecOutDir);
+        String iexecOutPath = workerConfigService.getTaskIexecOutDir(chainTaskId);
+        String saveIn = workerConfigService.getTaskOutputDir(chainTaskId);
+        ResultUtils.zipIexecOut(iexecOutPath, saveIn);
+        // copy /output/iexec_out/computed.json to /output/computed.json
+        // to have the same workflow as TEE.
+        String source = workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON;
+        String target = workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON;
+        FileHelper.copyFile(source, target);
         // encrypt result if needed
         if (taskDescription.isResultEncryption() && !encryptResult(chainTaskId)) {
             log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
@@ -233,7 +285,24 @@ public class ComputationService {
         return true;
     }
 
-    public boolean encryptResult(String chainTaskId) {
+    private String computeResultDigest(ComputedFile computedFile) {
+        String chainTaskId = computedFile.getTaskId() ;
+        String resultDigest;
+        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()) {
+            resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
+        } else {
+            resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
+                    workerConfigService.getTaskOutputDir(chainTaskId));
+        }
+        if (resultDigest.isEmpty()) {
+            log.error("Failed to computeResultDigest (resultDigest empty)[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
+            return "";
+        }
+        return resultDigest;
+    }
+
+    private boolean encryptResult(String chainTaskId) {
         String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
         String resultZipFilePath = workerConfigService.getTaskOutputDir(chainTaskId);
         String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);

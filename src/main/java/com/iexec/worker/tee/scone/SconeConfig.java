@@ -1,7 +1,6 @@
 package com.iexec.worker.tee.scone;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
