@@ -230,6 +230,7 @@ public class ComputationService {
                 workerConfigService.getTaskOutputDir(chainTaskId));
         if (computedFile == null) {
             log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
+            return null;
         }
         if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()){
             String resultDigest = computeResultDigest(computedFile);
@@ -276,7 +277,11 @@ public class ComputationService {
         // to have the same workflow as TEE.
         String source = workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON;
         String target = workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON;
-        FileHelper.copyFile(source, target);
+        boolean isCopied = FileHelper.copyFile(source, target);
+        if (!isCopied) {
+            log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
         // encrypt result if needed
         if (taskDescription.isResultEncryption() && !encryptResult(chainTaskId)) {
             log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
