@@ -207,41 +207,21 @@ public class ComputationService {
     public void runPostCompute(ComputeMeta computeMeta, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
-        boolean isSuccessfulPostCompute;
+        boolean isSuccess;
         String postComputeStdout = "";
         if (taskDescription.isTeeTask()) {
             DockerExecutionResult dockerExecutionResult = runTeePostCompute(computeMeta.getSecureSessionId(), taskDescription);
-            isSuccessfulPostCompute = dockerExecutionResult.isSuccess();
+            isSuccess = dockerExecutionResult.isSuccess();
             postComputeStdout = dockerExecutionResult.getStdout();
         } else {
-            isSuccessfulPostCompute = runNonTeePostCompute(taskDescription);
+            isSuccess = runNonTeePostCompute(taskDescription);
         }
-        computeMeta.setPostComputed(isSuccessfulPostCompute);
+        computeMeta.setPostComputed(isSuccess);
         computeMeta.setStdout(computeMeta.getStdout() + "\n" + postComputeStdout);
         // save /output/stdout.txt file
         String stdoutFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + File.separator + STDOUT_FILENAME;
         File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath, computeMeta.getStdout());
         log.info("Saved stdout file [path:{}]", stdoutFile.getAbsolutePath());
-    }
-
-
-    public ComputedFile getComputedFile(String chainTaskId) {
-        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
-                workerConfigService.getTaskOutputDir(chainTaskId));
-        if (computedFile == null) {
-            log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()){
-            String resultDigest = computeResultDigest(computedFile);
-            if (resultDigest.isEmpty()){
-                log.error("Failed to getComputedFile (resultDigest is empty but cant compute it)" +
-                                "[chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
-                return null;
-            }
-            computedFile.setResultDigest(resultDigest);
-        }
-        return computedFile;
     }
 
     private DockerExecutionResult runTeePostCompute(String secureSessionId, TaskDescription taskDescription) {
@@ -288,6 +268,25 @@ public class ComputationService {
             return false;
         }
         return true;
+    }
+
+    public ComputedFile getComputedFile(String chainTaskId) {
+        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
+                workerConfigService.getTaskOutputDir(chainTaskId));
+        if (computedFile == null) {
+            log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()){
+            String resultDigest = computeResultDigest(computedFile);
+            if (resultDigest.isEmpty()){
+                log.error("Failed to getComputedFile (resultDigest is empty but cant compute it)" +
+                                "[chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
+                return null;
+            }
+            computedFile.setResultDigest(resultDigest);
+        }
+        return computedFile;
     }
 
     private String computeResultDigest(ComputedFile computedFile) {

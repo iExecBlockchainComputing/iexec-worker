@@ -1,11 +1,23 @@
 package com.iexec.worker.docker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Optional;
+
+import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.dapp.DappType;
 import com.iexec.common.result.ComputedFile;
+import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -15,12 +27,22 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class ComputationServiceTests {
+
+    private static final String CHAIN_TASK_ID = "0xfoobar";
+    private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker";
+    private static final String SECURE_SESSION = "abcdef";
+
+    @Rule
+    public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
 
     @Mock private SmsService smsService;
     @Mock private DataService dataService;
@@ -31,182 +53,223 @@ public class ComputationServiceTests {
     @Mock private PublicConfigurationService publicConfigurationService;
     @Mock private IexecHubService iexecHubService;
 
-
     @InjectMocks
     private ComputationService computationService;
-
-    private static final String CHAIN_TASK_ID = "0xfoobar";
-    private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
-    private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
-    private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker";
 
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
     }
 
-//     TaskDescription getStubTaskDescription(boolean isTeeTask) {
-//         return TaskDescription.builder()
-//                 .chainTaskId(CHAIN_TASK_ID)
-//                 .appType(DappType.DOCKER)
-//                 .appUri("appUri")
-//                 .datasetUri("datasetUri")
-//                 .isTeeTask(isTeeTask)
-//                 .maxExecutionTime(500000) // 5min
-//                 .cmd("ls")
-//                 .inputFiles(new ArrayList<>())
-//                 .teePostComputeImage("registry/post-compute-app:tag")
-//                 .build();
-//     }
+    TaskDescription getStubTaskDescription(boolean isTeeTask) {
+        return TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .appType(DappType.DOCKER)
+                .appUri("appUri")
+                .datasetUri("datasetUri")
+                .isTeeTask(isTeeTask)
+                .maxExecutionTime(500000) // 5min
+                .cmd("ls")
+                .inputFiles(new ArrayList<>())
+                .teePostComputeImage("registry/post-compute-app:tag")
+                .build();
+    }
 
-//     WorkerpoolAuthorization getStubAuth(String enclaveChallenge) {
-//         return WorkerpoolAuthorization.builder()
-//                 .chainTaskId(CHAIN_TASK_ID)
-//                 .enclaveChallenge(enclaveChallenge)
-//                 .build();
-//     }
+    WorkerpoolAuthorization getStubAuth(String enclaveChallenge) {
+        return WorkerpoolAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .enclaveChallenge(enclaveChallenge)
+                .build();
+    }
 
-//     @Test
-//     public void ShouldAppTypeBeDocker() {
-//         assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
-//     }
+    @Test
+    public void ShouldAppTypeBeDocker() {
+        assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
+    }
 
-//     @Test
-//     public void shouldDownloadApp() {
-//         String imageUri = "imageUri";
-//         when(customDockerClient.pullImage(CHAIN_TASK_ID, imageUri)).thenReturn(true);
-//         assertThat(computationService.downloadApp(CHAIN_TASK_ID,
-//                 TaskDescription.builder()
-//                 .appUri(imageUri)
-//                 .appType(DappType.DOCKER)
-//                 .build()
-//         )).isTrue();
-//     }
+    @Test
+    public void shouldDownloadApp() {
+        String imageUri = "imageUri";
+        when(customDockerClient.pullImage(CHAIN_TASK_ID, imageUri)).thenReturn(true);
+        assertThat(computationService.downloadApp(CHAIN_TASK_ID,
+                TaskDescription.builder()
+                .appUri(imageUri)
+                .appType(DappType.DOCKER)
+                .build()
+        )).isTrue();
+    }
 
-//     // runNonTeeComputation()
+    // Pre compute
 
-//     @Test
-//     public void shouldComputeNonTeeTaskWithoutDecryptingDataset() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         TaskSecrets mockSecrets = mock(TaskSecrets.class);
+    @Test
+    public void shouldPassTeePreCompute() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        ComputeMeta computeMeta = new ComputeMeta();
+        WorkerpoolAuthorization workerpoolAuth = new WorkerpoolAuthorization();
+        when(customDockerClient.pullImage(taskDescription.getChainTaskId(), taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuth)).thenReturn(SECURE_SESSION);
 
-//         when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
-//         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-//         when(customDockerClient.execute(any()))
-//                 .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"));
-//         when(resultService.saveResult(any(), any(), any())).thenReturn(true);
+        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        verify(smsService, times(1)).createTeeSession(workerpoolAuth);
+        assertThat(computeMeta.isPreComputed()).isTrue();
+    }
 
-//         boolean isComputed = computationService.runNonTeeComputation(task,
-//                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+    @Test
+    public void shouldFailTeePreComputeTeeTaskSinceFailedToCreateSconeSession() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        ComputeMeta computeMeta = new ComputeMeta();
+        WorkerpoolAuthorization workerpoolAuth = new WorkerpoolAuthorization();
+        when(customDockerClient.pullImage(taskDescription.getChainTaskId(), taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuth)).thenReturn("");
 
-//         assertThat(isComputed).isTrue();
-//         verify(dataService, never()).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
-//     }
+        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        verify(smsService, times(1)).createTeeSession(workerpoolAuth);
+        assertThat(computeMeta.isPreComputed()).isFalse();
+    }
 
-//     @Test
-//     public void shouldDecryptDatasetAndComputeNonTeeTask() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         TaskSecrets mockSecrets = mock(TaskSecrets.class);
+    @Test
+    public void shouldPassNonTeePreCompute() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        ComputeMeta computeMeta = new ComputeMeta();
+        WorkerpoolAuthorization workerpoolAuth = new WorkerpoolAuthorization();
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
+        when(dataService.isDatasetDecryptionNeeded(taskDescription.getChainTaskId())).thenReturn(true);
+        when(dataService.decryptDataset(taskDescription.getChainTaskId(), taskDescription.getDatasetUri())).thenReturn(true);
 
-//         when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
-//         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-//         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(true);
-//         when(customDockerClient.execute(any()))
-//                 .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"));
-//         when(resultService.saveResult(any(), any(), any())).thenReturn(true);
+        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        verify(smsService).fetchTaskSecrets(workerpoolAuth);
+        verify(dataService).decryptDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri());
+        assertThat(computeMeta.isPreComputed()).isTrue();
+    }
 
+    @Test
+    public void shouldFailNonTeePreComputeSinceCouldNotDecryptDataset() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        ComputeMeta computeMeta = new ComputeMeta();
+        WorkerpoolAuthorization workerpoolAuth = new WorkerpoolAuthorization();
+        TaskSecrets mockSecrets = mock(TaskSecrets.class);
+        when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
+        when(dataService.isDatasetDecryptionNeeded(taskDescription.getChainTaskId())).thenReturn(true);
+        when(dataService.decryptDataset(taskDescription.getChainTaskId(), taskDescription.getDatasetUri())).thenReturn(false);
 
-//         boolean isComputed = computationService.runNonTeeComputation(task,
-//                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        verify(smsService).fetchTaskSecrets(workerpoolAuth);
+        verify(dataService).decryptDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri());
+        assertThat(computeMeta.isPreComputed()).isFalse();
+   }
 
-//         assertThat(isComputed).isTrue();
-//         verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
-//     }
+    // Compute
 
-//     @Test
-//     public void shouldNotComputeNonTeeTaskSinceCouldNotDecryptDataset() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         TaskSecrets mockSecrets = mock(TaskSecrets.class);
+    @Test
+    public void shouldPassTeeCompute() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.success("success !", "containerName"));
 
-//         when(smsService.fetchTaskSecrets(any())).thenReturn(Optional.of(mockSecrets));
-//         when(dataService.isDatasetDecryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-//         when(dataService.decryptDataset(CHAIN_TASK_ID, task.getDatasetUri())).thenReturn(false);
-//         when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());
+        computationService.runComputation(computeMeta, taskDescription);
+        ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
+        verify(customDockerClient).execute(argumentCaptor.capture());
+        assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
+        assertThat(computeMeta.isComputed()).isTrue();
+    }
 
-//         boolean isComputed = computationService.runNonTeeComputation(task,
-//                 getStubAuth(NO_TEE_ENCLAVE_CHALLENGE));
+    @Test
+    public void shouldFailTeeComputesinceDockerExecutionFailed() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.failure());
 
-//         assertThat(isComputed).isFalse();
-//         verify(dataService, times(1)).decryptDataset(CHAIN_TASK_ID, task.getDatasetUri());
-//     }
+        computationService.runComputation(computeMeta, taskDescription);
+        ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
+        verify(customDockerClient).execute(argumentCaptor.capture());
+        assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
+        assertThat(computeMeta.isComputed()).isFalse();
+    }
 
-//     // runTeeComputation
+    @Test
+    public void shouldPassNonTeeCompute() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.success("success !", "containerName"));
 
-//     @Test
-//     public void shouldComputeTeeTask() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-//         String awesomeSessionId = "awesomeSessionId";
-//         ArrayList<String> stubSconeEnv = new ArrayList<>();
-//         stubSconeEnv.add("fooBar");
+        computationService.runComputation(computeMeta, taskDescription);
+        ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
+        verify(customDockerClient).execute(argumentCaptor.capture());
+        assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isFalse();
+        assertThat(computeMeta.isComputed()).isTrue();
+    }
 
-//         when(smsService.createTeeSession(any()))
-//                 .thenReturn(awesomeSessionId);
-//         when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(stubSconeEnv);
-//         when(customDockerClient.pullImage(anyString(), anyString())).thenReturn(true);
-//         when(customDockerClient.execute(any()))
-//                 .thenReturn(DockerExecutionResult.success("Computed successfully !", "containerName"))
-//                 .thenReturn(DockerExecutionResult.success("Encrypted successfully !", "containerName"));
-//         when(resultService.saveResult(any(), any(), any())).thenReturn(true);
+    @Test
+    public void shouldFailNonTeeComputesinceDockerExecutionFailed() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.failure());
 
-//         boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
+        computationService.runComputation(computeMeta, taskDescription);
+        ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
+        verify(customDockerClient).execute(argumentCaptor.capture());
+        assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isFalse();
+        assertThat(computeMeta.isComputed()).isFalse();
+    }
 
-//         assertThat(isComputed).isTrue();
-//     }
+    // Post compute
 
-//     @Test
-//     public void shouldNotComputeTeeTaskSinceFailedToCreateSconeSession() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
+    @Test
+    public void shouldPassTeePostCompute() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.success("success !", "containerName"));
 
-//         when(smsService.createTeeSession(any()))
-//                 .thenReturn("");
+        computationService.runPostCompute(computeMeta, taskDescription);
+        ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
+        verify(customDockerClient).execute(argumentCaptor.capture());
+        assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
+        assertThat(computeMeta.isPostComputed()).isTrue();
+    }
 
-//         boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
-//         assertThat(isComputed).isFalse();
-//     }
+    @Test
+    public void shouldFailTeePostComputeSinceDockerExecutionFailed() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(customDockerClient.execute(any()))
+                .thenReturn(DockerExecutionResult.failure());
 
-//     @Test
-//     public void shouldNotComputeTeeTaskSinceFailedToBuildSconeDockerEnv() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-//         String awesomeSessionId = "awesomeSessionId";
+        computationService.runPostCompute(computeMeta, taskDescription);
+        ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
+        verify(customDockerClient).execute(argumentCaptor.capture());
+        assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
+        assertThat(computeMeta.isPostComputed()).isFalse();
+    }
 
-//         when(smsService.createTeeSession(any()))
-//                 .thenReturn(awesomeSessionId);
-//         when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(new ArrayList<>());
+    @Test
+    public void shouldPassNonTeePostCompute() throws Exception {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
+        String iexecOut = output + FileHelper.SLASH_IEXEC_OUT;
+        String computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
+        new File(iexecOut).mkdir();
+        new File(computedJson).createNewFile();
+        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        ComputeMeta computeMeta = new ComputeMeta();
+        when(workerConfigurationService.getTaskIexecOutDir(taskDescription.getChainTaskId()))
+                .thenReturn(iexecOut);
+        when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
+                .thenReturn(output);
 
-//         boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
-//         assertThat(isComputed).isFalse();
-//     }
-
-//     @Test
-//     public void shouldNotComputeTeeTaskSinceFirstRunFailed() {
-//         TaskDescription task = getStubTaskDescription(false);
-//         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth(TEE_ENCLAVE_CHALLENGE);
-//         String awesomeSessionId = "awesomeSessionId";
-//         ArrayList<String> stubSconeEnv = new ArrayList<>();
-//         stubSconeEnv.add("fooBar");
-
-//         when(smsService.createTeeSession(any()))
-//                 .thenReturn(awesomeSessionId);
-//         when(sconeTeeService.buildSconeDockerEnv(any(), any(), any())).thenReturn(stubSconeEnv);
-//         when(customDockerClient.execute(any())).thenReturn(DockerExecutionResult.failure());
-
-//         boolean isComputed = computationService.runTeeComputation(task, workerpoolAuthorization);
-
-//         assertThat(isComputed).isFalse();
-//     }
+        computationService.runPostCompute(computeMeta, taskDescription);
+        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        assertThat(new File(output + "/iexec_out.zip")).exists();
+        assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
+        assertThat(computeMeta.isPostComputed()).isTrue();
+    }
 
     @Test
     public void shouldGetComputedFileWithWeb2ResultDigestSinceFile(){
