@@ -3,7 +3,6 @@ package com.iexec.worker.docker;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +13,7 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
@@ -25,7 +25,6 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 
-import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -37,17 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 public class ComputationService {
 
     private static final String STDOUT_FILENAME = "stdout.txt";
-
-    // env variables that will be injected in the container of a task computation
-    private static final String IEXEC_IN_ENV_PROPERTY = "IEXEC_IN";
-    private static final String IEXEC_OUT_ENV_PROPERTY = "IEXEC_OUT";
-    private static final String IEXEC_DATASET_FILENAME_ENV_PROPERTY = "IEXEC_DATASET_FILENAME";
-    private static final String IEXEC_BOT_TASK_INDEX_ENV_PROPERTY = "IEXEC_BOT_TASK_INDEX";
-    private static final String IEXEC_BOT_SIZE_ENV_PROPERTY = "IEXEC_BOT_SIZE";
-    private static final String IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY = "IEXEC_BOT_FIRST_INDEX";
-    private static final String IEXEC_NB_INPUT_FILES_ENV_PROPERTY = "IEXEC_NB_INPUT_FILES";
-    private static final String IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX = "IEXEC_INPUT_FILE_NAME_";
-    private static final String IEXEC_INPUT_FILES_FOLDER_ENV_PROPERTY = "IEXEC_INPUT_FILES_FOLDER";
 
     @Value("${encryptFilePath}")
     private String scriptFilePath;
@@ -165,7 +153,7 @@ public class ComputationService {
     public void runComputation(ComputeMeta computeMeta, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
-        List<String> env = getContainerEnvVariables(taskDescription);
+        List<String> env = EnvUtils.getContainerEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
             List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(computeMeta.getSecureSessionId() + "/app",
                     publicConfigService.getSconeCasURL(), "1G");
@@ -340,26 +328,6 @@ public class ComputationService {
                     resultZipFilePath, publicKeyFilePath);
             e.printStackTrace();
         }
-    }
-
-    private List<String> getContainerEnvVariables(TaskDescription taskDescription) {
-        String datasetFilename = FileHelper.getFilenameFromUri(taskDescription.getDatasetUri());
-        List<String> list = new ArrayList<>();
-        list.add(IEXEC_IN_ENV_PROPERTY + "=" + FileHelper.SLASH_IEXEC_IN);
-        list.add(IEXEC_OUT_ENV_PROPERTY + "=" + FileHelper.SLASH_IEXEC_OUT);
-        list.add(IEXEC_DATASET_FILENAME_ENV_PROPERTY + "=" + datasetFilename);
-        list.add(IEXEC_BOT_SIZE_ENV_PROPERTY + "=" + taskDescription.getBotSize());
-        list.add(IEXEC_BOT_FIRST_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotFirstIndex());
-        list.add(IEXEC_BOT_TASK_INDEX_ENV_PROPERTY + "=" + taskDescription.getBotIndex());
-        int nbFiles = taskDescription.getInputFiles() == null ? 0 : taskDescription.getInputFiles().size();
-        list.add(IEXEC_NB_INPUT_FILES_ENV_PROPERTY + "=" + nbFiles);
-        int inputFileIndex = 1;
-        for (String inputFile : taskDescription.getInputFiles()) {
-            list.add(IEXEC_INPUT_FILES_ENV_PROPERTY_PREFIX + inputFileIndex + "=" + FilenameUtils.getName(inputFile));
-            inputFileIndex++;
-        }
-        list.add(IEXEC_INPUT_FILES_FOLDER_ENV_PROPERTY + "=" + FileHelper.SLASH_IEXEC_IN);
-        return list;
     }
 
     // We use the name "worker1-0xabc123" for app container to avoid
