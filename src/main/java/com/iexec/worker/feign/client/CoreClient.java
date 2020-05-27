@@ -1,7 +1,5 @@
 package com.iexec.worker.feign.client;
 
-import feign.FeignException;
-
 import java.util.List;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
@@ -11,7 +9,6 @@ import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
-import com.iexec.worker.feign.config.FeignConfiguration;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
@@ -22,10 +19,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import feign.FeignException;
 
-@FeignClient(name = "CoreClient",
-        url = "#{coreConfigurationService.url}",
-        configuration = FeignConfiguration.class)
+
+@FeignClient(name = "CoreClient", url = "#{coreConfigurationService.url}")
 public interface CoreClient {
 
     @GetMapping("/version")
