@@ -1,4 +1,4 @@
-package com.iexec.worker.docker;
+package com.iexec.worker.compute;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

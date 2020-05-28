@@ -1,4 +1,4 @@
-package com.iexec.worker.docker;
+package com.iexec.worker.compute;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;

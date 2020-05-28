@@ -1,4 +1,4 @@
-package com.iexec.worker.docker;
+package com.iexec.worker.compute;
 
 import java.io.BufferedReader;
 import java.io.File;

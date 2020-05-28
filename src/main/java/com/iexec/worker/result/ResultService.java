@@ -19,9 +19,9 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.compute.ComputationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
 
 import org.springframework.stereotype.Service;

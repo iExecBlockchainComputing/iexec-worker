@@ -1,4 +1,4 @@
-package com.iexec.worker.docker;
+package com.iexec.worker.compute;
 
 import com.google.common.collect.ImmutableList;
 import com.iexec.common.utils.FileHelper;

@@ -4,10 +4,10 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.iexec.worker.compute.CustomDockerClient;
+import com.iexec.worker.compute.DockerExecutionConfig;
+import com.iexec.worker.compute.DockerExecutionResult;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.docker.DockerExecutionConfig;
-import com.iexec.worker.docker.DockerExecutionResult;
 import com.iexec.worker.utils.LoggingUtils;
 
 import org.springframework.stereotype.Service;

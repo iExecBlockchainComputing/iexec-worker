@@ -4,9 +4,9 @@ import java.util.List;
 
 import javax.annotation.PreDestroy;
 
-import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.docker.DockerExecutionConfig;
-import com.iexec.worker.docker.DockerExecutionResult;
+import com.iexec.worker.compute.CustomDockerClient;
+import com.iexec.worker.compute.DockerExecutionConfig;
+import com.iexec.worker.compute.DockerExecutionResult;
 import com.iexec.worker.sgx.SgxService;
 
 import org.springframework.stereotype.Service;
