@@ -54,7 +54,7 @@ public class ComputationServiceTests {
     @Mock private IexecHubService iexecHubService;
 
     @InjectMocks
-    private ComputationService computationService;
+    private ComputeService computeService;
 
     @Before
     public void init() {
@@ -84,14 +84,14 @@ public class ComputationServiceTests {
 
     @Test
     public void ShouldAppTypeBeDocker() {
-        assertThat(computationService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
+        assertThat(computeService.isValidAppType(CHAIN_TASK_ID, DappType.DOCKER)).isTrue();
     }
 
     @Test
     public void shouldDownloadApp() {
         String imageUri = "imageUri";
         when(customDockerClient.pullImage(CHAIN_TASK_ID, imageUri)).thenReturn(true);
-        assertThat(computationService.downloadApp(CHAIN_TASK_ID,
+        assertThat(computeService.downloadApp(CHAIN_TASK_ID,
                 TaskDescription.builder()
                 .appUri(imageUri)
                 .appType(DappType.DOCKER)
@@ -110,7 +110,7 @@ public class ComputationServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuth)).thenReturn(SECURE_SESSION);
 
-        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        computeService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
         verify(smsService, times(1)).createTeeSession(workerpoolAuth);
         assertThat(computeMeta.isPreComputed()).isTrue();
     }
@@ -124,7 +124,7 @@ public class ComputationServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuth)).thenReturn("");
 
-        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        computeService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
         verify(smsService, times(1)).createTeeSession(workerpoolAuth);
         assertThat(computeMeta.isPreComputed()).isFalse();
     }
@@ -139,7 +139,7 @@ public class ComputationServiceTests {
         when(dataService.isDatasetDecryptionNeeded(taskDescription.getChainTaskId())).thenReturn(true);
         when(dataService.decryptDataset(taskDescription.getChainTaskId(), taskDescription.getDatasetUri())).thenReturn(true);
 
-        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        computeService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
         verify(smsService).fetchTaskSecrets(workerpoolAuth);
         verify(dataService).decryptDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri());
         assertThat(computeMeta.isPreComputed()).isTrue();
@@ -155,7 +155,7 @@ public class ComputationServiceTests {
         when(dataService.isDatasetDecryptionNeeded(taskDescription.getChainTaskId())).thenReturn(true);
         when(dataService.decryptDataset(taskDescription.getChainTaskId(), taskDescription.getDatasetUri())).thenReturn(false);
 
-        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
+        computeService.runPreCompute(computeMeta, taskDescription, workerpoolAuth);
         verify(smsService).fetchTaskSecrets(workerpoolAuth);
         verify(dataService).decryptDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri());
         assertThat(computeMeta.isPreComputed()).isFalse();
@@ -170,7 +170,7 @@ public class ComputationServiceTests {
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.success("success !", "containerName"));
 
-        computationService.runComputation(computeMeta, taskDescription);
+        computeService.runCompute(computeMeta, taskDescription);
         ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
         verify(customDockerClient).execute(argumentCaptor.capture());
         assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
@@ -184,7 +184,7 @@ public class ComputationServiceTests {
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.failure());
 
-        computationService.runComputation(computeMeta, taskDescription);
+        computeService.runCompute(computeMeta, taskDescription);
         ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
         verify(customDockerClient).execute(argumentCaptor.capture());
         assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
@@ -198,7 +198,7 @@ public class ComputationServiceTests {
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.success("success !", "containerName"));
 
-        computationService.runComputation(computeMeta, taskDescription);
+        computeService.runCompute(computeMeta, taskDescription);
         ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
         verify(customDockerClient).execute(argumentCaptor.capture());
         assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isFalse();
@@ -212,7 +212,7 @@ public class ComputationServiceTests {
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.failure());
 
-        computationService.runComputation(computeMeta, taskDescription);
+        computeService.runCompute(computeMeta, taskDescription);
         ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
         verify(customDockerClient).execute(argumentCaptor.capture());
         assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isFalse();
@@ -228,7 +228,7 @@ public class ComputationServiceTests {
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.success("success !", "containerName"));
 
-        computationService.runPostCompute(computeMeta, taskDescription);
+        computeService.runPostCompute(computeMeta, taskDescription);
         ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
         verify(customDockerClient).execute(argumentCaptor.capture());
         assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
@@ -242,7 +242,7 @@ public class ComputationServiceTests {
         when(customDockerClient.execute(any()))
                 .thenReturn(DockerExecutionResult.failure());
 
-        computationService.runPostCompute(computeMeta, taskDescription);
+        computeService.runPostCompute(computeMeta, taskDescription);
         ArgumentCaptor<DockerExecutionConfig> argumentCaptor = ArgumentCaptor.forClass(DockerExecutionConfig.class);
         verify(customDockerClient).execute(argumentCaptor.capture());
         assertThat(argumentCaptor.getAllValues().get(0).isSgx()).isTrue();
@@ -264,7 +264,7 @@ public class ComputationServiceTests {
         when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
                 .thenReturn(output);
 
-        computationService.runPostCompute(computeMeta, taskDescription);
+        computeService.runPostCompute(computeMeta, taskDescription);
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
         assertThat(new File(output + "/iexec_out.zip")).exists();
         assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
@@ -281,7 +281,7 @@ public class ComputationServiceTests {
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().isCallbackRequested(false).build());
 
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         String hash = computedFile.getResultDigest();
         // should be equal to the content of the file since it is a byte32
         assertThat(hash).isEqualTo("0x09b727883db89fa3b3504f83e0c67d04a0d4fc35a9670cc4517c49d2a27ad171");
@@ -297,7 +297,7 @@ public class ComputationServiceTests {
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().isCallbackRequested(false).build());
 
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         String hash = computedFile.getResultDigest();
         System.out.println(hash);
         // should be equal to the content of the file since it is a byte32
@@ -312,7 +312,7 @@ public class ComputationServiceTests {
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId + "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().isCallbackRequested(true).build());
 
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         String hash = computedFile.getResultDigest();
         System.out.println(hash);
         // should be equal to the content of the file since it is a byte32

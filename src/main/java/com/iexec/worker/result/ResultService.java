@@ -19,7 +19,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.compute.ComputationService;
+import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
@@ -38,7 +38,7 @@ public class ResultService {
     private CredentialsService credentialsService;
     private IexecHubService iexecHubService;
     private CustomResultFeignClient customResultFeignClient;
-    private ComputationService computationService;
+    private ComputeService computeService;
 
     private Map<String, ResultInfo> resultInfoMap;
 
@@ -47,13 +47,13 @@ public class ResultService {
                          CredentialsService credentialsService,
                          IexecHubService iexecHubService,
                          CustomResultFeignClient customResultFeignClient,
-                         ComputationService computationService) {
+                         ComputeService computationService) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
-        this.computationService = computationService;
+        this.computeService = computationService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -86,7 +86,7 @@ public class ResultService {
     }
 
     public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
                 .cmd(taskDescription.getCmd())

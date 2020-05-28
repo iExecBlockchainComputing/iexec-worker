@@ -11,7 +11,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.compute.ComputationService;
+import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.compute.ComputeMeta;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -42,7 +42,7 @@ public class TaskManagerService {
     private SconeTeeService sconeTeeService;
     private IexecHubService iexecHubService;
     private RevealService revealService;
-    private ComputationService computationService;
+    private ComputeService computeService;
     private Set<String> tasksUsingCpu;
 
     public TaskManagerService(DataService dataService,
@@ -51,7 +51,7 @@ public class TaskManagerService {
                               WorkerConfigurationService workerConfigurationService,
                               SconeTeeService sconeTeeService,
                               IexecHubService iexecHubService,
-                              ComputationService computationService,
+                              ComputeService computationService,
                               RevealService revealService) {
         this.dataService = dataService;
         this.resultService = resultService;
@@ -59,7 +59,7 @@ public class TaskManagerService {
         this.workerConfigurationService = workerConfigurationService;
         this.sconeTeeService = sconeTeeService;
         this.iexecHubService = iexecHubService;
-        this.computationService = computationService;
+        this.computeService = computationService;
         this.revealService = revealService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
@@ -125,7 +125,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
 
-        if (!computationService.downloadApp(chainTaskId, taskDescription)) {
+        if (!computeService.downloadApp(chainTaskId, taskDescription)) {
             log.error("Failed to download app [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
@@ -187,7 +187,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
 
-        if (!computationService.isAppDownloaded(taskDescription.getAppUri())) {
+        if (!computeService.isAppDownloaded(taskDescription.getAppUri())) {
             log.error("Cannot compute, app not found locally [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(APP_NOT_FOUND_LOCALLY);
         }
@@ -196,17 +196,17 @@ public class TaskManagerService {
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
         ComputeMeta computeMeta = ComputeMeta.builder().chainTaskId(chainTaskId).build();
-        computationService.runPreCompute(computeMeta, taskDescription, workerpoolAuthorization);
+        computeService.runPreCompute(computeMeta, taskDescription, workerpoolAuthorization);
         if (!computeMeta.isPreComputed()) {
             log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
-        computationService.runComputation(computeMeta, taskDescription);
+        computeService.runCompute(computeMeta, taskDescription);
         if (!computeMeta.isComputed()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
-        computationService.runPostCompute(computeMeta, taskDescription);
+        computeService.runPostCompute(computeMeta, taskDescription);
         if (!computeMeta.isPostComputed()) {
             log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
@@ -237,7 +237,7 @@ public class TaskManagerService {
             // System.exit(0);
         }
 
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         if (computedFile == null) {
             log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
@@ -261,7 +261,7 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId, TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
 
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         String resultDigest = computedFile != null ? computedFile.getResultDigest() : "";
 
         if (resultDigest.isEmpty()) {
@@ -310,7 +310,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
         }
 
-        ComputedFile computedFile = computationService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
         String callbackData = computedFile != null ? computedFile.getCallbackData() : "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",

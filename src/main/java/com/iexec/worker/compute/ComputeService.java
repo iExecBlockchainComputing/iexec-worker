@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class ComputationService {
+public class ComputeService {
 
     private static final String STDOUT_FILENAME = "stdout.txt";
 
@@ -48,7 +48,7 @@ public class ComputationService {
     private PublicConfigurationService publicConfigService;
     private IexecHubService iexecHubService;
 
-    public ComputationService(SmsService smsService,
+    public ComputeService(SmsService smsService,
                               DataService dataService,
                               CustomDockerClient customDockerClient,
                               SconeTeeService sconeTeeService,
@@ -150,7 +150,7 @@ public class ComputationService {
         return true;
     }
 
-    public void runComputation(ComputeMeta computeMeta, TaskDescription taskDescription) {
+    public void runCompute(ComputeMeta computeMeta, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
         List<String> env = EnvUtils.getContainerEnvList(taskDescription);
