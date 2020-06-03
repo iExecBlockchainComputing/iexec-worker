@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -206,7 +207,7 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldFailNonTeeComputesinceDockerExecutionFailed() {
+    public void shouldFailNonTeeComputeSinceDockerExecutionFailed() {
         TaskDescription taskDescription = getStubTaskDescription(false);
         Compute compute = new Compute();
         when(dockerService.run(any()))
@@ -222,11 +223,12 @@ public class ComputationServiceTests {
     // Post compute
 
     @Test
-    public void shouldPassTeePostCompute() {
+    public void shouldPassTeePostCompute() throws IOException {
         TaskDescription taskDescription = getStubTaskDescription(true);
+        String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
         Compute compute = new Compute();
-        when(dockerService.run(any()))
-                .thenReturn(Optional.of("success !"));
+        when(dockerService.run(any())).thenReturn(Optional.of("success !"));
+        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
 
         computeService.runPostCompute(compute, taskDescription);
         ArgumentCaptor<DockerCompute> argumentCaptor = ArgumentCaptor.forClass(DockerCompute.class);
@@ -236,12 +238,13 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldFailTeePostComputeSinceDockerExecutionFailed() {
+    public void shouldFailTeePostComputeSinceDockerExecutionFailed() throws IOException {
         TaskDescription taskDescription = getStubTaskDescription(true);
         Compute compute = new Compute();
-        when(dockerService.run(any()))
-                .thenReturn(Optional.empty());
-
+        String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
+        when(dockerService.run(any())).thenReturn(Optional.empty());
+        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
+        
         computeService.runPostCompute(compute, taskDescription);
         ArgumentCaptor<DockerCompute> argumentCaptor = ArgumentCaptor.forClass(DockerCompute.class);
         verify(dockerService).run(argumentCaptor.capture());
