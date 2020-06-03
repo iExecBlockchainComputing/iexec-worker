@@ -28,10 +28,10 @@ public class DockerCompute {
     private boolean isSgx;
 
     public String getStringArgsCmd() {
-        return getCmd();
+        return cmd;
     }
 
     public String[] getArrayArgsCmd() {
-        return ArgsUtils.stringArgsToArrayArgs(getCmd());
+        return ArgsUtils.stringArgsToArrayArgs(cmd);
     }
 }
