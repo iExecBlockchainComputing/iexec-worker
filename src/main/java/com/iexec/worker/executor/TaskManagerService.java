@@ -204,15 +204,15 @@ public class TaskManagerService {
         computeService.runCompute(compute, taskDescription);
         if (!compute.isComputed()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure();
+            return ReplicateActionResponse.failureWithStdout(compute.getStdout());
         }
         computeService.runPostCompute(compute, taskDescription);
         if (!compute.isPostComputed()) {
             log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
+            return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED, compute.getStdout());
         }
         resultService.saveResultInfo(chainTaskId, taskDescription);
-        return ReplicateActionResponse.success();
+        return ReplicateActionResponse.successWithStdout(compute.getStdout());
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
