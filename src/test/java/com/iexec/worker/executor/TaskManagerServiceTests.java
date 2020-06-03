@@ -19,12 +19,9 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.compute.ComputeService;
-import com.iexec.worker.compute.CustomDockerClient;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
@@ -36,17 +33,22 @@ import org.mockito.MockitoAnnotations;
 
 public class TaskManagerServiceTests {
 
-    @Mock private DataService dataService;
-    @Mock private ResultService resultService;
-    @Mock private ContributionService contributionService;
-    @Mock private CustomCoreFeignClient customCoreFeignClient;
-    @Mock private WorkerConfigurationService workerConfigurationService;
-    @Mock private SconeTeeService sconeTeeService;
-    @Mock private IexecHubService iexecHubService;
-    @Mock private ComputeService computeService;
-    @Mock private RevealService revealService;
-    @Mock private CustomDockerClient customDockerClient;
-    @Mock private SmsService smsService;
+    @Mock
+    private DataService dataService;
+    @Mock
+    private ResultService resultService;
+    @Mock
+    private ContributionService contributionService;
+    @Mock
+    private WorkerConfigurationService workerConfigurationService;
+    @Mock
+    private SconeTeeService sconeTeeService;
+    @Mock
+    private IexecHubService iexecHubService;
+    @Mock
+    private ComputeService computeService;
+    @Mock
+    private RevealService revealService;
 
     @InjectMocks
     private TaskManagerService taskManagerService;

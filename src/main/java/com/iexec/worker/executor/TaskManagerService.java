@@ -12,7 +12,7 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.compute.ComputeService;
-import com.iexec.worker.compute.ComputeMeta;
+import com.iexec.worker.compute.Compute;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
@@ -195,19 +195,19 @@ public class TaskManagerService {
         WorkerpoolAuthorization workerpoolAuthorization =
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        ComputeMeta computeMeta = ComputeMeta.builder().chainTaskId(chainTaskId).build();
-        computeService.runPreCompute(computeMeta, taskDescription, workerpoolAuthorization);
-        if (!computeMeta.isPreComputed()) {
+        Compute compute = Compute.builder().chainTaskId(chainTaskId).build();
+        computeService.runPreCompute(compute, taskDescription, workerpoolAuthorization);
+        if (!compute.isPreComputed()) {
             log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
-        computeService.runCompute(computeMeta, taskDescription);
-        if (!computeMeta.isComputed()) {
+        computeService.runCompute(compute, taskDescription);
+        if (!compute.isComputed()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
-        computeService.runPostCompute(computeMeta, taskDescription);
-        if (!computeMeta.isPostComputed()) {
+        computeService.runPostCompute(compute, taskDescription);
+        if (!compute.isPostComputed()) {
             log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
         }

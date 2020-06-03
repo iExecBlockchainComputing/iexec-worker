@@ -42,7 +42,7 @@ public class ComputeService {
 
     private SmsService smsService;
     private DataService dataService;
-    private CustomDockerClient customDockerClient;
+    private DockerService dockerService;
     private SconeTeeService sconeTeeService;
     private WorkerConfigurationService workerConfigService;
     private PublicConfigurationService publicConfigService;
@@ -50,7 +50,7 @@ public class ComputeService {
 
     public ComputeService(SmsService smsService,
                               DataService dataService,
-                              CustomDockerClient customDockerClient,
+                              DockerService dockerService,
                               SconeTeeService sconeTeeService,
                               WorkerConfigurationService workerConfigService,
                               PublicConfigurationService publicConfigService,
@@ -58,7 +58,7 @@ public class ComputeService {
 
         this.smsService = smsService;
         this.dataService = dataService;
-        this.customDockerClient = customDockerClient;
+        this.dockerService = dockerService;
         this.sconeTeeService = sconeTeeService;
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
@@ -81,35 +81,33 @@ public class ComputeService {
             return false;
         }
 
-        return customDockerClient.pullImage(chainTaskId, taskDescription.getAppUri());
+        return dockerService.pullImage(chainTaskId, taskDescription.getAppUri());
     }
 
     public boolean isAppDownloaded(String imageUri) {
-        return customDockerClient.isImagePulled(imageUri);
+        return dockerService.isImagePulled(imageUri);
     }
 
     /*
      * non TEE: download secrets && decrypt dataset (TODO: rewritte or remove)
      *     TEE: download post-compute image && create secure session
-     * 
      */
-    public void runPreCompute(ComputeMeta computeMeta, TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
+    public void runPreCompute(Compute compute, TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         log.info("Running pre-compute [chainTaskId:{}, isTee:{}]", taskDescription.getChainTaskId(),
                 taskDescription.isTeeTask());
-        boolean isSuccess;
         if (taskDescription.isTeeTask()) {
             String secureSessionId = runTeePreCompute(taskDescription, workerpoolAuth);
-            computeMeta.setSecureSessionId(secureSessionId);
-            isSuccess = !secureSessionId.isEmpty();
+            compute.setPreComputed(!secureSessionId.isEmpty());
+            compute.setSecureSessionId(secureSessionId);
         } else {
-            isSuccess = runNonTeePreCompute(taskDescription, workerpoolAuth);
+            boolean isSuccess = runNonTeePreCompute(taskDescription, workerpoolAuth);
+            compute.setPreComputed(isSuccess);
         }
-        computeMeta.setPreComputed(isSuccess);
     }
 
     private String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
-        if (!customDockerClient.pullImage(chainTaskId, taskDescription.getTeePostComputeImage())) {
+        if (!dockerService.pullImage(chainTaskId, taskDescription.getTeePostComputeImage())) {
             log.error("Cannot pull TEE post compute image [chainTaskId:{}, imageUri:{}]",
                     chainTaskId, taskDescription.getTeePostComputeImage());
             return "";
@@ -150,19 +148,20 @@ public class ComputeService {
         return true;
     }
 
-    public void runCompute(ComputeMeta computeMeta, TaskDescription taskDescription) {
-        String chainTaskId = taskDescription.getChainTaskId();
+    public void runCompute(Compute compute, TaskDescription taskDescription) {
+        String chainTaskId = compute.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
         List<String> env = EnvUtils.getContainerEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
-            List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(computeMeta.getSecureSessionId() + "/app",
+            List<String> teeEnv = sconeTeeService.buildSconeDockerEnv(compute.getSecureSessionId() + "/app",
                     publicConfigService.getSconeCasURL(), "1G");
             env.addAll(teeEnv);
         }
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(workerConfigService.getTaskInputDir(chainTaskId), FileHelper.SLASH_IEXEC_IN);
         bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
-        DockerExecutionConfig appExecutionConfig = DockerExecutionConfig.builder()
+
+        DockerCompute dockerCompute = DockerCompute.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskContainerName(chainTaskId))
                 .imageUri(taskDescription.getAppUri())
@@ -172,16 +171,19 @@ public class ComputeService {
                 .bindPaths(bindPaths)
                 .isSgx(taskDescription.isTeeTask())
                 .build();
-        DockerExecutionResult appExecutionResult = customDockerClient.execute(appExecutionConfig);
+
+        Optional<String> oStdout = dockerService.run(dockerCompute);
+        String stdout = oStdout.isPresent() ? oStdout.get() : "";
+        compute.setComputed(oStdout.isPresent());
+        compute.appendToStdout(stdout);
+
         if (shouldPrintDeveloperLogs(taskDescription)) {
             log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
-                    getDockerExecutionDeveloperLogs(chainTaskId, appExecutionResult));
+                    getDockerExecutionDeveloperLogs(chainTaskId, stdout));
         }
-        computeMeta.setComputed(appExecutionResult.isSuccess());
-        computeMeta.setStdout(appExecutionResult.getStdout());
         //TODO: Remove logs before merge
         System.out.println("****** App");
-        System.out.println(appExecutionResult.getStdout());
+        System.out.println(stdout);
     }
 
     /*
@@ -192,34 +194,34 @@ public class ComputeService {
      * 
      * - Save stdout file
      */
-    public void runPostCompute(ComputeMeta computeMeta, TaskDescription taskDescription) {
+    public void runPostCompute(Compute compute, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
         boolean isSuccess;
         String postComputeStdout = "";
         if (taskDescription.isTeeTask()) {
-            DockerExecutionResult dockerExecutionResult = runTeePostCompute(computeMeta.getSecureSessionId(), taskDescription);
-            isSuccess = dockerExecutionResult.isSuccess();
-            postComputeStdout = dockerExecutionResult.getStdout();
+            Optional<String> oStdout = runTeePostCompute(compute.getSecureSessionId(), taskDescription);
+            postComputeStdout = oStdout.isPresent() ? oStdout.get() : "";
+            isSuccess = oStdout.isPresent();
         } else {
             isSuccess = runNonTeePostCompute(taskDescription);
         }
-        computeMeta.setPostComputed(isSuccess);
-        computeMeta.setStdout(computeMeta.getStdout() + "\n" + postComputeStdout);
+        compute.setPostComputed(isSuccess);
+        compute.appendToStdout(postComputeStdout);
         // save /output/stdout.txt file
         String stdoutFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + File.separator + STDOUT_FILENAME;
-        File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath, computeMeta.getStdout());
+        File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath, compute.getStdout());
         log.info("Saved stdout file [path:{}]", stdoutFile.getAbsolutePath());
     }
 
-    private DockerExecutionResult runTeePostCompute(String secureSessionId, TaskDescription taskDescription) {
+    private Optional<String> runTeePostCompute(String secureSessionId, TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> sconeUploaderEnv = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(workerConfigService.getTaskIexecOutDir(chainTaskId), FileHelper.SLASH_IEXEC_OUT);
         bindPaths.put(workerConfigService.getTaskOutputDir(chainTaskId), FileHelper.SLASH_OUTPUT);
-        DockerExecutionConfig teePostComputeExecutionConfig = DockerExecutionConfig.builder()
+        DockerCompute dockerCompute = DockerCompute.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                 .imageUri(taskDescription.getTeePostComputeImage())
@@ -228,11 +230,13 @@ public class ComputeService {
                 .bindPaths(bindPaths)
                 .isSgx(true)
                 .build();
-        DockerExecutionResult teePostComputeExecutionResult = customDockerClient.execute(teePostComputeExecutionConfig);
+        Optional<String> oStdout = dockerService.run(dockerCompute);
         // TODO: remove
         System.out.println("****** Tee post-compute");
-        System.out.println(teePostComputeExecutionResult.getStdout());
-        return teePostComputeExecutionResult;
+        if (oStdout.isPresent()) {
+            System.out.println(oStdout.get());
+        }
+        return oStdout;
     }
 
     private boolean runNonTeePostCompute(TaskDescription taskDescription) {
@@ -345,12 +349,10 @@ public class ComputeService {
         return workerConfigService.isDeveloperLoggerEnabled() && taskDescription.isDeveloperLoggerEnabled();
     }
 
-    private String getDockerExecutionDeveloperLogs(String chainTaskId, DockerExecutionResult dockerExecutionResult) {
+    private String getDockerExecutionDeveloperLogs(String chainTaskId, String stdout) {
         String iexecInTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskInputDir(chainTaskId)));
         iexecInTree = iexecInTree.replace("├── input/", "├── iexec_in/");//confusing for developers if not replaced
         String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
-        String stdout = dockerExecutionResult.getStdout();
-
         return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout);
     }
 }

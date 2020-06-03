@@ -39,14 +39,14 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class CustomDockerClient {
+public class DockerService {
 
     private static final String WORKER_DOCKER_NETWORK = "iexec-worker-net";
     private static final String EXITED = "exited";
 
     private DefaultDockerClient docker;
 
-    public CustomDockerClient() throws DockerCertificateException {
+    public DockerService() throws DockerCertificateException {
         docker = DefaultDockerClient.fromEnv().build();
         if (getNetworkListByName(WORKER_DOCKER_NETWORK).isEmpty()) {
             createNetwork(WORKER_DOCKER_NETWORK);
@@ -87,34 +87,38 @@ public class CustomDockerClient {
      * 
      * maxExecutionTime != 0: we wait for the execution to end or we stop 
      *      the container when it reaches the deadline.
+     * 
+     * @return
+     * - Valid Optional object (with an compute stdout or empty string) when success.
+     * - Optional.empty() if failure.
      */
 
-    public DockerExecutionResult execute(DockerExecutionConfig dockerExecutionConfig) {
-        String chainTaskId = dockerExecutionConfig.getChainTaskId();
-        String containerName = dockerExecutionConfig.getContainerName();
-        long maxExecutionTime = dockerExecutionConfig.getMaxExecutionTime();
+    public Optional<String> run(DockerCompute dockerCompute) {
+        String chainTaskId = dockerCompute.getChainTaskId();
+        String containerName = dockerCompute.getContainerName();
+        long maxExecutionTime = dockerCompute.getMaxExecutionTime();
 
-        log.info("Executing [image:{}, cmd:{}]", dockerExecutionConfig.getImageUri(),
-                dockerExecutionConfig.getStringArgsCmd());
+        log.info("Executing [image:{}, cmd:{}]", dockerCompute.getImageUri(), dockerCompute.getStringArgsCmd());
 
-        Optional<ContainerConfig> oContainerConfig = buildContainerConfig(dockerExecutionConfig);
+        Optional<ContainerConfig> oContainerConfig = buildContainerConfig(dockerCompute);
         if (oContainerConfig.isEmpty()) {
             log.error("Cannot execute since container config is null");
-            return DockerExecutionResult.failure();
+            return Optional.empty();
         }
 
-        Optional<CustomContainerInfo> oCustomContainerInfo =
-                createAndStartContainer(containerName, oContainerConfig.get());
-
-        if (oCustomContainerInfo.isEmpty()) {
-            return DockerExecutionResult.failure();
+        String containerId = createAndStartContainer(containerName, oContainerConfig.get());
+        if (containerId.isEmpty()) {
+            return Optional.empty();
         }
 
-        containerName = oCustomContainerInfo.get().getContainerName();
-        String containerId = oCustomContainerInfo.get().getContainerId();
+        // if the name wasn't specified, get the generated one
+        if (containerName == null || containerName.isEmpty()) {
+            Optional<Container> oContainer = getContainer(byId(containerId));
+            containerName = oContainer.isPresent() ? oContainer.get().names().get(0) : "";
+        }
 
         if (maxExecutionTime == 0) {
-            return DockerExecutionResult.success("", containerName);
+            return Optional.of("");
         }
 
         Date executionTimeoutDate = Date.from(Instant.now().plusMillis(maxExecutionTime));
@@ -123,27 +127,24 @@ public class CustomDockerClient {
                 containerName, containerId);
 
         stopContainer(containerId);
-        Optional<String> oStdout = getContainerLogs(containerId);
+        Optional<String> stdout = getContainerLogs(containerId);
         removeContainer(containerId);
 
-        if (oStdout == null) {
+        if (stdout.isEmpty()) {
             log.error("Couldn't get execution logs [chainTaskId:{}]", chainTaskId);
-            return DockerExecutionResult.failure();
         }
-
-        return DockerExecutionResult.success(oStdout.get(), containerName);
-
+        return stdout;
     }
 
-    public Optional<ContainerConfig> buildContainerConfig(DockerExecutionConfig dockerExecutionConfig) {
-        String imageUri = dockerExecutionConfig.getImageUri();
-        String[] arrayArgsCmd = dockerExecutionConfig.getArrayArgsCmd();
-        List<String> env = dockerExecutionConfig.getEnv();
-        String port = dockerExecutionConfig.getContainerPort();
-        boolean isSgx = dockerExecutionConfig.isSgx();
+    public Optional<ContainerConfig> buildContainerConfig(DockerCompute dockerCompute) {
+        String imageUri = dockerCompute.getImageUri();
+        String[] arrayArgsCmd = dockerCompute.getArrayArgsCmd();
+        List<String> env = dockerCompute.getEnv();
+        String port = dockerCompute.getContainerPort();
+        boolean isSgx = dockerCompute.isSgx();
         ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder();
 
-        HostConfig hostConfig = createHostConfig(dockerExecutionConfig.getBindPaths(), isSgx);
+        HostConfig hostConfig = createHostConfig(dockerCompute.getBindPaths(), isSgx);
         if (hostConfig == null) {
             return Optional.empty();
         }
@@ -224,11 +225,10 @@ public class CustomDockerClient {
                 .build();
     }
 
-    public Optional<CustomContainerInfo> createAndStartContainer(String containerName,
-                                                                 ContainerConfig containerConfig) {
+    public String createAndStartContainer(String containerName, ContainerConfig containerConfig) {
         if (containerConfig == null) {
             log.error("Cannot create container since config is null [containerName:{}]", containerName);
-            return Optional.empty();
+            return "";
         }
 
         if (containerName != null && !containerName.isEmpty() && getContainer(byName(containerName)).isPresent()) {
@@ -237,31 +237,26 @@ public class CustomDockerClient {
         }
 
         // docker container create
-        Optional<CustomContainerInfo> oCustomContainerInfo = createContainer(containerName, containerConfig);
-        if (oCustomContainerInfo.isEmpty()) {
-            return Optional.empty();
-        }
-
-        String containerId = oCustomContainerInfo.get().getContainerId();
+        String containerId = createContainer(containerName, containerConfig);
         if (containerId.isEmpty()) {
-            return Optional.empty();
+            return "";
         }
 
         // docker container start
         boolean isContainerStarted = startContainer(containerId);
         if (!isContainerStarted) {
             removeContainer(containerId);
-            return Optional.empty();
+            return "";
         }
 
-        return Optional.of(oCustomContainerInfo.get());
+        return containerId;
     }
 
-    public Optional<CustomContainerInfo> createContainer(String containerName, ContainerConfig containerConfig) {
+    public String createContainer(String containerName, ContainerConfig containerConfig) {
         log.debug("Creating container [containerName:{}]", containerName);
 
         if (containerConfig == null) {
-            return Optional.empty();
+            return "";
         }
 
         ContainerCreation containerCreation;
@@ -275,31 +270,18 @@ public class CustomDockerClient {
             log.error("Failed to create container [containerName:{}, image:{}, cmd:{}]",
                     containerName, containerConfig.image(), containerConfig.cmd());
             e.printStackTrace();
-            return Optional.empty();
+            return "";
         }
 
         if (containerCreation == null) {
             log.error("Error creating container [containerName:{}]", containerName);
-            return Optional.empty();
+            return "";
         }
 
         String containerId = containerCreation.id();
-
-        // if the name wasn't specified, get the generated one
-        if (containerName == null || containerName.isEmpty()) {
-            Optional<Container> oContainer = getContainer(byId(containerId));
-            containerName = oContainer.isPresent() ? oContainer.get().names().get(0) : "";
-        }
-
         log.info("Created container [containerName:{}, containerId:{}]",
                 containerName, containerId);
-
-        CustomContainerInfo customContainerInfo = CustomContainerInfo.builder()
-                .containerId(containerId)
-                .containerName(containerName)
-                .build();
-
-        return Optional.of(customContainerInfo);
+        return containerId;
     }
 
     public boolean startContainer(String containerId) {
@@ -357,18 +339,16 @@ public class CustomDockerClient {
 
     public Optional<String> getContainerLogs(String containerId) {
         log.debug("Getting container logs [containerId:{}]", containerId);
-        String stdout = "";
 
         try {
-            stdout = docker.logs(containerId, LogsParam.stdout(), LogsParam.stderr()).readFully();
+            String stdout = docker.logs(containerId, LogsParam.stdout(), LogsParam.stderr()).readFully();
+            log.debug("Got container logs [containerId:{}]", containerId);
+            return Optional.of(stdout);    
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to get container logs [containerId:{}]", containerId);
             e.printStackTrace();
             return Optional.empty();
         }
-
-        log.debug("Got container logs [containerId:{}]", containerId);
-        return Optional.of(stdout);
     }
 
     public boolean removeContainer(String containerId) {

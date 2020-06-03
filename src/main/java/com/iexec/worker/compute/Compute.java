@@ -5,18 +5,24 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/* /!\ this probably should be split */
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ComputeMeta {
-    
+public class Compute {
+
     private String chainTaskId;
-    private boolean isComputed;
     private boolean isPreComputed;
+    private boolean isComputed;
     private boolean isPostComputed;
-    @Builder.Default private String secureSessionId = "";
-    @Builder.Default private String stdout = "";
+
+    @Builder.Default
+    private String secureSessionId = "";
+
+    @Builder.Default
+    private String stdout = "";
+
+    public void appendToStdout(String message) {
+        stdout = stdout + "\n" + message;
+    }
 }
