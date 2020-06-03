@@ -46,7 +46,6 @@ public class TaskNotificationService {
         this.contributionService = contributionService;
     }
 
-
     /**
      * Note to dev: In spring the code executed in an @EventListener method will be in the same thread than the
      * method that triggered the event. We don't want this to be the case here so this method should be Async.

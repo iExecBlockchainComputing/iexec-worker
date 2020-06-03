@@ -18,13 +18,10 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
@@ -36,17 +33,22 @@ import org.mockito.MockitoAnnotations;
 
 public class TaskManagerServiceTests {
 
-    @Mock private DataService dataService;
-    @Mock private ResultService resultService;
-    @Mock private ContributionService contributionService;
-    @Mock private CustomCoreFeignClient customCoreFeignClient;
-    @Mock private WorkerConfigurationService workerConfigurationService;
-    @Mock private SconeTeeService sconeTeeService;
-    @Mock private IexecHubService iexecHubService;
-    @Mock private ComputationService computationService;
-    @Mock private RevealService revealService;
-    @Mock private CustomDockerClient customDockerClient;
-    @Mock private SmsService smsService;
+    @Mock
+    private DataService dataService;
+    @Mock
+    private ResultService resultService;
+    @Mock
+    private ContributionService contributionService;
+    @Mock
+    private WorkerConfigurationService workerConfigurationService;
+    @Mock
+    private SconeTeeService sconeTeeService;
+    @Mock
+    private IexecHubService iexecHubService;
+    @Mock
+    private ComputeService computeService;
+    @Mock
+    private RevealService revealService;
 
     @InjectMocks
     private TaskManagerService taskManagerService;
@@ -98,7 +100,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(computationService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
+        when(computeService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
 
         ReplicateActionResponse actionResponse = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
@@ -132,7 +134,7 @@ public class TaskManagerServiceTests {
         String hash = "hash";
         long consensusBlock = 55;
 
-        when(computationService.getComputedFile(CHAIN_TASK_ID)).thenReturn(ComputedFile.builder().resultDigest(hash).build());
+        when(computeService.getComputedFile(CHAIN_TASK_ID)).thenReturn(ComputedFile.builder().resultDigest(hash).build());
         when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
         when(revealService.repeatCanReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -150,7 +152,7 @@ public class TaskManagerServiceTests {
                 .build();
         when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
                 .thenReturn(details.getResultLink());
-        when(computationService.getComputedFile(CHAIN_TASK_ID))
+        when(computeService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder()
                         .callbackData(details.getChainCallbackData())
                         .build()

@@ -1,12 +1,12 @@
 package com.iexec.worker.tee.scone;
 
 import java.util.List;
+import java.util.Optional;
 
 import javax.annotation.PreDestroy;
 
-import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.docker.DockerExecutionConfig;
-import com.iexec.worker.docker.DockerExecutionResult;
+import com.iexec.worker.compute.DockerService;
+import com.iexec.worker.compute.DockerCompute;
 import com.iexec.worker.sgx.SgxService;
 
 import org.springframework.stereotype.Service;
@@ -19,14 +19,14 @@ import lombok.extern.slf4j.Slf4j;
 public class SconeTeeService {
 
     private SconeLasConfiguration sconeLasConfig;
-    private CustomDockerClient customDockerClient;
+    private DockerService dockerService;
     private boolean isLasStarted;
 
     public SconeTeeService(SconeLasConfiguration sconeLasConfig,
-                           CustomDockerClient customDockerClient,
+                           DockerService dockerService,
                            SgxService sgxService) {
         this.sconeLasConfig = sconeLasConfig;
-        this.customDockerClient = customDockerClient;
+        this.dockerService = dockerService;
         isLasStarted = sgxService.isSgxEnabled() ? startLasService() : false;
     }
 
@@ -37,7 +37,7 @@ public class SconeTeeService {
     private boolean startLasService() {
         String chainTaskId = "iexec-las";
 
-        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+        DockerCompute dockerCompute = DockerCompute.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(sconeLasConfig.getContainerName())
                 .imageUri(sconeLasConfig.getImageUri())
@@ -46,18 +46,17 @@ public class SconeTeeService {
                 .maxExecutionTime(0)
                 .build();
 
-        if (!customDockerClient.pullImage(chainTaskId, sconeLasConfig.getImageUri())) {
+        if (!dockerService.pullImage(chainTaskId, sconeLasConfig.getImageUri())) {
             return false;
         }
 
-        DockerExecutionResult dockerExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        Optional<String> oStdout = dockerService.run(dockerCompute);
 
-        if (!dockerExecutionResult.isSuccess()) {
+        if (oStdout.isEmpty()) {
             log.error("Couldn't start LAS service, will continue without TEE support");
-            return false;
         }
 
-        return true;
+        return oStdout.isPresent();
     }
 
     public List<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
@@ -74,7 +73,7 @@ public class SconeTeeService {
     @PreDestroy
     void stopLasService() {
         if (isLasStarted) {
-            customDockerClient.stopAndRemoveContainer(sconeLasConfig.getContainerName());
+            dockerService.stopAndRemoveContainer(sconeLasConfig.getContainerName());
         }
     }
 }

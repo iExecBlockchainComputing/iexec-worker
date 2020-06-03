@@ -1,43 +1,37 @@
-package com.iexec.worker.docker;
+package com.iexec.worker.compute;
+
+import java.util.List;
+import java.util.Map;
 
 import com.iexec.common.utils.ArgsUtils;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-import java.util.Map;
-
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DockerExecutionConfig {
+public class DockerCompute {
 
     private String chainTaskId;
-    // when containerName is not specified,
-    // docker will generate one.
     private String containerName;
+    private String containerId;
+    private String containerPort;
     private String imageUri;
     private String cmd;
     private List<String> env;
     private long maxExecutionTime;
-    private String containerPort;
     private Map<String, String> bindPaths;
     private boolean isSgx;
 
-    private String getCmd() {
-        return this.cmd;
-    }
-
     public String getStringArgsCmd() {
-        return this.cmd;
+        return cmd;
     }
 
     public String[] getArrayArgsCmd() {
-        return ArgsUtils.stringArgsToArrayArgs(this.cmd);
+        return ArgsUtils.stringArgsToArrayArgs(cmd);
     }
-
 }
