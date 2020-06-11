@@ -1,16 +1,5 @@
 package com.iexec.worker.result;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
@@ -23,11 +12,19 @@ import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
-import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
+import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 
 @Slf4j
 @Service
@@ -150,30 +147,102 @@ public class ResultService {
         return Arrays.asList(chainTaskIdFolders);
     }
 
+    /*
+     * For Cloud computing basic
+     * - upload from worker requested
+     * - send link from worker requested
+     *
+     * But for other work-flows
+     * - link could be retrieved from core before finalize
+     *
+     * */
     public String uploadResultAndGetLink(String chainTaskId) {
+        TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
 
-        if (iexecHubService.isTeeTask(chainTaskId)){//result is already uploaded
-            String resultStorageProvider = iexecHubService.getTaskDescription(chainTaskId).getResultStorageProvider();
-            String requester = iexecHubService.getTaskDescription(chainTaskId).getRequester();
-            if (resultStorageProvider == null || resultStorageProvider.isEmpty()){
-                resultStorageProvider = "ipfs";
-            }
-            //TODO Get link
-            return String.format("{" +
-                    "\"resultStorageProvider\":\"%s\", " +
-                    "\"resultStoragePrivateSpaceOwner\":\"%s\", " +
-                    "\"taskId\":\"%s\"" +
-                    "}", resultStorageProvider, requester , chainTaskId);
+        // Offchain computing - basic & tee
+        if (task.isCallbackRequested()) {
+            log.info("Web3 storage, no need to upload [chainTaskId:{}]", chainTaskId);
+            return getWeb3ResultLink(chainTaskId);
         }
 
+        // Cloud computing - tee
+        if (task.isTeeTask()) {//result is already uploaded
+            log.info("Web2 storage, already uploaded (with tee) [chainTaskId:{}]", chainTaskId);
+            return getWeb2ResultLink(chainTaskId);
+        }
+
+        // Cloud computing - basic
+        boolean isIpfsStorageRequest = task.getResultStorageProvider().equals(IPFS_RESULT_STORAGE_PROVIDER);
+        boolean isUpload = upload(chainTaskId);
+        if (isIpfsStorageRequest && isUpload) {
+            log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
+            return getWeb2ResultLink(chainTaskId);//retrieves ipfs only
+        }
+
+        log.info("Cannot uploadResultAndGetLink [chainTaskId:{}, isIpfsStorageRequest:{}, hainTaskId:{}]",
+                chainTaskId, isIpfsStorageRequest, isUpload);
+        return "";
+    }
+
+    private boolean upload(String chainTaskId) {
         String authorizationToken = getIexecUploadToken();
         if (authorizationToken.isEmpty()) {
             log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
+            return true;
+        }
+
+        String location = customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+        if (location.isEmpty()) {
+            log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId);
+            return true;
+        }
+        return false;
+    }
+
+    private String getWeb3ResultLink(String chainTaskId) {
+        TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
+
+        if (task == null) {
+            log.error("Cannot get web3 result link (task missing) [chainTaskId:{}]", chainTaskId);
             return "";
         }
 
-        log.info("Got upload authorization token [chainTaskId:{}]", chainTaskId);
-        return customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
+        return buildResultLink("eth", task.getCallback());
+    }
+
+    String getWeb2ResultLink(String chainTaskId) {
+        TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
+
+        if (task == null) {
+            log.error("Cannot get tee web2 result link (task missing) [chainTaskId:{}]", chainTaskId);
+            return "";
+        }
+
+        String location;
+        String storage = task.getResultStorageProvider();
+
+        switch (storage) {
+            case IPFS_RESULT_STORAGE_PROVIDER:
+                String ipfsHash = customResultFeignClient.getIpfsHashForTask(chainTaskId);
+                if (ipfsHash.isEmpty()) {
+                    log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId);
+                    return "";
+                }
+                location = "/ipfs/" + ipfsHash;
+                break;
+            case DROPBOX_RESULT_STORAGE_PROVIDER:
+                location = "/results/" + chainTaskId;
+                break;
+            default:
+                log.error("Cannot get tee web2 result link (storage missing) [chainTaskId:{}]", chainTaskId);
+                return "";
+        }
+
+        return buildResultLink(storage, location);
+    }
+
+    String buildResultLink(String storage, String location) {
+        return String.format("{ \"storage\": \"%s\", \"location\": \"%s\" }", storage, location);
     }
 
     public String getIexecUploadToken() {
