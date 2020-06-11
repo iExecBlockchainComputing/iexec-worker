@@ -207,7 +207,7 @@ public class ResultService {
             return "";
         }
 
-        return buildResultLink("eth", task.getCallback());
+        return buildResultLink("ethereum", task.getCallback());
     }
 
     String getWeb2ResultLink(String chainTaskId) {
