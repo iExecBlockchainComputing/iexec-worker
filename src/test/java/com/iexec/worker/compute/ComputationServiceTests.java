@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -222,9 +223,12 @@ public class ComputationServiceTests {
     // Post compute
 
     @Test
-    public void shouldPassTeePostCompute() {
+    public void shouldPassTeePostCompute() throws IOException {
         TaskDescription taskDescription = getStubTaskDescription(true);
         Compute compute = new Compute();
+        String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
+        when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
+                .thenReturn(output);
         when(dockerService.run(any()))
                 .thenReturn(Optional.of("success !"));
 
@@ -236,9 +240,12 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldFailTeePostComputeSinceDockerExecutionFailed() {
+    public void shouldFailTeePostComputeSinceDockerExecutionFailed() throws IOException {
         TaskDescription taskDescription = getStubTaskDescription(true);
         Compute compute = new Compute();
+        String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
+        when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
+                .thenReturn(output);
         when(dockerService.run(any()))
                 .thenReturn(Optional.empty());
 
