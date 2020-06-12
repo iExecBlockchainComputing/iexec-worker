@@ -307,13 +307,17 @@ public class DockerService {
             return;
         }
 
+        int seconds = 0;
         while (!isComputed && !isTimeout) {
-            log.info("Running [containerName:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
-                    containerName, containerId, getContainerStatus(containerId), isComputed, isTimeout);
+            if (seconds % 60 == 0){ //don't display logs too often
+                log.info("Still running [containerName:{}, containerId:{}, status:{}, isComputed:{}, isTimeout:{}]",
+                        containerName, containerId, getContainerStatus(containerId), isComputed, isTimeout);
+            }
 
             WaitUtils.sleep(1);
             isComputed = isContainerExited(containerId);
             isTimeout = isAfterTimeout(executionTimeoutDate);
+            seconds++;
         }
 
         if (isTimeout) {
