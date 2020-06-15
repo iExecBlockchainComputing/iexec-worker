@@ -5,11 +5,7 @@ import com.iexec.common.result.eip712.Eip712Challenge;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import feign.FeignException;
 
@@ -27,5 +23,8 @@ public interface ResultClient {
     @PostMapping("/results")
     ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String authorizationToken,
                                         @RequestBody ResultModel resultModel);
+
+    @GetMapping("/results/{chainTaskId}/ipfshash")
+    ResponseEntity<String> getIpfsHashForTask(@PathVariable("chainTaskId") String chainTaskId);
 
 }

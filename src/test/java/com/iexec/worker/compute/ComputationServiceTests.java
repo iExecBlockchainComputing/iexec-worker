@@ -227,8 +227,10 @@ public class ComputationServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(true);
         String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
         Compute compute = new Compute();
-        when(dockerService.run(any())).thenReturn(Optional.of("success !"));
-        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
+        when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
+                .thenReturn(output);
+        when(dockerService.run(any()))
+                .thenReturn(Optional.of("success !"));
 
         computeService.runPostCompute(compute, taskDescription);
         ArgumentCaptor<DockerCompute> argumentCaptor = ArgumentCaptor.forClass(DockerCompute.class);
@@ -242,9 +244,11 @@ public class ComputationServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(true);
         Compute compute = new Compute();
         String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
-        when(dockerService.run(any())).thenReturn(Optional.empty());
-        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
-        
+        when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
+                .thenReturn(output);
+        when(dockerService.run(any()))
+                .thenReturn(Optional.empty());
+
         computeService.runPostCompute(compute, taskDescription);
         ArgumentCaptor<DockerCompute> argumentCaptor = ArgumentCaptor.forClass(DockerCompute.class);
         verify(dockerService).run(argumentCaptor.capture());

@@ -58,4 +58,15 @@ public class CustomResultFeignClient extends BaseFeignClient {
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "uploadResult");
         return is2xxSuccess(response) ? response.getBody() : "";
     }
+
+    public String getIpfsHashForTask(String chainTaskId) {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("chainTaskId", chainTaskId);
+
+        HttpCall<String> httpCall = (args) ->
+                resultClient.getIpfsHashForTask((String) args.get("chainTaskId"));
+
+        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getIpfsHashForTask");
+        return is2xxSuccess(response) ? response.getBody() : "";
+    }
 }
