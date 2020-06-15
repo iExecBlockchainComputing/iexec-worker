@@ -103,7 +103,7 @@ public class TaskNotificationService {
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
                 actionResponse = taskManagerService.compute(chainTaskId);
                 if (actionResponse.getDetails() != null) {
-                    actionResponse.getDetails().cropStdout();
+                    actionResponse.getDetails().tailStdout();
                 }
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED, actionResponse.getDetails());
