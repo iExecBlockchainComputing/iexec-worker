@@ -147,7 +147,7 @@ uploadArchives.enabled = canUploadArchives
 
 test {
     if (System.properties['test.profile'] == 'skipDocker') {
-        exclude '**/docker/**'
+        exclude '**/compute/DockerServiceTests*'
     }
 }
 
