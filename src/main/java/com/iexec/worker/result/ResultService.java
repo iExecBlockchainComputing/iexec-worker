@@ -179,7 +179,7 @@ public class ResultService {
             return getWeb2ResultLink(chainTaskId);//retrieves ipfs only
         }
 
-        log.info("Cannot uploadResultAndGetLink [chainTaskId:{}, isIpfsStorageRequest:{}, hainTaskId:{}]",
+        log.info("Cannot uploadResultAndGetLink [chainTaskId:{}, isIpfsStorageRequest:{}, chainTaskId:{}]",
                 chainTaskId, isIpfsStorageRequest, isUpload);
         return "";
     }
@@ -188,15 +188,15 @@ public class ResultService {
         String authorizationToken = getIexecUploadToken();
         if (authorizationToken.isEmpty()) {
             log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
-            return true;
+            return false;
         }
 
         String location = customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
         if (location.isEmpty()) {
             log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId);
-            return true;
+            return false;
         }
-        return false;
+        return true;
     }
 
     private String getWeb3ResultLink(String chainTaskId) {

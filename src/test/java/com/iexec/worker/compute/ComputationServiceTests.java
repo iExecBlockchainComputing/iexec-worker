@@ -207,7 +207,7 @@ public class ComputationServiceTests {
     }
 
     @Test
-    public void shouldFailNonTeeComputesinceDockerExecutionFailed() {
+    public void shouldFailNonTeeComputeSinceDockerExecutionFailed() {
         TaskDescription taskDescription = getStubTaskDescription(false);
         Compute compute = new Compute();
         when(dockerService.run(any()))
@@ -225,8 +225,8 @@ public class ComputationServiceTests {
     @Test
     public void shouldPassTeePostCompute() throws IOException {
         TaskDescription taskDescription = getStubTaskDescription(true);
-        Compute compute = new Compute();
         String output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
+        Compute compute = new Compute();
         when(workerConfigurationService.getTaskOutputDir(taskDescription.getChainTaskId()))
                 .thenReturn(output);
         when(dockerService.run(any()))
