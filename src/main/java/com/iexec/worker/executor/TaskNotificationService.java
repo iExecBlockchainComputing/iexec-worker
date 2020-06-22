@@ -213,7 +213,7 @@ public class TaskNotificationService {
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
-                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetails());
+                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutStdout());
 
         TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
 
