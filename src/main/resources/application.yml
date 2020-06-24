@@ -10,7 +10,6 @@ worker:
   name: ${IEXEC_WORKER_NAME:customWorker}
   workerBaseDir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
   gpuEnabled: ${IEXEC_WORKER_GPU_ENABLED:false}
-  forceTeeDisabled: ${IEXEC_FORCE_TEE_DISABLED:false}
   gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
   gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
   overrideBlockchainNodeAddress: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
@@ -37,3 +36,6 @@ management:
 graylog:
   host: ${IEXEC_CORE_GRAYLOG_HOST:localhost}
   port: ${IEXEC_CORE_GRAYLOG_PORT:12201}
+
+debug:
+  forceTeeDisabled: ${IEXEC_DEBUG_FORCE_TEE_DISABLED:false} # this for dev mode only
