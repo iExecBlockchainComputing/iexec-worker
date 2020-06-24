@@ -10,6 +10,7 @@ import com.iexec.worker.compute.DockerCompute;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +30,11 @@ public class SgxService {
     private WorkerConfigurationService workerConfigService;
 
     public SgxService(DockerService dockerService,
-                      WorkerConfigurationService workerConfigService) {
+                      WorkerConfigurationService workerConfigService,
+                      @Value("${worker.forceTeeDisabled}") boolean forceTeeDisabled) {
         this.dockerService = dockerService;
         this.workerConfigService = workerConfigService;
-        isSgxSupported = isSgxSupported();
+        isSgxSupported = forceTeeDisabled ? false : isSgxSupported();
     }
 
     public boolean isSgxEnabled() {
