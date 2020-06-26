@@ -31,7 +31,7 @@ public class SgxService {
 
     public SgxService(DockerService dockerService,
                       WorkerConfigurationService workerConfigService,
-                      @Value("${worker.forceTeeDisabled}") boolean forceTeeDisabled) {
+                      @Value("${debug.forceTeeDisabled}") boolean forceTeeDisabled) {
         this.dockerService = dockerService;
         this.workerConfigService = workerConfigService;
         isSgxSupported = forceTeeDisabled ? false : isSgxSupported();
