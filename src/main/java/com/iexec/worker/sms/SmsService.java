@@ -99,14 +99,19 @@ public class SmsService {
         }
     }
 
-    @Retryable(value = FeignException.class)
+    /*
+    * Don't retry createTeeSession for now, to avoid polluting logs in SMS & CAS
+    * */
+    //@Retryable(value = FeignException.class)
     public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
         String authorization = getAuthorizationString(workerpoolAuthorization);
         ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
+        log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
+                workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
         return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
     }
 
-    @Recover
+    //@Recover
     private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
         log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
                 workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
