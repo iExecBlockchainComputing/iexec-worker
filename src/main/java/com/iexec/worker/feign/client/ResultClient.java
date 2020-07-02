@@ -20,7 +20,7 @@ public interface ResultClient {
     ResponseEntity<String> login(@RequestParam(name = "chainId") Integer chainId,
                                           @RequestBody String signedEip712Challenge) throws FeignException;
 
-    @PostMapping("/results")
+    @PostMapping("/")
     ResponseEntity<String> uploadResult(@RequestHeader("Authorization") String authorizationToken,
                                         @RequestBody ResultModel resultModel);
 
