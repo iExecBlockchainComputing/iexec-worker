@@ -1,29 +1,20 @@
 package com.iexec.worker.sms;
 
-import java.util.Optional;
-
-import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.security.Signature;
-import com.iexec.common.sms.secrets.SmsSecret;
-import com.iexec.common.sms.SmsRequest;
-import com.iexec.common.sms.SmsRequestData;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
-import com.iexec.common.sms.secrets.SmsSecretResponse;
-import com.iexec.common.sms.secrets.TaskSecrets;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.HashUtils;
+import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.sms.secret.SmsSecret;
+import com.iexec.common.sms.secret.SmsSecretResponse;
+import com.iexec.common.sms.secret.TaskSecrets;
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.CustomSmsFeignClient;
-import com.iexec.worker.utils.FileHelper;
-
+import com.iexec.worker.feign.client.SmsClient;
+import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Sign;
 
-import feign.FeignException;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
 
 
 @Slf4j
@@ -31,20 +22,23 @@ import lombok.extern.slf4j.Slf4j;
 public class SmsService {
 
     private CredentialsService credentialsService;
-    private CustomSmsFeignClient customSmsFeignClient;
+    private SmsClient smsClient;
 
-    public SmsService(CredentialsService credentialsService, CustomSmsFeignClient customSmsFeignClient) {
+    public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
         this.credentialsService = credentialsService;
-        this.customSmsFeignClient = customSmsFeignClient;
+        this.smsClient = smsClient;
     }
 
     @Retryable(value = FeignException.class)
-    public Optional<TaskSecrets> fetchTaskSecrets(ContributionAuthorization contributionAuth) {
-        String chainTaskId = contributionAuth.getChainTaskId();
+    public Optional<TaskSecrets> fetchTaskSecrets(WorkerpoolAuthorization workerpoolAuthorization) {
+        String chainTaskId = workerpoolAuthorization.getChainTaskId();
+        String authorization = getAuthorizationString(workerpoolAuthorization);
+        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            return Optional.empty();
+        }
 
-        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-        SmsSecretResponse smsResponse = customSmsFeignClient.getTaskSecretsFromSms(smsRequest);
-
+        SmsSecretResponse smsResponse = response.getBody();
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
@@ -67,18 +61,17 @@ public class SmsService {
     }
 
     @Recover
-    private boolean fetchTaskSecrets(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
-                contributionAuth.getChainTaskId());
-        e.printStackTrace();
-        return false;
+    private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
+                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
+        return Optional.empty();
     }
 
     public void saveSecrets(String chainTaskId,
-                             TaskSecrets taskSecrets,
-                             String datasetSecretFilePath,
-                             String beneficiarySecretFilePath,
-                             String enclaveSecretFilePath) {
+                            TaskSecrets taskSecrets,
+                            String datasetSecretFilePath,
+                            String beneficiarySecretFilePath,
+                            String enclaveSecretFilePath) {
 
         SmsSecret datasetSecret = taskSecrets.getDatasetSecret();
         SmsSecret beneficiarySecret = taskSecrets.getBeneficiarySecret();
@@ -106,55 +99,27 @@ public class SmsService {
         }
     }
 
-    @Retryable(value = FeignException.class)
-    public Optional<SconeSecureSession> getSconeSecureSession(ContributionAuthorization contributionAuth) {
-        String chainTaskId = contributionAuth.getChainTaskId();
-        SmsRequest smsRequest = buildSmsRequest(contributionAuth);
-
-        SconeSecureSessionResponse smsResponse = customSmsFeignClient.generateSecureSession(smsRequest);
-
-        if (smsResponse == null) {
-            log.error("Received null response from SMS  [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        if (!smsResponse.isOk()) {
-            log.error("An error occurred while generating secure session [chainTaskId:{}, errorMessage:{}]",
-                    chainTaskId, smsResponse.getErrorMessage());
-            return Optional.empty();
-        }
-
-        if (smsResponse.getData() == null) {
-            log.error("Received null session from SMS [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        return Optional.of(smsResponse.getData());
+    /*
+    * Don't retry createTeeSession for now, to avoid polluting logs in SMS & CAS
+    * */
+    //@Retryable(value = FeignException.class)
+    public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
+        String authorization = getAuthorizationString(workerpoolAuthorization);
+        ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
+        log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
+                workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
+        return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
     }
 
-    @Recover
-    private Optional<SconeSecureSession> getSconeSecureSession(FeignException e, ContributionAuthorization contributionAuth) {
-        log.error("Failed to generate secure session [chainTaskId:{}, attempts:3]",
-                contributionAuth.getChainTaskId());
-        e.printStackTrace();
-        return Optional.empty();
+    //@Recover
+    private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
+        log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
+                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
+        return "";
     }
 
-    public SmsRequest buildSmsRequest(ContributionAuthorization contributionAuth) {
-        String hash = HashUtils.concatenateAndHash(contributionAuth.getWorkerWallet(),
-                contributionAuth.getChainTaskId(), contributionAuth.getEnclaveChallenge());
-
-        Sign.SignatureData workerSignature = Sign.signPrefixedMessage(
-                BytesUtils.stringToBytes(hash), credentialsService.getCredentials().getEcKeyPair());
-
-        SmsRequestData smsRequestData = SmsRequestData.builder()
-            .chainTaskId(contributionAuth.getChainTaskId())
-            .workerAddress(contributionAuth.getWorkerWallet())
-            .enclaveChallenge(contributionAuth.getEnclaveChallenge())
-            .coreSignature(contributionAuth.getSignature().getValue())
-            .workerSignature(new Signature(workerSignature).getValue())
-            .build();
-
-        return new SmsRequest(smsRequestData);
+    private String getAuthorizationString(WorkerpoolAuthorization workerpoolAuthorization) {
+        String challenge = workerpoolAuthorization.getHash();
+        return credentialsService.hashAndSignMessage(challenge).getValue();
     }
 }

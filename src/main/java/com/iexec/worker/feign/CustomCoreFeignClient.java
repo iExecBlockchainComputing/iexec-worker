@@ -1,6 +1,6 @@
 package com.iexec.worker.feign;
 
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
@@ -94,15 +94,15 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return is2xxSuccess(response) ? response.getBody() : Collections.emptyList();
     }
 
-    public Optional<ContributionAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
+    public Optional<WorkerpoolAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("jwtoken", loginService.getToken());
         arguments.put("blockNumber", lastAvailableBlockNumber);
 
-        HttpCall<ContributionAuthorization> httpCall = (args) ->
+        HttpCall<WorkerpoolAuthorization> httpCall = (args) ->
                 coreClient.getAvailableReplicate((String) args.get("jwtoken"), (long) args.get("blockNumber"));
 
-        ResponseEntity<ContributionAuthorization> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
+        ResponseEntity<WorkerpoolAuthorization> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
         if (!is2xxSuccess(response) || response.getBody() == null) {
             return Optional.empty();
         }

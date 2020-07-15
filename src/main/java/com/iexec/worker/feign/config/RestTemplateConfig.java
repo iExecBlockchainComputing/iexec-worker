@@ -1,7 +1,5 @@
 package com.iexec.worker.feign.config;
 
-import javax.net.ssl.SSLContext;
-
 import com.iexec.worker.config.WorkerConfigurationService;
 
 import org.apache.http.HttpHost;
@@ -16,18 +14,14 @@ import org.springframework.web.client.RestTemplate;
 public class RestTemplateConfig {
 
     private WorkerConfigurationService workerConfService;
-    private SslService sslService;
 
-    public RestTemplateConfig(WorkerConfigurationService workerConfService,
-                              SslService sslService) {
+    public RestTemplateConfig(WorkerConfigurationService workerConfService) {
         this.workerConfService = workerConfService;
-        this.sslService = sslService;
     }
     @Bean
     public RestTemplate restTemplate() {
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
         setProxy(clientBuilder);
-        setSslContext(clientBuilder);
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
         factory.setHttpClient(clientBuilder.build());
         return new RestTemplate(factory);
@@ -48,13 +42,6 @@ public class RestTemplateConfig {
         }
         if (proxy != null){
             clientBuilder.setProxy(proxy);
-        }
-    }
-
-    private void setSslContext(HttpClientBuilder clientBuilder) {
-        SSLContext sslContext = sslService.getSslContext();
-        if (sslContext != null) {
-            clientBuilder.setSSLContext(sslContext);
         }
     }
 }

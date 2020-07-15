@@ -3,13 +3,14 @@ package com.iexec.worker.sgx;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
+import com.iexec.worker.compute.DockerService;
+import com.iexec.worker.compute.DockerCompute;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.docker.DockerExecutionConfig;
-import com.iexec.worker.docker.DockerExecutionResult;
 import com.iexec.worker.utils.LoggingUtils;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -25,14 +26,15 @@ public class SgxService {
 
     private boolean isSgxSupported;
 
-    private CustomDockerClient customDockerClient;
+    private DockerService dockerService;
     private WorkerConfigurationService workerConfigService;
 
-    public SgxService(CustomDockerClient customDockerClient,
-                      WorkerConfigurationService workerConfigService) {
-        this.customDockerClient = customDockerClient;
+    public SgxService(DockerService dockerService,
+                      WorkerConfigurationService workerConfigService,
+                      @Value("${debug.forceTeeDisabled}") boolean forceTeeDisabled) {
+        this.dockerService = dockerService;
         this.workerConfigService = workerConfigService;
-        isSgxSupported = isSgxSupported();
+        isSgxSupported = forceTeeDisabled ? false : isSgxSupported();
     }
 
     public boolean isSgxEnabled() {
@@ -72,7 +74,7 @@ public class SgxService {
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put("/dev", "/dev");
 
-        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+        DockerCompute dockerCompute = DockerCompute.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(containerName)
                 .imageUri(alpineLatest)
@@ -81,17 +83,17 @@ public class SgxService {
                 .bindPaths(bindPaths)
                 .build();
 
-        if (!customDockerClient.pullImage(chainTaskId, alpineLatest)) {
+        if (!dockerService.pullImage(chainTaskId, alpineLatest)) {
             return false;
         }
 
-        DockerExecutionResult executionResult = customDockerClient.execute(dockerExecutionConfig);
-        if (!executionResult.isSuccess()) {
+        Optional<String> oStdout = dockerService.run(dockerCompute);
+        if (oStdout.isEmpty()) {
             log.error("Failed to check SGX device, will continue without TEE support");
             return false;
         }
 
-        String stdout = executionResult.getStdout().trim();
-        return (stdout != null && stdout.equals("true")) ? true : false;
+        String stdout = oStdout.get().trim();
+        return (stdout != null && stdout.equals("true"));
     }
 }

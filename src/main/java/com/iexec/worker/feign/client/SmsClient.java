@@ -1,26 +1,26 @@
 package com.iexec.worker.feign.client;
 
 
-import com.iexec.common.sms.SmsRequest;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse;
-import com.iexec.common.sms.secrets.SmsSecretResponse;
-import com.iexec.worker.feign.config.FeignConfiguration;
+import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.sms.secret.SmsSecretResponse;
 
-import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
+import feign.FeignException;
 
-@FeignClient(name = "SmsClient",
-        url = "#{publicConfigurationService.smsURL}",
-        configuration = FeignConfiguration.class)
+@FeignClient(name = "SmsClient", url = "#{publicConfigurationService.smsURL}")
 public interface SmsClient {
 
-    @PostMapping("/secure")
-    ResponseEntity<SmsSecretResponse> getTaskSecretsFromSms(@RequestBody SmsRequest smsRequest) throws FeignException;
+    @PostMapping("/untee/secrets")
+    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestHeader("Authorization") String authorization,
+                                                      @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
 
-    @PostMapping("/secure")
-    ResponseEntity<SconeSecureSessionResponse> generateSecureSession(@RequestBody SmsRequest smsRequest) throws FeignException;
+    @PostMapping("/tee/sessions")
+    ResponseEntity<String> createTeeSession(@RequestHeader("Authorization") String authorization,
+                                            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
+
 }

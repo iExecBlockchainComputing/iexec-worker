@@ -1,7 +1,7 @@
 package com.iexec.worker.config;
 
+import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.utils.FileHelper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -60,20 +60,15 @@ public class WorkerConfigurationService {
     }
 
     public String getTaskInputDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_INPUT;
+        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_INPUT;
     }
 
     public String getTaskOutputDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT;
+        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_OUTPUT;
     }
 
     public String getTaskIexecOutDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_OUTPUT
-                + FileHelper.SLASH_IEXEC_OUT;
-    }
-
-    public String getTaskSconeDir(String chainTaskId) {
-        return getWorkerBaseDir() + File.separator + chainTaskId + FileHelper.SLASH_SCONE;
+        return getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT;
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {

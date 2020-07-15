@@ -1,21 +1,21 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.security.Signature;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.compute.ComputeService;
+import com.iexec.worker.compute.Compute;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.docker.ComputationService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +42,7 @@ public class TaskManagerService {
     private SconeTeeService sconeTeeService;
     private IexecHubService iexecHubService;
     private RevealService revealService;
-    private ComputationService computationService;
+    private ComputeService computeService;
     private Set<String> tasksUsingCpu;
 
     public TaskManagerService(DataService dataService,
@@ -51,7 +51,7 @@ public class TaskManagerService {
                               WorkerConfigurationService workerConfigurationService,
                               SconeTeeService sconeTeeService,
                               IexecHubService iexecHubService,
-                              ComputationService computationService,
+                              ComputeService computationService,
                               RevealService revealService) {
         this.dataService = dataService;
         this.resultService = resultService;
@@ -59,13 +59,13 @@ public class TaskManagerService {
         this.workerConfigurationService = workerConfigurationService;
         this.sconeTeeService = sconeTeeService;
         this.iexecHubService = iexecHubService;
-        this.computationService = computationService;
+        this.computeService = computationService;
         this.revealService = revealService;
 
         maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
         tasksUsingCpu = Collections.newSetFromMap(new ConcurrentHashMap<>());
     }
-    
+
     public boolean canAcceptMoreReplicates() {
         if (tasksUsingCpu.size() > 0) {
             log.info("Some tasks are using CPU [tasksUsingCpu:{}, maxTasksUsingCpu:{}]", tasksUsingCpu.size(), maxNbExecutions);
@@ -125,11 +125,11 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
 
-        if (!computationService.downloadApp(chainTaskId, taskDescription)) {
+        if (!computeService.downloadApp(chainTaskId, taskDescription)) {
             log.error("Failed to download app [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure();
         }
-        
+
         return ReplicateActionResponse.success();
     }
 
@@ -147,16 +147,23 @@ public class TaskManagerService {
             log.error("Cannot download data, task description not found [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
-        
+
         String datasetUri = taskDescription.getDatasetUri();
         List<String> inputFiles = taskDescription.getInputFiles();
-        if (datasetUri == null || !dataService.downloadFile(chainTaskId, datasetUri)) {
-            log.error("Failed to download data [chainTaskId:{}, datasetUri:{}]",
-                    chainTaskId, taskDescription.getDatasetUri());
-            return ReplicateActionResponse.failure();
+        if (!datasetUri.isEmpty()) {
+            boolean isDatasetReady = dataService.downloadFile(chainTaskId, datasetUri);
+            String errorMessage = "Failed to download dataset";
+            if (taskDescription.isTeeTask()) {
+                isDatasetReady = dataService.unzipDownloadedTeeDataset(chainTaskId, datasetUri);
+                errorMessage = "Failed to unzip downloaded Tee dataset";
+            }
+            if (!isDatasetReady) {
+                log.error(errorMessage + " [chainTaskId:{}, datasetUri:{}]", chainTaskId, taskDescription.getDatasetUri());
+                return ReplicateActionResponse.failure();
+            }
         }
 
-        if (inputFiles != null && !dataService.downloadFiles(chainTaskId, inputFiles)){
+        if (inputFiles != null && !dataService.downloadFiles(chainTaskId, inputFiles)) {
             log.error("Failed to download input files [chainTaskId:{}, inputFiles:{}]",
                     chainTaskId, taskDescription.getInputFiles());
             return ReplicateActionResponse.failure();
@@ -180,27 +187,32 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
 
-        if (!computationService.isAppDownloaded(taskDescription.getAppUri())) {
+        if (!computeService.isAppDownloaded(taskDescription.getAppUri())) {
             log.error("Cannot compute, app not found locally [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(APP_NOT_FOUND_LOCALLY);
         }
 
-        boolean isComputed;
-        ContributionAuthorization contributionAuthorization =
-                contributionService.getContributionAuthorization(chainTaskId);
+        WorkerpoolAuthorization workerpoolAuthorization =
+                contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        if (taskDescription.isTeeTask()) {
-            isComputed = computationService.runTeeComputation(taskDescription, contributionAuthorization);
-        } else {
-            isComputed = computationService.runNonTeeComputation(taskDescription, contributionAuthorization);
+        Compute compute = Compute.builder().chainTaskId(chainTaskId).build();
+        computeService.runPreCompute(compute, taskDescription, workerpoolAuthorization);
+        if (!compute.isPreComputed()) {
+            log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
-
-        if (!isComputed) {
+        computeService.runCompute(compute, taskDescription);
+        if (!compute.isComputed()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure();
+            return ReplicateActionResponse.failureWithStdout(compute.getStdout());
         }
-
-        return ReplicateActionResponse.success();
+        computeService.runPostCompute(compute, taskDescription);
+        if (!compute.isPostComputed()) {
+            log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED, compute.getStdout());
+        }
+        resultService.saveResultInfo(chainTaskId, taskDescription);
+        return ReplicateActionResponse.successWithStdout(compute.getStdout());
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
@@ -225,26 +237,21 @@ public class TaskManagerService {
             // System.exit(0);
         }
 
-        String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()) {
-            log.error("Cannot contribute, determinism hash not found [chainTaskId:{}]", chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
+        if (computedFile == null) {
+            log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        ContributionAuthorization contributionAuthorization =
-                contributionService.getContributionAuthorization(chainTaskId);
-
-        String enclaveChallenge = contributionAuthorization.getEnclaveChallenge();
-        Optional<Signature> enclaveSignature = getVerifiedEnclaveSignature(chainTaskId, enclaveChallenge);
-        if (enclaveSignature.isEmpty()) {//could be 0x0
-            log.error("Cannot contribute enclave signature not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);
+        Contribution contribution = contributionService.getContribution(computedFile);
+        if (contribution == null) {
+            log.error("Failed to getContribution [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
 
-        Optional<ChainReceipt> oChainReceipt =
-                contributionService.contribute(contributionAuthorization, determinismHash, enclaveSignature.get());
+        Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
 
-        if(!isValidChainReceipt(chainTaskId, oChainReceipt)) {
+        if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         }
 
@@ -254,9 +261,11 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId, TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
 
-        String determinismHash = resultService.getTaskDeterminismHash(chainTaskId);
-        if (determinismHash.isEmpty()) {
-            log.error("Cannot reveal, determinism hash not found [chainTaskId:{}]", chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
+        String resultDigest = computedFile != null ? computedFile.getResultDigest() : "";
+
+        if (resultDigest.isEmpty()) {
+            log.error("Cannot reveal, resultDigest not found [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
@@ -272,7 +281,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(BLOCK_NOT_REACHED);
         }
 
-        boolean canReveal = revealService.repeatCanReveal(chainTaskId, determinismHash);
+        boolean canReveal = revealService.repeatCanReveal(chainTaskId, resultDigest);
 
         if (!canReveal) {
             log.error("Cannot reveal, one or more conditions are not satisfied [chainTaskId:{}]", chainTaskId);
@@ -285,8 +294,8 @@ public class TaskManagerService {
             System.exit(0);
         }
 
-        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, determinismHash);
-        if(!isValidChainReceipt(chainTaskId, oChainReceipt)) {
+        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, resultDigest);
+        if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         }
 
@@ -295,26 +304,14 @@ public class TaskManagerService {
 
     ReplicateActionResponse uploadResult(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
-
-        boolean isResultEncryptionNeeded = resultService.isResultEncryptionNeeded(chainTaskId);
-        boolean isResultEncrypted = false;
-
-        if (isResultEncryptionNeeded) {
-            isResultEncrypted = resultService.encryptResult(chainTaskId);
-        }
-
-        if (isResultEncryptionNeeded && !isResultEncrypted) {
-            log.error("Cannot upload, failed to encrypt result [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(RESULT_ENCRYPTION_FAILED);
-        }
-
-        String resultLink = resultService.uploadResult(chainTaskId);
+        String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
         if (resultLink.isEmpty()) {
             log.error("Cannot upload, resultLink missing [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
         }
 
-        String callbackData = resultService.getCallbackDataFromFile(chainTaskId);
+        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
+        String callbackData = computedFile != null ? computedFile.getCallbackData() : "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, resultLink, callbackData);
@@ -334,36 +331,6 @@ public class TaskManagerService {
     boolean abort(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
         return resultService.removeResult(chainTaskId);
-    }
-
-
-    //TODO Move that to result service
-    Optional<Signature> getVerifiedEnclaveSignature(String chainTaskId, String signerAddress) {
-        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
-        if (!isTeeTask) {
-            return Optional.of(SignatureUtils.emptySignature());
-        }
-
-        Optional<SconeEnclaveSignatureFile> oSconeEnclaveSignatureFile =
-                resultService.readSconeEnclaveSignatureFile(chainTaskId);
-        if (oSconeEnclaveSignatureFile.isEmpty()) {
-            log.error("Error reading and parsing enclaveSig.iexec file [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-        SconeEnclaveSignatureFile sconeEnclaveSignatureFile = oSconeEnclaveSignatureFile.get();
-        Signature enclaveSignature = new Signature(sconeEnclaveSignatureFile.getSignature());
-        String resultHash = sconeEnclaveSignatureFile.getResultHash();
-        String resultSeal = sconeEnclaveSignatureFile.getResultSalt();
-
-        boolean isValid = sconeTeeService.isEnclaveSignatureValid(resultHash, resultSeal,
-                enclaveSignature, signerAddress);
-
-        if (!isValid) {
-            log.error("Scone enclave signature is not valid [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        return Optional.of(enclaveSignature);
     }
 
     boolean checkGasBalance(String chainTaskId) {

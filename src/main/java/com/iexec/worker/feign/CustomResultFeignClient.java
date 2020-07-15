@@ -38,6 +38,15 @@ public class CustomResultFeignClient extends BaseFeignClient {
         return is2xxSuccess(response) ? Optional.of(response.getBody()) : Optional.empty();
     }
 
+    public String login(Integer chainId, String signedEip712Challenge) {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("chainId", chainId);
+        arguments.put("signedEip712Challenge", signedEip712Challenge);
+        HttpCall<String> httpCall = (args) -> resultClient.login((Integer) args.get("chainId"), (String) args.get("signedEip712Challenge"));
+        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "login to result proxy");
+        return is2xxSuccess(response) ? response.getBody() : "";
+    }
+
     public String uploadResult(String authorizationToken, ResultModel resultModel) {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("authorizationToken", authorizationToken);
@@ -46,7 +55,18 @@ public class CustomResultFeignClient extends BaseFeignClient {
         HttpCall<String> httpCall = (args) ->
                 resultClient.uploadResult((String) args.get("authorizationToken"), (ResultModel) args.get("resultModel"));
 
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getResultChallenge");
+        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "uploadResult");
+        return is2xxSuccess(response) ? response.getBody() : "";
+    }
+
+    public String getIpfsHashForTask(String chainTaskId) {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("chainTaskId", chainTaskId);
+
+        HttpCall<String> httpCall = (args) ->
+                resultClient.getIpfsHashForTask((String) args.get("chainTaskId"));
+
+        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getIpfsHashForTask");
         return is2xxSuccess(response) ? response.getBody() : "";
     }
 }

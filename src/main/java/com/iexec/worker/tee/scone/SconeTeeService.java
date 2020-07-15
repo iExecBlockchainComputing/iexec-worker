@@ -1,24 +1,13 @@
 package com.iexec.worker.tee.scone;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 
 import javax.annotation.PreDestroy;
 
-import com.iexec.common.chain.ContributionAuthorization;
-import com.iexec.common.security.Signature;
-import com.iexec.common.sms.scone.SconeSecureSessionResponse.SconeSecureSession;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.HashUtils;
-import com.iexec.common.utils.SignatureUtils;
-import com.iexec.worker.docker.CustomDockerClient;
-import com.iexec.worker.docker.DockerExecutionConfig;
-import com.iexec.worker.docker.DockerExecutionResult;
+import com.iexec.worker.compute.DockerService;
+import com.iexec.worker.compute.DockerCompute;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.utils.FileHelper;
 
 import org.springframework.stereotype.Service;
 
@@ -29,27 +18,15 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SconeTeeService {
 
-    // metadata file used by scone enclave. It contains the hash and encryption key
-    // for each file in the protected filesystem regions.
-    private static final String FSPF_FILENAME = "volume.fspf";
-
-    // beneficiary public key used when encrypting result
-    private static final String BENEFICIARY_KEY_FILENAME = "public.key";
-
+    private SconeLasConfiguration sconeLasConfig;
+    private DockerService dockerService;
     private boolean isLasStarted;
 
-    private SconeLasConfiguration sconeLasConfig;
-    private CustomDockerClient customDockerClient;
-    private SmsService smsService;
-
     public SconeTeeService(SconeLasConfiguration sconeLasConfig,
-                           CustomDockerClient customDockerClient,
-                           SgxService sgxService,
-                           SmsService smsService) {
-
+                           DockerService dockerService,
+                           SgxService sgxService) {
         this.sconeLasConfig = sconeLasConfig;
-        this.customDockerClient = customDockerClient;
-        this.smsService = smsService;
+        this.dockerService = dockerService;
         isLasStarted = sgxService.isSgxEnabled() ? startLasService() : false;
     }
 
@@ -60,7 +37,7 @@ public class SconeTeeService {
     private boolean startLasService() {
         String chainTaskId = "iexec-las";
 
-        DockerExecutionConfig dockerExecutionConfig = DockerExecutionConfig.builder()
+        DockerCompute dockerCompute = DockerCompute.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(sconeLasConfig.getContainerName())
                 .imageUri(sconeLasConfig.getImageUri())
@@ -69,73 +46,34 @@ public class SconeTeeService {
                 .maxExecutionTime(0)
                 .build();
 
-        if (!customDockerClient.pullImage(chainTaskId, sconeLasConfig.getImageUri())) {
+        if (!dockerService.pullImage(chainTaskId, sconeLasConfig.getImageUri())) {
             return false;
         }
 
-        DockerExecutionResult dockerExecutionResult = customDockerClient.execute(dockerExecutionConfig);
+        Optional<String> oStdout = dockerService.run(dockerCompute);
 
-        if (!dockerExecutionResult.isSuccess()) {
+        if (oStdout.isEmpty()) {
             log.error("Couldn't start LAS service, will continue without TEE support");
-            return false;
         }
 
-        return true;
+        return oStdout.isPresent();
     }
 
-    public String createSconeSecureSession(ContributionAuthorization contributionAuth,
-                                           String fspfFolderPath,
-                                           String beneficiaryKeyFolderPath) {
-
-        String chainTaskId = contributionAuth.getChainTaskId();
-        String fspfFilePath = fspfFolderPath + File.separator + FSPF_FILENAME;
-        String beneficiaryKeyFilePath = beneficiaryKeyFolderPath + File.separator + BENEFICIARY_KEY_FILENAME;
-
-        // generate secure session
-        Optional<SconeSecureSession> oSconeSecureSession = smsService.getSconeSecureSession(contributionAuth);
-        if (!oSconeSecureSession.isPresent()) {
-            return "";
-        }
-
-        SconeSecureSession sconeSecureSession = oSconeSecureSession.get();
-
-        byte[] fspfBytes = Base64.getDecoder().decode(sconeSecureSession.getSconeVolumeFspf());
-        String sessionId = sconeSecureSession.getSessionId();
-        String beneficiaryKey = sconeSecureSession.getBeneficiaryKey();
-
-        File fspfFile = FileHelper.createFileWithContent(fspfFilePath, fspfBytes);
-        File keyFile =  FileHelper.createFileWithContent(beneficiaryKeyFilePath,beneficiaryKey);
-
-        if (!fspfFile.exists() || !keyFile.exists()) {
-            log.error("Problem writing scone secure session files "
-                    + "[chainTaskId:{}, sessionId:{}, fspfFileExists:{}, keyFileExists:{}]",
-                    chainTaskId, sessionId, fspfFile.exists(), keyFile.exists());
-            return "";
-        }
-
-        return sessionId;
-    }
-
-    public ArrayList<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl) {
+    public List<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
         SconeConfig sconeConfig = SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(sconeCasUrl)
                 .sconeConfigId(sconeConfigId)
+                .sconeHeap(sconeHeap)
                 .build();
 
         return sconeConfig.toDockerEnv();
     }
 
-    public boolean isEnclaveSignatureValid(String resultHash, String resultSeal,
-                                           Signature enclaveSignature, String enclaveAddress) {
-        byte[] message = BytesUtils.stringToBytes(HashUtils.concatenateAndHash(resultHash, resultSeal));
-        return SignatureUtils.isSignatureValid(message, enclaveSignature, enclaveAddress);
-    }
-
     @PreDestroy
     void stopLasService() {
         if (isLasStarted) {
-            customDockerClient.stopAndRemoveContainer(sconeLasConfig.getContainerName());
+            dockerService.stopAndRemoveContainer(sconeLasConfig.getContainerName());
         }
     }
 }

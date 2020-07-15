@@ -3,7 +3,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.ChainContribution;
 import com.iexec.common.chain.ChainContributionStatus;
 import com.iexec.common.chain.ChainTask;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.utils.HashUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.Before;
@@ -326,7 +326,7 @@ public class RevealServiceTests {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        IexecHubABILegacy.TaskRevealEventResponse response = new IexecHubABILegacy.TaskRevealEventResponse();
+        IexecHubContract.TaskRevealEventResponse response = new IexecHubContract.TaskRevealEventResponse();
 
         // 0x200 in hexa = 512 in decimal
         response.log =

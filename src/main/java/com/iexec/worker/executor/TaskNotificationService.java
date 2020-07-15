@@ -46,7 +46,6 @@ public class TaskNotificationService {
         this.contributionService = contributionService;
     }
 
-
     /**
      * Note to dev: In spring the code executed in an @EventListener method will be in the same thread than the
      * method that triggered the event. We don't want this to be the case here so this method should be Async.
@@ -67,8 +66,8 @@ public class TaskNotificationService {
 
         TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
-        if (!storeContributionAuthorizationFromExtraIfPresent(extra)){
-            log.error("Should storeContributionAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
+        if (!storeWorkerpoolAuthorizationFromExtraIfPresent(extra)){
+            log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
 
@@ -103,10 +102,13 @@ public class TaskNotificationService {
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
                 actionResponse = taskManagerService.compute(chainTaskId);
+                if (actionResponse.getDetails() != null) {
+                    actionResponse.getDetails().tailStdout();
+                }
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED, actionResponse.getDetails());
                 } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTE_FAILED, actionResponse.getDetails());
                 }
                 break;
             case PLEASE_CONTRIBUTE:
@@ -178,9 +180,9 @@ public class TaskNotificationService {
 
     }
 
-    private boolean storeContributionAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
-        if (extra != null && extra.getContributionAuthorization() != null){
-            return contributionService.putContributionAuthorization(extra.getContributionAuthorization());
+    private boolean storeWorkerpoolAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
+        if (extra != null && extra.getWorkerpoolAuthorization() != null){
+            return contributionService.putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
         }
         return true;
     }
@@ -211,7 +213,7 @@ public class TaskNotificationService {
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
-                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetails());
+                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutStdout());
 
         TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
 

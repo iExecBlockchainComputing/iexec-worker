@@ -1,24 +1,27 @@
 package com.iexec.worker.executor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+
 import com.iexec.common.chain.ChainReceipt;
-import com.iexec.common.chain.ContributionAuthorization;
+import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusDetails;
-import com.iexec.common.security.Signature;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.docker.ComputationService;
-import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeEnclaveSignatureFile;
 import com.iexec.worker.tee.scone.SconeTeeService;
 
 import org.junit.Before;
@@ -27,31 +30,30 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.Optional;
-
-import static org.assertj.core.api.Java6Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
 
 public class TaskManagerServiceTests {
 
-    @Mock private DataService dataService;
-    @Mock private ResultService resultService;
-    @Mock private ContributionService contributionService;
-    @Mock private CustomCoreFeignClient customCoreFeignClient;
-    @Mock private WorkerConfigurationService workerConfigurationService;
-    @Mock private SconeTeeService sconeTeeService;
-    @Mock private IexecHubService iexecHubService;
-    @Mock private ComputationService computationService;
-    @Mock private RevealService revealService;
+    @Mock
+    private DataService dataService;
+    @Mock
+    private ResultService resultService;
+    @Mock
+    private ContributionService contributionService;
+    @Mock
+    private WorkerConfigurationService workerConfigurationService;
+    @Mock
+    private SconeTeeService sconeTeeService;
+    @Mock
+    private IexecHubService iexecHubService;
+    @Mock
+    private ComputeService computeService;
+    @Mock
+    private RevealService revealService;
 
     @InjectMocks
     private TaskManagerService taskManagerService;
 
     private static final String CHAIN_TASK_ID = "0xfoobar";
-    private static final String TEE_ENCLAVE_CHALLENGE = "enclaveChallenge";
-    private static final String NO_TEE_ENCLAVE_CHALLENGE = BytesUtils.EMPTY_ADDRESS;
 
     @Before
     public void init() {
@@ -68,8 +70,8 @@ public class TaskManagerServiceTests {
                 .build();
     }
 
-    ContributionAuthorization getStubAuth(String enclaveChallenge) {
-        return ContributionAuthorization.builder()
+    WorkerpoolAuthorization getStubAuth(String enclaveChallenge) {
+        return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge(enclaveChallenge)
                 .build();
@@ -98,7 +100,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(computationService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
+        when(computeService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
 
         ReplicateActionResponse actionResponse = taskManagerService.downloadApp(CHAIN_TASK_ID);
 
@@ -118,62 +120,12 @@ public class TaskManagerServiceTests {
     }
 
     @Test
-    public void shouldComputeSinceNonTeeComputation() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(computationService.isAppDownloaded(taskDescription.getAppUri())).thenReturn(true);
-        ContributionAuthorization contributionAuthorization = new ContributionAuthorization();
-        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
-        when(computationService.runNonTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
-
-        ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
-
-        assertThat(actionResponse.isSuccess()).isTrue();
-        verify(computationService, never()).runTeeComputation(any(), any());
-    }
-
-    @Test
-    public void shouldComputeSinceTeeComputation() {
-        TaskDescription taskDescription = getStubTaskDescription(true);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(computationService.isAppDownloaded(taskDescription.getAppUri())).thenReturn(true);
-        ContributionAuthorization contributionAuthorization = new ContributionAuthorization();
-        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
-        when(computationService.runTeeComputation(taskDescription, contributionAuthorization)).thenReturn(true);
-
-        ReplicateActionResponse actionResponse = taskManagerService.compute(CHAIN_TASK_ID);
-
-        assertThat(actionResponse.isSuccess()).isTrue();
-        verify(computationService, never()).runNonTeeComputation(any(), any());
+    public void shouldContributeSinceTeeComputation() {
+        //TODO
     }
 
     @Test
     public void shouldContributeSinceNonTeeComputation() {
-        boolean isTeeTask = false;
-        TaskDescription taskDescription = getStubTaskDescription(isTeeTask);
-        String hash = "hash";
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        //determinism hash
-        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
-        //enclave signature
-        ContributionAuthorization contributionAuthorization = getStubAuth(NO_TEE_ENCLAVE_CHALLENGE);
-        when(contributionService.getContributionAuthorization(CHAIN_TASK_ID)).thenReturn(contributionAuthorization);
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(isTeeTask);
-
-        when(contributionService.contribute(contributionAuthorization, hash, SignatureUtils.emptySignature()))
-                .thenReturn(Optional.of(ChainReceipt.builder().blockNumber(10).build()));
-
-        ReplicateActionResponse actionResponse = taskManagerService.contribute(CHAIN_TASK_ID);
-
-        assertThat(actionResponse.isSuccess()).isTrue();
-    }
-
-    @Test
-    public void shouldContributeSinceTeeComputation() {
         //TODO
     }
 
@@ -182,7 +134,7 @@ public class TaskManagerServiceTests {
         String hash = "hash";
         long consensusBlock = 55;
 
-        when(resultService.getTaskDeterminismHash(CHAIN_TASK_ID)).thenReturn(hash);
+        when(computeService.getComputedFile(CHAIN_TASK_ID)).thenReturn(ComputedFile.builder().resultDigest(hash).build());
         when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
         when(revealService.repeatCanReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -193,102 +145,24 @@ public class TaskManagerServiceTests {
     }
 
     @Test
-    public void shouldUploadResultWithoutEncrypting() {
+    public void shouldUploadResult() {
         ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                 .resultLink("resultUri")
                 .chainCallbackData("callbackData")
                 .build();
-
-        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(false);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
-        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
-
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-
-        verify(resultService, never()).encryptResult(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldEncryptAndUploadResult() {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .resultLink("resultUri")
-                .chainCallbackData("callbackData")
-                .build();
-
-        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.uploadResult(CHAIN_TASK_ID)).thenReturn(details.getResultLink());
-        when(resultService.getCallbackDataFromFile(CHAIN_TASK_ID)).thenReturn(details.getChainCallbackData());
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
+                .thenReturn(details.getResultLink());
+        when(computeService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(ComputedFile.builder()
+                        .callbackData(details.getChainCallbackData())
+                        .build()
+                );
 
         taskManagerService.uploadResult(CHAIN_TASK_ID);
-
-        verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
+        verify(resultService).uploadResultAndGetLink(CHAIN_TASK_ID);
     }
-
-    @Test
-    public void shouldNotUploadResultSinceNotEncryptedWhenNeeded() {
-        when(resultService.isResultEncryptionNeeded(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(false);
-
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-
-        verify(resultService, never()).uploadResult(CHAIN_TASK_ID);
-    }
-
-
-
-
 
     //TODO clean theses
-
-    @Test
-    public void shouldGetNonTeeEnclaveSignature() {
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(false);
-
-        Optional<Signature> sign =
-                taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, NO_TEE_ENCLAVE_CHALLENGE);
-        assertThat(sign.get()).isEqualTo(SignatureUtils.emptySignature());
-    }
-
-    @Test
-    public void shouldGetTeeVerifiedEnclaveSignature() {
-        SconeEnclaveSignatureFile sconeFile = SconeEnclaveSignatureFile.builder()
-                .signature("signature")
-                .resultHash("resultHash")
-                .resultSalt("resultSalt")
-                .build();
-
-        Signature expectedSign = new Signature(sconeFile.getSignature());
-
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.readSconeEnclaveSignatureFile(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(sconeFile));
-        when(sconeTeeService.isEnclaveSignatureValid(any(), any(), any(), any())).thenReturn(true);
-
-        Optional<Signature> oSign =
-                taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, TEE_ENCLAVE_CHALLENGE);
-        assertThat(oSign.get()).isEqualTo(expectedSign);
-    }
-
-    @Test
-    public void shouldNotGetTeeEnclaveSignatureSinceNotValid() {
-        String enclaveChallenge = "dummyEnclaveChallenge";
-        SconeEnclaveSignatureFile sconeFile = SconeEnclaveSignatureFile.builder()
-                .signature("signature")
-                .resultHash("resultHash")
-                .resultSalt("resultSalt")
-                .build();
-
-        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
-        when(resultService.readSconeEnclaveSignatureFile(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(sconeFile));
-        when(sconeTeeService.isEnclaveSignatureValid(any(), any(), any(), any())).thenReturn(false);
-
-        Optional<Signature> oSign =
-                taskManagerService.getVerifiedEnclaveSignature(CHAIN_TASK_ID, enclaveChallenge);
-        assertThat(oSign.isPresent()).isFalse();
-    }
-
     //misc
 
     @Test
@@ -318,6 +192,4 @@ public class TaskManagerServiceTests {
         boolean isValid = taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);
         assertThat(isValid).isFalse();
     }
-
-
 }

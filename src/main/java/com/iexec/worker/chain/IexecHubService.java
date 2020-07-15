@@ -2,11 +2,8 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
-import com.iexec.common.security.Signature;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.WaitUtils;
+import com.iexec.common.contract.generated.IexecHubContract;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +12,7 @@ import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.BaseEventResponse;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -37,7 +32,6 @@ public class IexecHubService extends IexecHubAbstractService {
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
     private Web3jService web3jService;
-    private Map<String, TaskDescription> taskDescriptions = new HashMap<>();
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
@@ -49,15 +43,12 @@ public class IexecHubService extends IexecHubAbstractService {
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
-    IexecHubABILegacy.TaskContributeEventResponse contribute(ContributionAuthorization contribAuth,
-                                                             String resultHash,
-                                                             String resultSeal,
-                                                             Signature enclaveSignature) {
+    IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]",
-                        contribAuth.getChainTaskId(), getWaitingTransactionCount());
-                return sendContributeTransaction(contribAuth, resultHash, resultSeal, enclaveSignature);
+                        contribution.getChainTaskId(), getWaitingTransactionCount());
+                return sendContributeTransaction(contribution);
             }, executor).get();
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -65,24 +56,18 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
-    private IexecHubABILegacy.TaskContributeEventResponse sendContributeTransaction(ContributionAuthorization contribAuth,
-                                                                                    String resultHash,
-                                                                                    String resultSeal,
-                                                                                    Signature enclaveSignature) {
+    private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(Contribution contribution) {
         TransactionReceipt contributeReceipt;
-        String chainTaskId = contribAuth.getChainTaskId();
-
-        byte[] enclaveSign = BytesUtils.stringToBytes(enclaveSignature.getValue());
-        byte[] workerPoolSign = BytesUtils.stringToBytes(contribAuth.getSignature().getValue());
+        String chainTaskId = contribution.getChainTaskId();
 
         RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
                 stringToBytes(chainTaskId),
-                stringToBytes(resultHash),
-                stringToBytes(resultSeal),
-                contribAuth.getEnclaveChallenge(),
-                enclaveSign,
-                workerPoolSign);
-        log.info("Sent contribute [chainTaskId:{}, resultHash:{}]", chainTaskId, resultHash);
+                stringToBytes(contribution.getResultHash()),
+                stringToBytes(contribution.getResultSeal()),
+                contribution.getEnclaveChallenge(),
+                stringToBytes(contribution.getEnclaveSignature()),
+                stringToBytes(contribution.getWorkerPoolSignature()));
+        log.info("Sent contribute [chainTaskId:{}, contribution:{}]", chainTaskId, contribution);
 
         try {
             contributeReceipt = contributeCall.send();
@@ -92,16 +77,16 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubABILegacy.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
+        List<IexecHubContract.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
 
-        IexecHubABILegacy.TaskContributeEventResponse contributeEvent = null;
+        IexecHubContract.TaskContributeEventResponse contributeEvent = null;
         if (contributeEvents != null && !contributeEvents.isEmpty()) {
             contributeEvent = contributeEvents.get(0);
         }
 
         if (isSuccessTx(chainTaskId, contributeEvent, CONTRIBUTED)) {
-            log.info("Contributed [chainTaskId:{}, resultHash:{}, gasUsed:{}, log:{}]",
-                    chainTaskId, resultHash, contributeReceipt.getGasUsed(), contributeEvent.log);
+            log.info("Contributed [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, contribution, contributeReceipt.getGasUsed(), contributeEvent.log);
             return contributeEvent;
         }
 
@@ -121,7 +106,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return true;
     }
 
-    IexecHubABILegacy.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
+    IexecHubContract.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 log.info("Requested  reveal [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
@@ -133,7 +118,7 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
-    private IexecHubABILegacy.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
+    private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
         TransactionReceipt revealReceipt;
         RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
                 stringToBytes(chainTaskId),
@@ -148,9 +133,9 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubABILegacy.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
+        List<IexecHubContract.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
 
-        IexecHubABILegacy.TaskRevealEventResponse revealEvent = null;
+        IexecHubContract.TaskRevealEventResponse revealEvent = null;
         if (revealEvents != null && !revealEvents.isEmpty()) {
             revealEvent = revealEvents.get(0);
         }
@@ -254,25 +239,4 @@ public class IexecHubService extends IexecHubAbstractService {
         }
         return false;
     }
-
-    /*
-     * Behave as a cache to avoid always calling blockchain to retrieve task description
-     *
-     */
-    public void putTaskDescription(TaskDescription taskDescription) {
-        if (taskDescription != null && taskDescription.getChainTaskId() != null) {
-            taskDescriptions.putIfAbsent(taskDescription.getChainTaskId(), taskDescription);
-            return;
-        }
-        log.error("Cant putTaskDescription [taskDescription:{}]", taskDescription);
-    }
-
-    public TaskDescription getTaskDescription(String chainTaskId) {
-        if (taskDescriptions.get(chainTaskId) == null) {
-            Optional<TaskDescription> taskDescriptionFromChain = this.getTaskDescriptionFromChain(chainTaskId);
-            taskDescriptionFromChain.ifPresent(this::putTaskDescription);
-        }
-        return taskDescriptions.get(chainTaskId);
-    }
-
 }

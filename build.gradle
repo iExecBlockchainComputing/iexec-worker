@@ -58,7 +58,7 @@ dependencyManagement {
 dependencies {
     // iexec
     compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    //compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
     compile("org.springframework.boot:spring-boot-starter") {
@@ -71,6 +71,10 @@ dependencies {
     compile "org.springframework.cloud:spring-cloud-starter-openfeign"
     compile "org.springframework.retry:spring-retry"
     testCompile "org.springframework.boot:spring-boot-starter-test"
+
+    // Web3j issues, see core build.gradle
+    implementation 'com.squareup.okhttp3:okhttp:4.3.1'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.3.50'
 
     // docker-client
     compile 'com.spotify:docker-client:8.13.1'
@@ -143,7 +147,7 @@ uploadArchives.enabled = canUploadArchives
 
 test {
     if (System.properties['test.profile'] == 'skipDocker') {
-        exclude '**/docker/**'
+        exclude '**/compute/DockerServiceTests*'
     }
 }
 
@@ -177,7 +181,7 @@ task buildImage(type: Exec) {
 }
 
 buildImage.dependsOn prepareDockerFile
-buildImage.enabled = isMasterBranch || project.hasProperty("forceDockerBuild")
+buildImage.enabled = (isMasterBranch || isDevelopBranch ) || project.hasProperty("forceDockerBuild")
 
 task pushImage(type: Exec) {
     if (project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")) {
@@ -192,7 +196,7 @@ task pushImage(type: Exec) {
 }
 
 pushImage.dependsOn buildImage
-pushImage.enabled = isMasterBranch && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
+pushImage.enabled = (isMasterBranch || isDevelopBranch ) && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
 
 //gradle bootRun -PproxyHost=192.168.XX.XXX -PproxyPort=3128
 project.ext.getJvmArgs = {

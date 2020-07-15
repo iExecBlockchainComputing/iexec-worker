@@ -1,8 +1,9 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubABILegacy;
+import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.utils.HashUtils;
+import com.iexec.common.worker.result.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -25,9 +26,9 @@ public class RevealService {
         this.web3jService = web3jService;
     }
 
-    public boolean repeatCanReveal(String chainTaskId, String determinismHash) {
+    public boolean repeatCanReveal(String chainTaskId, String resultDigest) {
         return web3jService.repeatCheck(6, 3, "canReveal",
-                this::canReveal, chainTaskId, determinismHash);
+                this::canReveal, chainTaskId, resultDigest);
     }
 
     /*
@@ -35,7 +36,7 @@ public class RevealService {
      * */
     public boolean canReveal(String... args) {
         String chainTaskId = args[0];
-        String determinismHash = args[1];
+        String resultDigest = args[1];
 
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
         if (!optionalChainTask.isPresent()) {
@@ -59,12 +60,12 @@ public class RevealService {
         boolean isContributionResultHashCorrect = false;
         boolean isContributionResultSealCorrect = false;
 
-        if (!determinismHash.isEmpty()) {//TODO
-            isContributionResultHashCorrect = chainContribution.getResultHash().equals(HashUtils.concatenateAndHash(chainTaskId, determinismHash));
+        if (!resultDigest.isEmpty()) {//TODO
+            isContributionResultHashCorrect = chainContribution.getResultHash().equals(ResultUtils.computeResultHash(chainTaskId, resultDigest));
 
             String walletAddress = credentialsService.getCredentials().getAddress();
             isContributionResultSealCorrect = chainContribution.getResultSeal().equals(
-                    HashUtils.concatenateAndHash(walletAddress, chainTaskId, determinismHash)
+                    ResultUtils.computeResultSeal(walletAddress, chainTaskId, resultDigest)
             );
         }
 
@@ -96,13 +97,13 @@ public class RevealService {
     }
 
     // returns the ChainReceipt of the reveal if successful, empty otherwise
-    public Optional<ChainReceipt> reveal(String chainTaskId, String determinismHash) {
+    public Optional<ChainReceipt> reveal(String chainTaskId, String resultDigest) {
 
-        if (determinismHash.isEmpty()) {
+        if (resultDigest.isEmpty()) {
             return Optional.empty();
         }
 
-        IexecHubABILegacy.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, determinismHash);
+        IexecHubContract.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, resultDigest);
         if (revealResponse == null) {
             log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
