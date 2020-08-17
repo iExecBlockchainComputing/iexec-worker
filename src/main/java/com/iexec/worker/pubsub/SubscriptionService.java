@@ -1,16 +1,32 @@
 package com.iexec.worker.pubsub;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.PostConstruct;
+
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
-import org.springframework.messaging.simp.stomp.*;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,18 +38,14 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import javax.annotation.PostConstruct;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
 @Service
 public class SubscriptionService extends StompSessionHandlerAdapter {
+
+    private static final int REFRESH_PERIOD_IN_SECONDS = 5;
 
     private RestTemplate restTemplate;
     // external services
@@ -42,6 +54,8 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     private ApplicationEventPublisher applicationEventPublisher;
 
     // internal components
+    private WebSocketStompClient stompClient;
+    private ExecutorService stompConnectionRequestThread;
     private StompSession session;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
     private String url;
@@ -60,37 +74,38 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
     @PostConstruct
     void init() {
         this.url = coreConfigurationService.getUrl() + "/connect";
-        this.restartStomp();
+        createStompClient();
+        connect();
     }
 
-    private void restartStomp() {
-        log.info("Starting STOMP");
-        if (isConnectEndpointUp()) {
-            WebSocketClient webSocketClient = new StandardWebSocketClient();
-            List<Transport> webSocketTransports = Arrays.asList(new WebSocketTransport(webSocketClient),
-                    new RestTemplateXhrTransport(restTemplate));
-            SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-            WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);//without SockJS: new WebSocketStompClient(webSocketClient);
-            stompClient.setAutoStartup(true);
-            stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-            stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-            stompClient.connect(url, this);
-            log.info("Started STOMP");
+    private void createStompClient() {
+        log.info("Creating STOMP client");
+        WebSocketClient webSocketClient = new StandardWebSocketClient();
+        List<Transport> webSocketTransports = Arrays.asList(
+                new WebSocketTransport(webSocketClient),
+                new RestTemplateXhrTransport(restTemplate)
+        );
+        SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
+        stompClient = new WebSocketStompClient(sockJsClient); // without SockJS: new WebSocketStompClient(webSocketClient);
+        stompClient.setAutoStartup(true);
+        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
+        log.info("Created STOMP client");
+    }
+
+    private void connect() {
+        log.info("Sending STOMP connection request");
+        if (stompClient.connect(url, this).completable().isCompletedExceptionally()) {
+            log.error("STOMP connection request failed");
         }
     }
 
-    private boolean isConnectEndpointUp() {
-        ResponseEntity<String> checkConnectionEntity = restTemplate.getForEntity(url, String.class);
-        if (checkConnectionEntity.getStatusCode().is2xxSuccessful()) {
-            return true;
-        }
-        log.error("isConnectEndpointUp failed (will retry) [url:{}, status:{}]", url, checkConnectionEntity.getStatusCode());
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return isConnectEndpointUp();
+    @Override
+    public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
+        log.info("Connected to STOMP session [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+        shutdownCurrentStompConnectionRequestThread();
+        this.session = session;
+        reSubscribeToTopics();
     }
 
     private void reSubscribeToTopics() {
@@ -101,34 +116,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             subscribeToTopic(chainTaskId);
         }
         log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds.toString());
-    }
-
-    @Override
-    public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-        log.info("SubscriptionService set up [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
-        this.session = session;
-        this.reSubscribeToTopics();
-    }
-
-    @Override
-    public void handleException(StompSession session, @Nullable StompCommand command,
-                                StompHeaders headers, byte[] payload, Throwable exception) {
-        SimpMessageType messageType = null;
-        if (command != null) {
-            messageType = command.getMessageType();
-        }
-        log.error("Received handleException [session: {}, isConnected: {}, command: {}, exception: {}]",
-                session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
-        exception.printStackTrace();
-        this.restartStomp();
-    }
-
-    @Override
-    public void handleTransportError(StompSession session, Throwable exception) {
-        log.info("Received handleTransportError [session: {}, isConnected: {}, exception: {}]",
-                session.getSessionId(), session.isConnected(), exception.getMessage());
-        exception.printStackTrace();
-        this.restartStomp();
     }
 
     public void subscribeToTopic(String chainTaskId) {
@@ -170,6 +157,48 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
         log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, getTaskTopicName(chainTaskId));
     }
 
+    @Override
+    public void handleException(StompSession session, @Nullable StompCommand command,
+                                StompHeaders headers, byte[] payload, Throwable exception) {
+        SimpMessageType messageType = command != null ? command.getMessageType() : null;
+        log.error("STOMP error [session: {}, isConnected: {}, command: {}, exception: {}]",
+                session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
+        refresh();
+    }
+
+    @Override
+    public void handleTransportError(StompSession session, Throwable exception) {
+        log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
+                session.getSessionId(), session.isConnected(), exception.getMessage());
+        refresh();
+    }
+
+    private void refresh() {
+        shutdownCurrentStompConnectionRequestThread();
+        stompConnectionRequestThread = Executors.newSingleThreadExecutor();
+        CompletableFuture.runAsync(
+            () -> {
+                Thread.currentThread().setName("stomp-conn-req");
+                try {
+                    log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
+                    TimeUnit.SECONDS.sleep(REFRESH_PERIOD_IN_SECONDS);
+                    connect();
+                } catch (Exception e) {
+                    log.error("Interrupted while sleeping [exception:{}]", e.getMessage());
+                }
+            },
+            stompConnectionRequestThread)
+        .exceptionally((t) -> {
+            t.printStackTrace();
+            return null;
+        });
+    }
+
+    private void shutdownCurrentStompConnectionRequestThread() {
+        if (stompConnectionRequestThread != null) {
+            stompConnectionRequestThread.shutdownNow();
+        }
+    }
 
     void unsubscribeFromTopic(String chainTaskId) {
         if (chainTaskIdToSubscription.containsKey(chainTaskId)) {
@@ -213,8 +242,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
             }
         }
     }
-
-
 
     private String getTaskTopicName(String chainTaskId) {
         return "/topic/task/" + chainTaskId;
