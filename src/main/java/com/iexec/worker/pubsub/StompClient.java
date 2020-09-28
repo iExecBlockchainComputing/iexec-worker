@@ -17,6 +17,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -34,13 +35,13 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class StompClient {
 
-    private static final int REFRESH_PERIOD_IN_SECONDS = 5;
+    private static final int REFRESH_PERIOD_IN_SECONDS = 10;
     private final ConnectionRequestMutex connectionRequestMutex = new ConnectionRequestMutex();
     private final WebSocketStompClient stompClient;
     private final String webSocketUrl;
     private StompSession session;
 
-    private StompClient(RestTemplate restTemplate, CoreConfigurationService coreConfigService) {
+    public StompClient(RestTemplate restTemplate, CoreConfigurationService coreConfigService) {
         this.webSocketUrl = coreConfigService.getUrl() + "/connect";
         log.info("Creating STOMP client");
         WebSocketClient webSocketClient = new StandardWebSocketClient();
@@ -54,15 +55,7 @@ public class StompClient {
         this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
         log.info("Created STOMP client");
-    }
-
-    public StompSession.Subscription subscribeToTopic(String topic, MessageHandler messageHandler) {
-        return this.session.subscribe(topic, messageHandler);
-    }
-
-    @PostConstruct
-    private void initConnection() {
-        connect();
+        connectAsync();
     }
 
     /**
@@ -72,40 +65,25 @@ public class StompClient {
      * {@link SessionHandler}.afterConnected() or when an error
      * occurs by {@link SessionHandler}.handleTransportError().
      */
-    private void connect() {
+    @Async
+    private void connectAsync() {
         if (connectionRequestMutex.isLocked()) {
+            log.error("Already requesting");
             return;
         }
         connectionRequestMutex.lock();
-        log.info("Sending STOMP connection request");
-        stompClient.connect(webSocketUrl, new SessionHandler());
-        log.info("STOMP connection sent");
-    }
-
-    // private void refreshSession() {
-    //     log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
-    //     sleep();
-    //     connect();
-    // }
-
-    // private boolean isAlreadyRequestingConnection() {
-    //     return this.connectionRequestMutex.get();
-    // }
-
-    // private void lockConnectionRequestMutex() {
-    //     this.connectionRequestMutex.set(true);
-    // }
-
-    // private void releaseConnectionRequestMutex() {
-    //     this.connectionRequestMutex.set(false);
-    // }
-
-    private void sleep() {
+        log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
         try {
             TimeUnit.SECONDS.sleep(REFRESH_PERIOD_IN_SECONDS);
         } catch (Exception e) {
-            log.error("Interrupted while sleeping [exception:{}]", e.getMessage());
+            e.printStackTrace();
         }
+        log.info("Sending new STOMP connection request");
+        stompClient.connect(webSocketUrl, new SessionHandler());
+    }
+
+    StompSession.Subscription subscribeToTopic(String topic, MessageHandler messageHandler) {
+        return this.session.subscribe(topic, messageHandler);
     }
 
     /**
@@ -156,18 +134,18 @@ public class StompClient {
                     session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
         }
 
-        /**
-         * Refresh
-         */
         @Override
         public void handleTransportError(StompSession session, Throwable exception) {
             log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), exception.getMessage());
-            StompClient.this.connectionRequestMutex.release();
-            // refreshSession();
-            log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
-            sleep();
-            connect();    
+            // log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
+            // try {
+            //     TimeUnit.SECONDS.sleep(REFRESH_PERIOD_IN_SECONDS);
+            // } catch (Exception e) {
+            //     e.printStackTrace();
+            // }
+            // StompClient.this.connectionRequestMutex.release();
+            connectAsync();
         }
     }    
 }

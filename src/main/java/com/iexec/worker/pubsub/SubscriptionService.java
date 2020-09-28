@@ -28,8 +28,6 @@ public class SubscriptionService extends StompSessionHandlerAdapter {
 
     private WorkerConfigurationService workerConfigurationService;
     private ApplicationEventPublisher applicationEventPublisher;
-
-    // internal components
     private StompClient stompClient;
     private Map<String, StompSession.Subscription> chainTaskIdToSubscription;
 
