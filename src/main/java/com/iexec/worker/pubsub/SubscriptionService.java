@@ -38,9 +38,9 @@ public class SubscriptionService {
     }
 
     /**
-     * Subscribe to a topic and handle {@link TaskNotification}.
+     * Subscribe to a task's topic and handle {@link TaskNotification}.
      * 
-     * @param chainTaskId
+     * @param chainTaskId id of the task to which to subscribe
      */
     public synchronized void subscribeToTopic(String chainTaskId) {
         String topic = getTaskTopicName(chainTaskId);
@@ -70,6 +70,13 @@ public class SubscriptionService {
         log.info("Unsubscribed from topic [chainTaskId:{}]", chainTaskId);
     }
 
+    /**
+     * Check whether or not the worker is subscribed
+     * to a task's topic.
+     * 
+     * @param chainTaskId id of the task to check
+     * @return true if subscribed, false otherwise
+     */
     public boolean isSubscribedToTopic(String chainTaskId) {
         return this.chainTaskIdToSubscription.containsKey(chainTaskId);
     }
@@ -94,6 +101,10 @@ public class SubscriptionService {
         return "/topic/task/" + chainTaskId;
     }
 
+    /**
+     * An implementation of {@link StompFrameHandler} that
+     * handles received task notifications. 
+     */
     @AllArgsConstructor
     public class MessageHandler implements StompFrameHandler {
 
