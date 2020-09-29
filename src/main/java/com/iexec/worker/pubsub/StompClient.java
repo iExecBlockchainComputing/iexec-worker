@@ -119,9 +119,9 @@ public class StompClient {
      * 
      * <p><b>Note:</b> the reason we use a queue is because the
      * method {@link SessionHandler#handleTransportError()} is called,
-     * in some cases, two times to handle two different exceptions.
-     * This occurs when the connection is, for whatever reason,
-     * brutally terminated while a message is being transmitted.
+     * two times to handle connectivity issues when the websocket
+     * connection is, for whatever reason, brutally terminated while
+     * a message is being transmitted.
      * The first call is to handle the incomplete body message parsing
      * problem ({@code Premature end of chunk coded message body:
      * closing chunk expected}).
