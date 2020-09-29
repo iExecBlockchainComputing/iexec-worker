@@ -18,8 +18,8 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
+import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
@@ -92,26 +92,27 @@ public class StompClient {
     }
 
     /**
-     * Refresh the websocket connection by establishing a new STOMP session.
-     * Only one of the received requests in a fixed time interval
+     * Listen to new session request events and refresh the websocket
+     * connection by establishing a new STOMP session. Only one of 
+     * the received requests in a fixed time interval
      * (SESSION_REFRESH_DELAY) will be processed. We use @Scheduled
-     * to start the watcher asynchronously with an initial delay.
+     * to start the watcher asynchronously with an initial delay and
+     * restart it in case a problem occurs.
      * 
      * @throws InterruptedException
      */
-    @Scheduled(initialDelay = 1000, fixedDelay = 10000)
+    @Scheduled(fixedDelay = 1000)
     private void listenToSessionRequestEvents() throws InterruptedException {
         while (true) {
-            // get the first request event
-            // or wait until available
+            // get the first request event or wait until available
             this.sessionRequestQueue.take();
             // wait some time for the wave of request events coming
             // from possibly different threads to finish
-            log.info("Creating new STOMP session in {}s", SESSION_REFRESH_DELAY);
             TimeUnit.SECONDS.sleep(SESSION_REFRESH_DELAY);
+            log.info("Creating new STOMP session");
             // purge redundant request events
             this.sessionRequestQueue.clear();
-            // Only one request should pass through
+            // Only one attempt should pass through
             log.debug("Sending new STOMP connection request");
             this.stompClient.connect(webSocketServerUrl, new SessionHandler());
         }
