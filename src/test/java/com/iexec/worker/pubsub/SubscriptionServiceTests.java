@@ -10,10 +10,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
-
-import com.iexec.common.notification.TaskNotification;
-import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.worker.config.WorkerConfigurationService;
 
 import org.junit.Before;
@@ -40,15 +36,11 @@ public class SubscriptionServiceTests {
     private static final String CHAIN_TASK_ID = "chaintaskid";
     private static final Subscription SUBSCRIPTION = mock(Subscription.class);
 
-    private TaskNotification notifTemplate = TaskNotification.builder()
-            .workersAddress(Collections.singletonList(WORKER_WALLET_ADDRESS))
-            .taskNotificationExtra(TaskNotificationExtra.builder().build()).chainTaskId(CHAIN_TASK_ID).build();
-
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
-
-        when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_WALLET_ADDRESS);
+        when(workerConfigurationService.getWorkerWalletAddress())
+                .thenReturn(WORKER_WALLET_ADDRESS);
     }
 
     @Test
