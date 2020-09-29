@@ -102,7 +102,7 @@ public class StompClient {
      * @throws InterruptedException
      */
     @Scheduled(fixedDelay = 1000)
-    private void listenToSessionRequestEvents() throws InterruptedException {
+    private void listenToSessionRequestEventsInTheQueue() throws InterruptedException {
         while (true) {
             // get the first request event or wait until available
             this.sessionRequestQueue.take();
