@@ -126,7 +126,8 @@ public class StompClient {
 
         @Override
         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-            log.info("Connected to STOMP session [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
+            log.info("Connected to STOMP session [session: {}, isConnected: {}]",
+                    session.getSessionId(), session.isConnected());
             StompClient.this.session = session;
             // notify subscribers
             eventPublisher.publishEvent(new SessionCreatedEvent());
