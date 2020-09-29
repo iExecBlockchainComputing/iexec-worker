@@ -180,13 +180,4 @@ public class StompClient {
     private class SessionRequestEvent {
         
     }
-
-    /**
-     * Publish this event when a new session
-     * is created to notify subscribers.
-     */
-    @NoArgsConstructor
-    public class SessionCreatedEvent {
-        
-    }
 }

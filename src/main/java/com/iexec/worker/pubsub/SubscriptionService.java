@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.pubsub.StompClient.SessionCreatedEvent;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
