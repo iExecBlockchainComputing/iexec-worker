@@ -118,7 +118,7 @@ public class StompClient {
      * <br>
      * 
      * <p><b>Note:</b> the reason we use a queue is because the
-     * method {@link SessionHandler#handleTransportError()} is called,
+     * method {@link SessionHandler#handleTransportError()} is called
      * two times to handle connectivity issues when the websocket
      * connection is, for whatever reason, brutally terminated while
      * a message is being transmitted.
