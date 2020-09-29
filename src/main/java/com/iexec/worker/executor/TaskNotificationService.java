@@ -57,7 +57,7 @@ public class TaskNotificationService {
         TaskNotificationType action = notification.getTaskNotificationType();
         ReplicateActionResponse actionResponse = null;
         TaskNotificationType nextAction = null;
-        log.debug("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
+        log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
         if (action == null) {
             log.error("No action to do [chainTaskId:{}]", chainTaskId);
@@ -141,15 +141,16 @@ public class TaskNotificationService {
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
                 actionResponse = taskManagerService.complete(chainTaskId);
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETED, actionResponse.getDetails());
                 } else {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
                 }
                 break;
-            //TODO merge abort
             case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                 boolean isAborted = taskManagerService.abort(chainTaskId);
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 if (!isAborted) {
                     return;
                 }
@@ -157,16 +158,20 @@ public class TaskNotificationService {
                 break;
             case PLEASE_ABORT_CONSENSUS_REACHED:
                 boolean isAbortedAfterConsensusReached = taskManagerService.abort(chainTaskId);
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 if (!isAbortedAfterConsensusReached) {
                     return;
                 }
                 updateStatusAndGetNextAction(chainTaskId, ABORTED, CONSENSUS_REACHED);
                 break;
+            // TODO merge abort actions
+            case PLEASE_ABORT:
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
+                break;
             default:
                 break;
         }
 
-        subscriptionService.handleSubscription(notification);
         if (nextAction != null){
             log.debug("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
             applicationEventPublisher.publishEvent(TaskNotification.builder()

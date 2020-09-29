@@ -55,7 +55,6 @@ public class TaskNotificationServiceTest {
 
         verify(customCoreFeignClient, Mockito.times(0))
                 .updateReplicateStatus(anyString(), any(ReplicateStatusUpdate.class));
-        verify(subscriptionService, Mockito.times(0)).handleSubscription(any());
         verify(applicationEventPublisher, Mockito.times(0)).publishEvent(any());
     }
 
@@ -230,6 +229,7 @@ public class TaskNotificationServiceTest {
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
+        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
         verify(applicationEventPublisher, Mockito.times(0))
                 .publishEvent(any());
     }
@@ -246,6 +246,7 @@ public class TaskNotificationServiceTest {
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).abort(CHAIN_TASK_ID);
+        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
         verify(applicationEventPublisher, Mockito.times(0))
                 .publishEvent(any());
     }

@@ -9,16 +9,17 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.pubsub.SubscriptionService.MessageHandler;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
@@ -31,24 +32,24 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
 public class StompClient {
 
-    private static final int SESSION_REFRESH_DELAY = 10;
+    private static final int SESSION_REFRESH_DELAY = 5;
     private final BlockingQueue<SessionRequestEvent> sessionRequestQueue = new ArrayBlockingQueue<>(1);
-    // private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
     private final ApplicationEventPublisher eventPublisher;
-    private final String webSocketUrl;
+    private final String webSocketServerUrl;
     private final WebSocketStompClient stompClient;
     private StompSession session;
 
     public StompClient(ApplicationEventPublisher applicationEventPublisher,
-                       RestTemplate restTemplate, CoreConfigurationService coreConfigService) {
+                       CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
         this.eventPublisher = applicationEventPublisher;
-        this.webSocketUrl = coreConfigService.getUrl() + "/connect";
+        this.webSocketServerUrl = coreConfigService.getUrl() + "/connect";
         log.info("Creating STOMP client");
         WebSocketClient webSocketClient = new StandardWebSocketClient();
         List<Transport> webSocketTransports = Arrays.asList(
@@ -64,7 +65,15 @@ public class StompClient {
         log.info("Created STOMP client");
     }
 
-    StompSession.Subscription subscribeToTopic(String topic, MessageHandler messageHandler) {
+    /**
+     * Subscribe to a topic and provide a {@link StompFrameHandler}
+     * to handle received messages.
+     * 
+     * @param topic
+     * @param messageHandler an implementation of 
+     * @return
+     */
+    Subscription subscribeToTopic(String topic, StompFrameHandler messageHandler) {
         return this.session.subscribe(topic, messageHandler);
     }
 
@@ -76,7 +85,7 @@ public class StompClient {
     /**
      * Add new SessionRequestEvent to the queue. A queue listener
      * will consume this event and create a new STOMP session.
-     * 
+     * This does not raise an error if the queue is full.
      */
     private void requestNewSession() {
         this.sessionRequestQueue.offer(new SessionRequestEvent());
@@ -85,16 +94,16 @@ public class StompClient {
     /**
      * Refresh the websocket connection by establishing a new STOMP session.
      * Only one of the received requests in a fixed time interval
-     * (REFRESH_PERIOD_IN_SECONDS) will be processed. We use @Scheduled
+     * (SESSION_REFRESH_DELAY) will be processed. We use @Scheduled
      * to start the watcher asynchronously with an initial delay.
      * 
      * @throws InterruptedException
-     * 
      */
     @Scheduled(initialDelay = 1000, fixedDelay = 10000)
-    private void sessionRequestEventListener() throws InterruptedException {
+    private void listenToSessionRequestEvents() throws InterruptedException {
         while (true) {
             // get the first request event
+            // or wait until available
             this.sessionRequestQueue.take();
             // wait some time for the wave of request events coming
             // from possibly different threads to finish
@@ -103,15 +112,14 @@ public class StompClient {
             // purge redundant request events
             this.sessionRequestQueue.clear();
             // Only one request should pass through
-            log.info("Sending new STOMP connection request");
-            this.stompClient.connect(webSocketUrl, new SessionHandler());
+            log.debug("Sending new STOMP connection request");
+            this.stompClient.connect(webSocketServerUrl, new SessionHandler());
         }
     }
 
     /**
      * Provide callbacks to handle STOMP session establishment or
-     * connection failure.
-     * 
+     * failure.
      */
     private class SessionHandler extends StompSessionHandlerAdapter {
 
@@ -140,9 +148,20 @@ public class StompClient {
     }
 
     /**
-     * SessionRequest
+     * Request a new STOMP session by adding
+     * this event to the queue.
      */
+    @NoArgsConstructor
     private class SessionRequestEvent {
+        
+    }
+
+    /**
+     * Publish this event when a new session
+     * is created to notify subscribers.
+     */
+    @NoArgsConstructor
+    public class SessionCreatedEvent {
         
     }
 }
