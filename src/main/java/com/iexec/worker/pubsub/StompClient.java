@@ -2,14 +2,16 @@ package com.iexec.worker.pubsub;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.PostConstruct;
 
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.pubsub.SubscriptionService.MessageHandler;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -17,7 +19,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -35,13 +37,17 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class StompClient {
 
-    private static final int REFRESH_PERIOD_IN_SECONDS = 10;
-    private final ConnectionRequestMutex connectionRequestMutex = new ConnectionRequestMutex();
-    private final WebSocketStompClient stompClient;
+    private static final int SESSION_REFRESH_DELAY = 10;
+    private final BlockingQueue<SessionRequestEvent> sessionRequestQueue = new ArrayBlockingQueue<>(1);
+    // private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+    private final ApplicationEventPublisher eventPublisher;
     private final String webSocketUrl;
+    private final WebSocketStompClient stompClient;
     private StompSession session;
 
-    public StompClient(RestTemplate restTemplate, CoreConfigurationService coreConfigService) {
+    public StompClient(ApplicationEventPublisher applicationEventPublisher,
+                       RestTemplate restTemplate, CoreConfigurationService coreConfigService) {
+        this.eventPublisher = applicationEventPublisher;
         this.webSocketUrl = coreConfigService.getUrl() + "/connect";
         log.info("Creating STOMP client");
         WebSocketClient webSocketClient = new StandardWebSocketClient();
@@ -50,71 +56,62 @@ public class StompClient {
                 new RestTemplateXhrTransport(restTemplate)
         );
         SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-        this.stompClient = new WebSocketStompClient(sockJsClient); // without SockJS: new WebSocketStompClient(webSocketClient);
+        // without SockJS: new WebSocketStompClient(webSocketClient);
+        this.stompClient = new WebSocketStompClient(sockJsClient);
         this.stompClient.setAutoStartup(true);
         this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
         log.info("Created STOMP client");
-        connectAsync();
-    }
-
-    /**
-     * Establish a STOMP session. Only one request should be
-     * allowed at the same time. The lock is released
-     * asynchronously when the request is successful by
-     * {@link SessionHandler}.afterConnected() or when an error
-     * occurs by {@link SessionHandler}.handleTransportError().
-     */
-    @Async
-    private void connectAsync() {
-        if (connectionRequestMutex.isLocked()) {
-            log.error("Already requesting");
-            return;
-        }
-        connectionRequestMutex.lock();
-        log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
-        try {
-            TimeUnit.SECONDS.sleep(REFRESH_PERIOD_IN_SECONDS);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        log.info("Sending new STOMP connection request");
-        stompClient.connect(webSocketUrl, new SessionHandler());
     }
 
     StompSession.Subscription subscribeToTopic(String topic, MessageHandler messageHandler) {
         return this.session.subscribe(topic, messageHandler);
     }
 
+    @PostConstruct
+    private void init() {
+        requestNewSession();
+    }
+
     /**
-     * This Mutex is used to drop new connection requests
-     * if an existing request is still going on.
+     * Add new SessionRequestEvent to the queue. A queue listener
+     * will consume this event and create a new STOMP session.
+     * 
      */
-    private class ConnectionRequestMutex {
-        
-        private final AtomicBoolean connectionRequestMutex;
+    private void requestNewSession() {
+        this.sessionRequestQueue.offer(new SessionRequestEvent());
+    }
 
-        private ConnectionRequestMutex() {
-            this.connectionRequestMutex = new AtomicBoolean(false);
+    /**
+     * Refresh the websocket connection by establishing a new STOMP session.
+     * Only one of the received requests in a fixed time interval
+     * (REFRESH_PERIOD_IN_SECONDS) will be processed. We use @Scheduled
+     * to start the watcher asynchronously with an initial delay.
+     * 
+     * @throws InterruptedException
+     * 
+     */
+    @Scheduled(initialDelay = 1000, fixedDelay = 10000)
+    private void sessionRequestEventListener() throws InterruptedException {
+        while (true) {
+            // get the first request event
+            this.sessionRequestQueue.take();
+            // wait some time for the wave of request events coming
+            // from possibly different threads to finish
+            log.info("Creating new STOMP session in {}s", SESSION_REFRESH_DELAY);
+            TimeUnit.SECONDS.sleep(SESSION_REFRESH_DELAY);
+            // purge redundant request events
+            this.sessionRequestQueue.clear();
+            // Only one request should pass through
+            log.info("Sending new STOMP connection request");
+            this.stompClient.connect(webSocketUrl, new SessionHandler());
         }
-
-        public boolean isLocked() {
-            return this.connectionRequestMutex.get();
-        }
-
-        public void lock() {
-            this.connectionRequestMutex.set(true);
-        }
-
-        public void release() {
-            this.connectionRequestMutex.set(false);
-        }
-    
     }
 
     /**
      * Provide callbacks to handle STOMP session establishment or
      * connection failure.
+     * 
      */
     private class SessionHandler extends StompSessionHandlerAdapter {
 
@@ -122,8 +119,8 @@ public class StompClient {
         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
             log.info("Connected to STOMP session [session: {}, isConnected: {}]", session.getSessionId(), session.isConnected());
             StompClient.this.session = session;
-            StompClient.this.connectionRequestMutex.release();
-            // TODO notifySubscribers()
+            // notify subscribers
+            eventPublisher.publishEvent(new SessionCreatedEvent());
         }
 
         @Override
@@ -138,14 +135,14 @@ public class StompClient {
         public void handleTransportError(StompSession session, Throwable exception) {
             log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), exception.getMessage());
-            // log.info("Refreshing STOMP session in {}s", REFRESH_PERIOD_IN_SECONDS);
-            // try {
-            //     TimeUnit.SECONDS.sleep(REFRESH_PERIOD_IN_SECONDS);
-            // } catch (Exception e) {
-            //     e.printStackTrace();
-            // }
-            // StompClient.this.connectionRequestMutex.release();
-            connectAsync();
+            requestNewSession();
         }
-    }    
+    }
+
+    /**
+     * SessionRequest
+     */
+    private class SessionRequestEvent {
+        
+    }
 }
