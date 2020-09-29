@@ -133,14 +133,37 @@ public class StompClient {
             eventPublisher.publishEvent(new SessionCreatedEvent());
         }
 
+        /**
+         * Handle any exception arising while processing a STOMP frame such as a
+         * failure to convert the payload or an unhandled exception in the
+         * application {@code StompFrameHandler}.
+         * 
+         * @param session the client STOMP session
+         * @param command the STOMP command of the frame
+         * @param headers the headers
+         * @param payload the raw payload
+         * @param exception the exception
+         */
         @Override
         public void handleException(StompSession session, @Nullable StompCommand command,
                                     StompHeaders headers, byte[] payload, Throwable exception) {
             SimpMessageType messageType = command != null ? command.getMessageType() : null;
-            log.error("STOMP error [session: {}, isConnected: {}, command: {}, exception: {}]",
+            log.error("STOMP frame processing error [session: {}, isConnected: {}, command: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
         }
 
+        /**
+         * Handle a low level transport error which could be an I/O error or a
+         * failure to encode or decode a STOMP message.
+         * <p>Note that
+         * {@link org.springframework.messaging.simp.stomp.ConnectionLostException
+         * ConnectionLostException} will be passed into this method when the
+         * connection is lost rather than closed normally via
+         * {@link StompSession#disconnect()}.
+         * 
+         * @param session the client STOMP session
+         * @param exception the exception that occurred
+         */
         @Override
         public void handleTransportError(StompSession session, Throwable exception) {
             log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
