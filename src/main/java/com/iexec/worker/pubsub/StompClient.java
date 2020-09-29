@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.pubsub;
 
 import java.util.Arrays;
@@ -24,6 +40,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -92,12 +109,34 @@ public class StompClient {
     }
 
     /**
-     * Listen to new session request events and refresh the websocket
+     * Listen to session request events and refresh the websocket
      * connection by establishing a new STOMP session. Only one of 
      * the received requests in a fixed time interval
-     * (SESSION_REFRESH_DELAY) will be processed. We use @Scheduled
-     * to start the watcher asynchronously with an initial delay and
+     * {@code SESSION_REFRESH_DELAY} will be processed. We use
+     * {@code @Scheduled} to start the watcher asynchronously and
      * restart it in case a problem occurs.
+     * <br>
+     * 
+     * <p><b>Note:</b> the reason we use a queue is because the
+     * method {@link SessionHandler#handleTransportError()} is called,
+     * in some cases, two times to handle two different exceptions.
+     * This occurs when the connection is, for whatever reason,
+     * brutally terminated while a message is being transmitted.
+     * The first call is to handle the incomplete body message parsing
+     * problem ({@code Premature end of chunk coded message body:
+     * closing chunk expected}).
+     * The second call happens after the connection is closed in
+     * {@link WebSocketHandler#afterConnectionClosed()}.
+     * So trying to directly trigger new connection attempts from
+     * {@link SessionHandler#handleTransportError()} would result
+     * in parallel zombie threads trying to establish a new session
+     * each.
+     * Instead, each call to this method adds a
+     * {@link SessionRequestEvent} to the queue. We wait for a short
+     * period of time to collect all these requests coming from
+     * different calls (and possibly different threads), then we send
+     * only one request to the server. This process is repeated until
+     * the websocket connection is reestablished again.
      * 
      * @throws InterruptedException
      */
