@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.docker;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,20 +25,16 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Compute {
+public class DockerRunResponse {
 
-    private String chainTaskId;
-    private boolean isPreComputed;
-    private boolean isComputed;
-    private boolean isPostComputed;
+    private boolean isSuccessful;
+    private DockerContainerLogs dockerContainerLogs;
 
-    @Builder.Default
-    private String secureSessionId = "";
-
-    @Builder.Default
-    private String stdout = "";
-
-    public void appendToStdout(String message) {
-        stdout = stdout + "\n" + message;
+    public String getStdout() {
+        if (isSuccessful && dockerContainerLogs != null && dockerContainerLogs.getStdout() != null){
+            return dockerContainerLogs.getStdout();
+        }
+        return "";
     }
+
 }

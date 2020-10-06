@@ -41,7 +41,7 @@ public class SconeLasConfiguration {
     private String version;
 
     @Value("${scone.las.port}")
-    private String port;
+    private int port;
 
     private String containerName;
 
@@ -63,7 +63,7 @@ public class SconeLasConfiguration {
         return containerName + ":" + port;
     }
 
-    public String getPort() {
+    public int getPort() {
         return port;
     }
 }

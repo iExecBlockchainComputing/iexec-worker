@@ -14,12 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
-
-import java.util.List;
-import java.util.Map;
-
-import com.iexec.common.utils.ArgsUtils;
+package com.iexec.worker.docker;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,24 +25,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DockerCompute {
+public class DockerContainerLogs {
 
-    private String chainTaskId;
-    private String containerName;
-    private String containerId;
-    private String containerPort;
-    private String imageUri;
-    private String cmd;
-    private List<String> env;
-    private long maxExecutionTime;
-    private Map<String, String> bindPaths;
-    private boolean isSgx;
+    private String stdout;
+    private String stderr;
 
-    public String getStringArgsCmd() {
-        return cmd;
-    }
-
-    public String[] getArrayArgsCmd() {
-        return ArgsUtils.stringArgsToArrayArgs(cmd);
-    }
 }
