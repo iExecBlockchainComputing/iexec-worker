@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.docker;
 
 import com.google.common.collect.ImmutableList;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.DockerClientService;
+import com.iexec.worker.docker.DockerRunRequest;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.Device;
 
@@ -26,6 +29,7 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
@@ -42,6 +46,9 @@ public class DockerServiceTests {
 
     @InjectMocks
     private DockerService dockerService;
+    @Mock
+    private final DockerClientService dockerClientService;
+    private final WorkerConfigurationService workerConfigService;
 
     private static final String TEST_WORKER = "./src/test/resources/tmp/test-worker";
     private static final String CHAIN_TASK_ID = "docker";
@@ -71,16 +78,16 @@ public class DockerServiceTests {
     private String getDockerInput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_INPUT; }
     private String getDockerOutput() { return DOCKER_TMP_FOLDER + FileHelper.SLASH_OUTPUT; }
 
-    public DockerCompute getAppDockerComputeStub(boolean isSgx) {
+    public DockerRunRequest getAppDockerComputeStub(boolean isSgx) {
         Map<String, String> bindPaths = new HashMap<>();
         bindPaths.put(getDockerInput(), FileHelper.SLASH_IEXEC_IN);
         bindPaths.put(getDockerOutput(), FileHelper.SLASH_IEXEC_OUT);
-        return DockerCompute.builder()
+        return DockerRunRequest.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .imageUri(ALPINE_LATEST)
                 .cmd(CMD)
                 .env(ENV)
-                .bindPaths(bindPaths)
+                .binds(bindPaths)
                 .isSgx(isSgx)
                 .maxExecutionTime(500000)
                 .build();
@@ -140,9 +147,9 @@ public class DockerServiceTests {
 
     @Test
     public void shouldBuildNonTeeAppContainerConfig() {
-        DockerCompute dockerCompute = getAppDockerComputeStub(false);
+        DockerRunRequest dockerRunRequest = getAppDockerComputeStub(false);
         ContainerConfig containerConfig = 
-                dockerService.buildContainerConfig(dockerCompute).get();
+                dockerService.buildContainerConfig(dockerRunRequest).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
@@ -156,9 +163,9 @@ public class DockerServiceTests {
 
     @Test
     public void shouldBuildTeeAppContainerConfig() {
-        DockerCompute dockerCompute = getAppDockerComputeStub(true);
+        DockerRunRequest dockerRunRequest = getAppDockerComputeStub(true);
         ContainerConfig containerConfig = 
-                dockerService.buildContainerConfig(dockerCompute).get();
+                dockerService.buildContainerConfig(dockerRunRequest).get();
 
         assertThat(containerConfig.image()).isEqualTo(ALPINE_LATEST);
         assertThat(containerConfig.cmd().get(0)).isEqualTo(CMD);
@@ -175,7 +182,7 @@ public class DockerServiceTests {
 
     @Test
     public void shouldNotBuildContainerConfigWithoutImage() {
-        DockerCompute config = getAppDockerComputeStub(false);
+        DockerRunRequest config = getAppDockerComputeStub(false);
         config.setImageUri("");
         Optional<ContainerConfig> containerConfig = 
                 dockerService.buildContainerConfig(config);
@@ -187,7 +194,7 @@ public class DockerServiceTests {
 
     @Test
     public void shouldExecute() {
-        DockerCompute config = getAppDockerComputeStub(false);
+        DockerRunRequest config = getAppDockerComputeStub(false);
         config.setCmd("echo Hello from Docker alpine!");
         Optional<String> oStdout = dockerService.run(config);
         assertThat(oStdout.get()).contains("Hello from Docker alpine!");
@@ -196,7 +203,7 @@ public class DockerServiceTests {
     @Test
     public void shouldStopComputingIfTooLong() {
         String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
-        DockerCompute config = getAppDockerComputeStub(false);
+        DockerRunRequest config = getAppDockerComputeStub(false);
         config.setCmd(cmd);
         config.setMaxExecutionTime(5 * SECOND);
         Optional<String> oStdout = dockerService.run(config);
@@ -271,7 +278,7 @@ public class DockerServiceTests {
     @Test
     public void shouldNotRemoveRunningContainer() {
         String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
-        DockerCompute config = getAppDockerComputeStub(false);
+        DockerRunRequest config = getAppDockerComputeStub(false);
         config.setCmd(cmd);
 
         ContainerConfig containerConfig = 

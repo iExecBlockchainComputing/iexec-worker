@@ -50,10 +50,12 @@ public class DockerService {
         if (containerId.isEmpty()) {
             return dockerRunResponse;
         }
+        log.info("Created container [containerName:{}, containerId:{}]", dockerRunRequest.getContainerName(), containerId);
 
         if (!dockerClientService.startContainer(containerId)) {
             return dockerRunResponse;
         }
+        log.info("Started container [containerName:{}, containerId:{}]", dockerRunRequest.getContainerName(), containerId);
 
         if (dockerRunRequest.getMaxExecutionTime() == 0) {
             dockerRunResponse.setSuccessful(true);
@@ -84,7 +86,7 @@ public class DockerService {
     }
 
     public boolean isImagePulled(String image) {
-        return dockerClientService.isImagePulled(image);
+        return !dockerClientService.getImageId(image).isEmpty();
     }
 
     public boolean pullImage(String image) {
