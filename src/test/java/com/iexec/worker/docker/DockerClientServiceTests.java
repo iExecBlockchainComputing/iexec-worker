@@ -18,7 +18,6 @@ package com.iexec.worker.docker;
 
 import com.iexec.common.utils.FileHelper;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -35,8 +34,6 @@ public class DockerClientServiceTests {
 
     private static final String TEST_WORKER = "./src/test/resources/tmp/test-worker";
     private static final String CHAIN_TASK_ID = "docker";
-    private static final long SECOND = 1000;
-    private static final String ALPINE = "alpine";
     private static final String ALPINE_LATEST = "alpine:latest";
     private static final String ALPINE_BLABLA = "alpine:blabla";
     private static final String BLABLA_LATEST = "blabla:latest";
@@ -45,6 +42,7 @@ public class DockerClientServiceTests {
     private static final String SGX_DEVICE_PATH = "/dev/isgx";
     private static final String SGX_DEVICE_PERMISSIONS = "rwm";
     private static String DOCKER_TMP_FOLDER = "";
+
     @InjectMocks
     private DockerClientService dockerClientService;
 
@@ -170,7 +168,7 @@ public class DockerClientServiceTests {
 
         //TODO Inspect container and check requeste params are set
 
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         assertThat(containerId).isNotEmpty();
 
         // cleaning
@@ -181,7 +179,7 @@ public class DockerClientServiceTests {
     public void shouldGetContainerId() {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
-        String expectedId = dockerClientService.createContainer(request, containerName);
+        String expectedId = dockerClientService.createContainer(request);
 
         String containerId = dockerClientService.getContainerId(containerName);
         assertThat(containerId).isNotEmpty();
@@ -195,7 +193,7 @@ public class DockerClientServiceTests {
     public void shouldGetContainerStatus() {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
 
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("created");
 
@@ -208,7 +206,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
 
         assertThat(dockerClientService.startContainer(containerId)).isTrue();
 
@@ -224,7 +222,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 2 && echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
         Date before = new Date();
@@ -242,7 +240,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
         dockerClientService.waitContainerUntilExitOrTimeout(containerId, new Date(new Date().getTime() + 3000));
@@ -258,7 +256,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
 
         Optional<DockerContainerLogs> containerLogs = dockerClientService.getContainerLogs(containerId);
@@ -276,7 +274,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'echo Hello from Docker alpine! >&2'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
 
         Optional<DockerContainerLogs> containerLogs = dockerClientService.getContainerLogs(containerId);
@@ -294,7 +292,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
 
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
@@ -310,7 +308,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         dockerClientService.stopContainer(containerId);
 
@@ -322,7 +320,7 @@ public class DockerClientServiceTests {
         String containerName = getRandomName();
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
-        String containerId = dockerClientService.createContainer(request, containerName);
+        String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
 
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");

@@ -34,7 +34,6 @@ public class DockerRunRequest {
 
     private String chainTaskId;
     private String containerName;
-    private String containerId;
     private int containerPort;
     private String imageUri;
     private String cmd;

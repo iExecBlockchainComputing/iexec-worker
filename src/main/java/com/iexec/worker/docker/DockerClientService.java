@@ -45,7 +45,7 @@ class DockerClientService {
 
     public DockerClientService() {
         String networkId = createNetwork(WORKER_DOCKER_NETWORK);
-        if (!networkId.isEmpty()){
+        if (!networkId.isEmpty()) {
             log.info("Created network [networkName:{}, networkId:{}]", WORKER_DOCKER_NETWORK, networkId);
         }
     }
@@ -147,7 +147,12 @@ class DockerClientService {
 
     // container
 
-    public String createContainer(DockerRunRequest dockerRunRequest, String containerName) {
+    public String createContainer(DockerRunRequest dockerRunRequest) {
+        if (dockerRunRequest == null) {
+            return "";
+        }
+
+        String containerName = dockerRunRequest.getContainerName();
         if (containerName == null || containerName.isEmpty()) {
             return "";
         }

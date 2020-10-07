@@ -46,7 +46,7 @@ public class DockerService {
         DockerRunResponse dockerRunResponse = DockerRunResponse.builder().isSuccessful(false).build();
         String chainTaskId = dockerRunRequest.getChainTaskId();
 
-        String containerId = dockerClientService.createContainer(dockerRunRequest, dockerRunRequest.getContainerName());
+        String containerId = dockerClientService.createContainer(dockerRunRequest);
         if (containerId.isEmpty()) {
             return dockerRunResponse;
         }
@@ -85,12 +85,12 @@ public class DockerService {
         return dockerRunResponse;
     }
 
-    public boolean isImagePulled(String image) {
-        return !dockerClientService.getImageId(image).isEmpty();
-    }
-
     public boolean pullImage(String image) {
         return dockerClientService.pullImage(image);
+    }
+
+    public boolean isImagePulled(String image) {
+        return !dockerClientService.getImageId(image).isEmpty();
     }
 
     public boolean stopAndRemoveContainer(String containerName) {
@@ -100,7 +100,7 @@ public class DockerService {
         return false;
     }
 
-    private boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
+    boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
         return workerConfigService.isDeveloperLoggerEnabled() && dockerRunRequest.isShouldDisplayLogs();
     }
 
