@@ -52,8 +52,9 @@ public class PreComputeStepService {
 
     public boolean runStandardPreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
+        // Why do we need smsService for standard compute??
         Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(workerpoolAuth);
-        if (!oTaskSecrets.isPresent()) {
+        if (oTaskSecrets.isEmpty()) {
             log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
         } else {
             String datasetSecretFilePath = workerConfigService.getDatasetSecretFilePath(chainTaskId);
