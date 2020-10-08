@@ -39,8 +39,8 @@ import java.util.List;
 public class PostComputeStepService {
 
     private final WorkerConfigurationService workerConfigService;
+    private final PublicConfigurationService publicConfigService;
     private final DockerService dockerService;
-    private final String sconeCasUrl;
     private final ResultService resultService;
     private final SconeTeeService sconeTeeService;
 
@@ -52,7 +52,7 @@ public class PostComputeStepService {
             SconeTeeService sconeTeeService
     ) {
         this.workerConfigService = workerConfigService;
-        this.sconeCasUrl = publicConfigService.getSconeCasURL();
+        this.publicConfigService = publicConfigService;
         this.dockerService = dockerService;
         this.resultService = resultService;
         this.sconeTeeService = sconeTeeService;
@@ -83,8 +83,7 @@ public class PostComputeStepService {
     public DockerRunResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
-                sconeCasUrl, "3G");
-
+                publicConfigService.getSconeCasURL(), "3G");
         List<String> binds = Arrays.asList(
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT,
                 workerConfigService.getTaskOutputDir(chainTaskId) + ":" + FileHelper.SLASH_OUTPUT);
