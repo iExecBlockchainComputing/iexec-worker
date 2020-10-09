@@ -27,7 +27,9 @@ import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -67,6 +69,9 @@ public class ComputeManagerServiceTests {
     private final ComputeResponsesHolder computeResponsesHolder =
             ComputeResponsesHolder.builder().chainTaskId(CHAIN_TASK_ID).build();
 
+    @Rule
+    public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
+
     @InjectMocks
     private ComputeManagerService computeManagerService;
     @Mock
@@ -83,7 +88,7 @@ public class ComputeManagerServiceTests {
     private IexecHubService iexecHubService;
 
     @Before
-    public void beforeEach() throws IOException {
+    public void beforeEach() {
         MockitoAnnotations.initMocks(this);
 
     }
@@ -137,7 +142,8 @@ public class ComputeManagerServiceTests {
         when(preComputeStepService.runStandardPreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(true);
 
-        computeManagerService.runPreCompute(computeResponsesHolder, taskDescription,
+        computeManagerService.runPreCompute(computeResponsesHolder,
+                taskDescription,
                 workerpoolAuthorization);
         Assertions.assertThat(computeResponsesHolder.isPreComputed()).isTrue();
         verify(preComputeStepService, times(1))
@@ -151,7 +157,8 @@ public class ComputeManagerServiceTests {
         when(preComputeStepService.runStandardPreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(false);
 
-        computeManagerService.runPreCompute(computeResponsesHolder, taskDescription,
+        computeManagerService.runPreCompute(computeResponsesHolder,
+                taskDescription,
                 workerpoolAuthorization);
         Assertions.assertThat(computeResponsesHolder.isPreComputed()).isFalse();
     }
@@ -162,7 +169,8 @@ public class ComputeManagerServiceTests {
         when(preComputeStepService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(SECURE_SESSION_ID);
 
-        computeManagerService.runPreCompute(computeResponsesHolder, taskDescription,
+        computeManagerService.runPreCompute(computeResponsesHolder,
+                taskDescription,
                 workerpoolAuthorization);
         Assertions.assertThat(computeResponsesHolder.isPreComputed()).isTrue();
         Assertions.assertThat(computeResponsesHolder.getSecureSessionId()).isEqualTo(SECURE_SESSION_ID);
@@ -177,7 +185,8 @@ public class ComputeManagerServiceTests {
         when(preComputeStepService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn("");
 
-        computeManagerService.runPreCompute(computeResponsesHolder, taskDescription,
+        computeManagerService.runPreCompute(computeResponsesHolder,
+                taskDescription,
                 workerpoolAuthorization);
         Assertions.assertThat(computeResponsesHolder.isPreComputed()).isFalse();
         Assertions.assertThat(computeResponsesHolder.getSecureSessionId()).isEmpty();
@@ -193,7 +202,8 @@ public class ComputeManagerServiceTests {
         when(computeStepService.runCompute(taskDescription,
                 "")).thenReturn(expectedDockerRunResponse);
 
-        computeManagerService.runCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isComputed()).isTrue();
         Assertions.assertThat(computeResponsesHolder.getComputeDockerRunResponse())
                 .isEqualTo(expectedDockerRunResponse);
@@ -210,14 +220,15 @@ public class ComputeManagerServiceTests {
         when(computeStepService.runCompute(taskDescription,
                 "")).thenReturn(expectedDockerRunResponse);
 
-        computeManagerService.runCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isComputed()).isFalse();
         Assertions.assertThat(computeResponsesHolder.getComputeDockerRunResponse())
                 .isEqualTo(expectedDockerRunResponse);
     }
 
     @Test
-    public void shouldRunTeeCompute() {
+    public void shouldRunTeeCompute() throws IOException {
         taskDescription.setTeeTask(true);
         computeResponsesHolder.setSecureSessionId(SECURE_SESSION_ID);
         DockerRunResponse expectedDockerRunResponse =
@@ -229,8 +240,11 @@ public class ComputeManagerServiceTests {
                         .build();
         when(computeStepService.runCompute(taskDescription,
                 SECURE_SESSION_ID)).thenReturn(expectedDockerRunResponse);
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(jUnitTemporaryFolder.newFolder().getAbsolutePath());
 
-        computeManagerService.runCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isComputed()).isTrue();
         Assertions.assertThat(computeResponsesHolder.getComputeDockerRunResponse())
                 .isEqualTo(expectedDockerRunResponse);
@@ -250,7 +264,8 @@ public class ComputeManagerServiceTests {
         when(computeStepService.runCompute(taskDescription,
                 SECURE_SESSION_ID)).thenReturn(expectedDockerRunResponse);
 
-        computeManagerService.runCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isComputed()).isFalse();
         Assertions.assertThat(computeResponsesHolder.getComputeDockerRunResponse())
                 .isEqualTo(expectedDockerRunResponse);
@@ -264,7 +279,8 @@ public class ComputeManagerServiceTests {
         when(postComputeStepService.runStandardPostCompute(taskDescription))
                 .thenReturn(true);
 
-        computeManagerService.runPostCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runPostCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isPostComputed()).isTrue();
         verify(postComputeStepService, times(1))
                 .runStandardPostCompute(taskDescription);
@@ -276,7 +292,8 @@ public class ComputeManagerServiceTests {
         when(postComputeStepService.runStandardPostCompute(taskDescription))
                 .thenReturn(false);
 
-        computeManagerService.runPostCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runPostCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isPostComputed()).isFalse();
     }
 
@@ -295,7 +312,8 @@ public class ComputeManagerServiceTests {
                 SECURE_SESSION_ID))
                 .thenReturn(expectedDockerRunResponse);
 
-        computeManagerService.runPostCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runPostCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isPostComputed()).isTrue();
         verify(postComputeStepService, times(1))
                 .runTeePostCompute(taskDescription, SECURE_SESSION_ID);
@@ -315,7 +333,8 @@ public class ComputeManagerServiceTests {
         when(postComputeStepService.runTeePostCompute(taskDescription, ""))
                 .thenReturn(expectedDockerRunResponse);
 
-        computeManagerService.runPostCompute(computeResponsesHolder, taskDescription);
+        computeManagerService.runPostCompute(computeResponsesHolder,
+                taskDescription);
         Assertions.assertThat(computeResponsesHolder.isPostComputed()).isFalse();
     }
 
