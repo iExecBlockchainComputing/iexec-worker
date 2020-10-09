@@ -67,7 +67,8 @@ public class ComputeManagerService {
         if (taskDescription == null || taskDescription.getAppType() == null) {
             return false;
         }
-        boolean isDockerType = taskDescription.getAppType().equals(DappType.DOCKER);
+        boolean isDockerType =
+                taskDescription.getAppType().equals(DappType.DOCKER);
         if (!isDockerType || taskDescription.getAppUri() == null) {
             return false;
         }
@@ -82,36 +83,50 @@ public class ComputeManagerService {
      * non TEE: download secrets && decrypt dataset (TODO: rewritte or remove)
      *     TEE: download post-compute image && create secure session
      */
-    public void runPreCompute(ComputeStage computeStage, TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
-        log.info("Running pre-compute [chainTaskId:{}, isTee:{}]", taskDescription.getChainTaskId(),
+    public void runPreCompute(ComputeStage computeStage,
+                              TaskDescription taskDescription,
+                              WorkerpoolAuthorization workerpoolAuth) {
+        log.info("Running pre-compute [chainTaskId:{}, isTee:{}]",
+                taskDescription.getChainTaskId(),
                 taskDescription.isTeeTask());
         boolean isSuccessful = false;
 
         if (taskDescription.isTeeTask()) {
-            String secureSessionId = preComputeStepService.runTeePreCompute(taskDescription, workerpoolAuth);
+            String secureSessionId =
+                    preComputeStepService.runTeePreCompute(taskDescription,
+                            workerpoolAuth);
             if (!secureSessionId.isEmpty()) {
                 computeStage.setSecureSessionId(secureSessionId);
                 isSuccessful = true;
             }
         } else {
-            isSuccessful = preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuth);
+            isSuccessful =
+                    preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuth);
         }
-        computeStage.setPreDockerRunResponse(DockerRunResponse.builder().isSuccessful(isSuccessful).build());
+        computeStage.setPreComputeDockerRunResponse(DockerRunResponse.builder().isSuccessful(isSuccessful).build());
     }
 
-    public void runCompute(ComputeStage computeStage, TaskDescription taskDescription) {
+    public void runCompute(ComputeStage computeStage,
+                           TaskDescription taskDescription) {
         String chainTaskId = computeStage.getChainTaskId();
-        log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
+        log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId,
+                taskDescription.isTeeTask());
 
-        DockerRunResponse dockerRunResponse = computeStepService.runCompute(computeStage, taskDescription, chainTaskId);
+        DockerRunResponse dockerRunResponse =
+                computeStepService.runCompute(taskDescription,
+                        computeStage.getSecureSessionId());
 
         if (dockerRunResponse.isSuccessful() && dockerRunResponse.getDockerContainerLogs() != null) {
             // save /output/stdout.txt file
-            String stdoutFilePath = workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
-            File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath, dockerRunResponse.getDockerContainerLogs().getStdout());
-            log.info("Saved stdout file [path:{}]", stdoutFile.getAbsolutePath());
+            String stdoutFilePath =
+                    workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
+            File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath
+                    , dockerRunResponse.getDockerContainerLogs().getStdout());
+            log.info("Saved stdout file [path:{}]",
+                    stdoutFile.getAbsolutePath());
+            //TODO Make sure stdout is properly written
         }
-        computeStage.setDockerRunResponse(dockerRunResponse);
+        computeStage.setComputeDockerRunResponse(dockerRunResponse);
     }
 
     /*
@@ -122,40 +137,52 @@ public class ComputeManagerService {
      *
      * - Save stdout file
      */
-    public void runPostCompute(ComputeStage computeStage, TaskDescription taskDescription) {
+    public void runPostCompute(ComputeStage computeStage,
+                               TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Running post-compute [chainTaskId:{}, isTee:{}]", chainTaskId, taskDescription.isTeeTask());
-        DockerRunResponse dockerRunResponse = DockerRunResponse.builder().isSuccessful(false).build();
+        log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
+                chainTaskId, taskDescription.isTeeTask());
+        DockerRunResponse dockerRunResponse =
+                DockerRunResponse.builder().isSuccessful(false).build();
 
         if (taskDescription.isTeeTask()) {
-            dockerRunResponse = postComputeStepService.runTeePostCompute(taskDescription, computeStage.getSecureSessionId());
+            dockerRunResponse =
+                    postComputeStepService.runTeePostCompute(taskDescription,
+                            computeStage.getSecureSessionId());
         } else {
             // TODO Use container
             if (postComputeStepService.runStandardPostCompute(taskDescription)) {
-                dockerRunResponse = DockerRunResponse.builder().isSuccessful(true).build();
+                dockerRunResponse =
+                        DockerRunResponse.builder().isSuccessful(true).build();
             }
         }
 
-        if (dockerRunResponse.getDockerContainerLogs() == null) {
+        if (dockerRunResponse != null &&
+                dockerRunResponse.getDockerContainerLogs() == null) {
             dockerRunResponse.setDockerContainerLogs(DockerContainerLogs.builder().stdout("").build());
         }
 
-        computeStage.setPostDockerRunResponse(dockerRunResponse);
+        computeStage.setPostComputeDockerRunResponse(dockerRunResponse);
     }
 
 
     public ComputedFile getComputedFile(String chainTaskId) {
-        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
-                workerConfigService.getTaskOutputDir(chainTaskId));
+        ComputedFile computedFile =
+                IexecFileHelper.readComputedFile(chainTaskId,
+                        workerConfigService.getTaskOutputDir(chainTaskId));
         if (computedFile == null) {
-            log.error("Failed to getComputedFile (computed.json missing)[chainTaskId:{}]", chainTaskId);
+            log.error("Failed to getComputedFile (computed.json missing)" +
+                    "[chainTaskId:{}]", chainTaskId);
             return null;
         }
         if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()) {
             String resultDigest = computeResultDigest(computedFile);
             if (resultDigest.isEmpty()) {
-                log.error("Failed to getComputedFile (resultDigest is empty but cant compute it)" +
-                        "[chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
+                log.error("Failed to getComputedFile (resultDigest is empty " +
+                                "but cant compute it)" +
+                                "[chainTaskId:{}, computedFile:{}]",
+                        chainTaskId,
+                        computedFile);
                 return null;
             }
             computedFile.setResultDigest(resultDigest);
@@ -173,7 +200,8 @@ public class ComputeManagerService {
                     workerConfigService.getTaskOutputDir(chainTaskId));
         }
         if (resultDigest.isEmpty()) {
-            log.error("Failed to computeResultDigest (resultDigest empty)[chainTaskId:{}, computedFile:{}]",
+            log.error("Failed to computeResultDigest (resultDigest empty)" +
+                            "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return "";
         }

@@ -29,9 +29,9 @@ import lombok.NoArgsConstructor;
 public class ComputeStage {
 
     private String chainTaskId;
-    private DockerRunResponse preDockerRunResponse;
-    private DockerRunResponse dockerRunResponse;
-    private DockerRunResponse postDockerRunResponse;
+    private DockerRunResponse preComputeDockerRunResponse;
+    private DockerRunResponse computeDockerRunResponse;
+    private DockerRunResponse postComputeDockerRunResponse;
 
     @Builder.Default
     private String secureSessionId = "";
@@ -42,29 +42,29 @@ public class ComputeStage {
 
     public String getStdout() {
         String stdout = "";
-        if (preDockerRunResponse != null && !preDockerRunResponse.getStdout().isEmpty()) {
-            stdout = appendToStdout(preDockerRunResponse.getStdout());
+        if (preComputeDockerRunResponse != null && !preComputeDockerRunResponse.getStdout().isEmpty()) {
+            stdout = appendToStdout(preComputeDockerRunResponse.getStdout());
         }
 
-        if (dockerRunResponse != null && !dockerRunResponse.getStdout().isEmpty()) {
-            stdout = appendToStdout(dockerRunResponse.getStdout());
+        if (computeDockerRunResponse != null && !computeDockerRunResponse.getStdout().isEmpty()) {
+            stdout = appendToStdout(computeDockerRunResponse.getStdout());
         }
 
-        if (postDockerRunResponse != null && !postDockerRunResponse.getStdout().isEmpty()) {
-            stdout = appendToStdout(postDockerRunResponse.getStdout());
+        if (postComputeDockerRunResponse != null && !postComputeDockerRunResponse.getStdout().isEmpty()) {
+            stdout = appendToStdout(postComputeDockerRunResponse.getStdout());
         }
         return stdout;
     }
 
     public boolean isPreComputed() {
-        return preDockerRunResponse != null && preDockerRunResponse.isSuccessful();
+        return preComputeDockerRunResponse != null && preComputeDockerRunResponse.isSuccessful();
     }
 
     public boolean isComputed() {
-        return dockerRunResponse != null && dockerRunResponse.isSuccessful();
+        return computeDockerRunResponse != null && computeDockerRunResponse.isSuccessful();
     }
 
     public boolean isPostComputed() {
-        return postDockerRunResponse != null && postDockerRunResponse.isSuccessful();
+        return postComputeDockerRunResponse != null && postComputeDockerRunResponse.isSuccessful();
     }
 }
