@@ -26,7 +26,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ComputeStage {
+public class ComputeResponsesHolder {
 
     private String chainTaskId;
     private DockerRunResponse preComputeDockerRunResponse;

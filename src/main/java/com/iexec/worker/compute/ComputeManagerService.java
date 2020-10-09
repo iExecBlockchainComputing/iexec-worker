@@ -83,9 +83,9 @@ public class ComputeManagerService {
      * non TEE: download secrets && decrypt dataset (TODO: rewritte or remove)
      *     TEE: download post-compute image && create secure session
      */
-    public void runPreCompute(ComputeStage computeStage,
-                              TaskDescription taskDescription,
-                              WorkerpoolAuthorization workerpoolAuth) {
+    public ComputeResponsesHolder runPreCompute(ComputeResponsesHolder computeResponsesHolder,
+                                                TaskDescription taskDescription,
+                                                WorkerpoolAuthorization workerpoolAuth) {
         log.info("Running pre-compute [chainTaskId:{}, isTee:{}]",
                 taskDescription.getChainTaskId(),
                 taskDescription.isTeeTask());
@@ -96,25 +96,27 @@ public class ComputeManagerService {
                     preComputeStepService.runTeePreCompute(taskDescription,
                             workerpoolAuth);
             if (!secureSessionId.isEmpty()) {
-                computeStage.setSecureSessionId(secureSessionId);
+                computeResponsesHolder.setSecureSessionId(secureSessionId);
                 isSuccessful = true;
             }
         } else {
             isSuccessful =
                     preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuth);
         }
-        computeStage.setPreComputeDockerRunResponse(DockerRunResponse.builder().isSuccessful(isSuccessful).build());
+        computeResponsesHolder.setPreComputeDockerRunResponse(
+                DockerRunResponse.builder().isSuccessful(isSuccessful).build());
+        return computeResponsesHolder;
     }
 
-    public void runCompute(ComputeStage computeStage,
-                           TaskDescription taskDescription) {
-        String chainTaskId = computeStage.getChainTaskId();
+    public ComputeResponsesHolder runCompute(ComputeResponsesHolder computeResponsesHolder,
+                                             TaskDescription taskDescription) {
+        String chainTaskId = computeResponsesHolder.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId,
                 taskDescription.isTeeTask());
 
         DockerRunResponse dockerRunResponse =
                 computeStepService.runCompute(taskDescription,
-                        computeStage.getSecureSessionId());
+                        computeResponsesHolder.getSecureSessionId());
 
         if (dockerRunResponse.isSuccessful() && dockerRunResponse.getDockerContainerLogs() != null) {
             // save /output/stdout.txt file
@@ -126,7 +128,8 @@ public class ComputeManagerService {
                     stdoutFile.getAbsolutePath());
             //TODO Make sure stdout is properly written
         }
-        computeStage.setComputeDockerRunResponse(dockerRunResponse);
+        computeResponsesHolder.setComputeDockerRunResponse(dockerRunResponse);
+        return computeResponsesHolder;
     }
 
     /*
@@ -137,8 +140,8 @@ public class ComputeManagerService {
      *
      * - Save stdout file
      */
-    public void runPostCompute(ComputeStage computeStage,
-                               TaskDescription taskDescription) {
+    public ComputeResponsesHolder runPostCompute(ComputeResponsesHolder computeResponsesHolder,
+                                                 TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
@@ -148,7 +151,7 @@ public class ComputeManagerService {
         if (taskDescription.isTeeTask()) {
             dockerRunResponse =
                     postComputeStepService.runTeePostCompute(taskDescription,
-                            computeStage.getSecureSessionId());
+                            computeResponsesHolder.getSecureSessionId());
         } else {
             // TODO Use container
             if (postComputeStepService.runStandardPostCompute(taskDescription)) {
@@ -159,10 +162,12 @@ public class ComputeManagerService {
 
         if (dockerRunResponse != null &&
                 dockerRunResponse.getDockerContainerLogs() == null) {
-            dockerRunResponse.setDockerContainerLogs(DockerContainerLogs.builder().stdout("").build());
+            dockerRunResponse.setDockerContainerLogs(
+                    DockerContainerLogs.builder().stdout("").build());
         }
 
-        computeStage.setPostComputeDockerRunResponse(dockerRunResponse);
+        computeResponsesHolder.setPostComputeDockerRunResponse(dockerRunResponse);
+        return computeResponsesHolder;
     }
 
 
