@@ -48,6 +48,11 @@ public class PostComputeStepServiceTests {
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
     private final static String SCONE_CAS_URL = "SCONE_CAS_URL";
+    private final static String WORKER_NAME = "WORKER_NAME";
+    private final static String TEE_POST_COMPUTE_IMAGE =
+            "TEE_POST_COMPUTE_IMAGE";
+    private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
+    private final static long MAX_EXECUTION_TIME = 1000;
 
     @Rule
     public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
@@ -58,7 +63,7 @@ public class PostComputeStepServiceTests {
     private String output;
     private String iexecOut;
     private String computedJson;
-    
+
     @InjectMocks
     private PostComputeStepService postComputeStepService;
     @Mock
@@ -164,37 +169,40 @@ public class PostComputeStepServiceTests {
 
     @Test
     public void shouldRunTeePostCompute() {
-        String workerName = "workerName";
-        String teePostComputeImage = "teePostComputeImage";
-        String secureSessionId = "secureSessionId";
-        long maxExecutionTime = 1000;
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(teePostComputeImage)
-                .maxExecutionTime(maxExecutionTime)
+                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
                 .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
+        when(sconeTeeService.buildSconeDockerEnv(SECURE_SESSION_ID + "/post" +
+                "-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
-        when(workerConfigService.getWorkerName()).thenReturn(workerName);
-        DockerRunResponse expectedDockerRunResponse = DockerRunResponse.builder().isSuccessful(true).build();
+        when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        DockerRunResponse expectedDockerRunResponse =
+                DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse = postComputeStepService.runTeePostCompute(taskDescription, secureSessionId);
+        DockerRunResponse dockerRunResponse =
+                postComputeStepService.runTeePostCompute(taskDescription,
+                        SECURE_SESSION_ID);
 
         Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());
-        ArgumentCaptor<DockerRunRequest> argumentCaptor = ArgumentCaptor.forClass(DockerRunRequest.class);
+        ArgumentCaptor<DockerRunRequest> argumentCaptor =
+                ArgumentCaptor.forClass(DockerRunRequest.class);
         verify(dockerService).run(argumentCaptor.capture());
-        DockerRunRequest dockerRunRequest = argumentCaptor.getAllValues().get(0);
+        DockerRunRequest dockerRunRequest =
+                argumentCaptor.getAllValues().get(0);
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
-                        .containerName(workerName + "-" + CHAIN_TASK_ID + "-tee-post-compute")
-                        .imageUri(teePostComputeImage)
-                        .maxExecutionTime(maxExecutionTime)
+                        .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID +
+                                "-tee-post-compute")
+                        .imageUri(TEE_POST_COMPUTE_IMAGE)
+                        .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
                         .binds(Arrays.asList(iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT,
                                 output + ":" + FileHelper.SLASH_OUTPUT))
@@ -206,26 +214,26 @@ public class PostComputeStepServiceTests {
 
     @Test
     public void shouldRunTeePostComputeWithFailDockerResponse() {
-        String workerName = "workerName";
-        String teePostComputeImage = "teePostComputeImage";
-        String secureSessionId = "secureSessionId";
-        long maxExecutionTime = 1000;
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(teePostComputeImage)
-                .maxExecutionTime(maxExecutionTime)
+                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
                 .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
+        when(sconeTeeService.buildSconeDockerEnv(SECURE_SESSION_ID + "/post" +
+                "-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
-        when(workerConfigService.getWorkerName()).thenReturn(workerName);
-        DockerRunResponse expectedDockerRunResponse = DockerRunResponse.builder().isSuccessful(false).build();
+        when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        DockerRunResponse expectedDockerRunResponse =
+                DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse = postComputeStepService.runTeePostCompute(taskDescription, secureSessionId);
+        DockerRunResponse dockerRunResponse =
+                postComputeStepService.runTeePostCompute(taskDescription,
+                        SECURE_SESSION_ID);
 
         Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());

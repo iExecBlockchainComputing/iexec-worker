@@ -39,13 +39,15 @@ public class PreComputeStepServiceTests {
     private final String chainTaskId = "chainTaskId";
     private final String datasetUri = "datasetUri";
     private final String datasetSecretFilePath = "datasetSecretFilePath";
-    private final String beneficiarySecretFilePath = "beneficiarySecretFilePath";
+    private final String beneficiarySecretFilePath =
+            "beneficiarySecretFilePath";
     private final String enclaveSecretFilePath = "enclaveSecretFilePath";
     private final TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(chainTaskId)
             .datasetUri(datasetUri)
             .build();
-    private final WorkerpoolAuthorization workerpoolAuthorization = WorkerpoolAuthorization.builder().build();
+    private final WorkerpoolAuthorization workerpoolAuthorization =
+            WorkerpoolAuthorization.builder().build();
 
     @InjectMocks
     private PreComputeStepService preComputeStepService;
@@ -81,7 +83,8 @@ public class PreComputeStepServiceTests {
     public void shouldRunStandardPreComputeWithDatasetDecryption() {
         when(smsService.fetchTaskSecrets(workerpoolAuthorization)).thenReturn(Optional.empty());
         when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(true);
-        when(dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri())).thenReturn(true);
+        when(dataService.decryptDataset(chainTaskId,
+                taskDescription.getDatasetUri())).thenReturn(true);
 
         Assertions.assertThat(preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuthorization)).isTrue();
         verify(dataService, times(1)).decryptDataset(chainTaskId, datasetUri);
@@ -91,7 +94,8 @@ public class PreComputeStepServiceTests {
     public void shouldNotRunStandardPreComputeWithDatasetDecryptionSinceCantDecrypt() {
         when(smsService.fetchTaskSecrets(workerpoolAuthorization)).thenReturn(Optional.empty());
         when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(true);
-        when(dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri())).thenReturn(false);
+        when(dataService.decryptDataset(chainTaskId,
+                taskDescription.getDatasetUri())).thenReturn(false);
 
         Assertions.assertThat(preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuthorization)).isFalse();
         verify(dataService, times(1)).decryptDataset(chainTaskId, datasetUri);
@@ -110,7 +114,8 @@ public class PreComputeStepServiceTests {
 
         Assertions.assertThat(preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuthorization))
                 .isTrue();
-        verify(smsService, times(1)).saveSecrets(chainTaskId, taskSecrets, datasetSecretFilePath,
+        verify(smsService, times(1)).saveSecrets(chainTaskId, taskSecrets,
+                datasetSecretFilePath,
                 beneficiarySecretFilePath, enclaveSecretFilePath);
         verify(dataService, times(0)).decryptDataset(chainTaskId, datasetUri);
     }
@@ -123,11 +128,13 @@ public class PreComputeStepServiceTests {
         when(workerConfigService.getBeneficiarySecretFilePath(chainTaskId)).thenReturn(beneficiarySecretFilePath);
         when(workerConfigService.getEnclaveSecretFilePath(chainTaskId)).thenReturn(enclaveSecretFilePath);
         when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(true);
-        when(dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri())).thenReturn(true);
+        when(dataService.decryptDataset(chainTaskId,
+                taskDescription.getDatasetUri())).thenReturn(true);
 
         Assertions.assertThat(preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuthorization))
                 .isTrue();
-        verify(smsService, times(1)).saveSecrets(chainTaskId, taskSecrets, datasetSecretFilePath,
+        verify(smsService, times(1)).saveSecrets(chainTaskId, taskSecrets,
+                datasetSecretFilePath,
                 beneficiarySecretFilePath, enclaveSecretFilePath);
         verify(dataService, times(1)).decryptDataset(chainTaskId, datasetUri);
     }
@@ -140,11 +147,13 @@ public class PreComputeStepServiceTests {
         when(workerConfigService.getBeneficiarySecretFilePath(chainTaskId)).thenReturn(beneficiarySecretFilePath);
         when(workerConfigService.getEnclaveSecretFilePath(chainTaskId)).thenReturn(enclaveSecretFilePath);
         when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(true);
-        when(dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri())).thenReturn(false);
+        when(dataService.decryptDataset(chainTaskId,
+                taskDescription.getDatasetUri())).thenReturn(false);
 
         Assertions.assertThat(preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuthorization))
                 .isFalse();
-        verify(smsService, times(1)).saveSecrets(chainTaskId, taskSecrets, datasetSecretFilePath,
+        verify(smsService, times(1)).saveSecrets(chainTaskId, taskSecrets,
+                datasetSecretFilePath,
                 beneficiarySecretFilePath, enclaveSecretFilePath);
         verify(dataService, times(1)).decryptDataset(chainTaskId, datasetUri);
     }

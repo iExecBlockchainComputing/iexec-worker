@@ -53,13 +53,15 @@ public class ComputeStepService {
         this.sconeTeeService = sconeTeeService;
     }
 
-    public DockerRunResponse runCompute(ComputeStage computeStage, TaskDescription taskDescription, String chainTaskId) {
+    public DockerRunResponse runCompute(TaskDescription taskDescription, String secureSessionId) {
+        String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = EnvUtils.getContainerEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
-            env.addAll(sconeTeeService.buildSconeDockerEnv(
-                    computeStage.getSecureSessionId() + "/app",
+            List<String> strings = sconeTeeService.buildSconeDockerEnv(
+                    secureSessionId + "/app",
                     publicConfigService.getSconeCasURL(),
-                    "1G"));
+                    "1G");
+            env.addAll(strings);
         }
 
         List<String> binds = Arrays.asList(
