@@ -202,15 +202,17 @@ public class ComputeManagerServiceTests {
     // compute
 
     @Test
-    public void shouldRunStandardCompute() {
+    public void shouldRunStandardCompute() throws IOException {
         taskDescription.setTeeTask(false);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder()
-                .isSuccessful(true)
-                .dockerLogs(dockerLogs)
-                .build();
+                        .isSuccessful(true)
+                        .dockerLogs(dockerLogs)
+                        .build();
         when(appComputeService.runCompute(taskDescription,
                 "")).thenReturn(expectedDockerRunResponse);
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(jUnitTemporaryFolder.newFolder().getAbsolutePath());
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription, "");
@@ -349,7 +351,8 @@ public class ComputeManagerServiceTests {
                         .isSuccessful(false)
                         .dockerLogs(dockerLogs)
                         .build();
-        when(postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID))
+        when(postComputeService.runTeePostCompute(taskDescription,
+                SECURE_SESSION_ID))
                 .thenReturn(expectedDockerRunResponse);
 
         PostComputeResponse postComputeResponse =
