@@ -14,43 +14,29 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.docker;
+package com.iexec.worker.compute.post;
 
 import com.iexec.worker.compute.ComputeResponse;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @Builder
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class DockerRunResponse implements ComputeResponse {
+public class PostComputeResponse implements ComputeResponse {
 
     private boolean isSuccessful;
-    private DockerLogs dockerLogs;
+    private String stdout;
+    private String stderr;
 
-    @Override
+    private boolean isTeeTask;
+    private String secureSessionId;
+
     public boolean isSuccessful() {
+        if (isTeeTask){
+            return !secureSessionId.isEmpty();
+        }
         return isSuccessful;
     }
-
-    @Override
-    public String getStdout() {
-        if (dockerLogs != null && dockerLogs.getStdout() != null) {
-            return dockerLogs.getStdout();
-        }
-        return "";
-    }
-
-    @Override
-    public String getStderr() {
-        if (dockerLogs != null && dockerLogs.getStderr() != null) {
-            return dockerLogs.getStderr();
-        }
-        return "";
-    }
-
-
 }

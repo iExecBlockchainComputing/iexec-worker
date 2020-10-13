@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRunRequest;
@@ -41,7 +42,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-public class ComputeStepServiceTests {
+public class AppComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
@@ -67,7 +68,7 @@ public class ComputeStepServiceTests {
             .build();
 
     @InjectMocks
-    private ComputeStepService computeStepService;
+    private AppComputeService appComputeService;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
@@ -94,11 +95,11 @@ public class ComputeStepServiceTests {
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse =
-                computeStepService.runCompute(taskDescription,
+        ComputeResponse computeResponse =
+                appComputeService.runCompute(taskDescription,
                         SECURE_SESSION_ID);
 
-        Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
+        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
@@ -138,11 +139,11 @@ public class ComputeStepServiceTests {
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse =
-                computeStepService.runCompute(taskDescription,
+        ComputeResponse computeResponse =
+                appComputeService.runCompute(taskDescription,
                         SECURE_SESSION_ID);
 
-        Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
+        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
@@ -176,11 +177,11 @@ public class ComputeStepServiceTests {
                 DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse =
-                computeStepService.runCompute(taskDescription,
+        ComputeResponse computeResponse =
+                appComputeService.runCompute(taskDescription,
                         SECURE_SESSION_ID);
 
-        Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
+        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());
     }
 

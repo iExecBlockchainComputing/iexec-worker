@@ -259,7 +259,7 @@ public class DockerClientServiceTests {
         String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
 
-        Optional<DockerContainerLogs> containerLogs =
+        Optional<DockerLogs> containerLogs =
                 dockerClientService.getContainerLogs(containerId);
         assertThat(containerLogs).isPresent();
         assertThat(containerLogs.get().getStdout()).isEqualTo("Hello from " +
@@ -278,7 +278,7 @@ public class DockerClientServiceTests {
         String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
 
-        Optional<DockerContainerLogs> containerLogs =
+        Optional<DockerLogs> containerLogs =
                 dockerClientService.getContainerLogs(containerId);
         assertThat(containerLogs).isPresent();
         assertThat(containerLogs.get().getStdout()).isEmpty();

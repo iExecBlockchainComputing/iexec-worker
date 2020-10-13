@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,14 +34,14 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class ComputeStepService {
+public class AppComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final PublicConfigurationService publicConfigService;
     private final SconeTeeService sconeTeeService;
 
-    public ComputeStepService(
+    public AppComputeService(
             WorkerConfigurationService workerConfigService,
             PublicConfigurationService publicConfigService,
             DockerService dockerService,
@@ -53,7 +53,8 @@ public class ComputeStepService {
         this.sconeTeeService = sconeTeeService;
     }
 
-    public DockerRunResponse runCompute(TaskDescription taskDescription, String secureSessionId) {
+    public ComputeResponse runCompute(TaskDescription taskDescription,
+                                      String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = EnvUtils.getContainerEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {

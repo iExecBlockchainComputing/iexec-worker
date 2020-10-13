@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.sms.secret.TaskSecrets;
@@ -31,14 +31,14 @@ import java.util.Optional;
 
 @Slf4j
 @Service
-public class PreComputeStepService {
+public class PreComputeService {
 
     private final SmsService smsService;
     private final DataService dataService;
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
 
-    public PreComputeStepService(
+    public PreComputeService(
             SmsService smsService,
             WorkerConfigurationService workerConfigService,
             DataService dataService,

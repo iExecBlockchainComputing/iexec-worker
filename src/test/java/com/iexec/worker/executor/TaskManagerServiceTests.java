@@ -28,11 +28,11 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.compute.ComputeManagerService;
-import com.iexec.worker.compute.ComputeResponsesHolder;
+import com.iexec.worker.compute.app.AppComputeResponse;
+import com.iexec.worker.compute.post.PostComputeResponse;
+import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.docker.DockerContainerLogs;
-import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import org.assertj.core.api.Assertions;
@@ -141,24 +141,10 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldCompute() {
-        DockerRunResponse aSuccessfulDockerResponse =
-                DockerRunResponse.builder()
-                        .isSuccessful(true)
-                        .dockerContainerLogs(
-                                DockerContainerLogs.builder()
-                                        .stdout("stdout")
-                                        .build())
-                        .build();
         TaskDescription taskDescription = TaskDescription.builder().build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
-        ComputeResponsesHolder computeResponsesHolder =
-                ComputeResponsesHolder.builder()
-                        .chainTaskId(CHAIN_TASK_ID)
-                        .preComputeDockerRunResponse(aSuccessfulDockerResponse)
-                        .computeDockerRunResponse(aSuccessfulDockerResponse)
-                        .postComputeDockerRunResponse(aSuccessfulDockerResponse)
-                        .build();
+
         ComputedFile computedFile1 = ComputedFile.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
@@ -169,12 +155,12 @@ public class TaskManagerServiceTests {
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
-        when(computeManagerService.runPreCompute(any(), any(), any()))
-                .thenReturn(computeResponsesHolder);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(computeResponsesHolder);
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(computeResponsesHolder);
+                .thenReturn(PostComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
         when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
 
@@ -185,7 +171,7 @@ public class TaskManagerServiceTests {
         //compute + post-compute stdout
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .successWithStdout("stdout\nstdout"));
+                        .successWithStdout("stdout\nstdout\nstdout"));
     }
 
     @Test

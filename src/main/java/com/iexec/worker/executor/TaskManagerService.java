@@ -28,7 +28,9 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
 import com.iexec.worker.compute.ComputeManagerService;
-import com.iexec.worker.compute.ComputeResponsesHolder;
+import com.iexec.worker.compute.app.AppComputeResponse;
+import com.iexec.worker.compute.post.PostComputeResponse;
+import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
@@ -240,36 +242,37 @@ public class TaskManagerService {
         WorkerpoolAuthorization workerpoolAuthorization =
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        ComputeResponsesHolder computeResponsesHolder =
-                ComputeResponsesHolder.builder().chainTaskId(chainTaskId).build();
-
-        computeResponsesHolder = computeManagerService.runPreCompute(computeResponsesHolder,
-                taskDescription,
-                workerpoolAuthorization);
-        if (!computeResponsesHolder.isPreComputed()) {
+        PreComputeResponse preResponse =
+                computeManagerService.runPreCompute(taskDescription,
+                        workerpoolAuthorization);
+        if (!preResponse.isSuccessful()) {
             log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
         }
-        computeResponsesHolder = computeManagerService.runCompute(computeResponsesHolder,
-                taskDescription);
-        if (!computeResponsesHolder.isComputed()) {
+
+        AppComputeResponse appResponse =
+                computeManagerService.runCompute(taskDescription,
+                        preResponse.getSecureSessionId());
+        if (!appResponse.isSuccessful()) {
             log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(computeResponsesHolder.getStdout());
+            return ReplicateActionResponse.failureWithStdout(appResponse.getStdout());
         }
 
-        computeResponsesHolder = computeManagerService.runPostCompute(computeResponsesHolder,
-                taskDescription);
-        if (!computeResponsesHolder.isPostComputed()) {
+        PostComputeResponse postResponse =
+                computeManagerService.runPostCompute(taskDescription,
+                        preResponse.getSecureSessionId());
+        if (!postResponse.isSuccessful()) {
             log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED,
-                    computeResponsesHolder.getStdout());
+                    postResponse.getStdout());
         }
 
         ComputedFile computedFile =
                 computeManagerService.getComputedFile(chainTaskId);
         resultService.saveResultInfo(chainTaskId, taskDescription,
                 computedFile);
-        return ReplicateActionResponse.successWithStdout(computeResponsesHolder.getStdout());
+        return ReplicateActionResponse.successWithStdout(preResponse.getStdout() +
+                "\n" + appResponse.getStdout() + "\n" + postResponse.getStdout());
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {

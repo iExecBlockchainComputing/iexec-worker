@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.compute.post;
 
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -36,7 +36,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class PostComputeStepService {
+public class PostComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final PublicConfigurationService publicConfigService;
@@ -44,7 +44,7 @@ public class PostComputeStepService {
     private final ResultService resultService;
     private final SconeTeeService sconeTeeService;
 
-    public PostComputeStepService(
+    public PostComputeService(
             WorkerConfigurationService workerConfigService,
             PublicConfigurationService publicConfigService,
             DockerService dockerService,
@@ -80,7 +80,7 @@ public class PostComputeStepService {
         return true;
     }
 
-    public DockerRunResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
+    public ComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");

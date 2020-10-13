@@ -104,7 +104,7 @@ public class SgxService {
             return false;
         }
 
-        String stdout = dockerRunResponse.getDockerContainerLogs() != null ? dockerRunResponse.getDockerContainerLogs().getStdout() : "";
+        String stdout = dockerRunResponse.getDockerLogs() != null ? dockerRunResponse.getDockerLogs().getStdout() : "";
         return stdout.equals("true");
     }
 }

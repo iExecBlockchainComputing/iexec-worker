@@ -24,9 +24,13 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.compute.app.AppComputeResponse;
+import com.iexec.worker.compute.app.AppComputeService;
+import com.iexec.worker.compute.post.PostComputeResponse;
+import com.iexec.worker.compute.post.PostComputeService;
+import com.iexec.worker.compute.pre.PreComputeResponse;
+import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerContainerLogs;
-import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,24 +45,24 @@ public class ComputeManagerService {
     private static final String STDOUT_FILENAME = "stdout.txt";
 
     private final DockerService dockerService;
-    private final PreComputeStepService preComputeStepService;
-    private final ComputeStepService computeStepService;
-    private final PostComputeStepService postComputeStepService;
+    private final PreComputeService preComputeService;
+    private final AppComputeService appComputeService;
+    private final PostComputeService postComputeService;
     private final WorkerConfigurationService workerConfigService;
     private final IexecHubService iexecHubService;
 
     public ComputeManagerService(
             DockerService dockerService,
-            PreComputeStepService preComputeStepService,
-            ComputeStepService computeStepService,
-            PostComputeStepService postComputeStepService,
+            PreComputeService preComputeService,
+            AppComputeService appComputeService,
+            PostComputeService postComputeService,
             WorkerConfigurationService workerConfigService,
             IexecHubService iexecHubService
     ) {
         this.dockerService = dockerService;
-        this.preComputeStepService = preComputeStepService;
-        this.computeStepService = computeStepService;
-        this.postComputeStepService = postComputeStepService;
+        this.preComputeService = preComputeService;
+        this.appComputeService = appComputeService;
+        this.postComputeService = postComputeService;
         this.workerConfigService = workerConfigService;
         this.iexecHubService = iexecHubService;
     }
@@ -83,53 +87,54 @@ public class ComputeManagerService {
      * non TEE: download secrets && decrypt dataset (TODO: rewritte or remove)
      *     TEE: download post-compute image && create secure session
      */
-    public ComputeResponsesHolder runPreCompute(ComputeResponsesHolder computeResponsesHolder,
-                                                TaskDescription taskDescription,
-                                                WorkerpoolAuthorization workerpoolAuth) {
+    public PreComputeResponse runPreCompute(TaskDescription taskDescription,
+                                            WorkerpoolAuthorization workerpoolAuth) {
         log.info("Running pre-compute [chainTaskId:{}, isTee:{}]",
                 taskDescription.getChainTaskId(),
                 taskDescription.isTeeTask());
-        boolean isSuccessful = false;
 
         if (taskDescription.isTeeTask()) {
             String secureSessionId =
-                    preComputeStepService.runTeePreCompute(taskDescription,
+                    preComputeService.runTeePreCompute(taskDescription,
                             workerpoolAuth);
-            if (!secureSessionId.isEmpty()) {
-                computeResponsesHolder.setSecureSessionId(secureSessionId);
-                isSuccessful = true;
-            }
-        } else {
-            isSuccessful =
-                    preComputeStepService.runStandardPreCompute(taskDescription, workerpoolAuth);
+            return PreComputeResponse.builder()
+                    .isTeeTask(true)
+                    .secureSessionId(secureSessionId)
+                    .build();
         }
-        computeResponsesHolder.setPreComputeDockerRunResponse(
-                DockerRunResponse.builder().isSuccessful(isSuccessful).build());
-        return computeResponsesHolder;
+
+        return PreComputeResponse.builder()
+                .isSuccessful(
+                        preComputeService.runStandardPreCompute(taskDescription,
+                                workerpoolAuth))
+                .build();
     }
 
-    public ComputeResponsesHolder runCompute(ComputeResponsesHolder computeResponsesHolder,
-                                             TaskDescription taskDescription) {
-        String chainTaskId = computeResponsesHolder.getChainTaskId();
+    public AppComputeResponse runCompute(TaskDescription taskDescription,
+                                         String secureSessionId) {
+        String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId,
                 taskDescription.isTeeTask());
 
-        DockerRunResponse dockerRunResponse =
-                computeStepService.runCompute(taskDescription,
-                        computeResponsesHolder.getSecureSessionId());
+        ComputeResponse computeResponse =
+                appComputeService.runCompute(taskDescription, secureSessionId);
 
-        if (dockerRunResponse.isSuccessful() && dockerRunResponse.getDockerContainerLogs() != null) {
+        if (computeResponse.isSuccessful() && !computeResponse.getStdout().isEmpty()) {
             // save /output/stdout.txt file
             String stdoutFilePath =
                     workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
             File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath
-                    , dockerRunResponse.getDockerContainerLogs().getStdout());
+                    , computeResponse.getStdout());
             log.info("Saved stdout file [path:{}]",
                     stdoutFile.getAbsolutePath());
             //TODO Make sure stdout is properly written
         }
-        computeResponsesHolder.setComputeDockerRunResponse(dockerRunResponse);
-        return computeResponsesHolder;
+
+        return AppComputeResponse.builder()
+                .isSuccessful(computeResponse.isSuccessful())
+                .stdout(computeResponse.getStdout())
+                .stderr(computeResponse.getStderr())
+                .build();
     }
 
     /*
@@ -140,34 +145,27 @@ public class ComputeManagerService {
      *
      * - Save stdout file
      */
-    public ComputeResponsesHolder runPostCompute(ComputeResponsesHolder computeResponsesHolder,
-                                                 TaskDescription taskDescription) {
+    public PostComputeResponse runPostCompute(TaskDescription taskDescription,
+                                              String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
-        DockerRunResponse dockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(false).build();
 
         if (taskDescription.isTeeTask()) {
-            dockerRunResponse =
-                    postComputeStepService.runTeePostCompute(taskDescription,
-                            computeResponsesHolder.getSecureSessionId());
-        } else {
-            // TODO Use container
-            if (postComputeStepService.runStandardPostCompute(taskDescription)) {
-                dockerRunResponse =
-                        DockerRunResponse.builder().isSuccessful(true).build();
-            }
+            ComputeResponse computeResponse =
+                    postComputeService.runTeePostCompute(taskDescription,
+                            secureSessionId);
+            return PostComputeResponse.builder()
+                    .isSuccessful(computeResponse.isSuccessful())
+                    .stdout(computeResponse.getStdout())
+                    .stderr(computeResponse.getStderr())
+                    .build();
         }
 
-        if (dockerRunResponse != null &&
-                dockerRunResponse.getDockerContainerLogs() == null) {
-            dockerRunResponse.setDockerContainerLogs(
-                    DockerContainerLogs.builder().stdout("").build());
-        }
-
-        computeResponsesHolder.setPostComputeDockerRunResponse(dockerRunResponse);
-        return computeResponsesHolder;
+        // TODO Use container
+        return PostComputeResponse.builder()
+                .isSuccessful(postComputeService.runStandardPostCompute(taskDescription))
+                .build();
     }
 
 

@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.compute.post;
 
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRunRequest;
@@ -43,7 +44,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-public class PostComputeStepServiceTests {
+public class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
@@ -65,7 +66,7 @@ public class PostComputeStepServiceTests {
     private String computedJson;
 
     @InjectMocks
-    private PostComputeStepService postComputeStepService;
+    private PostComputeService postComputeService;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
@@ -98,7 +99,7 @@ public class PostComputeStepServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeStepService.runStandardPostCompute(taskDescription)).isTrue();
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isTrue();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
@@ -113,7 +114,7 @@ public class PostComputeStepServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("dummyIexecOut");
 
-        Assertions.assertThat(postComputeStepService.runStandardPostCompute(taskDescription)).isFalse();
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
     }
 
@@ -125,7 +126,7 @@ public class PostComputeStepServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeStepService.runStandardPostCompute(taskDescription)).isFalse();
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON).exists()).isFalse();
@@ -141,7 +142,7 @@ public class PostComputeStepServiceTests {
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
 
-        Assertions.assertThat(postComputeStepService.runStandardPostCompute(taskDescription)).isTrue();
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isTrue();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
@@ -158,7 +159,7 @@ public class PostComputeStepServiceTests {
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(false);
 
-        Assertions.assertThat(postComputeStepService.runStandardPostCompute(taskDescription)).isFalse();
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
         verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
     }
@@ -186,11 +187,11 @@ public class PostComputeStepServiceTests {
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse =
-                postComputeStepService.runTeePostCompute(taskDescription,
+        ComputeResponse computeResponse =
+                postComputeService.runTeePostCompute(taskDescription,
                         SECURE_SESSION_ID);
 
-        Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
+        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
@@ -231,11 +232,11 @@ public class PostComputeStepServiceTests {
                 DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        DockerRunResponse dockerRunResponse =
-                postComputeStepService.runTeePostCompute(taskDescription,
+        ComputeResponse computeResponse =
+                postComputeService.runTeePostCompute(taskDescription,
                         SECURE_SESSION_ID);
 
-        Assertions.assertThat(dockerRunResponse).isEqualTo(expectedDockerRunResponse);
+        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
         verify(dockerService, times(1)).run(any());
     }
 

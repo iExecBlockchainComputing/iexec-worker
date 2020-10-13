@@ -70,7 +70,7 @@ public class DockerService {
         }
 
         dockerClientService.getContainerLogs(containerId).ifPresent(containerLogs -> {
-            dockerRunResponse.setDockerContainerLogs(containerLogs);
+            dockerRunResponse.setDockerLogs(containerLogs);
             if (shouldPrintDeveloperLogs(dockerRunRequest)) {
                 log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                         getDockerExecutionDeveloperLogs(chainTaskId, containerLogs.getStdout()));

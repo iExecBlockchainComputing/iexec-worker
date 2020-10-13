@@ -56,7 +56,7 @@ public class DockerServiceTests {
         when(dockerClientService.startContainer(containerId)).thenReturn(true);
         when(dockerClientService.stopContainer(containerId)).thenReturn(true);
         when(dockerClientService.getContainerLogs(containerId)).thenReturn(Optional.of(
-                DockerContainerLogs.builder().stdout("stdout").stderr("stderr").build()));
+                DockerLogs.builder().stdout("stdout").stderr("stderr").build()));
         when(dockerClientService.removeContainer(containerId)).thenReturn(true);
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
@@ -64,8 +64,8 @@ public class DockerServiceTests {
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isTrue();
         Assertions.assertThat(dockerRunResponse.getStdout()).isEqualTo("stdout");
-        Assertions.assertThat(dockerRunResponse.getDockerContainerLogs().getStdout()).isEqualTo("stdout");
-        Assertions.assertThat(dockerRunResponse.getDockerContainerLogs().getStderr()).isEqualTo("stderr");
+        Assertions.assertThat(dockerRunResponse.getDockerLogs().getStdout()).isEqualTo("stdout");
+        Assertions.assertThat(dockerRunResponse.getDockerLogs().getStderr()).isEqualTo("stderr");
 
         verify(dockerClientService, times(1))
                 .waitContainerUntilExitOrTimeout(anyString(), any());

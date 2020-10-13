@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DockerContainerLogs {
+public class DockerLogs {
 
     private String stdout;
     private String stderr;
