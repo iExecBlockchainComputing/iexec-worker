@@ -303,8 +303,8 @@ class DockerClientService {
             return Optional.empty();
         }
         return Optional.of(DockerLogs.builder()
-                .stdout(stdout.toString().replace("\n", ""))
-                .stderr(stderr.toString().replace("\n", ""))
+                .stdout(stdout.toString())
+                .stderr(stderr.toString())
                 .build());
     }
 
