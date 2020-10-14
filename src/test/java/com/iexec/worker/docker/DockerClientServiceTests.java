@@ -32,17 +32,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DockerClientServiceTests {
 
-    private static final String TEST_WORKER = "./src/test/resources/tmp/test" +
-            "-worker";
     private static final String CHAIN_TASK_ID = "docker";
     private static final String ALPINE_LATEST = "alpine:latest";
     private static final String ALPINE_BLABLA = "alpine:blabla";
     private static final String BLABLA_LATEST = "blabla:latest";
     private static final String CMD = "cmd";
     private static final List<String> ENV = Arrays.asList("FOO=bar");
-    private static final String SGX_DEVICE_PATH = "/dev/isgx";
-    private static final String SGX_DEVICE_PERMISSIONS = "rwm";
-    private static String DOCKER_TMP_FOLDER = "";
 
     @InjectMocks
     private DockerClientService dockerClientService;
@@ -50,21 +45,11 @@ public class DockerClientServiceTests {
 
     @BeforeClass
     public static void beforeClass() {
-        DOCKER_TMP_FOLDER =
-                new File(TEST_WORKER + "/" + CHAIN_TASK_ID).getAbsolutePath();
     }
 
     @Before
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
-    }
-
-    private String getDockerInput() {
-        return DOCKER_TMP_FOLDER + FileHelper.SLASH_INPUT;
-    }
-
-    private String getDockerOutput() {
-        return DOCKER_TMP_FOLDER + FileHelper.SLASH_OUTPUT;
     }
 
     public DockerRunRequest getDefaultDockerRunRequest(boolean isSgx) {
@@ -331,126 +316,6 @@ public class DockerClientServiceTests {
                 new Date(new Date().getTime() + 15000));
         dockerClientService.removeContainer(containerId);
     }
-
-    /*
-
-    @Test
-    public void shouldStopComputingIfTooLong() {
-        String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
-        DockerRunRequest config = getDefaultDockerRunRequest(false);
-        config.setCmd(cmd);
-        config.setMaxExecutionTime(5 * SECOND);
-        Optional<String> oStdout = dockerClientService.run(config);
-        assertThat(oStdout.get()).isEmpty();
-    }
-
-    // createContainer()
-
-    @Test
-    public void shouldNotCreateContainerWithNullConfig() {
-        String containerId = dockerClientService.createContainer
-        (CHAIN_TASK_ID, null);
-        assertThat(containerId).isEmpty();
-    }
-
-    // startContainer()
-
-    @Test
-    public void shouldNotStartContainerWithEmptyId() {
-        boolean isStarted = dockerClientService.startContainer("");
-        assertThat(isStarted).isFalse();
-    }
-
-    @Test
-    public void shouldNotStartContainerWithBadId() {
-        boolean isStarted = dockerClientService.startContainer("blabla");
-        assertThat(isStarted).isFalse();
-    }
-
-    // stopContainer()
-
-    @Test
-    public void shouldNotStopContainerWithEmptyId() {
-        boolean isStopped = dockerClientService.stopContainer("");
-        assertThat(isStopped).isFalse();
-    }
-
-    @Test
-    public void shouldNotStopContainerWithBadId() {
-        boolean isStopped = dockerClientService.stopContainer("blabla");
-        assertThat(isStopped).isFalse();
-    }
-
-    @Test
-    public void shouldStopAlreadyStoppedContainer() {
-        ContainerConfig containerConfig = ContainerConfig.builder()
-                .image(ALPINE_LATEST)
-                .build();
-        String containerId = dockerClientService.createContainer
-        (CHAIN_TASK_ID, containerConfig);
-
-        assertThat(containerId).isNotEmpty();
-        boolean isStopped = dockerClientService.stopContainer(containerId);
-        assertThat(isStopped).isTrue();
-        dockerClientService.removeContainer(containerId);
-    }
-
-    // getContainerLogs()
-
-    @Test
-    public void shouldNotGetLogsOfContainerWithEmptyId() {
-        Optional<String> dockerLogs = dockerClientService.getContainerLogs("");
-        assertThat(dockerLogs).isEmpty();;
-    }
-
-    @Test
-    public void shouldNotGetLogsOfContainerWithBadId() {
-        Optional<String> dockerLogs = dockerClientService.getContainerLogs
-        (CHAIN_TASK_ID);
-        assertThat(dockerLogs).isEmpty();
-    }
-
-    // removeContainer()
-
-    @Test
-    public void shouldNotRemoveRunningContainer() {
-        String cmd = "sh -c 'sleep 10 && echo Hello from Docker alpine!'";
-        DockerRunRequest config = getDefaultDockerRunRequest(false);
-        config.setCmd(cmd);
-
-        ContainerConfig containerConfig = 
-                dockerClientService.buildContainerConfig(config).get();
-
-        String containerId = dockerClientService.createContainer
-        (CHAIN_TASK_ID, containerConfig);
-
-        assertThat(containerId).isNotEmpty();
-
-        boolean isStarted = dockerClientService.startContainer(containerId);
-        assertThat(isStarted).isTrue();
-
-        boolean isRemoved = dockerClientService.removeContainer(containerId);
-        assertThat(isRemoved).isFalse();
-
-        dockerClientService.stopContainer(containerId);
-        boolean isRemovedAfterStopped = dockerClientService.removeContainer
-        (containerId);
-        assertThat(isRemovedAfterStopped).isTrue();
-    }
-
-    @Test
-    public void shouldNotRemoveContainerWithEmptyId() {
-        boolean isRemoved = dockerClientService.removeContainer("");
-        assertThat(isRemoved).isFalse();
-    }
-
-    @Test
-    public void shouldNotRemoveContainerWithBadId() {
-        boolean isRemoved = dockerClientService.removeContainer("blabla");
-        assertThat(isRemoved).isFalse();
-    }
-
-     */
 
     private String getRandomName() {
         return RandomStringUtils.randomAlphanumeric(10);

@@ -40,8 +40,7 @@ class DockerClientService {
     public DockerClientService() {
         String networkId = createNetwork(WORKER_DOCKER_NETWORK);
         if (!networkId.isEmpty()) {
-            log.info("Created network [networkName:{}, networkId:{}]",
-                    WORKER_DOCKER_NETWORK, networkId);
+            logInfo("Network created", WORKER_DOCKER_NETWORK, networkId);
         }
     }
 
@@ -52,42 +51,42 @@ class DockerClientService {
             return "";
         }
         try {
-            return DockerClient.getClient().createNetworkCmd()
+            return DockerClient.getClient()
+                    .createNetworkCmd()
                     .withName(networkName)
                     .withDriver("bridge")
                     .exec().getId();
         } catch (Exception e) {
-            log.error("Failed to create network [networkName:{}, exception:{}]",
-                    networkName, e.getMessage());
-            e.printStackTrace();
+            logError("create network", networkName, "", e);
         }
         return "";
     }
 
     String getNetworkId(String networkName) {
         try {
-            for (Network network :
-                    DockerClient.getClient().listNetworksCmd().withNameFilter(networkName).exec()) {
+            List<Network> networks = DockerClient.getClient()
+                    .listNetworksCmd()
+                    .withNameFilter(networkName)
+                    .exec();
+            for (Network network : networks) {
                 if (network.getName().equals(networkName)) {
                     return network.getId();
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to check if network is created [networkName:{}," +
-                    " exception:{}]", networkName, e.getMessage());
-            e.printStackTrace();
+            logError("get network id", networkName, "", e);
         }
         return "";
     }
 
     boolean removeNetwork(String networkId) {
         try {
-            DockerClient.getClient().removeNetworkCmd(networkId).exec();
+            DockerClient.getClient()
+                    .removeNetworkCmd(networkId)
+                    .exec();
             return true;
         } catch (Exception e) {
-            log.error("Failed to create network [networkId:{}, exception:{}]"
-                    , networkId, e.getMessage());
-            e.printStackTrace();
+            logError("remove network", "", networkId, e);
         }
         return false;
     }
@@ -102,26 +101,26 @@ class DockerClientService {
         }
 
         try {
-            DockerClient.getClient().pullImageCmd(repoAndTag.repos)
+            DockerClient.getClient()
+                    .pullImageCmd(repoAndTag.repos)
                     .withTag(repoAndTag.tag)
                     .exec(new PullImageResultCallback() {
                     })
                     .awaitCompletion(1, TimeUnit.MINUTES);
             return true;
         } catch (Exception e) {
-            log.error("Failed to pull image (imageName parsing) " +
-                            "[imageName:{}, exception:{}]",
-                    imageName, e.getMessage());
-            e.printStackTrace();
+            logError("pull image", imageName, "", e);
         }
         return false;
     }
 
     public String getImageId(String imageName) {
         try {
-            List<Image> images =
-                    DockerClient.getClient().listImagesCmd().withDanglingFilter(false)
-                            .withImageNameFilter(imageName).exec();
+            List<Image> images = DockerClient.getClient()
+                    .listImagesCmd()
+                    .withDanglingFilter(false)
+                    .withImageNameFilter(imageName)
+                    .exec();
             for (Image image : images) {
                 if (image == null || image.getRepoTags() == null) {
                     continue;
@@ -132,8 +131,7 @@ class DockerClientService {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to get image id [imageName:{}]", imageName);
-            e.printStackTrace();
+            logError("get image id", imageName, "", e);
         }
         return "";
     }
@@ -153,9 +151,8 @@ class DockerClientService {
         String oldContainerId = getContainerId(containerName);
 
         if (!oldContainerId.isEmpty()) {
-            log.info("Found duplicate container with the same name, will " +
-                            "remove it [containerName:{}, containerId:{}]",
-                    containerName, oldContainerId);
+            logInfo("Container duplicate found", containerName,
+                    oldContainerId);
             stopContainer(oldContainerId);
             removeContainer(oldContainerId);
         }
@@ -197,10 +194,7 @@ class DockerClientService {
         try {
             return createContainerCmd.exec().getId();
         } catch (Exception e) {
-            log.error("Failed to create container [containerName:{}, " +
-                            "exception:{}]",
-                    containerName, e.toString());
-            e.printStackTrace();
+            logError("create container", containerName, "", e);
         }
         return "";
     }
@@ -216,12 +210,9 @@ class DockerClientService {
                     .map(Container::getId)
                     .orElse("");
         } catch (Exception e) {
-            log.error("Failed to get docker container id [containerName:{},  " +
-                            "exception:{}]",
-                    containerName, e.getMessage());
-            e.printStackTrace();
-            return "";
+            logError("get container id", containerName, "", e);
         }
+        return "";
     }
 
     public String getContainerStatus(String containerId) {
@@ -229,28 +220,30 @@ class DockerClientService {
             return "";
         }
         try {
-            return DockerClient.getClient().inspectContainerCmd(containerId).exec().getState().getStatus();
+            return DockerClient.getClient()
+                    .inspectContainerCmd(containerId)
+                    .exec()
+                    .getState()
+                    .getStatus();
         } catch (Exception e) {
-            log.error("Failed to get container status [containerName:{}, " +
-                            "containerId:{}, exception:{}]",
-                    getContainerName(containerId), containerId, e.getMessage());
-            e.printStackTrace();
+            logError("get container status",
+                    getContainerName(containerId), containerId, e);
         }
         return "";
     }
-
 
     public boolean startContainer(String containerId) {
         if (containerId.isEmpty()) {
             return false;
         }
         try {
-            DockerClient.getClient().startContainerCmd(containerId).exec();
+            DockerClient.getClient()
+                    .startContainerCmd(containerId)
+                    .exec();
             return true;
         } catch (Exception e) {
-            log.error("Failed to start container [containerName:{}, " +
-                            "containerId:{}, exception:{}]",
-                    getContainerName(containerId), containerId, e.getMessage());
+            logError("start container",
+                    getContainerName(containerId), containerId, e);
             e.printStackTrace();
         }
         return false;
@@ -294,15 +287,14 @@ class DockerClientService {
 
         try {
             DockerClient.getClient()
-                    .logContainerCmd(containerId).withStdOut(true).withStdErr(true)
+                    .logContainerCmd(containerId)
+                    .withStdOut(true)
+                    .withStdErr(true)
                     .exec(new ExecStartResultCallback(stdout, stderr))
                     .awaitCompletion();
         } catch (Exception e) {
-            log.error("Failed to get docker logs [containerName:{}, " +
-                            "containerId:{}, stderr:{},  exception:{}]",
-                    getContainerName(containerId), containerId,
-                    stderr.toString(), e.getMessage());
-            e.printStackTrace();
+            logError("get docker logs",
+                    getContainerName(containerId), containerId, e);
             return Optional.empty();
         }
         return Optional.of(DockerLogs.builder()
@@ -316,18 +308,19 @@ class DockerClientService {
             return false;
         }
 
-        if (!Arrays.asList("restarting", "running").contains(getContainerStatus(containerId))) {
+        List<String> statusesToStop = Arrays.asList("restarting", "running");
+        if (!statusesToStop.contains(getContainerStatus(containerId))) {
             return true;
         }
 
         try {
-            DockerClient.getClient().stopContainerCmd(containerId).exec();
+            DockerClient.getClient()
+                    .stopContainerCmd(containerId)
+                    .exec();
             return true;
         } catch (Exception e) {
-            log.error("Failed to stop container [containerName:{}, " +
-                            "containerId:{}, exception:{}]",
-                    getContainerName(containerId), containerId, e.getMessage());
-            e.printStackTrace();
+            logError("stop container",
+                    getContainerName(containerId), containerId, e);
         }
         return false;
     }
@@ -337,20 +330,20 @@ class DockerClientService {
             return false;
         }
         try {
-            DockerClient.getClient().removeContainerCmd(containerId).exec();
+            DockerClient.getClient()
+                    .removeContainerCmd(containerId)
+                    .exec();
             return true;
         } catch (Exception e) {
-            log.error("Failed to remove container [containerName:{}, " +
-                            "containerId:{}, exception:{}]",
-                    getContainerName(containerId), containerId, e.getMessage());
-            e.printStackTrace();
+            logError("remove container", "", containerId, e);
         }
         return false;
     }
 
     private String getContainerName(String containerId) {
         try {
-            return DockerClient.getClient().listContainersCmd()
+            return DockerClient.getClient()
+                    .listContainersCmd()
                     .withIdFilter(Collections.singleton(containerId))
                     .exec()
                     .stream()
@@ -359,12 +352,19 @@ class DockerClientService {
                     .map(name -> name[0])
                     .orElse("");
         } catch (Exception e) {
-            log.error("Failed to get docker container name [containerId:{},  " +
-                            "exception:{}]",
-                    containerId, e.getMessage());
-            e.printStackTrace();
-            return "";
+            logError("get container name", "", containerId, e);
         }
+        return "";
+    }
+
+    private void logInfo(String infoMessage, String name, String id) {
+        log.info("{} [name:'{}', id:'{}']", infoMessage, name, id);
+    }
+
+    private void logError(String failureContext, String name, String id,
+                          Exception exception) {
+        log.error("Failed to {} [name:'{}', id:'{}']",
+                failureContext, name, id, exception);
     }
 
 }
