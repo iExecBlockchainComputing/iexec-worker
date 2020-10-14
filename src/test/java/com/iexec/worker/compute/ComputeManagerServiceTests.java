@@ -145,8 +145,7 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunStandardPreCompute() {
         taskDescription.setTeeTask(false);
-        when(preComputeService.runStandardPreCompute(taskDescription,
-                workerpoolAuthorization)).thenReturn(true);
+        when(preComputeService.runStandardPreCompute(taskDescription)).thenReturn(true);
 
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
@@ -154,15 +153,13 @@ public class ComputeManagerServiceTests {
 
         Assertions.assertThat(preComputeResponse.isSuccessful()).isTrue();
         verify(preComputeService, times(1))
-                .runStandardPreCompute(taskDescription,
-                        workerpoolAuthorization);
+                .runStandardPreCompute(taskDescription);
     }
 
     @Test
     public void shouldRunStandardPreComputeWithFailureResponse() {
         taskDescription.setTeeTask(false);
-        when(preComputeService.runStandardPreCompute(taskDescription,
-                workerpoolAuthorization)).thenReturn(false);
+        when(preComputeService.runStandardPreCompute(taskDescription)).thenReturn(false);
 
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,

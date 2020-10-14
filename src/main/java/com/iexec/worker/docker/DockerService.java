@@ -53,6 +53,7 @@ public class DockerService {
         log.info("Created container [containerName:{}, containerId:{}]", dockerRunRequest.getContainerName(), containerId);
 
         if (!dockerClientService.startContainer(containerId)) {
+            dockerClientService.removeContainer(containerId);
             return dockerRunResponse;
         }
         log.info("Started container [containerName:{}, containerId:{}]", dockerRunRequest.getContainerName(), containerId);

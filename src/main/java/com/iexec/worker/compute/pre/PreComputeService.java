@@ -50,19 +50,8 @@ public class PreComputeService {
         this.dockerService = dockerService;
     }
 
-    public boolean runStandardPreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
+    public boolean runStandardPreCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
-        // Why do we need smsService for standard compute??
-        Optional<TaskSecrets> oTaskSecrets = smsService.fetchTaskSecrets(workerpoolAuth);
-        if (oTaskSecrets.isEmpty()) {
-            log.warn("No secrets fetched for this task, will continue [chainTaskId:{}]:", chainTaskId);
-        } else {
-            String datasetSecretFilePath = workerConfigService.getDatasetSecretFilePath(chainTaskId);
-            String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
-            String enclaveSecretFilePath = workerConfigService.getEnclaveSecretFilePath(chainTaskId);
-            smsService.saveSecrets(chainTaskId, oTaskSecrets.get(), datasetSecretFilePath,
-                    beneficiarySecretFilePath, enclaveSecretFilePath);
-        }
         boolean isDatasetDecryptionNeeded = dataService.isDatasetDecryptionNeeded(chainTaskId);
         boolean isDatasetDecrypted = false;
         if (isDatasetDecryptionNeeded) {

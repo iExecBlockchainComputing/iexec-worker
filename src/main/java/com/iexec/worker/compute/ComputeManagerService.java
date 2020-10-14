@@ -105,8 +105,7 @@ public class ComputeManagerService {
 
         return PreComputeResponse.builder()
                 .isSuccessful(
-                        preComputeService.runStandardPreCompute(taskDescription,
-                                workerpoolAuth))
+                        preComputeService.runStandardPreCompute(taskDescription))
                 .build();
     }
 

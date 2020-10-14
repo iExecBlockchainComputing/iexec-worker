@@ -37,7 +37,7 @@ public class DockerServiceTests {
     private DockerClientService dockerClientService;
     @Mock
     private WorkerConfigurationService workerConfigService;
-    
+
     @Before
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
@@ -59,11 +59,13 @@ public class DockerServiceTests {
                 DockerLogs.builder().stdout("stdout").stderr("stderr").build()));
         when(dockerClientService.removeContainer(containerId)).thenReturn(true);
 
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isTrue();
-        Assertions.assertThat(dockerRunResponse.getStdout()).isEqualTo("stdout");
+        Assertions.assertThat(dockerRunResponse.getStdout()).isEqualTo(
+                "stdout");
         Assertions.assertThat(dockerRunResponse.getDockerLogs().getStdout()).isEqualTo("stdout");
         Assertions.assertThat(dockerRunResponse.getDockerLogs().getStderr()).isEqualTo("stderr");
 
@@ -83,7 +85,8 @@ public class DockerServiceTests {
                 .thenReturn(containerId);
         when(dockerClientService.startContainer(containerId)).thenReturn(true);
 
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isTrue();
@@ -100,7 +103,8 @@ public class DockerServiceTests {
         when(dockerClientService.createContainer(dockerRunRequest))
                 .thenReturn("");
 
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
@@ -118,10 +122,13 @@ public class DockerServiceTests {
                 .thenReturn(containerId);
         when(dockerClientService.startContainer(containerId)).thenReturn(false);
 
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+        verify(dockerClientService, times(1))
+                .removeContainer(containerId);
     }
 
     @Test
@@ -137,7 +144,8 @@ public class DockerServiceTests {
         when(dockerClientService.startContainer(containerId)).thenReturn(true);
         when(dockerClientService.stopContainer(containerId)).thenReturn(false);
 
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
@@ -157,7 +165,8 @@ public class DockerServiceTests {
         when(dockerClientService.stopContainer(containerId)).thenReturn(true);
         when(dockerClientService.removeContainer(containerId)).thenReturn(false);
 
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
@@ -224,7 +233,8 @@ public class DockerServiceTests {
 
     @Test
     public void shouldPrintDeveloperLogs() {
-        DockerRunRequest dockerRunRequest = DockerRunRequest.builder().shouldDisplayLogs(true).build();
+        DockerRunRequest dockerRunRequest =
+                DockerRunRequest.builder().shouldDisplayLogs(true).build();
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(true);
 
         Assertions.assertThat(dockerService.shouldPrintDeveloperLogs(dockerRunRequest)).isTrue();
@@ -232,7 +242,8 @@ public class DockerServiceTests {
 
     @Test
     public void shouldNotPrintDeveloperLogsSinceRequestDoNotAllowIt() {
-        DockerRunRequest dockerRunRequest = DockerRunRequest.builder().shouldDisplayLogs(false).build();
+        DockerRunRequest dockerRunRequest =
+                DockerRunRequest.builder().shouldDisplayLogs(false).build();
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(true);
 
         Assertions.assertThat(dockerService.shouldPrintDeveloperLogs(dockerRunRequest)).isFalse();
@@ -240,7 +251,8 @@ public class DockerServiceTests {
 
     @Test
     public void shouldNotPrintDeveloperLogsSinceWorkerDoNotAllowIt() {
-        DockerRunRequest dockerRunRequest = DockerRunRequest.builder().shouldDisplayLogs(true).build();
+        DockerRunRequest dockerRunRequest =
+                DockerRunRequest.builder().shouldDisplayLogs(true).build();
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
 
         Assertions.assertThat(dockerService.shouldPrintDeveloperLogs(dockerRunRequest)).isFalse();

@@ -262,7 +262,7 @@ public class DockerClientServiceTests {
         Optional<DockerLogs> containerLogs =
                 dockerClientService.getContainerLogs(containerId);
         assertThat(containerLogs).isPresent();
-        assertThat(containerLogs.get().getStdout()).isEqualTo("Hello from " +
+        assertThat(containerLogs.get().getStdout()).contains("Hello from " +
                 "Docker alpine!");
         assertThat(containerLogs.get().getStderr()).isEmpty();
 
@@ -282,7 +282,7 @@ public class DockerClientServiceTests {
                 dockerClientService.getContainerLogs(containerId);
         assertThat(containerLogs).isPresent();
         assertThat(containerLogs.get().getStdout()).isEmpty();
-        assertThat(containerLogs.get().getStderr()).isEqualTo("Hello from " +
+        assertThat(containerLogs.get().getStderr()).contains("Hello from " +
                 "Docker alpine!");
 
         // cleaning
