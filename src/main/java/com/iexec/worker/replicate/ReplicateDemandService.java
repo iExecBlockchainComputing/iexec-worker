@@ -40,11 +40,11 @@ import java.util.Optional;
 public class ReplicateDemandService {
 
     private final CustomCoreFeignClient customCoreFeignClient;
-    private TaskManagerService taskManagerService;
-    private IexecHubService iexecHubService;
-    private SubscriptionService subscriptionService;
-    private ContributionService contributionService;
-    private ApplicationEventPublisher applicationEventPublisher;
+    private final TaskManagerService taskManagerService;
+    private final IexecHubService iexecHubService;
+    private final SubscriptionService subscriptionService;
+    private final ContributionService contributionService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Autowired
     public ReplicateDemandService(IexecHubService iexecHubService,

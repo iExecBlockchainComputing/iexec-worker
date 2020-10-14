@@ -57,8 +57,8 @@ class DockerClientService {
                     .withDriver("bridge")
                     .exec().getId();
         } catch (Exception e) {
-            log.error("Failed to create network [networkName:{}, " +
-                    "exception:{}]", networkName, e.getMessage());
+            log.error("Failed to create network [networkName:{}, exception:{}]",
+                    networkName, e.getMessage());
             e.printStackTrace();
         }
         return "";
@@ -121,7 +121,7 @@ class DockerClientService {
         try {
             List<Image> images =
                     DockerClient.getClient().listImagesCmd().withDanglingFilter(false)
-                    .withImageNameFilter(imageName).exec();
+                            .withImageNameFilter(imageName).exec();
             for (Image image : images) {
                 if (image == null || image.getRepoTags() == null) {
                     continue;
@@ -162,8 +162,6 @@ class DockerClientService {
 
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withNetworkMode(WORKER_DOCKER_NETWORK);
-        //.withCpuCount(1L)
-        //.withMemory(1000000000L);
 
         if (dockerRunRequest.getBinds() != null && !dockerRunRequest.getBinds().isEmpty()) {
             hostConfig.withBinds(Binds.fromPrimitive(dockerRunRequest.getBinds().toArray(String[]::new)));
@@ -171,9 +169,6 @@ class DockerClientService {
 
         if (dockerRunRequest.isSgx()) {
             hostConfig
-                    //.withDeviceCgroupRules(Arrays.asList("r", "w", "m"))
-                    // SgxService.SGX_CGROUP_PERMISSIONS) <--- why do we need
-                    // this?
                     .withDevices(Device.parse(SgxService.SGX_DEVICE_PATH +
                             ":" + SgxService.SGX_DEVICE_PATH));
         }
@@ -184,8 +179,8 @@ class DockerClientService {
 
         CreateContainerCmd createContainerCmd =
                 DockerClient.getClient().createContainerCmd(dockerRunRequest.getImageUri())
-                .withName(containerName)
-                .withHostConfig(hostConfig);
+                        .withName(containerName)
+                        .withHostConfig(hostConfig);
 
         if (dockerRunRequest.getCmd() != null && !dockerRunRequest.getCmd().isEmpty()) {
             createContainerCmd.withCmd(ArgsUtils.stringArgsToArrayArgs(dockerRunRequest.getCmd()));

@@ -47,7 +47,7 @@ public class IexecHubService extends IexecHubAbstractService {
 
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
-    private Web3jService web3jService;
+    private final Web3jService web3jService;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,

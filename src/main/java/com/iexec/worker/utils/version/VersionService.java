@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class VersionService {
 
-    private String version = Version.PROJECT_VERSION;
+    private final String version = Version.PROJECT_VERSION;
 
     public String getVersion() {
         return version;

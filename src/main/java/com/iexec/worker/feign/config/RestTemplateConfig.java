@@ -29,7 +29,7 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    private WorkerConfigurationService workerConfService;
+    private final WorkerConfigurationService workerConfService;
 
     public RestTemplateConfig(WorkerConfigurationService workerConfService) {
         this.workerConfService = workerConfService;

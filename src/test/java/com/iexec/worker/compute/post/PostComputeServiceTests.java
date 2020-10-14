@@ -56,7 +56,7 @@ public class PostComputeServiceTests {
     private final static long MAX_EXECUTION_TIME = 1000;
 
     @Rule
-    public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
+    public final TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
     private TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .datasetUri(DATASET_URI)

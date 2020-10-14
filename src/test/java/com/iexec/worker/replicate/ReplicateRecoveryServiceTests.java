@@ -49,7 +49,7 @@ public class ReplicateRecoveryServiceTests {
     private final static String CHAIN_TASK_ID = "0xfoobar";
     @InjectMocks
     ReplicateRecoveryService replicateRecoveryService;
-    long blockNumber = 5;
+    final long blockNumber = 5;
     @Mock
     private CustomCoreFeignClient customCoreFeignClient;
     @Mock

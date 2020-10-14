@@ -38,8 +38,8 @@ public class LoginService extends BaseFeignClient {
     private static final String TOKEN_PREFIX = "Bearer ";
     private String jwtToken;
 
-    private CredentialsService credentialsService;
-    private CoreClient coreClient;
+    private final CredentialsService credentialsService;
+    private final CoreClient coreClient;
 
     LoginService(CredentialsService credentialsService, CoreClient coreClient) {
         this.credentialsService = credentialsService;
