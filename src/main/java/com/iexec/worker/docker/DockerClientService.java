@@ -17,6 +17,7 @@
 package com.iexec.worker.docker;
 
 import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.command.CreateNetworkCmd;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.NameParser;
@@ -50,9 +51,9 @@ class DockerClientService {
         if (!getNetworkId(networkName).isEmpty()) {
             return "";
         }
-        try {
-            return DockerClient.getClient()
-                    .createNetworkCmd()
+
+        try (CreateNetworkCmd networkCmd = DockerClient.getClient().createNetworkCmd()) {
+            return networkCmd
                     .withName(networkName)
                     .withDriver("bridge")
                     .exec().getId();
