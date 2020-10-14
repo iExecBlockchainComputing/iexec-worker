@@ -226,13 +226,13 @@ public class TaskManagerServiceTests {
     @Test
     public void shouldFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isTrue();
+        assertThat(taskManagerService.checkGasBalance()).isTrue();
     }
 
     @Test
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
-        assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isFalse();
+        assertThat(taskManagerService.checkGasBalance()).isFalse();
     }
 
     @Test

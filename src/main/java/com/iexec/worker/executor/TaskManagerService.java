@@ -294,7 +294,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
 
-        boolean hasEnoughGas = checkGasBalance(chainTaskId);
+        boolean hasEnoughGas = checkGasBalance();
         if (!hasEnoughGas) {
             log.error("Cannot contribute, no enough gas [chainTaskId:{}]",
                     chainTaskId);
@@ -368,7 +368,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(CANNOT_REVEAL);
         }
 
-        boolean hasEnoughGas = checkGasBalance(chainTaskId);
+        boolean hasEnoughGas = checkGasBalance();
         if (!hasEnoughGas) {
             log.error("Cannot reveal, no enough gas [chainTaskId:{}]",
                     chainTaskId);
@@ -419,7 +419,7 @@ public class TaskManagerService {
         return resultService.removeResult(chainTaskId);
     }
 
-    boolean checkGasBalance(String chainTaskId) {
+    boolean checkGasBalance() {
         if (iexecHubService.hasEnoughGas()) {
             return true;
         }

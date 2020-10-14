@@ -17,7 +17,6 @@
 package com.iexec.worker.docker;
 
 import java.util.List;
-import java.util.Map;
 
 import com.iexec.common.utils.ArgsUtils;
 
