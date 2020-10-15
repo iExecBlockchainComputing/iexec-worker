@@ -26,6 +26,8 @@ import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
@@ -45,10 +47,12 @@ class DockerClientService {
     // network
 
     String createNetwork(String networkName) {
+        if (StringUtils.isEmpty(networkName)) {
+            return "";
+        }
         if (!getNetworkId(networkName).isEmpty()) {
             return "";
         }
-
         try (CreateNetworkCmd networkCmd = getClient().createNetworkCmd()) {
             return networkCmd
                     .withName(networkName)
@@ -62,11 +66,15 @@ class DockerClientService {
     }
 
     String getNetworkId(String networkName) {
+        if (StringUtils.isEmpty(networkName)) {
+            return "";
+        }
         try (ListNetworksCmd listNetworksCmd = getClient().listNetworksCmd()) {
             return listNetworksCmd
                     .withNameFilter(networkName)
                     .exec()
                     .stream()
+                    .filter(network -> !StringUtils.isEmpty(network.getName()))
                     .filter(network -> network.getName().equals(networkName))
                     .map(Network::getId)
                     .findFirst()
@@ -78,6 +86,9 @@ class DockerClientService {
     }
 
     boolean removeNetwork(String networkId) {
+        if (StringUtils.isEmpty(networkId)) {
+            return false;
+        }
         try (RemoveNetworkCmd removeNetworkCmd =
                      getClient().removeNetworkCmd(networkId)) {
             removeNetworkCmd.exec();
@@ -91,12 +102,14 @@ class DockerClientService {
     // image
 
     public boolean pullImage(String imageName) {
-        NameParser.ReposTag repoAndTag =
-                NameParser.parseRepositoryTag(imageName);
-        if (repoAndTag.repos == null || repoAndTag.tag == null) {
+        if (StringUtils.isEmpty(imageName)) {
             return false;
         }
-
+        NameParser.ReposTag repoAndTag = NameParser.parseRepositoryTag(imageName);
+        if (StringUtils.isEmpty(repoAndTag.repos)
+                || StringUtils.isEmpty(repoAndTag.tag)) {
+            return false;
+        }
         try (PullImageCmd pullImageCmd =
                      getClient().pullImageCmd(repoAndTag.repos)) {
             pullImageCmd
@@ -112,13 +125,16 @@ class DockerClientService {
     }
 
     public String getImageId(String imageName) {
+        if (StringUtils.isEmpty(imageName)) {
+            return "";
+        }
         try (ListImagesCmd listImagesCmd = getClient().listImagesCmd()) {
             return listImagesCmd
                     .withDanglingFilter(false)
                     .withImageNameFilter(imageName)
                     .exec()
                     .stream()
-                    .filter(image -> image.getRepoTags() != null)
+                    .filter(image -> !StringUtils.isEmpty(image.getRepoTags()))
                     .filter(image -> Arrays.asList(image.getRepoTags()).contains(imageName))
                     .map(Image::getId)
                     .findFirst()
@@ -135,17 +151,15 @@ class DockerClientService {
         if (dockerRunRequest == null) {
             return "";
         }
-
         String containerName = dockerRunRequest.getContainerName();
-        if (containerName == null || containerName.isEmpty()) {
+        if (StringUtils.isEmpty(containerName)) {
             return "";
         }
 
         String oldContainerId = getContainerId(containerName);
-
         if (!oldContainerId.isEmpty()) {
-            logInfo("Container duplicate found", containerName,
-                    oldContainerId);
+            logInfo("Container duplicate found",
+                    containerName, oldContainerId);
             stopContainer(oldContainerId);
             removeContainer(oldContainerId);
         }
@@ -158,17 +172,17 @@ class DockerClientService {
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withNetworkMode(WORKER_DOCKER_NETWORK);
 
-        if (dockerRunRequest.getBinds() != null && !dockerRunRequest.getBinds().isEmpty()) {
-            hostConfig.withBinds(Binds.fromPrimitive(dockerRunRequest.getBinds().toArray(String[]::new)));
+        if (CollectionUtils.isEmpty(dockerRunRequest.getBinds())) {
+            hostConfig.withBinds(Binds.fromPrimitive(
+                    dockerRunRequest.getBinds().toArray(String[]::new)));
         }
 
         if (dockerRunRequest.isSgx()) {
-            hostConfig
-                    .withDevices(Device.parse(SgxService.SGX_DEVICE_PATH +
-                            ":" + SgxService.SGX_DEVICE_PATH));
+            hostConfig.withDevices(Device.parse(SgxService.SGX_DEVICE_PATH +
+                    ":" + SgxService.SGX_DEVICE_PATH));
         }
 
-        if (dockerRunRequest.getImageUri() == null || dockerRunRequest.getImageUri().isEmpty()) {
+        if (StringUtils.isEmpty(dockerRunRequest.getImageUri())) {
             return "";
         }
 
@@ -178,14 +192,16 @@ class DockerClientService {
                     .withName(containerName)
                     .withHostConfig(hostConfig);
 
-            if (dockerRunRequest.getCmd() != null && !dockerRunRequest.getCmd().isEmpty()) {
-                createContainerCmd.withCmd(ArgsUtils.stringArgsToArrayArgs(dockerRunRequest.getCmd()));
+            if (!StringUtils.isEmpty(dockerRunRequest.getCmd())) {
+                createContainerCmd.withCmd(
+                        ArgsUtils.stringArgsToArrayArgs(dockerRunRequest.getCmd()));
             }
-            if (dockerRunRequest.getEnv() != null && !dockerRunRequest.getEnv().isEmpty()) {
+            if (!StringUtils.isEmpty(dockerRunRequest.getEnv())) {
                 createContainerCmd.withEnv(dockerRunRequest.getEnv());
             }
             if (dockerRunRequest.getContainerPort() > 0) {
-                createContainerCmd.withExposedPorts(new ExposedPort(dockerRunRequest.getContainerPort()));
+                createContainerCmd.withExposedPorts(
+                        new ExposedPort(dockerRunRequest.getContainerPort()));
             }
             return createContainerCmd.exec().getId();
         } catch (Exception e) {
@@ -195,10 +211,13 @@ class DockerClientService {
     }
 
     String getContainerName(String containerId) {
+        if (StringUtils.isEmpty(containerId)) {
+            return "";
+        }
         try (InspectContainerCmd inspectContainerCmd =
                      getClient().inspectContainerCmd(containerId)) {
             String name = inspectContainerCmd.exec().getName();
-            // docker java returns '/<container_id>' instead of '<container_id>'
+            // docker-java returns '/<container_id>' instead of '<container_id>'
             return name != null ? name.replace("/", "") : "";
         } catch (Exception e) {
             logError("get container name", "", containerId, e);
@@ -207,6 +226,9 @@ class DockerClientService {
     }
 
     String getContainerId(String containerName) {
+        if (StringUtils.isEmpty(containerName)) {
+            return "";
+        }
         try (ListContainersCmd listContainersCmd = getClient().listContainersCmd()) {
             return listContainersCmd
                     .withShowAll(true)
@@ -223,10 +245,9 @@ class DockerClientService {
     }
 
     public String getContainerStatus(String containerId) {
-        if (containerId.isEmpty()) {
+        if (StringUtils.isEmpty(containerId)) {
             return "";
         }
-
         try (InspectContainerCmd inspectContainerCmd =
                      getClient().inspectContainerCmd(containerId)) {
             return inspectContainerCmd.exec()
@@ -240,10 +261,9 @@ class DockerClientService {
     }
 
     public boolean startContainer(String containerId) {
-        if (containerId.isEmpty()) {
+        if (StringUtils.isEmpty(containerId)) {
             return false;
         }
-
         try (StartContainerCmd startContainerCmd =
                      getClient().startContainerCmd(containerId)) {
             startContainerCmd.exec();
@@ -257,13 +277,11 @@ class DockerClientService {
 
     public void waitContainerUntilExitOrTimeout(String containerId,
                                                 Date executionTimeoutDate) {
-        boolean isExited = false;
-        boolean isTimeout = false;
-
-        if (containerId.isEmpty()) {
+        if (StringUtils.isEmpty(containerId)) {
             return;
         }
-
+        boolean isExited = false;
+        boolean isTimeout = false;
         int seconds = 0;
         String containerName = getContainerName(containerId);
         while (!isExited && !isTimeout) {
@@ -285,6 +303,9 @@ class DockerClientService {
     }
 
     public Optional<DockerLogs> getContainerLogs(String containerId) {
+        if (StringUtils.isEmpty(containerId)) {
+            return Optional.empty();
+        }
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
@@ -307,15 +328,13 @@ class DockerClientService {
     }
 
     public boolean stopContainer(String containerId) {
-        if (containerId.isEmpty()) {
+        if (StringUtils.isEmpty(containerId)) {
             return false;
         }
-
         List<String> statusesToStop = Arrays.asList("restarting", "running");
         if (!statusesToStop.contains(getContainerStatus(containerId))) {
             return true;
         }
-
         try (StopContainerCmd stopContainerCmd =
                      getClient().stopContainerCmd(containerId)) {
             stopContainerCmd.exec();
@@ -328,7 +347,7 @@ class DockerClientService {
     }
 
     public boolean removeContainer(String containerId) {
-        if (containerId.isEmpty()) {
+        if (StringUtils.isEmpty(containerId)) {
             return false;
         }
         try (RemoveContainerCmd removeContainerCmd =

@@ -93,6 +93,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotCreateNetworkSinceEmptyName() {
+        assertThat(dockerClientService.createNetwork("")).isEmpty();
+    }
+
+    @Test
     public void shouldNotCreateNetworkSinceExisting() {
         String networkName = getRandomString();
         String networkId = dockerClientService.createNetwork(networkName);
@@ -121,6 +126,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotGetNetworkIdSinceEmptyName() {
+        assertThat(dockerClientService.getNetworkId("")).isEmpty();
+    }
+
+    @Test
     public void shouldNotGetNetworkIdSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.getNetworkId(getRandomString())).isEmpty();
@@ -134,17 +144,28 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotRemoveNetworkSinceEmptyId() {
+        assertThat(dockerClientService.removeNetwork("")).isFalse();
+    }
+
+    @Test
     public void shouldNotRemoveNetworkSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.removeNetwork(getRandomString())).isFalse();
     }
 
-    // docker image
 
+    // docker image
     @Test
     public void shouldPullImage() {
         boolean imagePulled = dockerClientService.pullImage(ALPINE_LATEST);
         assertThat(imagePulled).isTrue();
+    }
+
+    @Test
+    public void shouldNotPullImageSinceEmptyName() {
+        boolean imagePulled = dockerClientService.pullImage("");
+        assertThat(imagePulled).isFalse();
     }
 
     @Test
@@ -160,12 +181,6 @@ public class DockerClientServiceTests {
     }
 
     @Test
-    public void shouldNotPullImageSinceEmptyImageName() {
-        boolean imagePulled = dockerClientService.pullImage("");
-        assertThat(imagePulled).isFalse();
-    }
-
-    @Test
     public void shouldNotPullImageSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.pullImage(getRandomString())).isFalse();
@@ -176,6 +191,11 @@ public class DockerClientServiceTests {
         dockerClientService.pullImage(ALPINE_LATEST);
 
         assertThat(dockerClientService.getImageId(ALPINE_LATEST)).isNotEmpty();
+    }
+
+    @Test
+    public void shouldNotGetImageIdSinceEmptyName() {
+        assertThat(dockerClientService.getImageId("")).isEmpty();
     }
 
     @Test
@@ -226,6 +246,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotGetImageIdSinceEmptyId() {
+        assertThat(dockerClientService.getContainerId("")).isEmpty();
+    }
+
+    @Test
     public void shouldNotGetContainerIdSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.getContainerId(getRandomString())).isEmpty();
@@ -243,6 +268,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotGetContainerStatusSinceEmptyId() {
+        assertThat(dockerClientService.getContainerStatus("")).isEmpty();
+    }
+
+    @Test
     public void shouldGetContainerName() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         String containerId = dockerClientService.createContainer(request);
@@ -252,6 +282,11 @@ public class DockerClientServiceTests {
 
         // cleaning
         dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotGetContainerNameSinceEmptyId() {
+        assertThat(dockerClientService.getContainerName("")).isEmpty();
     }
 
     @Test
@@ -291,6 +326,11 @@ public class DockerClientServiceTests {
         // cleaning
         dockerClientService.stopContainer(containerId);
         dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotStartContainerNameSinceEmptyId() {
+        assertThat(dockerClientService.startContainer("")).isFalse();
     }
 
     @Test
@@ -381,6 +421,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotGetContainerLogsSinceEmptyId() {
+        assertThat(dockerClientService.getContainerLogs("")).isEmpty();
+    }
+
+    @Test
     public void shouldNotGetContainerLogsSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.getContainerLogs(getRandomString())).isEmpty();
@@ -402,6 +447,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotStopContainerSinceEmptyId() {
+        assertThat(dockerClientService.stopContainer("")).isFalse();
+    }
+
+    @Test
     public void shouldRemoveContainer() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
@@ -410,6 +460,11 @@ public class DockerClientServiceTests {
         dockerClientService.stopContainer(containerId);
 
         assertThat(dockerClientService.removeContainer(containerId)).isTrue();
+    }
+
+    @Test
+    public void shouldNotRemoveContainerSinceEmptyId() {
+        assertThat(dockerClientService.removeContainer("")).isFalse();
     }
 
     @Test
