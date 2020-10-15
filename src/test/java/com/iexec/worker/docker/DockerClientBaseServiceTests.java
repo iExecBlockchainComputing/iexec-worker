@@ -16,21 +16,29 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.core.DefaultDockerClientConfig;
+import com.github.dockerjava.core.DockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.transport.DockerHttpClient;
 import com.iexec.common.utils.FileHelper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.File;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 
-public class DockerClientServiceTests {
+public class DockerClientBaseServiceTests {
 
     private static final String CHAIN_TASK_ID = "docker";
     private static final String ALPINE_LATEST = "alpine:latest";
@@ -41,6 +49,8 @@ public class DockerClientServiceTests {
 
     @InjectMocks
     private DockerClientService dockerClientService;
+    @Mock
+    private DockerDaemonService dockerDaemonService;
 
 
     @BeforeClass
@@ -50,6 +60,8 @@ public class DockerClientServiceTests {
     @Before
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
+        // get real docker client by default unless specified in test
+        when(dockerDaemonService.getClient()).thenCallRealMethod();
     }
 
     public DockerRunRequest getDefaultDockerRunRequest(boolean isSgx) {
@@ -89,6 +101,17 @@ public class DockerClientServiceTests {
 
         // cleaning
         dockerClientService.removeNetwork(networkId);
+    }
+
+    @Test
+    public void shouldNotCreateNetworkSinceCmdException(){
+        when(dockerDaemonService.getClient()).thenReturn(getFailDockerClient());
+
+        String networkName = getRandomName();
+
+        String networkId = dockerClientService.createNetwork(networkName);
+
+        assertThat(networkId).isEmpty();
     }
 
     @Test
@@ -319,6 +342,19 @@ public class DockerClientServiceTests {
 
     private String getRandomName() {
         return RandomStringUtils.randomAlphanumeric(10);
+    }
+
+    private DockerClient getFailDockerClient() {
+        DockerClientConfig config =
+                DefaultDockerClientConfig.createDefaultConfigBuilder()
+                        .withDockerHost("tcp://localhost:11111")
+                        .build();
+        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .build();
+
+        return DockerClientImpl.getInstance(config, httpClient);
     }
 
 }

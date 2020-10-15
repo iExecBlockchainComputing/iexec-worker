@@ -16,21 +16,21 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
+import org.springframework.stereotype.Service;
 
-class DockerClient {
+@Service
+class DockerDaemonService {
 
-    private static com.github.dockerjava.api.DockerClient dockerClientInstance;
+    private DockerClient dockerClient;
 
-    private DockerClient() {
-    }
-
-    public static com.github.dockerjava.api.DockerClient getClient() {
-        if (dockerClientInstance == null) {
+    public DockerClient getClient() {
+        if (dockerClient == null) {
             DockerClientConfig config =
                     DefaultDockerClientConfig.createDefaultConfigBuilder()
                             .withDockerTlsVerify(false)
@@ -39,10 +39,9 @@ class DockerClient {
                     .dockerHost(config.getDockerHost())
                     .sslConfig(config.getSSLConfig())
                     .build();
-            dockerClientInstance = DockerClientImpl.getInstance(config,
-                    httpClient);
+            dockerClient = DockerClientImpl.getInstance(config, httpClient);
         }
-        return dockerClientInstance;
+        return dockerClient;
     }
 
 }

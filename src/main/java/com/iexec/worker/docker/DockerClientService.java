@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.*;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.NameParser;
@@ -35,12 +36,10 @@ import java.util.concurrent.TimeUnit;
 class DockerClientService {
 
     private static final String WORKER_DOCKER_NETWORK = "iexec-worker-net";
+    private final DockerDaemonService dockerDaemonService;
 
-    public DockerClientService() {
-        String networkId = createNetwork(WORKER_DOCKER_NETWORK);
-        if (!networkId.isEmpty()) {
-            logInfo("Network created", WORKER_DOCKER_NETWORK, networkId);
-        }
+    public DockerClientService(DockerDaemonService dockerDaemonService) {
+        this.dockerDaemonService = dockerDaemonService;
     }
 
     // network
@@ -51,7 +50,7 @@ class DockerClientService {
         }
 
         try (CreateNetworkCmd networkCmd =
-                     DockerClient.getClient().createNetworkCmd()) {
+                     getClient().createNetworkCmd()) {
             return networkCmd
                     .withName(networkName)
                     .withDriver("bridge")
@@ -65,7 +64,7 @@ class DockerClientService {
 
     String getNetworkId(String networkName) {
         try (ListNetworksCmd listNetworksCmd =
-                     DockerClient.getClient().listNetworksCmd()) {
+                     getClient().listNetworksCmd()) {
             List<Network> networks = listNetworksCmd
                     .withNameFilter(networkName)
                     .exec();
@@ -82,7 +81,7 @@ class DockerClientService {
 
     boolean removeNetwork(String networkId) {
         try (RemoveNetworkCmd removeNetworkCmd =
-                     DockerClient.getClient().removeNetworkCmd(networkId)) {
+                     getClient().removeNetworkCmd(networkId)) {
             removeNetworkCmd.exec();
             return true;
         } catch (Exception e) {
@@ -101,7 +100,7 @@ class DockerClientService {
         }
 
         try (PullImageCmd pullImageCmd =
-                     DockerClient.getClient().pullImageCmd(repoAndTag.repos)) {
+                     getClient().pullImageCmd(repoAndTag.repos)) {
             pullImageCmd
                     .withTag(repoAndTag.tag)
                     .exec(new PullImageResultCallback() {
@@ -116,7 +115,7 @@ class DockerClientService {
 
     public String getImageId(String imageName) {
         try (ListImagesCmd listImagesCmd =
-                     DockerClient.getClient().listImagesCmd()) {
+                     getClient().listImagesCmd()) {
             List<Image> images = listImagesCmd
                     .withDanglingFilter(false)
                     .withImageNameFilter(imageName)
@@ -157,6 +156,12 @@ class DockerClientService {
             removeContainer(oldContainerId);
         }
 
+        if (getNetworkId(WORKER_DOCKER_NETWORK).isEmpty()
+                && createNetwork(WORKER_DOCKER_NETWORK).isEmpty()) {
+            //logInfo("Network created", WORKER_DOCKER_NETWORK, networkId);
+            return "";
+        }
+
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withNetworkMode(WORKER_DOCKER_NETWORK);
 
@@ -174,7 +179,7 @@ class DockerClientService {
             return "";
         }
 
-        try (CreateContainerCmd createContainerCmd = DockerClient.getClient()
+        try (CreateContainerCmd createContainerCmd = getClient()
                 .createContainerCmd(dockerRunRequest.getImageUri())) {
             createContainerCmd
                     .withName(containerName)
@@ -198,7 +203,7 @@ class DockerClientService {
 
     String getContainerId(String containerName) {
         try (ListContainersCmd listContainersCmd =
-                     DockerClient.getClient().listContainersCmd()) {
+                     getClient().listContainersCmd()) {
             return listContainersCmd
                     .withShowAll(true)
                     .withNameFilter(Collections.singleton(containerName))
@@ -219,7 +224,7 @@ class DockerClientService {
         }
 
         try (InspectContainerCmd inspectContainerCmd =
-                     DockerClient.getClient().inspectContainerCmd(containerId)) {
+                     getClient().inspectContainerCmd(containerId)) {
             return inspectContainerCmd.exec()
                     .getState()
                     .getStatus();
@@ -236,7 +241,7 @@ class DockerClientService {
         }
 
         try (StartContainerCmd startContainerCmd =
-                     DockerClient.getClient().startContainerCmd(containerId)) {
+                     getClient().startContainerCmd(containerId)) {
             startContainerCmd.exec();
             return true;
         } catch (Exception e) {
@@ -283,7 +288,7 @@ class DockerClientService {
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
         try (LogContainerCmd logContainerCmd =
-                     DockerClient.getClient().logContainerCmd(containerId)) {
+                     getClient().logContainerCmd(containerId)) {
             logContainerCmd
                     .withStdOut(true)
                     .withStdErr(true)
@@ -311,7 +316,7 @@ class DockerClientService {
         }
 
         try (StopContainerCmd stopContainerCmd =
-                     DockerClient.getClient().stopContainerCmd(containerId)) {
+                     getClient().stopContainerCmd(containerId)) {
             stopContainerCmd.exec();
             return true;
         } catch (Exception e) {
@@ -326,7 +331,7 @@ class DockerClientService {
             return false;
         }
         try (RemoveContainerCmd removeContainerCmd =
-                     DockerClient.getClient().removeContainerCmd(containerId)) {
+                     getClient().removeContainerCmd(containerId)) {
             removeContainerCmd.exec();
             return true;
         } catch (Exception e) {
@@ -337,7 +342,7 @@ class DockerClientService {
 
     private String getContainerName(String containerId) {
         try (ListContainersCmd listContainersCmd =
-                     DockerClient.getClient().listContainersCmd();) {
+                     getClient().listContainersCmd()) {
             return listContainersCmd
                     .withIdFilter(Collections.singleton(containerId))
                     .exec()
@@ -350,6 +355,10 @@ class DockerClientService {
             logError("get container name", "", containerId, e);
         }
         return "";
+    }
+
+    DockerClient getClient() {
+        return dockerDaemonService.getClient();
     }
 
     private void logInfo(String infoMessage, String name, String id) {
