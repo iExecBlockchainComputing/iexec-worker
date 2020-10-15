@@ -49,8 +49,7 @@ class DockerClientService {
             return "";
         }
 
-        try (CreateNetworkCmd networkCmd =
-                     getClient().createNetworkCmd()) {
+        try (CreateNetworkCmd networkCmd = getClient().createNetworkCmd()) {
             return networkCmd
                     .withName(networkName)
                     .withDriver("bridge")
@@ -63,16 +62,15 @@ class DockerClientService {
     }
 
     String getNetworkId(String networkName) {
-        try (ListNetworksCmd listNetworksCmd =
-                     getClient().listNetworksCmd()) {
-            List<Network> networks = listNetworksCmd
+        try (ListNetworksCmd listNetworksCmd = getClient().listNetworksCmd()) {
+            return listNetworksCmd
                     .withNameFilter(networkName)
-                    .exec();
-            for (Network network : networks) {
-                if (network.getName().equals(networkName)) {
-                    return network.getId();
-                }
-            }
+                    .exec()
+                    .stream()
+                    .filter(network -> network.getName().equals(networkName))
+                    .map(Network::getId)
+                    .findFirst()
+                    .orElse("");
         } catch (Exception e) {
             logError("get network id", networkName, "", e);
         }
@@ -114,21 +112,17 @@ class DockerClientService {
     }
 
     public String getImageId(String imageName) {
-        try (ListImagesCmd listImagesCmd =
-                     getClient().listImagesCmd()) {
-            List<Image> images = listImagesCmd
+        try (ListImagesCmd listImagesCmd = getClient().listImagesCmd()) {
+            return listImagesCmd
                     .withDanglingFilter(false)
                     .withImageNameFilter(imageName)
-                    .exec();
-            for (Image image : images) {
-                if (image == null || image.getRepoTags() == null) {
-                    continue;
-                }
-
-                if (Arrays.asList(image.getRepoTags()).contains(imageName)) {
-                    return image.getId();
-                }
-            }
+                    .exec()
+                    .stream()
+                    .filter(image -> image.getRepoTags() != null)
+                    .filter(image -> Arrays.asList(image.getRepoTags()).contains(imageName))
+                    .map(Image::getId)
+                    .findFirst()
+                    .orElse("");
         } catch (Exception e) {
             logError("get image id", imageName, "", e);
         }
@@ -158,7 +152,6 @@ class DockerClientService {
 
         if (getNetworkId(WORKER_DOCKER_NETWORK).isEmpty()
                 && createNetwork(WORKER_DOCKER_NETWORK).isEmpty()) {
-            //logInfo("Network created", WORKER_DOCKER_NETWORK, networkId);
             return "";
         }
 
@@ -214,8 +207,7 @@ class DockerClientService {
     }
 
     String getContainerId(String containerName) {
-        try (ListContainersCmd listContainersCmd =
-                     getClient().listContainersCmd()) {
+        try (ListContainersCmd listContainersCmd = getClient().listContainersCmd()) {
             return listContainersCmd
                     .withShowAll(true)
                     .withNameFilter(Collections.singleton(containerName))
@@ -276,10 +268,7 @@ class DockerClientService {
         String containerName = getContainerName(containerId);
         while (!isExited && !isTimeout) {
             if (seconds % 60 == 0) { //don't display logs too often
-                log.info("Still running [containerName:{}, containerId:{}, " +
-                                "status:{}, isExited:{}, isTimeout:{}]",
-                        containerName, containerId,
-                        getContainerStatus(containerId), isExited, isTimeout);
+                logInfo("Still running", containerName, containerId);
             }
 
             WaitUtils.sleep(1);
