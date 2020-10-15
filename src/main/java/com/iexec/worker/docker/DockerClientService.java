@@ -201,6 +201,18 @@ class DockerClientService {
         return "";
     }
 
+    String getContainerName(String containerId) {
+        try (InspectContainerCmd inspectContainerCmd =
+                     getClient().inspectContainerCmd(containerId)) {
+            String name = inspectContainerCmd.exec().getName();
+            // docker java returns '/<container_id>' instead of '<container_id>'
+            return name != null ? name.replace("/", "") : "";
+        } catch (Exception e) {
+            logError("get container name", "", containerId, e);
+        }
+        return "";
+    }
+
     String getContainerId(String containerName) {
         try (ListContainersCmd listContainersCmd =
                      getClient().listContainersCmd()) {
@@ -338,23 +350,6 @@ class DockerClientService {
             logError("remove container", "", containerId, e);
         }
         return false;
-    }
-
-    private String getContainerName(String containerId) {
-        try (ListContainersCmd listContainersCmd =
-                     getClient().listContainersCmd()) {
-            return listContainersCmd
-                    .withIdFilter(Collections.singleton(containerId))
-                    .exec()
-                    .stream()
-                    .findFirst()
-                    .map(Container::getNames)
-                    .map(name -> name[0])
-                    .orElse("");
-        } catch (Exception e) {
-            logError("get container name", "", containerId, e);
-        }
-        return "";
     }
 
     DockerClient getClient() {

@@ -38,7 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 
-public class DockerClientBaseServiceTests {
+public class DockerClientServiceTests {
 
     private static final String CHAIN_TASK_ID = "docker";
     private static final String ALPINE_LATEST = "alpine:latest";
@@ -51,6 +51,7 @@ public class DockerClientBaseServiceTests {
     private DockerClientService dockerClientService;
     @Mock
     private DockerDaemonService dockerDaemonService;
+    private DockerClient fakeDockerClient;
 
 
     @BeforeClass
@@ -60,13 +61,12 @@ public class DockerClientBaseServiceTests {
     @Before
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
-        // get real docker client by default unless specified in test
-        when(dockerDaemonService.getClient()).thenCallRealMethod();
+        useRealDockerClient();
     }
 
     public DockerRunRequest getDefaultDockerRunRequest(boolean isSgx) {
         return DockerRunRequest.builder()
-                .containerName(getRandomName())
+                .containerName(getRandomString())
                 .chainTaskId(CHAIN_TASK_ID)
                 .imageUri(ALPINE_LATEST)
                 .cmd(CMD)
@@ -83,7 +83,7 @@ public class DockerClientBaseServiceTests {
 
     @Test
     public void shouldCreateNetwork() {
-        String networkName = getRandomName();
+        String networkName = getRandomString();
         String networkId = dockerClientService.createNetwork(networkName);
 
         assertThat(networkId).isNotEmpty();
@@ -94,7 +94,7 @@ public class DockerClientBaseServiceTests {
 
     @Test
     public void shouldNotCreateNetworkSinceExisting() {
-        String networkName = getRandomName();
+        String networkName = getRandomString();
         String networkId = dockerClientService.createNetwork(networkName);
 
         assertThat(dockerClientService.createNetwork(networkName)).isEmpty();
@@ -104,19 +104,14 @@ public class DockerClientBaseServiceTests {
     }
 
     @Test
-    public void shouldNotCreateNetworkSinceCmdException(){
-        when(dockerDaemonService.getClient()).thenReturn(getFailDockerClient());
-
-        String networkName = getRandomName();
-
-        String networkId = dockerClientService.createNetwork(networkName);
-
-        assertThat(networkId).isEmpty();
+    public void shouldNotCreateNetworkSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.createNetwork(getRandomString())).isEmpty();
     }
 
     @Test
     public void shouldGetNetworkId() {
-        String networkName = getRandomName();
+        String networkName = getRandomString();
         String networkId = dockerClientService.createNetwork(networkName);
 
         assertThat(dockerClientService.getNetworkId(networkName)).isEqualTo(networkId);
@@ -126,11 +121,22 @@ public class DockerClientBaseServiceTests {
     }
 
     @Test
-    public void shouldRemoveNetworkId() {
-        String networkName = getRandomName();
-        String networkId = dockerClientService.createNetwork(networkName);
+    public void shouldNotGetNetworkIdSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.getNetworkId(getRandomString())).isEmpty();
+    }
+
+    @Test
+    public void shouldRemoveNetwork() {
+        String networkId = dockerClientService.createNetwork(getRandomString());
 
         assertThat(dockerClientService.removeNetwork(networkId)).isTrue();
+    }
+
+    @Test
+    public void shouldNotRemoveNetworkSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.removeNetwork(getRandomString())).isFalse();
     }
 
     // docker image
@@ -160,6 +166,12 @@ public class DockerClientBaseServiceTests {
     }
 
     @Test
+    public void shouldNotPullImageSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.pullImage(getRandomString())).isFalse();
+    }
+
+    @Test
     public void shouldGetImageId() {
         dockerClientService.pullImage(ALPINE_LATEST);
 
@@ -169,6 +181,12 @@ public class DockerClientBaseServiceTests {
     @Test
     public void shouldNotGetImageId() {
         assertThat(dockerClientService.getImageId(BLABLA_LATEST)).isEmpty();
+    }
+
+    @Test
+    public void shouldNotGetImageIdSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.getImageId(getRandomString())).isEmpty();
     }
 
     // container
@@ -187,6 +205,13 @@ public class DockerClientBaseServiceTests {
     }
 
     @Test
+    public void shouldNotCreateContainerSinceDockerCmdException() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        useFakeDockerClient();
+        assertThat(dockerClientService.createContainer(request)).isEmpty();
+    }
+
+    @Test
     public void shouldGetContainerId() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         String expectedId = dockerClientService.createContainer(request);
@@ -201,6 +226,12 @@ public class DockerClientBaseServiceTests {
     }
 
     @Test
+    public void shouldNotGetContainerIdSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.getContainerId(getRandomString())).isEmpty();
+    }
+
+    @Test
     public void shouldGetContainerStatus() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         String containerId = dockerClientService.createContainer(request);
@@ -209,6 +240,42 @@ public class DockerClientBaseServiceTests {
 
         // cleaning
         dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldGetContainerName() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        String containerId = dockerClientService.createContainer(request);
+
+        assertThat(dockerClientService.getContainerName(containerId))
+                .isEqualTo(request.getContainerName());
+
+        // cleaning
+        dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotGetContainerNameSinceNoContainer() {
+        assertThat(dockerClientService.getContainerName(getRandomString())).isEmpty();
+    }
+
+    @Test
+    public void shouldNotGetContainerNameSinceDockerCmdException() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        String containerId = dockerClientService.createContainer(request);
+
+        useFakeDockerClient();
+        assertThat(dockerClientService.getContainerName(getRandomString())).isEmpty();
+
+        // cleaning
+        useRealDockerClient();
+        dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotGetContainerStatusSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.getContainerStatus(getRandomString())).isEmpty();
     }
 
     @Test
@@ -222,6 +289,21 @@ public class DockerClientBaseServiceTests {
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
 
         // cleaning
+        dockerClientService.stopContainer(containerId);
+        dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotStartContainerSinceDockerCmdException() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
+        String containerId = dockerClientService.createContainer(request);
+
+        useFakeDockerClient();
+        assertThat(dockerClientService.startContainer(containerId)).isFalse();
+
+        // cleaning
+        useRealDockerClient();
         dockerClientService.stopContainer(containerId);
         dockerClientService.removeContainer(containerId);
     }
@@ -299,6 +381,12 @@ public class DockerClientBaseServiceTests {
     }
 
     @Test
+    public void shouldNotGetContainerLogsSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.getContainerLogs(getRandomString())).isEmpty();
+    }
+
+    @Test
     public void shouldStopContainer() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
@@ -340,21 +428,37 @@ public class DockerClientBaseServiceTests {
         dockerClientService.removeContainer(containerId);
     }
 
-    private String getRandomName() {
-        return RandomStringUtils.randomAlphanumeric(10);
+    @Test
+    public void shouldNotRemoveContainerSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.removeContainer(getRandomString())).isFalse();
     }
 
-    private DockerClient getFailDockerClient() {
-        DockerClientConfig config =
-                DefaultDockerClientConfig.createDefaultConfigBuilder()
-                        .withDockerHost("tcp://localhost:11111")
-                        .build();
-        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-                .dockerHost(config.getDockerHost())
-                .sslConfig(config.getSSLConfig())
-                .build();
+    private String getRandomString() {
+        return RandomStringUtils.randomAlphanumeric(20);
+    }
 
-        return DockerClientImpl.getInstance(config, httpClient);
+    private void useRealDockerClient() {
+        when(dockerDaemonService.getClient()).thenCallRealMethod();
+    }
+
+    private void useFakeDockerClient() {
+        when(dockerDaemonService.getClient()).thenReturn(getFakeDockerClient());
+    }
+
+    private DockerClient getFakeDockerClient() {
+        if (fakeDockerClient == null) {
+            DockerClientConfig config =
+                    DefaultDockerClientConfig.createDefaultConfigBuilder()
+                            .withDockerHost("tcp://localhost:11111")
+                            .build();
+            DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+                    .dockerHost(config.getDockerHost())
+                    .sslConfig(config.getSSLConfig())
+                    .build();
+            fakeDockerClient = DockerClientImpl.getInstance(config, httpClient);
+        }
+        return fakeDockerClient;
     }
 
 }
