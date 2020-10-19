@@ -25,7 +25,7 @@ import com.github.dockerjava.transport.DockerHttpClient;
 import org.springframework.stereotype.Service;
 
 @Service
-class DockerDaemonService {
+class DockerConnectorService {
 
     private DockerClient dockerClient;
 

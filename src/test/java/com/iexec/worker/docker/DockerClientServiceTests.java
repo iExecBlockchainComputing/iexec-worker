@@ -18,14 +18,10 @@ package com.iexec.worker.docker;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
-import com.github.dockerjava.api.model.Binds;
-import com.github.dockerjava.api.model.Device;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.core.command.CreateContainerCmdImpl;
-import com.github.dockerjava.core.exec.CreateContainerCmdExec;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import com.iexec.common.utils.ArgsUtils;
@@ -60,7 +56,7 @@ public class DockerClientServiceTests {
     @InjectMocks
     private DockerClientService dockerClientService;
     @Mock
-    private DockerDaemonService dockerDaemonService;
+    private DockerConnectorService dockerConnectorService;
     private DockerClient fakeDockerClient;
 
 
@@ -572,11 +568,11 @@ public class DockerClientServiceTests {
     }
 
     private void useRealDockerClient() {
-        when(dockerDaemonService.getClient()).thenCallRealMethod();
+        when(dockerConnectorService.getClient()).thenCallRealMethod();
     }
 
     private void useFakeDockerClient() {
-        when(dockerDaemonService.getClient()).thenReturn(getFakeDockerClient());
+        when(dockerConnectorService.getClient()).thenReturn(getFakeDockerClient());
     }
 
     private DockerClient getFakeDockerClient() {

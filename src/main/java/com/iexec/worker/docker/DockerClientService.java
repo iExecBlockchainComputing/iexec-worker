@@ -38,10 +38,10 @@ import java.util.concurrent.TimeUnit;
 class DockerClientService {
 
     static final String WORKER_DOCKER_NETWORK = "iexec-worker-net";
-    private final DockerDaemonService dockerDaemonService;
+    private final DockerConnectorService dockerConnectorService;
 
-    public DockerClientService(DockerDaemonService dockerDaemonService) {
-        this.dockerDaemonService = dockerDaemonService;
+    public DockerClientService(DockerConnectorService dockerConnectorService) {
+        this.dockerConnectorService = dockerConnectorService;
     }
 
     // network
@@ -385,7 +385,7 @@ class DockerClientService {
     }
 
     DockerClient getClient() {
-        return dockerDaemonService.getClient();
+        return dockerConnectorService.getClient();
     }
 
     private void logInfo(String infoMessage, String name, String id) {
