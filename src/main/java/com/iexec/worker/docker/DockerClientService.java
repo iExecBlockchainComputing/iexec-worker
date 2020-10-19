@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 class DockerClientService {
 
-    private static final String WORKER_DOCKER_NETWORK = "iexec-worker-net";
+    static final String WORKER_DOCKER_NETWORK = "iexec-worker-net";
     private final DockerDaemonService dockerDaemonService;
 
     public DockerClientService(DockerDaemonService dockerDaemonService) {
@@ -169,10 +169,60 @@ class DockerClientService {
             return "";
         }
 
+        if (StringUtils.isEmpty(dockerRunRequest.getImageUri())) {
+            return "";
+        }
+        try (CreateContainerCmd createContainerCmd = getClient()
+                .createContainerCmd(dockerRunRequest.getImageUri())) {
+            return getRequestedCreateContainerCmd(dockerRunRequest, createContainerCmd)
+                    .exec()
+                    .getId();
+        } catch (Exception e) {
+            logError("create container", containerName, "", e);
+        }
+        return "";
+    }
+
+    /**
+     * Params of the DockerRunRequest need to be passed to the CreateContainerCmd
+     * when creating a container
+     *
+     * @param dockerRunRequest contains information for creating container
+     * @return a templated HostConfig
+     */
+    CreateContainerCmd getRequestedCreateContainerCmd(DockerRunRequest dockerRunRequest,
+                                                      CreateContainerCmd createContainerCmd) {
+        createContainerCmd
+                .withName(dockerRunRequest.getContainerName())
+                .withHostConfig(buildCreateContainerHostConfig(dockerRunRequest));
+
+        if (!StringUtils.isEmpty(dockerRunRequest.getCmd())) {
+            createContainerCmd.withCmd(
+                    ArgsUtils.stringArgsToArrayArgs(dockerRunRequest.getCmd()));
+        }
+        if (!StringUtils.isEmpty(dockerRunRequest.getEnv())) {
+            createContainerCmd.withEnv(dockerRunRequest.getEnv());
+        }
+        if (dockerRunRequest.getContainerPort() > 0) {
+            createContainerCmd.withExposedPorts(
+                    new ExposedPort(dockerRunRequest.getContainerPort()));
+        }
+        return createContainerCmd;
+    }
+
+    /**
+     * Some params of the DockerRunRequest need to be passed to the HostConfig
+     * instead of the CreateContainerCmd
+     *
+     * @param dockerRunRequest contains information for setting up host
+     *                         when creating a container
+     * @return a templated HostConfig
+     */
+    HostConfig buildCreateContainerHostConfig(DockerRunRequest dockerRunRequest) {
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withNetworkMode(WORKER_DOCKER_NETWORK);
 
-        if (CollectionUtils.isEmpty(dockerRunRequest.getBinds())) {
+        if (!CollectionUtils.isEmpty(dockerRunRequest.getBinds())) {
             hostConfig.withBinds(Binds.fromPrimitive(
                     dockerRunRequest.getBinds().toArray(String[]::new)));
         }
@@ -181,33 +231,7 @@ class DockerClientService {
             hostConfig.withDevices(Device.parse(SgxService.SGX_DEVICE_PATH +
                     ":" + SgxService.SGX_DEVICE_PATH));
         }
-
-        if (StringUtils.isEmpty(dockerRunRequest.getImageUri())) {
-            return "";
-        }
-
-        try (CreateContainerCmd createContainerCmd = getClient()
-                .createContainerCmd(dockerRunRequest.getImageUri())) {
-            createContainerCmd
-                    .withName(containerName)
-                    .withHostConfig(hostConfig);
-
-            if (!StringUtils.isEmpty(dockerRunRequest.getCmd())) {
-                createContainerCmd.withCmd(
-                        ArgsUtils.stringArgsToArrayArgs(dockerRunRequest.getCmd()));
-            }
-            if (!StringUtils.isEmpty(dockerRunRequest.getEnv())) {
-                createContainerCmd.withEnv(dockerRunRequest.getEnv());
-            }
-            if (dockerRunRequest.getContainerPort() > 0) {
-                createContainerCmd.withExposedPorts(
-                        new ExposedPort(dockerRunRequest.getContainerPort()));
-            }
-            return createContainerCmd.exec().getId();
-        } catch (Exception e) {
-            logError("create container", containerName, "", e);
-        }
-        return "";
+        return hostConfig;
     }
 
     String getContainerName(String containerId) {

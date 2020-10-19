@@ -17,13 +17,22 @@
 package com.iexec.worker.docker;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.model.Binds;
+import com.github.dockerjava.api.model.Device;
+import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.core.command.CreateContainerCmdImpl;
+import com.github.dockerjava.core.exec.CreateContainerCmdExec;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
+import com.iexec.common.utils.ArgsUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.worker.sgx.SgxService;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -33,6 +42,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.*;
 
+import static com.iexec.worker.docker.DockerClientService.WORKER_DOCKER_NETWORK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -71,6 +81,7 @@ public class DockerClientServiceTests {
                 .imageUri(ALPINE_LATEST)
                 .cmd(CMD)
                 .env(ENV)
+                .containerPort(1000)
                 .binds(Collections.singletonList(FileHelper.SLASH_IEXEC_IN +
                         ":" + FileHelper.SLASH_IEXEC_OUT))
                 .isSgx(isSgx)
@@ -225,10 +236,77 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotCreateContainerSinceNoRequest() {
+        assertThat(dockerClientService.createContainer(null)).isEmpty();
+    }
+
+    @Test
+    public void shouldNotCreateContainerSinceEmptyContainerName() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        request.setContainerName("");
+
+        assertThat(dockerClientService.createContainer(request)).isEmpty();
+    }
+
+    @Test
+    public void shouldNotCreateContainerSinceEmptyImageUri() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        request.setImageUri("");
+
+        assertThat(dockerClientService.createContainer(request)).isEmpty();
+    }
+
+    @Test
     public void shouldNotCreateContainerSinceDockerCmdException() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         useFakeDockerClient();
         assertThat(dockerClientService.createContainer(request)).isEmpty();
+    }
+
+    @Test
+    public void shouldBuildCreateContainerHostConfig() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+
+        HostConfig hostConfig = dockerClientService.buildCreateContainerHostConfig(request);
+        Assertions.assertThat(hostConfig.getNetworkMode()).isEqualTo(WORKER_DOCKER_NETWORK);
+        Assertions.assertThat((hostConfig.getBinds()[0].getPath())).isEqualTo(FileHelper.SLASH_IEXEC_IN);
+        Assertions.assertThat((hostConfig.getBinds()[0].getVolume().getPath())).isEqualTo(FileHelper.SLASH_IEXEC_OUT);
+        Assertions.assertThat(hostConfig.getDevices()).isNull();
+    }
+
+    @Test
+    public void shouldBuildCreateContainerHostConfigWithSgx() {
+        DockerRunRequest request = getDefaultDockerRunRequest(true);
+
+        HostConfig hostConfig = dockerClientService.buildCreateContainerHostConfig(request);
+        Assertions.assertThat(hostConfig.getNetworkMode()).isEqualTo(WORKER_DOCKER_NETWORK);
+        Assertions.assertThat((hostConfig.getBinds()[0].getPath())).isEqualTo(FileHelper.SLASH_IEXEC_IN);
+        Assertions.assertThat((hostConfig.getBinds()[0].getVolume().getPath())).isEqualTo(FileHelper.SLASH_IEXEC_OUT);
+        Assertions.assertThat(hostConfig.getDevices()[0].getPathOnHost()).isEqualTo(SgxService.SGX_DEVICE_PATH);
+        Assertions.assertThat(hostConfig.getDevices()[0].getPathInContainer()).isEqualTo(SgxService.SGX_DEVICE_PATH);
+    }
+
+    @Test
+    public void shouldGetRequestedCreateContainerCmd() {
+        CreateContainerCmd createContainerCmd = getRealDockerClient()
+                .createContainerCmd("repo/image:tag");
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+
+        CreateContainerCmd actualCreateContainerCmd =
+                dockerClientService.getRequestedCreateContainerCmd(request,
+                        createContainerCmd);
+        Assertions.assertThat(actualCreateContainerCmd.getName())
+                .isEqualTo(request.getContainerName());
+        Assertions.assertThat(actualCreateContainerCmd.getHostConfig())
+                .isEqualTo(dockerClientService.buildCreateContainerHostConfig(request));
+        Assertions.assertThat(actualCreateContainerCmd.getCmd())
+                .isEqualTo(ArgsUtils.stringArgsToArrayArgs(request.getCmd()));
+        Assertions.assertThat(actualCreateContainerCmd.getEnv()).isNotNull();
+        Assertions.assertThat(Arrays.asList(actualCreateContainerCmd.getEnv()))
+                .isEqualTo(request.getEnv());
+        Assertions.assertThat(actualCreateContainerCmd.getExposedPorts()).isNotNull();
+        Assertions.assertThat(actualCreateContainerCmd.getExposedPorts()[0].getPort())
+                .isEqualTo(1000);
     }
 
     @Test
@@ -514,6 +592,17 @@ public class DockerClientServiceTests {
             fakeDockerClient = DockerClientImpl.getInstance(config, httpClient);
         }
         return fakeDockerClient;
+    }
+
+    private DockerClient getRealDockerClient() {
+        DockerClientConfig config =
+                DefaultDockerClientConfig.createDefaultConfigBuilder()
+                        .build();
+        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .build();
+        return DockerClientImpl.getInstance(config, httpClient);
     }
 
 }
