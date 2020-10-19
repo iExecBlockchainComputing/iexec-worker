@@ -310,6 +310,29 @@ public class DockerClientServiceTests {
         CreateContainerCmd createContainerCmd = getRealDockerClient()
                 .createContainerCmd("repo/image:tag");
         DockerRunRequest request = getDefaultDockerRunRequest(false);
+        request.setCmd("");
+        request.setEnv(null);
+        request.setContainerPort(0);
+
+        Optional<CreateContainerCmd> oActualCreateContainerCmd =
+                dockerClientService.getRequestedCreateContainerCmd(request,
+                        createContainerCmd);
+        Assertions.assertThat(oActualCreateContainerCmd).isPresent();
+        CreateContainerCmd actualCreateContainerCmd = oActualCreateContainerCmd.get();
+        Assertions.assertThat(actualCreateContainerCmd.getName())
+                .isEqualTo(request.getContainerName());
+        Assertions.assertThat(actualCreateContainerCmd.getHostConfig())
+                .isEqualTo(dockerClientService.buildCreateContainerHostConfig(request));
+        Assertions.assertThat(actualCreateContainerCmd.getCmd()).isNull();
+        Assertions.assertThat(actualCreateContainerCmd.getEnv()).isNull();
+        Assertions.assertThat(actualCreateContainerCmd.getExposedPorts()).isEmpty();
+    }
+
+    @Test
+    public void shouldGetRequestedCreateContainerCmdWithFullParams() {
+        CreateContainerCmd createContainerCmd = getRealDockerClient()
+                .createContainerCmd("repo/image:tag");
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
 
         Optional<CreateContainerCmd> oActualCreateContainerCmd =
                 dockerClientService.getRequestedCreateContainerCmd(request,
