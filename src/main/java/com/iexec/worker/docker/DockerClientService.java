@@ -175,8 +175,9 @@ class DockerClientService {
         try (CreateContainerCmd createContainerCmd = getClient()
                 .createContainerCmd(dockerRunRequest.getImageUri())) {
             return getRequestedCreateContainerCmd(dockerRunRequest, createContainerCmd)
-                    .exec()
-                    .getId();
+                    .map(CreateContainerCmd::exec)
+                    .map(CreateContainerResponse::getId)
+                    .orElse("");
         } catch (Exception e) {
             logError("create container", containerName, "", e);
         }
@@ -190,8 +191,11 @@ class DockerClientService {
      * @param dockerRunRequest contains information for creating container
      * @return a templated HostConfig
      */
-    CreateContainerCmd getRequestedCreateContainerCmd(DockerRunRequest dockerRunRequest,
-                                                      CreateContainerCmd createContainerCmd) {
+    Optional<CreateContainerCmd> getRequestedCreateContainerCmd(DockerRunRequest dockerRunRequest,
+                                                                CreateContainerCmd createContainerCmd) {
+        if (dockerRunRequest == null || createContainerCmd == null) {
+            return Optional.empty();
+        }
         createContainerCmd
                 .withName(dockerRunRequest.getContainerName())
                 .withHostConfig(buildCreateContainerHostConfig(dockerRunRequest));
@@ -207,7 +211,7 @@ class DockerClientService {
             createContainerCmd.withExposedPorts(
                     new ExposedPort(dockerRunRequest.getContainerPort()));
         }
-        return createContainerCmd;
+        return Optional.of(createContainerCmd);
     }
 
     /**
@@ -219,6 +223,9 @@ class DockerClientService {
      * @return a templated HostConfig
      */
     HostConfig buildCreateContainerHostConfig(DockerRunRequest dockerRunRequest) {
+        if (dockerRunRequest == null) {
+            return null;
+        }
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withNetworkMode(WORKER_DOCKER_NETWORK);
 

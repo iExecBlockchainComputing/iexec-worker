@@ -222,8 +222,6 @@ public class DockerClientServiceTests {
     public void shouldCreateContainer() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
 
-        //TODO Inspect container and check requeste params are set
-
         String containerId = dockerClientService.createContainer(request);
         assertThat(containerId).isNotEmpty();
 
@@ -245,6 +243,20 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldCreateContainerAndRemovePreviousWithSameName() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        // create first container
+        String container1Id = dockerClientService.createContainer(request);
+        // create second container with same name (should replace previous one)
+        String container2Id = dockerClientService.createContainer(request);
+        assertThat(container2Id).isNotEmpty();
+        assertThat(container2Id).isNotEqualTo(container1Id);
+
+        // cleaning
+        dockerClientService.removeContainer(container2Id);
+    }
+
+    @Test
     public void shouldNotCreateContainerSinceEmptyImageUri() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setImageUri("");
@@ -263,11 +275,22 @@ public class DockerClientServiceTests {
     public void shouldBuildCreateContainerHostConfig() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
 
-        HostConfig hostConfig = dockerClientService.buildCreateContainerHostConfig(request);
-        Assertions.assertThat(hostConfig.getNetworkMode()).isEqualTo(WORKER_DOCKER_NETWORK);
-        Assertions.assertThat((hostConfig.getBinds()[0].getPath())).isEqualTo(FileHelper.SLASH_IEXEC_IN);
-        Assertions.assertThat((hostConfig.getBinds()[0].getVolume().getPath())).isEqualTo(FileHelper.SLASH_IEXEC_OUT);
+        HostConfig hostConfig =
+                dockerClientService.buildCreateContainerHostConfig(request);
+        Assertions.assertThat(hostConfig.getNetworkMode())
+                .isEqualTo(WORKER_DOCKER_NETWORK);
+        Assertions.assertThat((hostConfig.getBinds()[0].getPath()))
+                .isEqualTo(FileHelper.SLASH_IEXEC_IN);
+        Assertions.assertThat((hostConfig.getBinds()[0].getVolume().getPath()))
+                .isEqualTo(FileHelper.SLASH_IEXEC_OUT);
         Assertions.assertThat(hostConfig.getDevices()).isNull();
+    }
+
+    @Test
+    public void shouldNotBuildCreateContainerHostConfigSinceNoRequest() {
+        HostConfig hostConfig =
+                dockerClientService.buildCreateContainerHostConfig(null);
+        Assertions.assertThat(hostConfig).isNull();
     }
 
     @Test
@@ -288,9 +311,11 @@ public class DockerClientServiceTests {
                 .createContainerCmd("repo/image:tag");
         DockerRunRequest request = getDefaultDockerRunRequest(false);
 
-        CreateContainerCmd actualCreateContainerCmd =
+        Optional<CreateContainerCmd> oActualCreateContainerCmd =
                 dockerClientService.getRequestedCreateContainerCmd(request,
                         createContainerCmd);
+        Assertions.assertThat(oActualCreateContainerCmd).isPresent();
+        CreateContainerCmd actualCreateContainerCmd = oActualCreateContainerCmd.get();
         Assertions.assertThat(actualCreateContainerCmd.getName())
                 .isEqualTo(request.getContainerName());
         Assertions.assertThat(actualCreateContainerCmd.getHostConfig())
@@ -303,6 +328,23 @@ public class DockerClientServiceTests {
         Assertions.assertThat(actualCreateContainerCmd.getExposedPorts()).isNotNull();
         Assertions.assertThat(actualCreateContainerCmd.getExposedPorts()[0].getPort())
                 .isEqualTo(1000);
+    }
+
+    @Test
+    public void shouldNotGetRequestedCreateContainerCmdSinceNoRequest() {
+        Optional<CreateContainerCmd> actualCreateContainerCmd =
+                dockerClientService.getRequestedCreateContainerCmd(
+                        getDefaultDockerRunRequest(false),
+                        null);
+        Assertions.assertThat(actualCreateContainerCmd).isEmpty();
+    }
+
+    @Test
+    public void shouldNotGetRequestedCreateContainerCmdSinceNoCreateContainerCmd() {
+        Optional<CreateContainerCmd> actualCreateContainerCmd =
+                dockerClientService.getRequestedCreateContainerCmd(null,
+                        getRealDockerClient().createContainerCmd("repo/image:tag"));
+        Assertions.assertThat(actualCreateContainerCmd).isEmpty();
     }
 
     @Test
