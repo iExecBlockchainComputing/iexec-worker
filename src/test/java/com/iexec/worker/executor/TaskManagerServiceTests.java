@@ -21,6 +21,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
@@ -44,6 +45,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
 
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -168,10 +170,149 @@ public class TaskManagerServiceTests {
                 taskManagerService.compute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse).isNotNull();
-        //compute + post-compute stdout
+        // pre-compute + app-compute + post-compute stdout
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
                         .successWithStdout("stdout\nstdout\nstdout"));
+    }
+
+    @Test
+    public void shouldNotComputeSinceCannotContributeStatusIsPresent() {
+        ReplicateStatusCause replicateStatusCause =
+                ReplicateStatusCause.CONTRIBUTION_AUTHORIZATION_NOT_FOUND;
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(replicateStatusCause));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(replicateStatusCause));
+    }
+
+    @Test
+    public void shouldNotComputeSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(TASK_DESCRIPTION_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotComputeSinceAppNotDownloaded() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(APP_NOT_FOUND_LOCALLY));
+    }
+
+    @Test
+    public void shouldNotComputeSinceFailedPreCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(PRE_COMPUTE_FAILED));
+    }
+
+    @Test
+    public void shouldNotComputeSinceFailedAppCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runCompute(any(), any()))
+                .thenReturn(AppComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failureWithStdout("stdout"));
+    }
+
+    @Test
+    public void shouldNotComputeSinceFailedPostCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runCompute(any(), any()))
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runPostCompute(any(), any()))
+                .thenReturn(PostComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failureWithStdout(POST_COMPUTE_FAILED, "stdout"));
     }
 
     @Test
