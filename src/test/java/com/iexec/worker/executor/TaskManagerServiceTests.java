@@ -44,7 +44,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -671,7 +670,7 @@ public class TaskManagerServiceTests {
     }
 
     @Test
-    public void shouldNotContributeSinceCannotContribute() {
+    public void shouldNotContributeSinceFailedToContribute() {
         ComputedFile computedFile = mock(ComputedFile.class);
         Contribution contribution = mock(Contribution.class);
         TaskDescription taskDescription = getStubTaskDescription(false);
@@ -692,26 +691,196 @@ public class TaskManagerServiceTests {
 
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .failure(CHAIN_RECEIPT_NOT_VALID));
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+
+    @Test
+    public void shouldNotContributeSinceInvalidContributeChainReceipt() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        Contribution contribution = mock(Contribution.class);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(0).build();
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(contribution);
+        when(contributionService.contribute(contribution))
+                .thenReturn(Optional.of(chainReceipt));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
 
     @Test
     public void shouldReveal() {
-        String hash = "hash";
-        long consensusBlock = 55;
-
-        when(computeManagerService.getComputedFile(CHAIN_TASK_ID)).thenReturn(
-                ComputedFile.builder().resultDigest(hash).build());
-        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID,
-                consensusBlock)).thenReturn(true);
-        when(revealService.repeatCanReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(true);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(revealService.reveal(CHAIN_TASK_ID, resultDigest))
+                .thenReturn(Optional.of(chainReceipt));
 
-        taskManagerService.reveal(CHAIN_TASK_ID,
-                TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        verify(revealService, times(1)).reveal(CHAIN_TASK_ID, hash);
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success(chainReceipt));
+    }
+
+    @Test
+    public void shouldNotRevealSinceNoConsensusBlock() {
+        long consensusBlock = 0;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
+    }
+
+    @Test
+    public void shouldNotRevealSinceNoExtraForRetrievingConsensusBlock() {
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, null);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
+    }
+
+    @Test
+    public void shouldNotRevealSinceEmptyResultDigest() {
+        long consensusBlock = 20;
+        String resultDigest = "";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID,
+                        TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotRevealSinceConsensusBlockNotReached() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(BLOCK_NOT_REACHED));
+    }
+
+    @Test
+    public void shouldNotRevealSinceCannotReveal() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CANNOT_REVEAL));
+    }
+
+
+    @Test
+    public void shouldNotRevealSinceFailedToReveal() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(true);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(revealService.reveal(CHAIN_TASK_ID, resultDigest))
+                .thenReturn(Optional.empty());
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+    @Test
+    public void shouldNotRevealSinceInvalidRevealChainReceipt() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(0).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(true);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(revealService.reveal(CHAIN_TASK_ID, resultDigest))
+                .thenReturn(Optional.of(chainReceipt));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
 
     @Test
@@ -738,13 +907,13 @@ public class TaskManagerServiceTests {
     @Test
     public void shouldFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        assertThat(taskManagerService.checkGasBalance()).isTrue();
+        assertThat(taskManagerService.hasEnoughGas()).isTrue();
     }
 
     @Test
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
-        assertThat(taskManagerService.checkGasBalance()).isFalse();
+        assertThat(taskManagerService.hasEnoughGas()).isFalse();
     }
 
     @Test

@@ -294,8 +294,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
         }
 
-        boolean hasEnoughGas = checkGasBalance();
-        if (!hasEnoughGas) {
+        if (!hasEnoughGas()) {
             log.error("Cannot contribute, no enough gas [chainTaskId:{}]",
                     chainTaskId);
             return ReplicateActionResponse.failure(OUT_OF_GAS);
@@ -331,6 +330,12 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId,
                                    TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
+        if (extra == null || extra.getBlockNumber() == 0) {
+            log.error("Cannot reveal, missing consensus block " +
+                    "[chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING);
+        }
+        long consensusBlock = extra.getBlockNumber();
 
         ComputedFile computedFile =
                 computeManagerService.getComputedFile(chainTaskId);
@@ -343,35 +348,24 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        if (extra == null || extra.getBlockNumber() == 0) {
-            log.error("Cannot reveal, missing consensus block " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING);
-        }
-
-        long consensusBlock = extra.getBlockNumber();
-        boolean isBlockReached =
-                revealService.isConsensusBlockReached(chainTaskId,
-                        consensusBlock);
-        if (!isBlockReached) {
+        if (!revealService.isConsensusBlockReached(chainTaskId,
+                consensusBlock)) {
             log.error("Cannot reveal, consensus block not reached " +
                     "[chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(BLOCK_NOT_REACHED);
         }
 
-        boolean canReveal = revealService.repeatCanReveal(chainTaskId,
-                resultDigest);
-
-        if (!canReveal) {
+        if (!revealService.repeatCanReveal(chainTaskId,
+                resultDigest)) {
             log.error("Cannot reveal, one or more conditions are not " +
                     "satisfied [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.failure(CANNOT_REVEAL);
         }
 
-        boolean hasEnoughGas = checkGasBalance();
-        if (!hasEnoughGas) {
+        if (!hasEnoughGas()) {
             log.error("Cannot reveal, no enough gas [chainTaskId:{}]",
                     chainTaskId);
+            // Don't we prefer an OUT_OF_GAS?
             System.exit(0);
         }
 
@@ -420,7 +414,7 @@ public class TaskManagerService {
         return resultService.removeResult(chainTaskId);
     }
 
-    boolean checkGasBalance() {
+    boolean hasEnoughGas() {
         if (iexecHubService.hasEnoughGas()) {
             return true;
         }
