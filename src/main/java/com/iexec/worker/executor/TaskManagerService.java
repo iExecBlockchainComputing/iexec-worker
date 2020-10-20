@@ -185,7 +185,6 @@ public class TaskManagerService {
         }
 
         String datasetUri = taskDescription.getDatasetUri();
-        List<String> inputFiles = taskDescription.getInputFiles();
         if (!datasetUri.isEmpty()) {
             boolean isDatasetReady = dataService.downloadFile(chainTaskId,
                     datasetUri);
@@ -203,6 +202,7 @@ public class TaskManagerService {
             }
         }
 
+        List<String> inputFiles = taskDescription.getInputFiles();
         if (inputFiles != null && !dataService.downloadFiles(chainTaskId,
                 inputFiles)) {
             log.error("Failed to download input files [chainTaskId:{}, " +
