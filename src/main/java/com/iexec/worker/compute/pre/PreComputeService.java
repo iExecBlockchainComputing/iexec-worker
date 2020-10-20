@@ -32,17 +32,14 @@ public class PreComputeService {
 
     private final SmsService smsService;
     private final DataService dataService;
-    private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
 
     public PreComputeService(
             SmsService smsService,
-            WorkerConfigurationService workerConfigService,
             DataService dataService,
             DockerService dockerService
     ) {
         this.smsService = smsService;
-        this.workerConfigService = workerConfigService;
         this.dataService = dataService;
         this.dockerService = dockerService;
     }

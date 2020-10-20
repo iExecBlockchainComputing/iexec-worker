@@ -115,24 +115,22 @@ public class TaskManagerService {
 
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "start";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot start [chainTaskId:{}, error:{}]", chainTaskId,
-                    oErrorStatus.get());
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
         TaskDescription taskDescription =
                 iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot start, task description not found " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         if (taskDescription.isTeeTask() && !sconeTeeService.isTeeEnabled()) {
-            log.error("Cannot start, TEE not supported [chainTaskId:{}]",
-                    chainTaskId);
-            return ReplicateActionResponse.failure(TEE_NOT_SUPPORTED);
+            return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
+                    context, chainTaskId);
         }
 
         return ReplicateActionResponse.success();
@@ -143,22 +141,21 @@ public class TaskManagerService {
 
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "download app";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot download app, {} [chainTaskId:{}]",
-                    oErrorStatus.get(), chainTaskId);
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
         TaskDescription taskDescription =
                 iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot download app, task description not found " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         if (!computeManagerService.downloadApp(taskDescription)) {
-            log.error("Failed to download app [chainTaskId:{}]", chainTaskId);
+            logError("download app error", context, chainTaskId);
             return ReplicateActionResponse.failure();
         }
 
@@ -170,34 +167,31 @@ public class TaskManagerService {
 
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "download data";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot download data, {} [chainTaskId:{}]",
-                    oErrorStatus.get(), chainTaskId);
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
         TaskDescription taskDescription =
                 iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot download data, task description not found " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         String datasetUri = taskDescription.getDatasetUri();
         if (!datasetUri.isEmpty()) {
             boolean isDatasetReady = dataService.downloadFile(chainTaskId,
                     datasetUri);
-            String errorMessage = "Failed to download dataset";
             if (taskDescription.isTeeTask()) {
                 isDatasetReady =
                         dataService.unzipDownloadedTeeDataset(chainTaskId,
                                 datasetUri);
-                errorMessage = "Failed to unzip downloaded Tee dataset";
+                logError("unzip dataset error", context, chainTaskId);
             }
             if (!isDatasetReady) {
-                log.error(errorMessage + " [chainTaskId:{}, datasetUri:{}]",
-                        chainTaskId, taskDescription.getDatasetUri());
+                logError("download dataset error", context, chainTaskId);
                 return ReplicateActionResponse.failure();
             }
         }
@@ -205,9 +199,7 @@ public class TaskManagerService {
         List<String> inputFiles = taskDescription.getInputFiles();
         if (inputFiles != null && !dataService.downloadFiles(chainTaskId,
                 inputFiles)) {
-            log.error("Failed to download input files [chainTaskId:{}, " +
-                            "inputFiles:{}]",
-                    chainTaskId, taskDescription.getInputFiles());
+            logError("download input files error", context, chainTaskId);
             return ReplicateActionResponse.failure();
         }
 
@@ -219,24 +211,21 @@ public class TaskManagerService {
 
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "compute";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot compute [chainTaskId:{}, error:{}]",
-                    chainTaskId, oErrorStatus.get());
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(), context, chainTaskId);
         }
 
         TaskDescription taskDescription =
                 iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot compute, task description not found " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
-            log.error("Cannot compute, app not found locally " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(APP_NOT_FOUND_LOCALLY);
+            return getFailureResponseAndPrintError(APP_NOT_FOUND_LOCALLY,
+                    context, chainTaskId);
         }
 
         WorkerpoolAuthorization workerpoolAuthorization =
@@ -246,15 +235,15 @@ public class TaskManagerService {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
-            log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
+            return getFailureResponseAndPrintError(PRE_COMPUTE_FAILED,
+                    context, chainTaskId);
         }
 
         AppComputeResponse appResponse =
                 computeManagerService.runCompute(taskDescription,
                         preResponse.getSecureSessionId());
         if (!appResponse.isSuccessful()) {
-            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
+            logError("app compute error", context, chainTaskId);
             return ReplicateActionResponse.failureWithStdout(appResponse.getStdout());
         }
 
@@ -262,7 +251,7 @@ public class TaskManagerService {
                 computeManagerService.runPostCompute(taskDescription,
                         preResponse.getSecureSessionId());
         if (!postResponse.isSuccessful()) {
-            log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
+            logError("post compute error", context, chainTaskId);
             return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED,
                     postResponse.getStdout());
         }
@@ -280,39 +269,35 @@ public class TaskManagerService {
 
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "contribute";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot contribute [chainTaskId:{}, error:{}]",
-                    chainTaskId, oErrorStatus.get());
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
         TaskDescription taskDescription =
                 iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot contribute, task description not found " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {
-            log.error("Cannot contribute, no enough gas [chainTaskId:{}]",
-                    chainTaskId);
-            return ReplicateActionResponse.failure(OUT_OF_GAS);
+            return getFailureResponseAndPrintError(OUT_OF_GAS,
+                    context, chainTaskId);
         }
 
         ComputedFile computedFile =
                 computeManagerService.getComputedFile(chainTaskId);
         if (computedFile == null) {
-            log.error("Cannot contribute, getComputedFile [chainTaskId:{}]",
-                    chainTaskId);
+            logError("computed file error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
         Contribution contribution =
                 contributionService.getContribution(computedFile);
         if (contribution == null) {
-            log.error("Failed to getContribution [chainTaskId:{}]",
-                    chainTaskId);
+            logError("get contribution error", context, chainTaskId);
             return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
 
@@ -330,10 +315,10 @@ public class TaskManagerService {
     ReplicateActionResponse reveal(String chainTaskId,
                                    TaskNotificationExtra extra) {
         unsetTaskUsingCpu(chainTaskId);
+        String context = "reveal";
         if (extra == null || extra.getBlockNumber() == 0) {
-            log.error("Cannot reveal, missing consensus block " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING);
+            return getFailureResponseAndPrintError(CONSENSUS_BLOCK_MISSING,
+                    context, chainTaskId);
         }
         long consensusBlock = extra.getBlockNumber();
 
@@ -343,28 +328,25 @@ public class TaskManagerService {
                 computedFile.getResultDigest() : "";
 
         if (resultDigest.isEmpty()) {
-            log.error("Cannot reveal, resultDigest not found " +
-                    "[chainTaskId:{}]", chainTaskId);
+            logError("get result digest error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
         if (!revealService.isConsensusBlockReached(chainTaskId,
                 consensusBlock)) {
-            log.error("Cannot reveal, consensus block not reached " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(BLOCK_NOT_REACHED);
+            return getFailureResponseAndPrintError(BLOCK_NOT_REACHED,
+                    context, chainTaskId
+            );
         }
 
         if (!revealService.repeatCanReveal(chainTaskId,
                 resultDigest)) {
-            log.error("Cannot reveal, one or more conditions are not " +
-                    "satisfied [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(CANNOT_REVEAL);
+            return getFailureResponseAndPrintError(CANNOT_REVEAL,
+                    context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {
-            log.error("Cannot reveal, no enough gas [chainTaskId:{}]",
-                    chainTaskId);
+            logError(OUT_OF_GAS, context, chainTaskId);
             // Don't we prefer an OUT_OF_GAS?
             System.exit(0);
         }
@@ -373,7 +355,9 @@ public class TaskManagerService {
                 revealService.reveal(chainTaskId, resultDigest);
         if (oChainReceipt.isEmpty() ||
                 !isValidChainReceipt(chainTaskId, oChainReceipt)) {
-            return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
+            return getFailureResponseAndPrintError(CHAIN_RECEIPT_NOT_VALID,
+                    context, chainTaskId
+            );
         }
 
         return ReplicateActionResponse.success(oChainReceipt.get());
@@ -382,10 +366,11 @@ public class TaskManagerService {
     ReplicateActionResponse uploadResult(String chainTaskId) {
         unsetTaskUsingCpu(chainTaskId);
         String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
+        String context = "upload result";
         if (resultLink.isEmpty()) {
-            log.error("Cannot upload, resultLink missing [chainTaskId:{}]",
-                    chainTaskId);
-            return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
+            return getFailureResponseAndPrintError(RESULT_LINK_MISSING,
+                    context, chainTaskId
+            );
         }
 
         ComputedFile computedFile =
@@ -393,8 +378,7 @@ public class TaskManagerService {
         String callbackData = computedFile != null ?
                 computedFile.getCallbackData() : "";
 
-        log.info("Result uploaded [chainTaskId:{}, resultLink:{}, " +
-                        "callbackData:{}]",
+        log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, resultLink, callbackData);
 
         return ReplicateActionResponse.success(resultLink, callbackData);
@@ -437,12 +421,33 @@ public class TaskManagerService {
 
         if (oChainReceipt.get().getBlockNumber() == 0) {
             log.warn("The blockNumber of the receipt is equal to 0, status " +
-                    "will not be "
-                    + "updated in the core [chainTaskId:{}]", chainTaskId);
+                    "will not be updated in the core [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         return true;
+    }
+
+    private ReplicateActionResponse getFailureResponseAndPrintError(ReplicateStatusCause cause, String context, String chainTaskId) {
+        logError(cause, context, chainTaskId);
+        return ReplicateActionResponse.failure(cause);
+    }
+
+    /**
+     * This method, which a <String> 'cause' should disappear at some point
+     * Each error should have it proper ReplicateStatusCause so the core could
+     * keep track of it.
+     */
+    private void logError(String cause, String failureContext,
+                          String chainTaskId) {
+        log.error("Failed to {} [chainTaskId:'{}', cause:'{}']", failureContext,
+                chainTaskId, cause);
+    }
+
+    private void logError(ReplicateStatusCause cause, String failureContext,
+                          String chainTaskId) {
+        logError(cause != null ? cause.toString() : "", failureContext,
+                chainTaskId);
     }
 
 }
