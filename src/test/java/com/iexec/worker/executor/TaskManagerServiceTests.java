@@ -884,21 +884,87 @@ public class TaskManagerServiceTests {
     }
 
     @Test
-    public void shouldUploadResult() {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .resultLink("resultUri")
-                .chainCallbackData("callbackData")
-                .build();
+    public void shouldUploadResultWithResultUri() {
+        String resultUri = "resultUri";
         when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
-                .thenReturn(details.getResultLink());
+                .thenReturn(resultUri);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success(resultUri, ""));
+    }
+
+    @Test
+    public void shouldUploadResultWithResultUriAndCallbackData() {
+        String resultUri = "resultUri";
+        String callbackData = "callbackData";
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
+                .thenReturn(resultUri);
         when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder()
-                        .callbackData(details.getChainCallbackData())
+                        .callbackData(callbackData)
                         .build()
                 );
 
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-        verify(resultService).uploadResultAndGetLink(CHAIN_TASK_ID);
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success(resultUri, callbackData));
+    }
+
+    @Test
+    public void shouldNotUploadResultSinceEmptyResultLink() {
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
+                .thenReturn("");
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(RESULT_LINK_MISSING));
+    }
+
+    @Test
+    public void shouldComplete() {
+        when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.complete(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success());
+    }
+
+    @Test
+    public void shouldNotCompleteSinceCannotRemoveResult() {
+        when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.complete(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure());
+    }
+
+    @Test
+    public void shouldAbort() {
+        when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
+
+        boolean isAborted = taskManagerService.abort(CHAIN_TASK_ID);
+
+        Assertions.assertThat(isAborted).isTrue();
+        verify(resultService, times(1))
+                .removeResult(CHAIN_TASK_ID);
     }
 
     //TODO clean theses
