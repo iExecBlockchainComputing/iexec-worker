@@ -299,7 +299,6 @@ public class TaskManagerService {
             log.error("Cannot contribute, no enough gas [chainTaskId:{}]",
                     chainTaskId);
             return ReplicateActionResponse.failure(OUT_OF_GAS);
-            // System.exit(0);
         }
 
         ComputedFile computedFile =
@@ -321,7 +320,8 @@ public class TaskManagerService {
         Optional<ChainReceipt> oChainReceipt =
                 contributionService.contribute(contribution);
 
-        if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
+        if (oChainReceipt.isEmpty() ||
+                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         }
 
@@ -377,7 +377,8 @@ public class TaskManagerService {
 
         Optional<ChainReceipt> oChainReceipt =
                 revealService.reveal(chainTaskId, resultDigest);
-        if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
+        if (oChainReceipt.isEmpty() ||
+                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         }
 

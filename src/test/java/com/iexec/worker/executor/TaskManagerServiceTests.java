@@ -18,6 +18,7 @@ package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
@@ -96,12 +97,6 @@ public class TaskManagerServiceTests {
                 .enclaveChallenge(enclaveChallenge)
                 .build();
     }
-
-    /*
-     *
-     * TODO Add should not
-     *
-     * */
 
     @Test
     public void shouldStart() {
@@ -557,13 +552,148 @@ public class TaskManagerServiceTests {
     }
 
     @Test
-    public void shouldContributeSinceTeeComputation() {
-        //TODO
+    public void shouldContribute() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        Contribution contribution = mock(Contribution.class);
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(contribution);
+        when(contributionService.contribute(contribution))
+                .thenReturn(Optional.of(chainReceipt));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .success(chainReceipt));
     }
 
     @Test
-    public void shouldContributeSinceNonTeeComputation() {
-        //TODO
+    public void shouldNotContributeSinceCannotContributeStatusIsPresent() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(CONTRIBUTION_TIMEOUT));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(TASK_DESCRIPTION_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNotEnoughGas() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(OUT_OF_GAS));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNoComputedFile() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNoContribution() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(ENCLAVE_SIGNATURE_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotContributeSinceCannotContribute() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        Contribution contribution = mock(Contribution.class);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(contribution);
+        when(contributionService.contribute(contribution))
+                .thenReturn(Optional.empty());
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(CHAIN_RECEIPT_NOT_VALID));
     }
 
     @Test
