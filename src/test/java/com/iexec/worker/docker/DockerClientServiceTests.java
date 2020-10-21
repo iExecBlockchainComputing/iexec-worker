@@ -272,11 +272,11 @@ public class DockerClientServiceTests {
     }
 
     @Test
-    public void shouldBuildCreateContainerHostConfig() {
+    public void shouldBuildHostConfigFromRunRequest() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
 
         HostConfig hostConfig =
-                dockerClientService.buildCreateContainerHostConfig(request);
+                dockerClientService.buildHostConfigFromRunRequest(request);
         Assertions.assertThat(hostConfig.getNetworkMode())
                 .isEqualTo(WORKER_DOCKER_NETWORK);
         Assertions.assertThat((hostConfig.getBinds()[0].getPath()))
@@ -287,17 +287,17 @@ public class DockerClientServiceTests {
     }
 
     @Test
-    public void shouldNotBuildCreateContainerHostConfigSinceNoRequest() {
+    public void shouldNotbuildHostConfigFromRunRequestSinceNoRequest() {
         HostConfig hostConfig =
-                dockerClientService.buildCreateContainerHostConfig(null);
+                dockerClientService.buildHostConfigFromRunRequest(null);
         Assertions.assertThat(hostConfig).isNull();
     }
 
     @Test
-    public void shouldBuildCreateContainerHostConfigWithSgx() {
+    public void shouldbuildHostConfigFromRunRequestWithSgx() {
         DockerRunRequest request = getDefaultDockerRunRequest(true);
 
-        HostConfig hostConfig = dockerClientService.buildCreateContainerHostConfig(request);
+        HostConfig hostConfig = dockerClientService.buildHostConfigFromRunRequest(request);
         Assertions.assertThat(hostConfig.getNetworkMode()).isEqualTo(WORKER_DOCKER_NETWORK);
         Assertions.assertThat((hostConfig.getBinds()[0].getPath())).isEqualTo(FileHelper.SLASH_IEXEC_IN);
         Assertions.assertThat((hostConfig.getBinds()[0].getVolume().getPath())).isEqualTo(FileHelper.SLASH_IEXEC_OUT);
@@ -306,7 +306,7 @@ public class DockerClientServiceTests {
     }
 
     @Test
-    public void shouldGetRequestedCreateContainerCmd() {
+    public void shouldbuildCreateContainerCmdFromRunRequest() {
         CreateContainerCmd createContainerCmd = getRealDockerClient()
                 .createContainerCmd("repo/image:tag");
         DockerRunRequest request = getDefaultDockerRunRequest(false);
@@ -315,34 +315,34 @@ public class DockerClientServiceTests {
         request.setContainerPort(0);
 
         Optional<CreateContainerCmd> oActualCreateContainerCmd =
-                dockerClientService.getRequestedCreateContainerCmd(request,
+                dockerClientService.buildCreateContainerCmdFromRunRequest(request,
                         createContainerCmd);
         Assertions.assertThat(oActualCreateContainerCmd).isPresent();
         CreateContainerCmd actualCreateContainerCmd = oActualCreateContainerCmd.get();
         Assertions.assertThat(actualCreateContainerCmd.getName())
                 .isEqualTo(request.getContainerName());
         Assertions.assertThat(actualCreateContainerCmd.getHostConfig())
-                .isEqualTo(dockerClientService.buildCreateContainerHostConfig(request));
+                .isEqualTo(dockerClientService.buildHostConfigFromRunRequest(request));
         Assertions.assertThat(actualCreateContainerCmd.getCmd()).isNull();
         Assertions.assertThat(actualCreateContainerCmd.getEnv()).isNull();
         Assertions.assertThat(actualCreateContainerCmd.getExposedPorts()).isEmpty();
     }
 
     @Test
-    public void shouldGetRequestedCreateContainerCmdWithFullParams() {
+    public void shouldbuildCreateContainerCmdFromRunRequestWithFullParams() {
         CreateContainerCmd createContainerCmd = getRealDockerClient()
                 .createContainerCmd("repo/image:tag");
         DockerRunRequest request = getDefaultDockerRunRequest(false);
 
         Optional<CreateContainerCmd> oActualCreateContainerCmd =
-                dockerClientService.getRequestedCreateContainerCmd(request,
+                dockerClientService.buildCreateContainerCmdFromRunRequest(request,
                         createContainerCmd);
         Assertions.assertThat(oActualCreateContainerCmd).isPresent();
         CreateContainerCmd actualCreateContainerCmd = oActualCreateContainerCmd.get();
         Assertions.assertThat(actualCreateContainerCmd.getName())
                 .isEqualTo(request.getContainerName());
         Assertions.assertThat(actualCreateContainerCmd.getHostConfig())
-                .isEqualTo(dockerClientService.buildCreateContainerHostConfig(request));
+                .isEqualTo(dockerClientService.buildHostConfigFromRunRequest(request));
         Assertions.assertThat(actualCreateContainerCmd.getCmd())
                 .isEqualTo(ArgsUtils.stringArgsToArrayArgs(request.getCmd()));
         Assertions.assertThat(actualCreateContainerCmd.getEnv()).isNotNull();
@@ -354,18 +354,18 @@ public class DockerClientServiceTests {
     }
 
     @Test
-    public void shouldNotGetRequestedCreateContainerCmdSinceNoRequest() {
+    public void shouldNotbuildCreateContainerCmdFromRunRequestSinceNoRequest() {
         Optional<CreateContainerCmd> actualCreateContainerCmd =
-                dockerClientService.getRequestedCreateContainerCmd(
+                dockerClientService.buildCreateContainerCmdFromRunRequest(
                         getDefaultDockerRunRequest(false),
                         null);
         Assertions.assertThat(actualCreateContainerCmd).isEmpty();
     }
 
     @Test
-    public void shouldNotGetRequestedCreateContainerCmdSinceNoCreateContainerCmd() {
+    public void shouldNotbuildCreateContainerCmdFromRunRequestSinceNoCreateContainerCmd() {
         Optional<CreateContainerCmd> actualCreateContainerCmd =
-                dockerClientService.getRequestedCreateContainerCmd(null,
+                dockerClientService.buildCreateContainerCmdFromRunRequest(null,
                         getRealDockerClient().createContainerCmd("repo/image:tag"));
         Assertions.assertThat(actualCreateContainerCmd).isEmpty();
     }
