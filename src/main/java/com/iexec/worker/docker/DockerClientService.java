@@ -198,7 +198,7 @@ class DockerClientService {
         }
         createContainerCmd
                 .withName(dockerRunRequest.getContainerName())
-                .withHostConfig(buildCreateContainerHostConfig(dockerRunRequest));
+                .withHostConfig(buildHostConfigFromRunRequest(dockerRunRequest));
 
         if (!StringUtils.isEmpty(dockerRunRequest.getCmd())) {
             createContainerCmd.withCmd(
