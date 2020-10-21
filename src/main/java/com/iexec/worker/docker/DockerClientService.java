@@ -191,7 +191,7 @@ class DockerClientService {
      * @param dockerRunRequest contains information for creating container
      * @return a templated HostConfig
      */
-    Optional<CreateContainerCmd> getRequestedCreateContainerCmd(DockerRunRequest dockerRunRequest,
+    Optional<CreateContainerCmd> buildCreateContainerCmdFromRunRequest(DockerRunRequest dockerRunRequest,
                                                                 CreateContainerCmd createContainerCmd) {
         if (dockerRunRequest == null || createContainerCmd == null) {
             return Optional.empty();
