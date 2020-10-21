@@ -174,7 +174,7 @@ class DockerClientService {
         }
         try (CreateContainerCmd createContainerCmd = getClient()
                 .createContainerCmd(dockerRunRequest.getImageUri())) {
-            return getRequestedCreateContainerCmd(dockerRunRequest, createContainerCmd)
+            return buildCreateContainerCmdFromRunRequest(dockerRunRequest, createContainerCmd)
                     .map(CreateContainerCmd::exec)
                     .map(CreateContainerResponse::getId)
                     .orElse("");
