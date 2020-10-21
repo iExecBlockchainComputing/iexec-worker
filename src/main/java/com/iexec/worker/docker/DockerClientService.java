@@ -222,7 +222,7 @@ class DockerClientService {
      *                         when creating a container
      * @return a templated HostConfig
      */
-    HostConfig buildCreateContainerHostConfig(DockerRunRequest dockerRunRequest) {
+    HostConfig buildHostConfigFromRunRequest(DockerRunRequest dockerRunRequest) {
         if (dockerRunRequest == null) {
             return null;
         }
