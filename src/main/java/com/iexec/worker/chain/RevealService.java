@@ -18,7 +18,6 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
-import com.iexec.common.utils.HashUtils;
 import com.iexec.common.worker.result.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,9 +29,9 @@ import java.util.Optional;
 @Service
 public class RevealService {
 
-    private IexecHubService iexecHubService;
-    private CredentialsService credentialsService;
-    private Web3jService web3jService;
+    private final IexecHubService iexecHubService;
+    private final CredentialsService credentialsService;
+    private final Web3jService web3jService;
 
     public RevealService(IexecHubService iexecHubService,
                          CredentialsService credentialsService,

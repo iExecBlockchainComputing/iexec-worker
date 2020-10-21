@@ -43,7 +43,7 @@ public class SconeLasConfiguration {
     @Value("${scone.las.port}")
     private int port;
 
-    private String containerName;
+    private final String containerName;
 
     public SconeLasConfiguration(WorkerConfigurationService workerConfigService) {
         // "iexec-las-0xWalletAddress" as containerName to avoid naming conflict

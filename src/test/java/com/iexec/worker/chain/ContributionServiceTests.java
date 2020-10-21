@@ -19,11 +19,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.security.Signature;
-import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.common.utils.TestUtils;
 import com.iexec.common.worker.result.ResultUtils;
 import org.junit.Assert;
@@ -33,14 +29,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
-import org.web3j.crypto.ECKeyPair;
-import org.web3j.crypto.Keys;
-import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.util.Date;
 import java.util.Optional;
 

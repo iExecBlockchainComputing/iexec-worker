@@ -42,11 +42,11 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 @Service
 public class TaskNotificationService {
 
-    private TaskManagerService taskManagerService;
-    private CustomCoreFeignClient customCoreFeignClient;
-    private ApplicationEventPublisher applicationEventPublisher;
-    private SubscriptionService subscriptionService;
-    private ContributionService contributionService;
+    private final TaskManagerService taskManagerService;
+    private final CustomCoreFeignClient customCoreFeignClient;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final SubscriptionService subscriptionService;
+    private final ContributionService contributionService;
 
 
     public TaskNotificationService(TaskManagerService taskManagerService,

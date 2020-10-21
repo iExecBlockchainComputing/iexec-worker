@@ -28,9 +28,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class PingService {
 
-    private CustomCoreFeignClient customCoreFeignClient;
-    private CoreConfigurationService coreConfigurationService;
-    private WorkerService workerService;
+    private final CustomCoreFeignClient customCoreFeignClient;
+    private final CoreConfigurationService coreConfigurationService;
+    private final WorkerService workerService;
 
     public PingService(CustomCoreFeignClient customCoreFeignClient,
                        CoreConfigurationService coreConfigurationService,

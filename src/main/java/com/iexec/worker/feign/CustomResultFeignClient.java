@@ -30,7 +30,7 @@ import java.util.Optional;
 @Service
 public class CustomResultFeignClient extends BaseFeignClient {
 
-    private ResultClient resultClient;
+    private final ResultClient resultClient;
 
     public CustomResultFeignClient(ResultClient resultClient) {
         this.resultClient = resultClient;

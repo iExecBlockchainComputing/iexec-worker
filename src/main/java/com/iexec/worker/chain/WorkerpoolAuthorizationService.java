@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class WorkerpoolAuthorizationService {
 
-    private PublicConfigurationService publicConfigurationService;
+    private final PublicConfigurationService publicConfigurationService;
     private Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
     private String corePublicAddress;
 

@@ -17,7 +17,6 @@
 package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;

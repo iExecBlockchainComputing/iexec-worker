@@ -38,8 +38,8 @@ import java.util.Optional;
 @Service
 public class CustomCoreFeignClient extends BaseFeignClient {
 
-    private LoginService loginService;
-    private CoreClient coreClient;
+    private final LoginService loginService;
+    private final CoreClient coreClient;
 
     public CustomCoreFeignClient(CoreClient coreClient, LoginService loginService) {
         this.loginService = loginService;

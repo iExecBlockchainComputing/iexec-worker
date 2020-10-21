@@ -76,7 +76,7 @@ public class ComputeManagerServiceTests {
             DockerLogs.builder().stdout("stdout").stderr("stderr").build();
 
     @Rule
-    public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
+    public final TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
 
     @InjectMocks
     private ComputeManagerService computeManagerService;

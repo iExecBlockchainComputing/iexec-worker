@@ -37,8 +37,8 @@ import java.util.Optional;
 @Service
 public class SmsService {
 
-    private CredentialsService credentialsService;
-    private SmsClient smsClient;
+    private final CredentialsService credentialsService;
+    private final SmsClient smsClient;
 
     public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
         this.credentialsService = credentialsService;

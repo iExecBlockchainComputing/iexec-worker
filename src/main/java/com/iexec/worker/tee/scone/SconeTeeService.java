@@ -49,9 +49,7 @@ public class SconeTeeService {
         return isLasStarted;
     }
 
-    private boolean startLasService() {
-        String chainTaskId = "iexec-las";
-
+    boolean startLasService() {
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(sconeLasConfig.getContainerName())
                 .imageUri(sconeLasConfig.getImageUri())
