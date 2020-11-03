@@ -18,6 +18,7 @@ package com.iexec.worker.pubsub;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -90,8 +91,12 @@ public class StompClient {
      * @param messageHandler an implementation of 
      * @return
      */
-    Subscription subscribeToTopic(String topic, StompFrameHandler messageHandler) {
-        return this.session.subscribe(topic, messageHandler);
+    Optional<Subscription> subscribeToTopic(String topic, StompFrameHandler messageHandler) {
+        // Should not let other threads subscribe
+        // when the session is not ready yet.
+        return this.session != null
+                ? Optional.of(this.session.subscribe(topic, messageHandler))
+                : Optional.empty();
     }
 
     @PostConstruct
