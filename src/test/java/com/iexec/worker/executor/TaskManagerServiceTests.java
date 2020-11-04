@@ -16,13 +16,6 @@
 
 package com.iexec.worker.executor;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Optional;
-
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
@@ -34,42 +27,49 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.compute.ComputeService;
+import com.iexec.worker.compute.ComputeManagerService;
+import com.iexec.worker.compute.app.AppComputeResponse;
+import com.iexec.worker.compute.post.PostComputeResponse;
+import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
 
 public class TaskManagerServiceTests {
 
+    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+
+    @InjectMocks
+    private TaskManagerService taskManagerService;
+    @Mock
+    private WorkerConfigurationService workerConfigurationService;
+    @Mock
+    private IexecHubService iexecHubService;
+    @Mock
+    private ContributionService contributionService;
+    @Mock
+    private RevealService revealService;
+    @Mock
+    private ComputeManagerService computeManagerService;
+    @Mock
+    private SconeTeeService sconeTeeService;
     @Mock
     private DataService dataService;
     @Mock
     private ResultService resultService;
-    @Mock
-    private ContributionService contributionService;
-    @Mock
-    private WorkerConfigurationService workerConfigurationService;
-    @Mock
-    private SconeTeeService sconeTeeService;
-    @Mock
-    private IexecHubService iexecHubService;
-    @Mock
-    private ComputeService computeService;
-    @Mock
-    private RevealService revealService;
-
-    @InjectMocks
-    private TaskManagerService taskManagerService;
-
-    private static final String CHAIN_TASK_ID = "0xfoobar";
 
     @Before
     public void init() {
@@ -94,10 +94,10 @@ public class TaskManagerServiceTests {
     }
 
     /*
-    *
-    * TODO Add should not
-    *
-    * */
+     *
+     * TODO Add should not
+     *
+     * */
 
     @Test
     public void shouldStart() {
@@ -106,7 +106,8 @@ public class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(sconeTeeService.isTeeEnabled()).thenReturn(false);
 
-        ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isTrue();
     }
@@ -116,9 +117,10 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(computeService.downloadApp(CHAIN_TASK_ID, taskDescription)).thenReturn(true);
+        when(computeManagerService.downloadApp(taskDescription)).thenReturn(true);
 
-        ReplicateActionResponse actionResponse = taskManagerService.downloadApp(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadApp(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isTrue();
     }
@@ -128,11 +130,48 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri())).thenReturn(true);
+        when(dataService.downloadFile(CHAIN_TASK_ID,
+                taskDescription.getDatasetUri())).thenReturn(true);
 
-        ReplicateActionResponse actionResponse = taskManagerService.downloadData(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isTrue();
+    }
+
+    @Test
+    public void shouldCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        ComputedFile computedFile1 = ComputedFile.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runCompute(any(), any()))
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runPostCompute(any(), any()))
+                .thenReturn(PostComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile1);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        //compute + post-compute stdout
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .successWithStdout("stdout\nstdout\nstdout"));
     }
 
     @Test
@@ -150,12 +189,15 @@ public class TaskManagerServiceTests {
         String hash = "hash";
         long consensusBlock = 55;
 
-        when(computeService.getComputedFile(CHAIN_TASK_ID)).thenReturn(ComputedFile.builder().resultDigest(hash).build());
-        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock)).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID)).thenReturn(
+                ComputedFile.builder().resultDigest(hash).build());
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID,
+                consensusBlock)).thenReturn(true);
         when(revealService.repeatCanReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
 
-        taskManagerService.reveal(CHAIN_TASK_ID, TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
+        taskManagerService.reveal(CHAIN_TASK_ID,
+                TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
 
         verify(revealService, times(1)).reveal(CHAIN_TASK_ID, hash);
     }
@@ -168,7 +210,7 @@ public class TaskManagerServiceTests {
                 .build();
         when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
                 .thenReturn(details.getResultLink());
-        when(computeService.getComputedFile(CHAIN_TASK_ID))
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder()
                         .callbackData(details.getChainCallbackData())
                         .build()
@@ -195,17 +237,21 @@ public class TaskManagerServiceTests {
 
     @Test
     public void shouldFindChainReceiptValid() {
-        Optional<ChainReceipt> receipt = Optional.of(new ChainReceipt(5, "txHash"));
+        Optional<ChainReceipt> receipt = Optional.of(new ChainReceipt(5,
+                "txHash"));
 
-        boolean isValid = taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);
+        boolean isValid =
+                taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);
         assertThat(isValid).isTrue();
     }
 
     @Test
     public void shouldFindChainReceiptNotValidSinceBlockIsZero() {
-        Optional<ChainReceipt> receipt = Optional.of(new ChainReceipt(0, "txHash"));
+        Optional<ChainReceipt> receipt = Optional.of(new ChainReceipt(0,
+                "txHash"));
 
-        boolean isValid = taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);
+        boolean isValid =
+                taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);
         assertThat(isValid).isFalse();
     }
 }

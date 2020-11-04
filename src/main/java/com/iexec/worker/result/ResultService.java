@@ -24,7 +24,6 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
@@ -46,27 +45,28 @@ import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 @Service
 public class ResultService {
 
-    private WorkerConfigurationService workerConfigService;
-    private PublicConfigurationService publicConfigService;
-    private CredentialsService credentialsService;
-    private IexecHubService iexecHubService;
-    private CustomResultFeignClient customResultFeignClient;
-    private ComputeService computeService;
+    private final WorkerConfigurationService workerConfigService;
+    private final PublicConfigurationService publicConfigService;
+    private final CredentialsService credentialsService;
+    private final IexecHubService iexecHubService;
+    private final CustomResultFeignClient customResultFeignClient;
+    private final EncryptionService encryptionService;
+    private final Map<String, ResultInfo> resultInfoMap;
 
-    private Map<String, ResultInfo> resultInfoMap;
-
-    public ResultService(WorkerConfigurationService workerConfigService,
-                         PublicConfigurationService publicConfigService,
-                         CredentialsService credentialsService,
-                         IexecHubService iexecHubService,
-                         CustomResultFeignClient customResultFeignClient,
-                         ComputeService computationService) {
+    public ResultService(
+            WorkerConfigurationService workerConfigService,
+            PublicConfigurationService publicConfigService,
+            CredentialsService credentialsService,
+            IexecHubService iexecHubService,
+            CustomResultFeignClient customResultFeignClient,
+            EncryptionService encryptionService
+    ) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
-        this.computeService = computationService;
+        this.encryptionService = encryptionService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -98,8 +98,7 @@ public class ResultService {
         return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
-    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
-        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
+    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription, ComputedFile computedFile) {
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
                 .cmd(taskDescription.getCmd())
@@ -288,4 +287,22 @@ public class ResultService {
     public boolean isResultAvailable(String chainTaskId) {
         return isResultZipFound(chainTaskId);
     }
+
+    public boolean encryptResult(String chainTaskId) {
+        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
+        String resultZipFilePath = workerConfigService.getTaskOutputDir(chainTaskId);
+        String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
+        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
+                resultZipFilePath, beneficiarySecretFilePath);
+        encryptionService.encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
+        String encryptedResultFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        if (!new File(encryptedResultFilePath).exists()) {
+            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
+                    chainTaskId, encryptedResultFilePath);
+            return false;
+        }
+        // replace result file with the encypted one
+        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
+    }
+
 }

@@ -18,8 +18,10 @@ package com.iexec.worker.replicate;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
@@ -40,22 +42,25 @@ import java.util.Optional;
 @Service
 public class ReplicateRecoveryService {
 
-    private CustomCoreFeignClient customCoreFeignClient;
-    private SubscriptionService subscriptionService;
-    private ResultService resultService;
-    private IexecHubService iexecHubService;
-    private ApplicationEventPublisher applicationEventPublisher;
+    private final CustomCoreFeignClient customCoreFeignClient;
+    private final SubscriptionService subscriptionService;
+    private final ResultService resultService;
+    private final IexecHubService iexecHubService;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final ComputeManagerService computeManagerService;
 
     public ReplicateRecoveryService(CustomCoreFeignClient customCoreFeignClient,
-                                  SubscriptionService subscriptionService,
-                                  ResultService resultService,
-                                  IexecHubService iexecHubService,
-                                  ApplicationEventPublisher applicationEventPublisher) {
+                                    SubscriptionService subscriptionService,
+                                    ResultService resultService,
+                                    IexecHubService iexecHubService,
+                                    ApplicationEventPublisher applicationEventPublisher,
+                                    ComputeManagerService computeManagerService) {
         this.customCoreFeignClient = customCoreFeignClient;
         this.subscriptionService = subscriptionService;
         this.resultService = resultService;
         this.iexecHubService = iexecHubService;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.computeManagerService = computeManagerService;
     }
 
     //TODO clean that
@@ -94,7 +99,8 @@ public class ReplicateRecoveryService {
 
             TaskDescription taskDescription = optionalTaskDescription.get();
 
-            resultService.saveResultInfo(chainTaskId, taskDescription);
+            ComputedFile computedFile = computeManagerService.getComputedFile(chainTaskId);
+            resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
 
             subscriptionService.subscribeToTopic(chainTaskId);
             applicationEventPublisher.publishEvent(missedTaskNotification);
