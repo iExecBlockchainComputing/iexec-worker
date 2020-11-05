@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import feign.FeignException;
 
-@FeignClient(name = "SmsClient", url = "#{publicConfigurationService.smsURL}")
+@FeignClient(name = "SmsClient", url = "#{publicConfigurationService.smsURL}", decode404 = true)
 public interface SmsClient {
 
     @PostMapping("/untee/secrets")

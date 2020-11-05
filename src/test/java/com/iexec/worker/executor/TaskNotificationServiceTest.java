@@ -34,8 +34,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationEventPublisher;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 public class TaskNotificationServiceTest {

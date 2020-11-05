@@ -17,7 +17,6 @@
 package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -26,8 +25,6 @@ import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 
 @Slf4j
 @Service
@@ -35,17 +32,14 @@ public class PreComputeService {
 
     private final SmsService smsService;
     private final DataService dataService;
-    private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
 
     public PreComputeService(
             SmsService smsService,
-            WorkerConfigurationService workerConfigService,
             DataService dataService,
             DockerService dockerService
     ) {
         this.smsService = smsService;
-        this.workerConfigService = workerConfigService;
         this.dataService = dataService;
         this.dockerService = dockerService;
     }

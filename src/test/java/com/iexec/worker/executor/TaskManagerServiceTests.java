@@ -18,9 +18,11 @@ package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
@@ -42,8 +44,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Collections;
 import java.util.Optional;
 
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -93,17 +97,14 @@ public class TaskManagerServiceTests {
                 .build();
     }
 
-    /*
-     *
-     * TODO Add should not
-     *
-     * */
-
     @Test
     public void shouldStart() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(getStubTaskDescription(false));
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
+                .thenReturn(true);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(getStubTaskDescription(false));
         when(sconeTeeService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
@@ -113,11 +114,56 @@ public class TaskManagerServiceTests {
     }
 
     @Test
+    public void shouldNotStartSinceCannotContributeStatusIsPresent() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(CONTRIBUTION_TIMEOUT);
+    }
+
+    @Test
+    public void shouldNotStartSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(TASK_DESCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    public void shouldNotStartSinceTeeTaskAndButEnabledOnHost() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(getStubTaskDescription(true));
+        when(sconeTeeService.isTeeEnabled()).thenReturn(false);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
+    }
+
+
+    @Test
     public void shouldDownloadApp() {
         TaskDescription taskDescription = getStubTaskDescription(false);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(computeManagerService.downloadApp(taskDescription)).thenReturn(true);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.downloadApp(taskDescription))
+                .thenReturn(true);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -126,18 +172,209 @@ public class TaskManagerServiceTests {
     }
 
     @Test
+    public void shouldNotDownloadAppSinceCannotContributionStatusIsPresent() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadApp(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause())
+                .isEqualTo(CONTRIBUTION_TIMEOUT);
+    }
+
+    @Test
+    public void shouldNotDownloadAppSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadApp(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause())
+                .isEqualTo(TASK_DESCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    public void shouldNotDownloadAppSinceAppNotDownloaded() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.downloadApp(taskDescription))
+                .thenReturn(false);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadApp(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+    }
+
+    // no dataset
+
+    /**
+     * Note : Remember dataset URI is optional
+     */
+    @Test
     public void shouldDownloadData() {
         TaskDescription taskDescription = getStubTaskDescription(false);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(dataService.downloadFile(CHAIN_TASK_ID,
-                taskDescription.getDatasetUri())).thenReturn(true);
+        taskDescription.setDatasetUri("");
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isTrue();
     }
+
+    @Test
+    public void shouldNotDownloadDataSinceCannotContributeStatusIsPresent() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause())
+                .isEqualTo(CONTRIBUTION_TIMEOUT);
+    }
+
+    @Test
+    public void shouldNotDownloadDataSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause())
+                .isEqualTo(TASK_DESCRIPTION_NOT_FOUND);
+    }
+
+    // with dataset
+
+    @Test
+    public void shouldDownloadDataWithDatasetUri() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(true);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isTrue();
+    }
+
+    @Test
+    public void shouldNotDownloadDataWithDatasetUriSinceCannotDownload() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(false);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+    }
+
+    // with dataset + TEE
+
+    @Test
+    public void shouldDownloadDataWithDatasetUriAndTee() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(true);
+        when(dataService.unzipDownloadedTeeDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(true);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isTrue();
+    }
+
+    @Test
+    public void shouldNotDownloadDataWithDatasetUriAndTeeSinceCannotUnzip() {
+        TaskDescription taskDescription = getStubTaskDescription(true);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(true);
+        when(dataService.unzipDownloadedTeeDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(false);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+    }
+
+    // with input files
+
+    @Test
+    public void shouldDownloadDataWithInputFiles() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        taskDescription.setDatasetUri("");
+        taskDescription.setInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"));
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFiles(CHAIN_TASK_ID,
+                taskDescription.getInputFiles()))
+                .thenReturn(true);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isTrue();
+    }
+
+    @Test
+    public void shouldNotDownloadDataWithInputFilesSinceCannotDownload() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        taskDescription.setDatasetUri("");
+        taskDescription.setInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"));
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFiles(CHAIN_TASK_ID,
+                taskDescription.getInputFiles()))
+                .thenReturn(false);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+    }
+
 
     @Test
     public void shouldCompute() {
@@ -168,56 +405,566 @@ public class TaskManagerServiceTests {
                 taskManagerService.compute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse).isNotNull();
-        //compute + post-compute stdout
+        // pre-compute + app-compute + post-compute stdout
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
                         .successWithStdout("stdout\nstdout\nstdout"));
     }
 
     @Test
-    public void shouldContributeSinceTeeComputation() {
-        //TODO
+    public void shouldNotComputeSinceCannotContributeStatusIsPresent() {
+        ReplicateStatusCause replicateStatusCause =
+                ReplicateStatusCause.CONTRIBUTION_AUTHORIZATION_NOT_FOUND;
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(replicateStatusCause));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(replicateStatusCause));
     }
 
     @Test
-    public void shouldContributeSinceNonTeeComputation() {
-        //TODO
+    public void shouldNotComputeSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(TASK_DESCRIPTION_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotComputeSinceAppNotDownloaded() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(APP_NOT_FOUND_LOCALLY));
+    }
+
+    @Test
+    public void shouldNotComputeSinceFailedPreCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(PRE_COMPUTE_FAILED));
+    }
+
+    @Test
+    public void shouldNotComputeSinceFailedAppCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runCompute(any(), any()))
+                .thenReturn(AppComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failureWithStdout("stdout"));
+    }
+
+    @Test
+    public void shouldNotComputeSinceFailedPostCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runCompute(any(), any()))
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runPostCompute(any(), any()))
+                .thenReturn(PostComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failureWithStdout(POST_COMPUTE_FAILED, "stdout"));
+    }
+
+    @Test
+    public void shouldContribute() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        Contribution contribution = mock(Contribution.class);
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(contribution);
+        when(contributionService.contribute(contribution))
+                .thenReturn(Optional.of(chainReceipt));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .success(chainReceipt));
+    }
+
+    @Test
+    public void shouldNotContributeSinceCannotContributeStatusIsPresent() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(CONTRIBUTION_TIMEOUT));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNoTaskDescription() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(TASK_DESCRIPTION_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNotEnoughGas() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(OUT_OF_GAS));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNoComputedFile() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotContributeSinceNoContribution() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse
+                        .failure(ENCLAVE_SIGNATURE_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotContributeSinceFailedToContribute() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        Contribution contribution = mock(Contribution.class);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(contribution);
+        when(contributionService.contribute(contribution))
+                .thenReturn(Optional.empty());
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+
+    @Test
+    public void shouldNotContributeSinceInvalidContributeChainReceipt() {
+        ComputedFile computedFile = mock(ComputedFile.class);
+        Contribution contribution = mock(Contribution.class);
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(0).build();
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile))
+                .thenReturn(contribution);
+        when(contributionService.contribute(contribution))
+                .thenReturn(Optional.of(chainReceipt));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.contribute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
 
     @Test
     public void shouldReveal() {
-        String hash = "hash";
-        long consensusBlock = 55;
-
-        when(computeManagerService.getComputedFile(CHAIN_TASK_ID)).thenReturn(
-                ComputedFile.builder().resultDigest(hash).build());
-        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID,
-                consensusBlock)).thenReturn(true);
-        when(revealService.repeatCanReveal(CHAIN_TASK_ID, hash)).thenReturn(true);
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(true);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(revealService.reveal(CHAIN_TASK_ID, resultDigest))
+                .thenReturn(Optional.of(chainReceipt));
 
-        taskManagerService.reveal(CHAIN_TASK_ID,
-                TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        verify(revealService, times(1)).reveal(CHAIN_TASK_ID, hash);
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success(chainReceipt));
     }
 
     @Test
-    public void shouldUploadResult() {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .resultLink("resultUri")
-                .chainCallbackData("callbackData")
-                .build();
+    public void shouldNotRevealSinceNoConsensusBlock() {
+        long consensusBlock = 0;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
+    }
+
+    @Test
+    public void shouldNotRevealSinceNoExtraForRetrievingConsensusBlock() {
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, null);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
+    }
+
+    @Test
+    public void shouldNotRevealSinceEmptyResultDigest() {
+        long consensusBlock = 20;
+        String resultDigest = "";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID,
+                        TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
+    public void shouldNotRevealSinceConsensusBlockNotReached() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(BLOCK_NOT_REACHED));
+    }
+
+    @Test
+    public void shouldNotRevealSinceCannotReveal() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CANNOT_REVEAL));
+    }
+
+
+    @Test
+    public void shouldNotRevealSinceFailedToReveal() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(10).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(true);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(revealService.reveal(CHAIN_TASK_ID, resultDigest))
+                .thenReturn(Optional.empty());
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+    @Test
+    public void shouldNotRevealSinceInvalidRevealChainReceipt() {
+        long consensusBlock = 20;
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
+        String resultDigest = "resultDigest";
+        ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
+        ChainReceipt chainReceipt =
+                ChainReceipt.builder().blockNumber(0).build();
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(computedFile);
+        when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
+                .thenReturn(true);
+        when(revealService.repeatCanReveal(CHAIN_TASK_ID, computedFile.getResultDigest()))
+                .thenReturn(true);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(revealService.reveal(CHAIN_TASK_ID, resultDigest))
+                .thenReturn(Optional.of(chainReceipt));
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.reveal(CHAIN_TASK_ID, extra);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+    @Test
+    public void shouldUploadResultWithResultUri() {
+        String resultUri = "resultUri";
         when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
-                .thenReturn(details.getResultLink());
+                .thenReturn(resultUri);
+        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success(resultUri, ""));
+    }
+
+    @Test
+    public void shouldUploadResultWithResultUriAndCallbackData() {
+        String resultUri = "resultUri";
+        String callbackData = "callbackData";
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
+                .thenReturn(resultUri);
         when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder()
-                        .callbackData(details.getChainCallbackData())
+                        .callbackData(callbackData)
                         .build()
                 );
 
-        taskManagerService.uploadResult(CHAIN_TASK_ID);
-        verify(resultService).uploadResultAndGetLink(CHAIN_TASK_ID);
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success(resultUri, callbackData));
+    }
+
+    @Test
+    public void shouldNotUploadResultSinceEmptyResultLink() {
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
+                .thenReturn("");
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.uploadResult(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(RESULT_LINK_MISSING));
+    }
+
+    @Test
+    public void shouldComplete() {
+        when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.complete(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.success());
+    }
+
+    @Test
+    public void shouldNotCompleteSinceCannotRemoveResult() {
+        when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(false);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.complete(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure());
+    }
+
+    @Test
+    public void shouldAbort() {
+        when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
+
+        boolean isAborted = taskManagerService.abort(CHAIN_TASK_ID);
+
+        Assertions.assertThat(isAborted).isTrue();
+        verify(resultService, times(1))
+                .removeResult(CHAIN_TASK_ID);
     }
 
     //TODO clean theses
@@ -226,13 +973,13 @@ public class TaskManagerServiceTests {
     @Test
     public void shouldFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isTrue();
+        assertThat(taskManagerService.hasEnoughGas()).isTrue();
     }
 
     @Test
     public void shouldNotFindEnoughGasBalance() {
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
-        assertThat(taskManagerService.checkGasBalance(CHAIN_TASK_ID)).isFalse();
+        assertThat(taskManagerService.hasEnoughGas()).isFalse();
     }
 
     @Test

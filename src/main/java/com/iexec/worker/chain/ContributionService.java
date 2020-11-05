@@ -36,10 +36,10 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 @Service
 public class ContributionService {
 
-    private IexecHubService iexecHubService;
-    private WorkerpoolAuthorizationService workerpoolAuthorizationService;
-    private EnclaveAuthorizationService enclaveAuthorizationService;
-    private CredentialsService credentialsService;
+    private final IexecHubService iexecHubService;
+    private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
+    private final EnclaveAuthorizationService enclaveAuthorizationService;
+    private final CredentialsService credentialsService;
 
     public ContributionService(IexecHubService iexecHubService,
                                WorkerpoolAuthorizationService workerpoolAuthorizationService,

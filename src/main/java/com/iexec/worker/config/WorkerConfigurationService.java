@@ -28,7 +28,7 @@ import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
 @Service
 public class WorkerConfigurationService {
 
-    private CredentialsService credentialsService;
+    private final CredentialsService credentialsService;
 
     @Value("${worker.name}")
     private String workerName;

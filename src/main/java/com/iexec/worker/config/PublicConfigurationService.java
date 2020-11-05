@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class PublicConfigurationService {
 
-    private PublicConfiguration publicConfiguration;
+    private final PublicConfiguration publicConfiguration;
 
     public PublicConfigurationService(CustomCoreFeignClient customCoreFeignClient) {
         this.publicConfiguration = customCoreFeignClient.getPublicConfiguration();

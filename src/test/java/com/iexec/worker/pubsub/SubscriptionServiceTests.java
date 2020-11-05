@@ -36,6 +36,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 
+import java.util.Optional;
+
 public class SubscriptionServiceTests {
 
     @Mock
@@ -50,7 +52,8 @@ public class SubscriptionServiceTests {
 
     private static final String WORKER_WALLET_ADDRESS = "0x1234";
     private static final String CHAIN_TASK_ID = "chaintaskid";
-    private static final Subscription SUBSCRIPTION = mock(Subscription.class);
+    private static final Optional<Subscription> SUBSCRIPTION =
+            Optional.of(mock(Subscription.class));
 
     @Before
     public void init() {
@@ -87,13 +90,13 @@ public class SubscriptionServiceTests {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
-        verify(SUBSCRIPTION, times(1)).unsubscribe();
+        verify(SUBSCRIPTION.get(), times(1)).unsubscribe();
     }
 
     @Test
     public void shouldNotUnsubscribeFromInexistentTopic() {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
-        verify(SUBSCRIPTION, never()).unsubscribe();
+        verify(SUBSCRIPTION.get(), never()).unsubscribe();
     }
 }

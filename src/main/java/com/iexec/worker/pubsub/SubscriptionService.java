@@ -57,7 +57,7 @@ public class SubscriptionService {
      * 
      * @param chainTaskId id of the task to which to subscribe
      */
-    public synchronized void subscribeToTopic(String chainTaskId) {
+    public void subscribeToTopic(String chainTaskId) {
         String topic = getTaskTopicName(chainTaskId);
         if (this.chainTaskIdToSubscription.containsKey(chainTaskId)) {
             log.info("Already subscribed to topic [chainTaskId:{}, topic:{}]",
@@ -65,9 +65,10 @@ public class SubscriptionService {
             return;
         }
         MessageHandler messageHandler = new MessageHandler(chainTaskId, this.workerWalletAddress);
-        Subscription subscription = stompClient.subscribeToTopic(topic, messageHandler);
-        this.chainTaskIdToSubscription.put(chainTaskId, subscription);
-        log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
+        stompClient.subscribeToTopic(topic, messageHandler).ifPresent(subscription -> {
+            this.chainTaskIdToSubscription.put(chainTaskId, subscription);
+            log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
+        });
     }
 
     /**

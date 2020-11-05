@@ -36,14 +36,14 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class WorkerService {
 
-    private CredentialsService credentialsService;
-    private WorkerConfigurationService workerConfigService;
-    private CoreConfigurationService coreConfigService;
-    private PublicConfigurationService publicConfigService;
-    private CustomCoreFeignClient customCoreFeignClient;
-    private VersionService versionService;
-    private SconeTeeService sconeTeeService;
-    private RestartEndpoint restartEndpoint;
+    private final CredentialsService credentialsService;
+    private final WorkerConfigurationService workerConfigService;
+    private final CoreConfigurationService coreConfigService;
+    private final PublicConfigurationService publicConfigService;
+    private final CustomCoreFeignClient customCoreFeignClient;
+    private final VersionService versionService;
+    private final SconeTeeService sconeTeeService;
+    private final RestartEndpoint restartEndpoint;
 
     public WorkerService(CredentialsService credentialsService,
                          WorkerConfigurationService workerConfigService,
