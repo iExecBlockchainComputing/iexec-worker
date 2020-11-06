@@ -408,7 +408,7 @@ class DockerClientService {
      * @param imageName
      * @return imageName without registry url
      */
-    private String normalizeImageName(String imageName) {
+    public String normalizeImageName(String imageName) {
         // TODO: check image tag here.
         if (StringUtils.isEmpty(imageName)) {
             return "";
