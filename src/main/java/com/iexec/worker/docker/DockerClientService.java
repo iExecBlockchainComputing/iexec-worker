@@ -108,6 +108,8 @@ class DockerClientService {
         NameParser.ReposTag repoAndTag = NameParser.parseRepositoryTag(imageName);
         if (StringUtils.isEmpty(repoAndTag.repos)
                 || StringUtils.isEmpty(repoAndTag.tag)) {
+            Exception e = new Exception("Error parsing image name");
+            logError("pull image", imageName, "", e);
             return false;
         }
         try (PullImageCmd pullImageCmd =
@@ -125,17 +127,18 @@ class DockerClientService {
     }
 
     public String getImageId(String imageName) {
-        if (StringUtils.isEmpty(imageName)) {
+        String normalizedImageName = normalizeImageName(imageName);
+        if (StringUtils.isEmpty(normalizedImageName)) {
             return "";
         }
         try (ListImagesCmd listImagesCmd = getClient().listImagesCmd()) {
             return listImagesCmd
                     .withDanglingFilter(false)
-                    .withImageNameFilter(imageName)
+                    .withImageNameFilter(normalizedImageName)
                     .exec()
                     .stream()
                     .filter(image -> !StringUtils.isEmpty(image.getRepoTags()))
-                    .filter(image -> Arrays.asList(image.getRepoTags()).contains(imageName))
+                    .filter(image -> Arrays.asList(image.getRepoTags()).contains(normalizedImageName))
                     .map(Image::getId)
                     .findFirst()
                     .orElse("");
@@ -393,6 +396,32 @@ class DockerClientService {
 
     DockerClient getClient() {
         return dockerConnectorService.getClient();
+    }
+
+    /**
+     * Docker image names have the form:
+     * registry-url/namespace/image:tag
+     * Since the registry-url is optional
+     * we need to remove it to have a
+     * predictable format.
+     * 
+     * @param imageName
+     * @return imageName without registry url
+     */
+    public String normalizeImageName(String imageName) {
+        // TODO: check image tag here.
+        if (StringUtils.isEmpty(imageName)) {
+            return "";
+        }
+        String[] parts = imageName.split("/");
+        int n = parts.length;
+        if (n == 1) {
+            // official images do not have namespaces
+            return imageName;
+        }
+        // We are not sure if the registry url can
+        // contain slashes so we anticipate that case.
+        return parts[n-2] + "/" + parts[n-1];
     }
 
     private void logInfo(String infoMessage, String name, String id) {

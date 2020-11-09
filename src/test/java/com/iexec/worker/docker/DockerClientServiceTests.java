@@ -40,7 +40,6 @@ import java.util.*;
 
 import static com.iexec.worker.docker.DockerClientService.WORKER_DOCKER_NETWORK;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 
@@ -626,6 +625,30 @@ public class DockerClientServiceTests {
     public void shouldNotRemoveContainerSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.removeContainer(getRandomString())).isFalse();
+    }
+
+    @Test
+    public void shouldRemoveRegistryUrlFromImageName() {
+        assertThat(
+                dockerClientService
+                        .normalizeImageName("registry/namespace/image:tag")
+        ).isEqualTo("namespace/image:tag");
+    }
+
+    @Test
+    public void shouldAcceptImageNameWithoutRegistryUrl() {
+        assertThat(
+                dockerClientService
+                        .normalizeImageName("namespace/image:tag")
+        ).isEqualTo("namespace/image:tag");
+    }
+
+    @Test
+    public void ShouldAcceptOfficialImageName() {
+        assertThat(
+                dockerClientService
+                        .normalizeImageName("official:tag")
+        ).isEqualTo("official:tag");
     }
 
     private String getRandomString() {
