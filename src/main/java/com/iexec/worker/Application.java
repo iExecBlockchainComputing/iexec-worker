@@ -37,6 +37,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -95,7 +96,7 @@ public class Application implements CommandLineRunner {
             System.exit(0);
         }
 
-        if (!loginService.isLoggedIn()) {
+        if (StringUtils.isEmpty(loginService.login())) {
             String message = "Worker wasn't able to login, stopping...";
             LoggingUtils.printHighlightedMessage(message);
             System.exit(0);
