@@ -54,6 +54,8 @@ public class DockerServiceTests {
         when(dockerClientService.createContainer(dockerRunRequest))
                 .thenReturn(containerId);
         when(dockerClientService.startContainer(containerId)).thenReturn(true);
+        when(dockerClientService.waitContainerUntilExitOrTimeout(anyString(), any()))
+                .thenReturn(0L);
         when(dockerClientService.stopContainer(containerId)).thenReturn(true);
         when(dockerClientService.getContainerLogs(containerId)).thenReturn(Optional.of(
                 DockerLogs.builder().stdout("stdout").stderr("stderr").build()));
@@ -74,6 +76,70 @@ public class DockerServiceTests {
     }
 
     @Test
+    public void shouldRunWithFailureSincePoorlyExited() {
+        String containerId = "containerId";
+        String containerName = "containerName";
+        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .containerName(containerName)
+                .maxExecutionTime(5000)
+                .build();
+        when(dockerClientService.createContainer(dockerRunRequest))
+                .thenReturn(containerId);
+        when(dockerClientService.startContainer(containerId)).thenReturn(true);
+        when(dockerClientService.waitContainerUntilExitOrTimeout(anyString(), any()))
+                .thenReturn(1L);
+        when(dockerClientService.stopContainer(containerId)).thenReturn(true);
+        when(dockerClientService.getContainerLogs(containerId)).thenReturn(Optional.of(
+                DockerLogs.builder().stdout("stdout").stderr("stderr").build()));
+        when(dockerClientService.removeContainer(containerId)).thenReturn(true);
+
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
+
+        Assertions.assertThat(dockerRunResponse).isNotNull();
+        Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(dockerRunResponse.getStdout()).isEqualTo(
+                "stdout");
+        Assertions.assertThat(dockerRunResponse.getDockerLogs().getStdout()).isEqualTo("stdout");
+        Assertions.assertThat(dockerRunResponse.getDockerLogs().getStderr()).isEqualTo("stderr");
+
+        verify(dockerClientService, times(1))
+                .waitContainerUntilExitOrTimeout(anyString(), any());
+    }
+
+    @Test
+    public void shouldRunWithFailureSinceTimeout() {
+        String containerId = "containerId";
+        String containerName = "containerName";
+        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .containerName(containerName)
+                .maxExecutionTime(5000)
+                .build();
+        when(dockerClientService.createContainer(dockerRunRequest))
+                .thenReturn(containerId);
+        when(dockerClientService.startContainer(containerId)).thenReturn(true);
+        when(dockerClientService.waitContainerUntilExitOrTimeout(anyString(), any()))
+                .thenReturn(null);
+        when(dockerClientService.stopContainer(containerId)).thenReturn(true);
+        when(dockerClientService.getContainerLogs(containerId)).thenReturn(Optional.of(
+                DockerLogs.builder().stdout("stdout").stderr("stderr").build()));
+        when(dockerClientService.removeContainer(containerId)).thenReturn(true);
+
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
+
+        Assertions.assertThat(dockerRunResponse).isNotNull();
+        Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(dockerRunResponse.getStdout()).isEqualTo(
+                "stdout");
+        Assertions.assertThat(dockerRunResponse.getDockerLogs().getStdout()).isEqualTo("stdout");
+        Assertions.assertThat(dockerRunResponse.getDockerLogs().getStderr()).isEqualTo("stderr");
+
+        verify(dockerClientService, times(1))
+                .waitContainerUntilExitOrTimeout(anyString(), any());
+    }
+
+    @Test
     public void shouldRunWithoutWaiting() {
         String containerId = "containerId";
         String containerName = "containerName";
@@ -84,6 +150,8 @@ public class DockerServiceTests {
         when(dockerClientService.createContainer(dockerRunRequest))
                 .thenReturn(containerId);
         when(dockerClientService.startContainer(containerId)).thenReturn(true);
+        when(dockerClientService.waitContainerUntilExitOrTimeout(anyString(), any()))
+                .thenReturn(0L);
 
         DockerRunResponse dockerRunResponse =
                 dockerService.run(dockerRunRequest);
@@ -142,6 +210,8 @@ public class DockerServiceTests {
         when(dockerClientService.createContainer(dockerRunRequest))
                 .thenReturn(containerId);
         when(dockerClientService.startContainer(containerId)).thenReturn(true);
+        when(dockerClientService.waitContainerUntilExitOrTimeout(anyString(), any()))
+                .thenReturn(null);
         when(dockerClientService.stopContainer(containerId)).thenReturn(false);
 
         DockerRunResponse dockerRunResponse =

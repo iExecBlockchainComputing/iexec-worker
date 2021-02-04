@@ -429,15 +429,13 @@ public class DockerClientServiceTests {
 
     @Test
     public void shouldNotGetContainerExitCodeSinceEmptyContainerId() {
-        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout("",
-                Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)));
+        Long exitCode = dockerClientService.getContainerExitCode("");
         assertThat(exitCode).isNull();
     }
 
     @Test
     public void shouldNotGetContainerExitCodeSinceNoContainerId() {
-        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(null,
-                Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)));
+        Long exitCode = dockerClientService.getContainerExitCode(null);
         assertThat(exitCode).isNull();
     }
 
@@ -531,6 +529,7 @@ public class DockerClientServiceTests {
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
         Date before = new Date();
+
         Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
                 Date.from(Instant.now().plus(1000, ChronoUnit.MILLIS)));
         assertThat(exitCode).isNull();
@@ -549,6 +548,7 @@ public class DockerClientServiceTests {
         String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
+
         Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
                 Date.from(Instant.now().plus(3000, ChronoUnit.MILLIS)));
         assertThat(exitCode).isEqualTo(0);
@@ -566,6 +566,7 @@ public class DockerClientServiceTests {
         String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
+
         Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
                 Date.from(Instant.now().plus(3000, ChronoUnit.MILLIS)));
         assertThat(exitCode).isEqualTo(127);
