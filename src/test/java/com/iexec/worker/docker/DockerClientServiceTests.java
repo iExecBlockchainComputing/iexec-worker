@@ -435,6 +435,13 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotGetContainerExitCodeSinceNoContainerId() {
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(null,
+                Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)));
+        assertThat(exitCode).isNull();
+    }
+
+    @Test
     public void shouldNotGetContainerExitCodeSinceDockerCmdException() {
         useFakeDockerClient();
         assertThat(dockerClientService.getContainerExitCode(getRandomString())).isNull();
