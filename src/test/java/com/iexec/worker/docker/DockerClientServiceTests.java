@@ -578,6 +578,20 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldNotWaitContainerUntilExitOrTimeoutSinceEmptyContainerId() {
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout("",
+                Date.from(Instant.now().plus(1000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isNull();
+    }
+
+    @Test
+    public void shouldNotWaitContainerUntilExitOrTimeoutSinceNoContainerId() {
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(null,
+                Date.from(Instant.now().plus(1000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isNull();
+    }
+
+    @Test
     public void shouldGetContainerLogsSinceStdout() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'echo Hello from Docker alpine!'");
