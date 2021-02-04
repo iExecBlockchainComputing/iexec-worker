@@ -258,6 +258,10 @@ public class TaskManagerService {
 
         ComputedFile computedFile =
                 computeManagerService.getComputedFile(chainTaskId);
+        if (computedFile == null) {
+            logError("computed file error after post-compute", context, chainTaskId);
+            return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
+        }
         resultService.saveResultInfo(chainTaskId, taskDescription,
                 computedFile);
         return ReplicateActionResponse.successWithStdout(preResponse.getStdout() +

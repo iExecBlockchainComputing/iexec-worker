@@ -551,6 +551,36 @@ public class TaskManagerServiceTests {
     }
 
     @Test
+    public void shouldNotComputeSinceFailedToGetComputedFileAfterPostCompute() {
+        TaskDescription taskDescription = TaskDescription.builder().build();
+        WorkerpoolAuthorization workerpoolAuthorization =
+                WorkerpoolAuthorization.builder().build();
+
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
+                .thenReturn(true);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
+                .thenReturn(workerpoolAuthorization);
+        when(computeManagerService.runPreCompute(any(), any()))
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runCompute(any(), any()))
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.runPostCompute(any(), any()))
+                .thenReturn(PostComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+        when(computeManagerService.getComputedFile(any())).thenReturn(null);
+
+        ReplicateActionResponse replicateActionResponse =
+                taskManagerService.compute(CHAIN_TASK_ID);
+
+        Assertions.assertThat(replicateActionResponse).isNotNull();
+        Assertions.assertThat(replicateActionResponse).isEqualTo(
+                ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
     public void shouldContribute() {
         ComputedFile computedFile = mock(ComputedFile.class);
         Contribution contribution = mock(Contribution.class);
