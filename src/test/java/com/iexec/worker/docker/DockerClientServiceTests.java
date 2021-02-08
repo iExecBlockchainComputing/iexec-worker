@@ -36,6 +36,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import static com.iexec.worker.docker.DockerClientService.WORKER_DOCKER_NETWORK;
@@ -411,6 +413,39 @@ public class DockerClientServiceTests {
     }
 
     @Test
+    public void shouldGetContainerExitCode() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
+        String containerId = dockerClientService.createContainer(request);
+        dockerClientService.startContainer(containerId);
+        dockerClientService.waitContainerUntilExitOrTimeout(containerId,
+                Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)));
+
+        assertThat(dockerClientService.getContainerExitCode(containerId)).isEqualTo(0);
+
+        // cleaning
+        dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotGetContainerExitCodeSinceEmptyContainerId() {
+        Long exitCode = dockerClientService.getContainerExitCode("");
+        assertThat(exitCode).isNull();
+    }
+
+    @Test
+    public void shouldNotGetContainerExitCodeSinceNoContainerId() {
+        Long exitCode = dockerClientService.getContainerExitCode(null);
+        assertThat(exitCode).isNull();
+    }
+
+    @Test
+    public void shouldNotGetContainerExitCodeSinceDockerCmdException() {
+        useFakeDockerClient();
+        assertThat(dockerClientService.getContainerExitCode(getRandomString())).isNull();
+    }
+
+    @Test
     public void shouldGetContainerName() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         String containerId = dockerClientService.createContainer(request);
@@ -489,13 +524,15 @@ public class DockerClientServiceTests {
     @Test
     public void shouldWaitContainerUntilExitOrTimeoutSinceTimeout() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
-        request.setCmd("sh -c 'sleep 2 && echo Hello from Docker alpine!'");
+        request.setCmd("sh -c 'sleep 3 && echo Hello from Docker alpine!'");
         String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
         Date before = new Date();
-        dockerClientService.waitContainerUntilExitOrTimeout(containerId,
-                new Date(new Date().getTime() + 1000));
+
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
+                Date.from(Instant.now().plus(1000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isNull();
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
         assertThat(new Date().getTime() - before.getTime()).isGreaterThan(1000);
 
@@ -505,19 +542,53 @@ public class DockerClientServiceTests {
     }
 
     @Test
-    public void shouldWaitContainerUntilExitOrTimeoutSinceExited() {
+    public void shouldWaitContainerUntilExitOrTimeoutSinceExitedWithSuccess() {
         DockerRunRequest request = getDefaultDockerRunRequest(false);
         request.setCmd("sh -c 'sleep 1 && echo Hello from Docker alpine!'");
         String containerId = dockerClientService.createContainer(request);
         dockerClientService.startContainer(containerId);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
-        dockerClientService.waitContainerUntilExitOrTimeout(containerId,
-                new Date(new Date().getTime() + 3000));
+
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
+                Date.from(Instant.now().plus(3000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isEqualTo(0);
         assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("exited");
 
         // cleaning
         dockerClientService.stopContainer(containerId);
         dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldWaitContainerUntilExitOrTimeoutSinceExitedWithError() {
+        DockerRunRequest request = getDefaultDockerRunRequest(false);
+        request.setCmd("sh -c 'sleep 1 && dummy-command'");
+        String containerId = dockerClientService.createContainer(request);
+        dockerClientService.startContainer(containerId);
+        assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("running");
+
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
+                Date.from(Instant.now().plus(3000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isEqualTo(127);
+        assertThat(dockerClientService.getContainerStatus(containerId)).isEqualTo("exited");
+
+        // cleaning
+        dockerClientService.stopContainer(containerId);
+        dockerClientService.removeContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotWaitContainerUntilExitOrTimeoutSinceEmptyContainerId() {
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout("",
+                Date.from(Instant.now().plus(1000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isNull();
+    }
+
+    @Test
+    public void shouldNotWaitContainerUntilExitOrTimeoutSinceNoContainerId() {
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(null,
+                Date.from(Instant.now().plus(1000, ChronoUnit.MILLIS)));
+        assertThat(exitCode).isNull();
     }
 
     @Test

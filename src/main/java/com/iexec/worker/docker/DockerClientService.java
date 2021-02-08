@@ -294,6 +294,22 @@ class DockerClientService {
         return "";
     }
 
+    public Long getContainerExitCode(String containerId) {
+        if (StringUtils.isEmpty(containerId)) {
+            return null;
+        }
+        try (InspectContainerCmd inspectContainerCmd =
+                     getClient().inspectContainerCmd(containerId)) {
+            return inspectContainerCmd.exec()
+                    .getState()
+                    .getExitCodeLong();
+        } catch (Exception e) {
+            logError("get container exit code",
+                    getContainerName(containerId), containerId, e);
+        }
+        return null;
+    }
+
     public boolean startContainer(String containerId) {
         if (StringUtils.isEmpty(containerId)) {
             return false;
@@ -309,10 +325,17 @@ class DockerClientService {
         return false;
     }
 
-    public void waitContainerUntilExitOrTimeout(String containerId,
+    /**
+     * Waits for full execution of a container (and stops waiting after a
+     * particular date)
+     * @param containerId ID of the container
+     * @param executionTimeoutDate maximum time to wait for execution
+     * @return exit code (if relevant)
+     */
+    public Long waitContainerUntilExitOrTimeout(String containerId,
                                                 Date executionTimeoutDate) {
         if (StringUtils.isEmpty(containerId)) {
-            return;
+            return null;
         }
         boolean isExited = false;
         boolean isTimeout = false;
@@ -328,12 +351,17 @@ class DockerClientService {
             isTimeout = new Date().after(executionTimeoutDate);
             seconds++;
         }
-
-        if (isTimeout) {
-            log.warn("Container reached timeout, stopping [containerId:{}, " +
-                            "containerName:{}]",
-                    containerName, containerId);
+        if (isExited){
+            Long containerExitCode = getContainerExitCode(containerId);
+            log.info("Container exited by itself [containerId:{}, " +
+                            "containerName:{}, exitCode:{}]",
+                    containerName, containerId, containerExitCode);
+            return containerExitCode;
         }
+        log.warn("Container reached timeout [containerId:{}, " +
+                        "containerName:{}]",
+                containerName, containerId);
+        return null;
     }
 
     public Optional<DockerLogs> getContainerLogs(String containerId) {

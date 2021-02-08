@@ -63,15 +63,17 @@ public class DockerService {
             return dockerRunResponse;
         }
 
-        dockerClientService.waitContainerUntilExitOrTimeout(containerId,
+        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
                 Date.from(Instant.now().plusMillis(dockerRunRequest.getMaxExecutionTime())));
+        boolean isTimeout = exitCode == null;
 
-        if (!dockerClientService.stopContainer(containerId)) {
+        if (isTimeout && !dockerClientService.stopContainer(containerId)) {
             return dockerRunResponse;
         }
 
         dockerClientService.getContainerLogs(containerId).ifPresent(containerLogs -> {
             dockerRunResponse.setDockerLogs(containerLogs);
+            //TODO: Set exit code for improving internal and external developer experience
             if (shouldPrintDeveloperLogs(dockerRunRequest)) {
                 log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
                         getDockerExecutionDeveloperLogs(chainTaskId, containerLogs.getStdout()));
@@ -81,7 +83,7 @@ public class DockerService {
         if (!dockerClientService.removeContainer(containerId)) {
             return dockerRunResponse;
         }
-        dockerRunResponse.setSuccessful(true);
+        dockerRunResponse.setSuccessful(!isTimeout && exitCode == 0);
 
         return dockerRunResponse;
     }
