@@ -16,8 +16,12 @@
 
 package com.iexec.worker.compute;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
@@ -32,10 +36,12 @@ import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.text.Format;
 
 
 @Slf4j
@@ -50,6 +56,7 @@ public class ComputeManagerService {
     private final PostComputeService postComputeService;
     private final WorkerConfigurationService workerConfigService;
     private final IexecHubService iexecHubService;
+    private final ResultService resultService;
 
     public ComputeManagerService(
             DockerService dockerService,
@@ -57,7 +64,8 @@ public class ComputeManagerService {
             AppComputeService appComputeService,
             PostComputeService postComputeService,
             WorkerConfigurationService workerConfigService,
-            IexecHubService iexecHubService
+            IexecHubService iexecHubService,
+            ResultService resultService
     ) {
         this.dockerService = dockerService;
         this.preComputeService = preComputeService;
@@ -65,6 +73,7 @@ public class ComputeManagerService {
         this.postComputeService = postComputeService;
         this.workerConfigService = workerConfigService;
         this.iexecHubService = iexecHubService;
+        this.resultService = resultService;
     }
 
     public boolean downloadApp(TaskDescription taskDescription) {
@@ -149,22 +158,27 @@ public class ComputeManagerService {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
+        PostComputeResponse postComputeResponse = new PostComputeResponse();
 
-        if (taskDescription.isTeeTask()) {
-            ComputeResponse computeResponse =
-                    postComputeService.runTeePostCompute(taskDescription,
-                            secureSessionId);
-            return PostComputeResponse.builder()
-                    .isSuccessful(computeResponse.isSuccessful())
-                    .stdout(computeResponse.getStdout())
-                    .stderr(computeResponse.getStderr())
-                    .build();
+        boolean isSuccessful;
+        if (taskDescription.isTeeTask() && !secureSessionId.isEmpty()) {
+            ComputeResponse computeResponse = postComputeService.runTeePostCompute(taskDescription,
+                    secureSessionId);
+            isSuccessful = computeResponse.isSuccessful();
+            postComputeResponse.setStdout(computeResponse.getStdout());
+            postComputeResponse.setStderr(computeResponse.getStderr());
+        } else {
+            isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
         }
-
-        // TODO Use container
-        return PostComputeResponse.builder()
-                .isSuccessful(postComputeService.runStandardPostCompute(taskDescription))
-                .build();
+        if (isSuccessful){
+            ComputedFile computedFile = getComputedFile(chainTaskId);
+            if (computedFile != null){
+                postComputeResponse.setSuccessful(true);
+                resultService.saveResultInfo(chainTaskId, taskDescription,
+                        computedFile);
+            }
+        }
+        return postComputeResponse;
     }
 
 
@@ -191,6 +205,8 @@ public class ComputeManagerService {
         }
         return computedFile;
     }
+
+
 
     private String computeResultDigest(ComputedFile computedFile) {
         String chainTaskId = computedFile.getTaskId();

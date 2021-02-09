@@ -16,12 +16,17 @@
 
 package com.iexec.worker.result;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
@@ -44,6 +49,7 @@ import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 @Slf4j
 @Service
 public class ResultService {
+    public static final String ERROR_FILENAME = "error.txt";
 
     private final WorkerConfigurationService workerConfigService;
     private final PublicConfigurationService publicConfigService;
@@ -96,6 +102,36 @@ public class ResultService {
 
     public boolean isEncryptedResultZipFound(String chainTaskId) {
         return new File(getEncryptedResultFilePath(chainTaskId)).exists();
+    }
+
+    public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
+                                        ReplicateStatusCause errorCause) {
+        String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
+                + File.separator;
+        String errorContent = String.format("[IEXEC] Error occurred while computing"
+                + "the task [error:%s, cause:%s]", errorStatus, errorCause);
+        File errorFile = FileHelper.createFileWithContent(hostIexecOutSlash
+                + ERROR_FILENAME, errorContent);
+        if (errorFile == null || !errorFile.exists()){
+            log.error("Failed to write error file to /iexec_out [chainTaskId:{}]",
+                    chainTaskId);
+            return false;
+        }
+        ComputedFile computedFile = ComputedFile.builder()
+                .deterministicOutputPath(FileHelper.SLASH_IEXEC_OUT +
+                        File.separator + ERROR_FILENAME)
+                .build();
+        String computedFileJsonAsString;
+        try {
+            computedFileJsonAsString = new ObjectMapper().writeValueAsString(computedFile);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to write computed file to /iexec_out [chainTaskId:{}]",
+                    chainTaskId, e);
+            return  false;
+        }
+        File createdFile = FileHelper.createFileWithContent(hostIexecOutSlash
+                + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString);
+        return createdFile != null && createdFile.exists();
     }
 
     public void saveResultInfo(String chainTaskId, TaskDescription taskDescription, ComputedFile computedFile) {
