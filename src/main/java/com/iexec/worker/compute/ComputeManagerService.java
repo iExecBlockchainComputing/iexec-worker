@@ -16,17 +16,11 @@
 
 package com.iexec.worker.compute;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.common.utils.IexecFileHelper;
-import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
@@ -41,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.text.Format;
 
 
 @Slf4j
@@ -171,7 +164,7 @@ public class ComputeManagerService {
             isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
         }
         if (isSuccessful){
-            ComputedFile computedFile = getComputedFile(chainTaskId);
+            ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
             if (computedFile != null){
                 postComputeResponse.setSuccessful(true);
                 resultService.saveResultInfo(chainTaskId, taskDescription,
@@ -179,51 +172,6 @@ public class ComputeManagerService {
             }
         }
         return postComputeResponse;
-    }
-
-
-    public ComputedFile getComputedFile(String chainTaskId) {
-        ComputedFile computedFile =
-                IexecFileHelper.readComputedFile(chainTaskId,
-                        workerConfigService.getTaskOutputDir(chainTaskId));
-        if (computedFile == null) {
-            log.error("Failed to getComputedFile (computed.json missing)" +
-                    "[chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()) {
-            String resultDigest = computeResultDigest(computedFile);
-            if (resultDigest.isEmpty()) {
-                log.error("Failed to getComputedFile (resultDigest is empty " +
-                                "but cant compute it)" +
-                                "[chainTaskId:{}, computedFile:{}]",
-                        chainTaskId,
-                        computedFile);
-                return null;
-            }
-            computedFile.setResultDigest(resultDigest);
-        }
-        return computedFile;
-    }
-
-
-
-    private String computeResultDigest(ComputedFile computedFile) {
-        String chainTaskId = computedFile.getTaskId();
-        String resultDigest;
-        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()) {
-            resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
-        } else {
-            resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
-                    workerConfigService.getTaskOutputDir(chainTaskId));
-        }
-        if (resultDigest.isEmpty()) {
-            log.error("Failed to computeResultDigest (resultDigest empty)" +
-                            "[chainTaskId:{}, computedFile:{}]",
-                    chainTaskId, computedFile);
-            return "";
-        }
-        return resultDigest;
     }
 
 

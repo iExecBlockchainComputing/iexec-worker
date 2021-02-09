@@ -99,7 +99,7 @@ public class ReplicateRecoveryService {
 
             TaskDescription taskDescription = optionalTaskDescription.get();
 
-            ComputedFile computedFile = computeManagerService.getComputedFile(chainTaskId);
+            ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
             resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
 
             subscriptionService.subscribeToTopic(chainTaskId);

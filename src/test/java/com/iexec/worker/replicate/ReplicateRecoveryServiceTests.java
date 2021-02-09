@@ -148,7 +148,7 @@ public class ReplicateRecoveryServiceTests {
                 .thenReturn(Collections.singletonList(notif));
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
-        when(computeManagerService.getComputedFile(CHAIN_TASK_ID))
+        when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder().build());
 
         List<String> recovered =

@@ -164,24 +164,6 @@ public class TaskManagerService {
                 APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
     }
 
-    private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
-                                                                  String context,
-                                                                  TaskDescription taskDescription,
-                                                                  ReplicateStatus failedStatus,
-                                                                  ReplicateStatusCause failedCause) {
-        if (resultService.writeErrorToIexecOut(chainTaskId, failedStatus, failedCause) &&
-                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()){
-            //Graceful error, worker will be prompt to contribute
-            logError(failedCause, context, chainTaskId);
-            unsetTaskUsingCpu(chainTaskId);
-            return ReplicateActionResponse.failure(failedCause);
-        }
-        //Download failed hard, worker cannot contribute
-        logError("trigger post compute hook", context, chainTaskId);
-        unsetTaskUsingCpu(chainTaskId);
-        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
-    }
-
     ReplicateActionResponse downloadData(String chainTaskId) {
         setTaskUsingCpu(chainTaskId);
 
@@ -224,6 +206,24 @@ public class TaskManagerService {
         }
 
         return ReplicateActionResponse.success();
+    }
+
+    private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
+                                                                  String context,
+                                                                  TaskDescription taskDescription,
+                                                                  ReplicateStatus errorStatus,
+                                                                  ReplicateStatusCause errorCause) {
+        if (resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause) &&
+                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()){
+            //Graceful error, worker will be prompt to contribute
+            logError(errorCause, context, chainTaskId);
+            unsetTaskUsingCpu(chainTaskId);
+            return ReplicateActionResponse.failure(errorCause);
+        }
+        //Download failed hard, worker cannot contribute
+        logError("trigger post compute hook", context, chainTaskId);
+        unsetTaskUsingCpu(chainTaskId);
+        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
     }
 
     ReplicateActionResponse compute(String chainTaskId) {
@@ -303,7 +303,7 @@ public class TaskManagerService {
         }
 
         ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
+                resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
             logError("computed file error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
@@ -338,7 +338,7 @@ public class TaskManagerService {
         long consensusBlock = extra.getBlockNumber();
 
         ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
+                resultService.getComputedFile(chainTaskId);
         String resultDigest = computedFile != null ?
                 computedFile.getResultDigest() : "";
 
@@ -389,7 +389,7 @@ public class TaskManagerService {
         }
 
         ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
+                resultService.getComputedFile(chainTaskId);
         String callbackData = computedFile != null ?
                 computedFile.getCallbackData() : "";
 

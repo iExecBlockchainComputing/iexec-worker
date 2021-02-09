@@ -27,8 +27,10 @@ import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
@@ -341,4 +343,45 @@ public class ResultService {
         return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
     }
 
+    public ComputedFile getComputedFile(String chainTaskId) {
+        ComputedFile computedFile =
+                IexecFileHelper.readComputedFile(chainTaskId,
+                        workerConfigService.getTaskOutputDir(chainTaskId));
+        if (computedFile == null) {
+            log.error("Failed to getComputedFile (computed.json missing)" +
+                    "[chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()) {
+            String resultDigest = computeResultDigest(computedFile);
+            if (resultDigest.isEmpty()) {
+                log.error("Failed to getComputedFile (resultDigest is empty " +
+                                "but cant compute it)" +
+                                "[chainTaskId:{}, computedFile:{}]",
+                        chainTaskId,
+                        computedFile);
+                return null;
+            }
+            computedFile.setResultDigest(resultDigest);
+        }
+        return computedFile;
+    }
+
+    private String computeResultDigest(ComputedFile computedFile) {
+        String chainTaskId = computedFile.getTaskId();
+        String resultDigest;
+        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()) {
+            resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
+        } else {
+            resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
+                    workerConfigService.getTaskOutputDir(chainTaskId));
+        }
+        if (resultDigest.isEmpty()) {
+            log.error("Failed to computeResultDigest (resultDigest empty)" +
+                            "[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
+            return "";
+        }
+        return resultDigest;
+    }
 }
