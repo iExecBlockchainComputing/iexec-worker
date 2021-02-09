@@ -221,7 +221,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute
-        logError("trigger post compute hook", context, chainTaskId);
+        logError(POST_COMPUTE_FAILED, context, chainTaskId);
         unsetTaskUsingCpu(chainTaskId);
         return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
     }
