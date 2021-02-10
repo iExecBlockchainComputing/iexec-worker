@@ -16,18 +16,26 @@
 
 package com.iexec.worker.result;
 
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
 
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import java.io.IOException;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
@@ -36,9 +44,11 @@ import static org.mockito.Mockito.when;
 
 public class ResultServiceTests {
 
-    private static final String TASK_ID = "taskId";
+    private static final String CHAIN_TASK_ID = "taskId";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test" +
             "/resources/tmp/test-worker";
+    @Rule
+    public TemporaryFolder folderRule = new TemporaryFolder();
     @Mock
     private IexecHubService iexecHubService;
     @Mock
@@ -48,10 +58,49 @@ public class ResultServiceTests {
 
     @InjectMocks
     private ResultService resultService;
+    private String tmp;
 
     @Before
-    public void init() {
+    public void init() throws IOException {
         MockitoAnnotations.initMocks(this);
+        tmp = folderRule.newFolder().getAbsolutePath();
+    }
+
+    @Test
+    public void shouldWriteErrorToIexecOut() {
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+
+        boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
+                ReplicateStatus.DATA_DOWNLOAD_FAILED,
+                ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+
+        assertThat(isErrorWritten).isTrue();
+        String errorFileAsString = FileHelper.readFile(tmp + "/"
+                + ResultService.ERROR_FILENAME);
+        assertThat(errorFileAsString).contains("[IEXEC] Error occurred while " +
+                "computing the task");
+        String computedFileAsString = FileHelper.readFile(tmp + "/"
+                + IexecFileHelper.COMPUTED_JSON);
+        assertThat(computedFileAsString).isEqualTo("{" +
+                "\"deterministic-output-path\":\"/iexec_out/error.txt\"," +
+                "\"callback-data\":null," +
+                "\"task-id\":null," +
+                "\"result-digest\":null," +
+                "\"enclave-signature\":null" +
+                "}");
+    }
+
+    @Test
+    public void shouldNotWriteErrorToIexecOutSince() {
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn("/null");
+
+        boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
+                ReplicateStatus.DATA_DOWNLOAD_FAILED,
+                ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+
+        assertThat(isErrorWritten).isFalse();
     }
 
     @Test
@@ -59,11 +108,11 @@ public class ResultServiceTests {
         String storage = IPFS_RESULT_STORAGE_PROVIDER;
         String ipfsHash = "QmcipfsHash";
 
-        when(iexecHubService.getTaskDescription(TASK_ID)).thenReturn(
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().resultStorageProvider(storage).build());
-        when(customResultFeignClient.getIpfsHashForTask(TASK_ID)).thenReturn(ipfsHash);
+        when(customResultFeignClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
 
-        String resultLink = resultService.getWeb2ResultLink(TASK_ID);
+        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
         assertThat(resultLink.equals(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash))).isTrue();
     }
@@ -72,22 +121,22 @@ public class ResultServiceTests {
     public void shouldGetTeeWeb2ResultLinkSinceDropbox() {
         String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
 
-        when(iexecHubService.getTaskDescription(TASK_ID)).thenReturn(
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().resultStorageProvider(storage).build());
 
-        String resultLink = resultService.getWeb2ResultLink(TASK_ID);
+        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
-        assertThat(resultLink.equals(resultService.buildResultLink(storage, "/results/" + TASK_ID))).isTrue();
+        assertThat(resultLink.equals(resultService.buildResultLink(storage, "/results/" + CHAIN_TASK_ID))).isTrue();
     }
 
     @Test
     public void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
         String storage = "some-unsupported-third-party-storage";
 
-        when(iexecHubService.getTaskDescription(TASK_ID)).thenReturn(
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().resultStorageProvider(storage).build());
 
-        String resultLink = resultService.getWeb2ResultLink(TASK_ID);
+        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
         assertThat(resultLink.isEmpty()).isTrue();
     }
@@ -95,9 +144,9 @@ public class ResultServiceTests {
 
     @Test
     public void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
-        when(iexecHubService.getTaskDescription(TASK_ID)).thenReturn(null);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
 
-        String resultLink = resultService.getWeb2ResultLink(TASK_ID);
+        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
         assertThat(resultLink.isEmpty()).isTrue();
     }

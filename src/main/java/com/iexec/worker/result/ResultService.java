@@ -30,7 +30,6 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
@@ -108,17 +107,8 @@ public class ResultService {
 
     public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
                                         ReplicateStatusCause errorCause) {
-        String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
-                + File.separator;
         String errorContent = String.format("[IEXEC] Error occurred while computing"
-                + "the task [error:%s, cause:%s]", errorStatus, errorCause);
-        File errorFile = FileHelper.createFileWithContent(hostIexecOutSlash
-                + ERROR_FILENAME, errorContent);
-        if (errorFile == null || !errorFile.exists()){
-            log.error("Failed to write error file to /iexec_out [chainTaskId:{}]",
-                    chainTaskId);
-            return false;
-        }
+                + " the task [error:%s, cause:%s]", errorStatus, errorCause);
         ComputedFile computedFile = ComputedFile.builder()
                 .deterministicOutputPath(FileHelper.SLASH_IEXEC_OUT +
                         File.separator + ERROR_FILENAME)
@@ -127,13 +117,16 @@ public class ResultService {
         try {
             computedFileJsonAsString = new ObjectMapper().writeValueAsString(computedFile);
         } catch (JsonProcessingException e) {
-            log.error("Failed to write computed file to /iexec_out [chainTaskId:{}]",
+            log.error("Failed to prepare computed file [chainTaskId:{}]",
                     chainTaskId, e);
-            return  false;
+            return false;
         }
-        File createdFile = FileHelper.createFileWithContent(hostIexecOutSlash
-                + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString);
-        return createdFile != null && createdFile.exists();
+        String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
+                + File.separator;
+        return FileHelper.writeFile(hostIexecOutSlash + ERROR_FILENAME,
+                errorContent.getBytes())
+                && FileHelper.writeFile(hostIexecOutSlash
+                + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString.getBytes());
     }
 
     public void saveResultInfo(String chainTaskId, TaskDescription taskDescription, ComputedFile computedFile) {
