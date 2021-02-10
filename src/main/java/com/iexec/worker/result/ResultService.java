@@ -123,7 +123,8 @@ public class ResultService {
         }
         String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
                 + File.separator;
-        return FileHelper.writeFile(hostIexecOutSlash + ERROR_FILENAME,
+        return FileHelper.createFolder(hostIexecOutSlash)
+                && FileHelper.writeFile(hostIexecOutSlash + ERROR_FILENAME,
                 errorContent.getBytes())
                 && FileHelper.writeFile(hostIexecOutSlash
                 + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString.getBytes());
