@@ -21,6 +21,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
@@ -45,6 +46,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
+import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 
@@ -154,12 +157,11 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (!computeManagerService.downloadApp(taskDescription)) {
-            logError("download app error", context, chainTaskId);
-            return ReplicateActionResponse.failure();
+        if (computeManagerService.downloadApp(taskDescription)){
+            return ReplicateActionResponse.success();
         }
-
-        return ReplicateActionResponse.success();
+        return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
+                APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
     }
 
     ReplicateActionResponse downloadData(String chainTaskId) {
@@ -191,19 +193,37 @@ public class TaskManagerService {
                 logError("unzip dataset error", context, chainTaskId);
             }
             if (!isDatasetReady) {
-                logError("download dataset error", context, chainTaskId);
-                return ReplicateActionResponse.failure();
+                return triggerPostComputeHookOnError(chainTaskId, context,
+                        taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
         }
 
         List<String> inputFiles = taskDescription.getInputFiles();
         if (inputFiles != null && !dataService.downloadFiles(chainTaskId,
                 inputFiles)) {
-            logError("download input files error", context, chainTaskId);
-            return ReplicateActionResponse.failure();
+            return triggerPostComputeHookOnError(chainTaskId, context,
+                    taskDescription, DATA_DOWNLOAD_FAILED, INPUT_FILES_DOWNLOAD_FAILED);
         }
 
         return ReplicateActionResponse.success();
+    }
+
+    private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
+                                                                  String context,
+                                                                  TaskDescription taskDescription,
+                                                                  ReplicateStatus errorStatus,
+                                                                  ReplicateStatusCause errorCause) {
+        if (resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause) &&
+                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()){
+            //Graceful error, worker will be prompt to contribute
+            logError(errorCause, context, chainTaskId);
+            unsetTaskUsingCpu(chainTaskId);
+            return ReplicateActionResponse.failure(errorCause);
+        }
+        //Download failed hard, worker cannot contribute
+        logError(POST_COMPUTE_FAILED, context, chainTaskId);
+        unsetTaskUsingCpu(chainTaskId);
+        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
     }
 
     ReplicateActionResponse compute(String chainTaskId) {
@@ -255,15 +275,6 @@ public class TaskManagerService {
             return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED,
                     postResponse.getStdout());
         }
-
-        ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
-        if (computedFile == null) {
-            logError("computed file error after post-compute", context, chainTaskId);
-            return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
-        }
-        resultService.saveResultInfo(chainTaskId, taskDescription,
-                computedFile);
         return ReplicateActionResponse.successWithStdout(preResponse.getStdout() +
                 "\n" + appResponse.getStdout() + "\n" + postResponse.getStdout());
     }
@@ -292,7 +303,7 @@ public class TaskManagerService {
         }
 
         ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
+                resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
             logError("computed file error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
@@ -327,7 +338,7 @@ public class TaskManagerService {
         long consensusBlock = extra.getBlockNumber();
 
         ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
+                resultService.getComputedFile(chainTaskId);
         String resultDigest = computedFile != null ?
                 computedFile.getResultDigest() : "";
 
@@ -378,7 +389,7 @@ public class TaskManagerService {
         }
 
         ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
+                resultService.getComputedFile(chainTaskId);
         String callbackData = computedFile != null ?
                 computedFile.getCallbackData() : "";
 

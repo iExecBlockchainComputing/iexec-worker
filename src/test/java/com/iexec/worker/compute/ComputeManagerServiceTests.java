@@ -31,6 +31,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerLogs;
 import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.result.ResultService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
@@ -54,8 +55,6 @@ public class ComputeManagerServiceTests {
             "TEE_POST_COMPUTE_IMAGE";
     private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
     private final static long MAX_EXECUTION_TIME = 1000;
-    private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test" +
-            "/resources/tmp/test-worker";
 
     private final TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
@@ -92,6 +91,8 @@ public class ComputeManagerServiceTests {
     private WorkerConfigurationService workerConfigurationService;
     @Mock
     private IexecHubService iexecHubService;
+    @Mock
+    private ResultService resultService;
 
     @Before
     public void beforeEach() {
@@ -296,12 +297,16 @@ public class ComputeManagerServiceTests {
         taskDescription.setTeeTask(false);
         when(postComputeService.runStandardPostCompute(taskDescription))
                 .thenReturn(true);
+        ComputedFile computedFile = mock(ComputedFile.class);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription, "");
         Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(postComputeService, times(1))
                 .runStandardPostCompute(taskDescription);
+        verify(resultService, times(1))
+                .saveResultInfo(anyString(), any(), any());
     }
 
     @Test
@@ -312,7 +317,7 @@ public class ComputeManagerServiceTests {
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        "");
         Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
     }
 
@@ -327,6 +332,8 @@ public class ComputeManagerServiceTests {
         when(postComputeService.runTeePostCompute(taskDescription,
                 SECURE_SESSION_ID))
                 .thenReturn(expectedDockerRunResponse);
+        ComputedFile computedFile = mock(ComputedFile.class);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
@@ -338,6 +345,8 @@ public class ComputeManagerServiceTests {
                 "stderr");
         verify(postComputeService, times(1))
                 .runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+        verify(resultService, times(1))
+                .saveResultInfo(anyString(), any(), any());
     }
 
     @Test
@@ -360,70 +369,6 @@ public class ComputeManagerServiceTests {
                 "stdout");
         Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
-    }
-
-    // get computed file
-
-    @Test
-    public void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
-        String chainTaskId = "deterministic-output-file";
-
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
-                        "/output/iexec_out");
-        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
-                        "/output");
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
-                TaskDescription.builder().isCallbackRequested(false).build());
-
-        ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
-        String hash = computedFile.getResultDigest();
-        // should be equal to the content of the file since it is a byte32
-        Assertions.assertThat(hash).isEqualTo(
-                "0x09b727883db89fa3b3504f83e0c67d04a0d4fc35a9670cc4517c49d2a27ad171");
-    }
-
-    @Test
-    public void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree() {
-        String chainTaskId = "deterministic-output-directory";
-
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
-                        "/output/iexec_out");
-        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
-                        "/output");
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
-                TaskDescription.builder().isCallbackRequested(false).build());
-
-        ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
-        String hash = computedFile.getResultDigest();
-        System.out.println(hash);
-        // should be equal to the content of the file since it is a byte32
-        Assertions.assertThat(hash).isEqualTo(
-                "0xc6114778cc5c33db5fbbd4d0f9be116ed0232961045341714aba5a72d3ef7402");
-    }
-
-    @Test
-    public void shouldGetComputedFileWithWeb3ResultDigest() {
-        String chainTaskId = "callback-directory";
-
-        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
-                        "/output");
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
-                TaskDescription.builder().isCallbackRequested(true).build());
-
-        ComputedFile computedFile =
-                computeManagerService.getComputedFile(chainTaskId);
-        String hash = computedFile.getResultDigest();
-        System.out.println(hash);
-        // should be equal to the content of the file since it is a byte32
-        Assertions.assertThat(hash).isEqualTo(
-                "0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6");
     }
 
 }
