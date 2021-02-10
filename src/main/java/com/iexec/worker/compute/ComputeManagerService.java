@@ -153,19 +153,19 @@ public class ComputeManagerService {
                 chainTaskId, taskDescription.isTeeTask());
         PostComputeResponse postComputeResponse = new PostComputeResponse();
 
-        boolean isSuccessful;
-        if (taskDescription.isTeeTask() && !secureSessionId.isEmpty()) {
+        boolean isSuccessful = false;
+        if (!taskDescription.isTeeTask()) {
+            isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
+        } else if (!secureSessionId.isEmpty()) {
             ComputeResponse computeResponse = postComputeService.runTeePostCompute(taskDescription,
                     secureSessionId);
             isSuccessful = computeResponse.isSuccessful();
             postComputeResponse.setStdout(computeResponse.getStdout());
             postComputeResponse.setStderr(computeResponse.getStderr());
-        } else {
-            isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
         }
-        if (isSuccessful){
+        if (isSuccessful) {
             ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-            if (computedFile != null){
+            if (computedFile != null) {
                 postComputeResponse.setSuccessful(true);
                 resultService.saveResultInfo(chainTaskId, taskDescription,
                         computedFile);
