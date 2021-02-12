@@ -22,94 +22,92 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.executor.TaskManagerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.Optional;
 
 
 @Slf4j
 @Service
 public class ReplicateDemandService {
 
-    private final CustomCoreFeignClient customCoreFeignClient;
-    private final TaskManagerService taskManagerService;
     private final IexecHubService iexecHubService;
-    private final SubscriptionService subscriptionService;
+    private final CustomCoreFeignClient coreFeignClient;
     private final ContributionService contributionService;
+    private final SubscriptionService subscriptionService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
-    @Autowired
     public ReplicateDemandService(IexecHubService iexecHubService,
-                                  CustomCoreFeignClient customCoreFeignClient,
-                                  SubscriptionService subscriptionService,
+                                  CustomCoreFeignClient coreFeignClient,
                                   ContributionService contributionService,
-                                  ApplicationEventPublisher applicationEventPublisher,
-                                  TaskManagerService taskManagerService) {
-        this.customCoreFeignClient = customCoreFeignClient;
+                                  SubscriptionService subscriptionService,
+                                  ApplicationEventPublisher applicationEventPublisher) {
         this.iexecHubService = iexecHubService;
-        this.subscriptionService = subscriptionService;
+        this.coreFeignClient = coreFeignClient;
         this.contributionService = contributionService;
+        this.subscriptionService = subscriptionService;
         this.applicationEventPublisher = applicationEventPublisher;
-        this.taskManagerService = taskManagerService;
     }
 
+    /**
+     * Asks for a new task every t seconds (e.g: t=30s)
+     * then if received one locally starts computing the task
+     */
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     public void askForReplicate() {
-        // check if the worker can run a task or not
-        if (!taskManagerService.canAcceptMoreReplicates()) {
-            log.info("The worker is already full, it can't accept more tasks");
-            return;
-        }
-
         long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         if (lastAvailableBlockNumber == 0) {
-            log.error("Can't askForReplicate, your blockchain node seams unsync [lastAvailableBlockNumber:{}]",
-                    lastAvailableBlockNumber);
+            log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
             return;
         }
-
         if (!iexecHubService.hasEnoughGas()) {
-            log.warn("The worker is out of gas, it cannot accept more tasks");
+            log.error("Cannot ask for new tasks, your wallet is dry");
             return;
         }
+        coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
+                .filter(this::isNewTaskInitialized)
+                .ifPresent(this::startTask);
+    }
 
-        Optional<WorkerpoolAuthorization> oContributionAuth =
-                customCoreFeignClient.getAvailableReplicate(lastAvailableBlockNumber);
-
-        if (!oContributionAuth.isPresent()) {
-            return;
+    /**
+     * Checks if task is initialized
+     *
+     * @param authorization required authorization for later contribution
+     * @return true if task is initialized
+     */
+    private boolean isNewTaskInitialized(WorkerpoolAuthorization authorization) {
+        String chainTaskId = authorization.getChainTaskId();
+        if (contributionService.isChainTaskInitialized(chainTaskId)) {
+            log.info("Received new task [chainTaskId:{}]", chainTaskId);
+            return true;
         }
+        log.error("Received uninitialized task [chainTaskId:{}]", chainTaskId);
+        return false;
+    }
 
-        WorkerpoolAuthorization workerpoolAuthorization = oContributionAuth.get();
-        String chainTaskId = workerpoolAuthorization.getChainTaskId();
-        log.info("Received new task [chainTaskId:{}]", chainTaskId);
-
-        if (!contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.error("Task NOT initialized onchain [chainTaskId:{}]", chainTaskId);
-            return;
-        }
-
+    /**
+     * Starts task
+     *
+     * @param authorization required authorization for later contribution
+     */
+    private void startTask(WorkerpoolAuthorization authorization) {
+        String chainTaskId = authorization.getChainTaskId();
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
-                .workerpoolAuthorization(workerpoolAuthorization)
+                .workerpoolAuthorization(authorization)
                 .build();
-
         TaskNotification taskNotification = TaskNotification.builder()
                 .chainTaskId(chainTaskId)
                 .workersAddress(Collections.emptyList())
                 .taskNotificationType(TaskNotificationType.PLEASE_START)
                 .taskNotificationExtra(notificationExtra)
                 .build();
-
         subscriptionService.subscribeToTopic(chainTaskId);
         applicationEventPublisher.publishEvent(taskNotification);
-
     }
+
 }

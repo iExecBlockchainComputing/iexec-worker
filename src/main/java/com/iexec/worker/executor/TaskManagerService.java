@@ -63,8 +63,6 @@ public class TaskManagerService {
     private final SconeTeeService sconeTeeService;
     private final DataService dataService;
     private final ResultService resultService;
-    private final int maxNbExecutions;
-    private final Set<String> tasksUsingCpu;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -84,38 +82,9 @@ public class TaskManagerService {
         this.sconeTeeService = sconeTeeService;
         this.dataService = dataService;
         this.resultService = resultService;
-        this.maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
-        this.tasksUsingCpu =
-                Collections.newSetFromMap(new ConcurrentHashMap<>());
-    }
-
-    public boolean canAcceptMoreReplicates() {
-        if (tasksUsingCpu.size() > 0) {
-            log.info("Some tasks are using CPU [tasksUsingCpu:{}, " +
-                            "maxTasksUsingCpu:{}]", tasksUsingCpu.size(),
-                    maxNbExecutions);
-        }
-        return tasksUsingCpu.size() <= maxNbExecutions;
-    }
-
-    private void setTaskUsingCpu(String chainTaskId) {
-        if (tasksUsingCpu.contains(chainTaskId)) {
-            return;
-        }
-
-        tasksUsingCpu.add(chainTaskId);
-        log.info("Set task using CPU [tasksUsingCpu:{}]", tasksUsingCpu.size());
-    }
-
-    private void unsetTaskUsingCpu(String chainTaskId) {
-        tasksUsingCpu.remove(chainTaskId);
-        log.info("Unset task using CPU [tasksUsingCpu:{}]",
-                tasksUsingCpu.size());
     }
 
     ReplicateActionResponse start(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "start";
@@ -140,8 +109,6 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse downloadApp(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download app";
@@ -165,8 +132,6 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse downloadData(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download data";
@@ -217,18 +182,14 @@ public class TaskManagerService {
                 computeManagerService.runPostCompute(taskDescription, "").isSuccessful()){
             //Graceful error, worker will be prompt to contribute
             logError(errorCause, context, chainTaskId);
-            unsetTaskUsingCpu(chainTaskId);
             return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute
         logError(POST_COMPUTE_FAILED, context, chainTaskId);
-        unsetTaskUsingCpu(chainTaskId);
         return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
     }
 
     ReplicateActionResponse compute(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "compute";
@@ -280,8 +241,6 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
-
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "contribute";
@@ -329,7 +288,6 @@ public class TaskManagerService {
 
     ReplicateActionResponse reveal(String chainTaskId,
                                    TaskNotificationExtra extra) {
-        unsetTaskUsingCpu(chainTaskId);
         String context = "reveal";
         if (extra == null || extra.getBlockNumber() == 0) {
             return getFailureResponseAndPrintError(CONSENSUS_BLOCK_MISSING,
@@ -379,7 +337,6 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse uploadResult(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
         String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
         String context = "upload result";
         if (resultLink.isEmpty()) {
@@ -400,7 +357,6 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse complete(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
         if (!resultService.removeResult(chainTaskId)) {
             return ReplicateActionResponse.failure();
         }
@@ -409,7 +365,6 @@ public class TaskManagerService {
     }
 
     boolean abort(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
         return resultService.removeResult(chainTaskId);
     }
 
