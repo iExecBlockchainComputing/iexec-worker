@@ -64,7 +64,7 @@ public class WorkerService {
     }
 
     public boolean registerWorker() {
-        log.info("Number of max parallel tasks on this machine [tasks:{}]", workerConfigService.getNbCPU() / 2);
+        log.info("Number of CPUs [CPUs:{}]", workerConfigService.getNbCPU());
         log.info("Core URL [url:{}]", coreConfigService.getUrl());
         log.info("Core version [version:{}]", customCoreFeignClient.getCoreVersion());
         log.info("Getting public configuration from the core...");
