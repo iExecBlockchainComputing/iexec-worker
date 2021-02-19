@@ -24,7 +24,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.time.Instant;
-import java.util.*;
+import java.util.Date;
+import java.util.HashSet;
 
 
 @Slf4j
@@ -48,7 +49,7 @@ public class DockerService {
         String chainTaskId = dockerRunRequest.getChainTaskId();
         String containerName = dockerRunRequest.getContainerName();
 
-        if (!addToRunningContainersRecord(containerName)){
+        if (!addToRunningContainersRecord(containerName)) {
             return dockerRunResponse;
         }
 
@@ -101,8 +102,8 @@ public class DockerService {
      * @param containerName name of the container to be added to the record
      * @return true if container is added to the record
      */
-    private boolean addToRunningContainersRecord(String containerName) {
-        if (runningContainersRecord.contains(containerName)){
+    boolean addToRunningContainersRecord(String containerName) {
+        if (runningContainersRecord.contains(containerName)) {
             log.error("Failed to add running container to record, container is " +
                     "already on the record [containerName:{}]", containerName);
             return false;
@@ -114,14 +115,15 @@ public class DockerService {
      * Remove a container from the running containers record
      *
      * @param containerName name of the container to be removed from the record
+     * @return false if container to added to the record
      */
-    private void removeFromRunningContainersRecord(String containerName) {
-        if (runningContainersRecord.contains(containerName)){
+    boolean removeFromRunningContainersRecord(String containerName) {
+        if (runningContainersRecord.contains(containerName)) {
             log.error("Failed to remove running container from record, container " +
                     "does not exist [containerName:{}]", containerName);
-            return;
+            return false;
         }
-        runningContainersRecord.remove(containerName);
+        return runningContainersRecord.remove(containerName);
     }
 
     public boolean pullImage(String image) {

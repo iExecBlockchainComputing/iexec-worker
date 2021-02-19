@@ -162,6 +162,23 @@ public class DockerServiceTests {
     }
 
     @Test
+    public void shouldNotRunSinceCantAddToRunningContainersRecord() {
+        String containerName = "containerName";
+        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .containerName(containerName)
+                .maxExecutionTime(5000)
+                .build();
+        //mock already existing container in record
+        dockerService.addToRunningContainersRecord(containerName);
+
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
+
+        Assertions.assertThat(dockerRunResponse).isNotNull();
+        Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+    }
+
+    @Test
     public void shouldNotRunSinceCantCreateContainer() {
         String containerName = "containerName";
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
@@ -240,6 +257,30 @@ public class DockerServiceTests {
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+    }
+
+    @Test
+    public void shouldAddToRunningContainersRecord() {
+        String containerName = "containerName";
+        Assertions.assertThat(dockerService
+                .addToRunningContainersRecord(containerName)).isTrue();
+    }
+
+    @Test
+    public void shouldNotAddToRunningContainersRecord() {
+        String containerName = "containerName";
+        dockerService.addToRunningContainersRecord(containerName);
+        //add already existing name
+        Assertions.assertThat(dockerService
+                .addToRunningContainersRecord(containerName)).isFalse();
+    }
+
+    @Test
+    public void shouldNotRemoveFromRunningContainersRecord() {
+        String containerName = "containerName";
+
+        Assertions.assertThat(dockerService
+                .removeFromRunningContainersRecord(containerName)).isFalse();
     }
 
     @Test
