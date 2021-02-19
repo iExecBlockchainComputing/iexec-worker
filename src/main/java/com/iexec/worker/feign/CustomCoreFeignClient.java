@@ -98,6 +98,17 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return is2xxSuccess(response);
     }
 
+    public List<String> getComputingTasks() {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("jwtoken", loginService.getToken());
+
+        HttpCall<List<String>> httpCall = (args) ->
+                coreClient.getComputingTasks((String) args.get("jwtoken"));
+
+        ResponseEntity<List<String>> response = makeHttpCall(httpCall, arguments, "getComputingTasks");
+        return is2xxSuccess(response) ? response.getBody() : Collections.emptyList();
+    }
+
     public List<TaskNotification> getMissedTaskNotifications(long lastAvailableBlockNumber) {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("jwtoken", loginService.getToken());
