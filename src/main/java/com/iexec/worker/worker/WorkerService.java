@@ -116,19 +116,16 @@ public class WorkerService {
      * future orphans in the next worker session, running containers started by
      * the worker will all be stopped. Containers will be automatically removed
      * by already existing threads watching for container exit.
-     *
-     * @return is restarting
      */
-    public boolean restartGracefully() {
+    public void restartGracefully() {
         List<String> computingTasks = customCoreFeignClient.getComputingTasks();
         if (!computingTasks.isEmpty()) {
             log.warn("The worker will wait before restarting since computing " +
                     "tasks are in progress [computingTasks:{}]", computingTasks);
-            return false;
+            return;
         }
         dockerService.stopRunningContainers();
         log.warn("The worker is about to restart");
         restartEndpoint.restart();
-        return true;
     }
 }

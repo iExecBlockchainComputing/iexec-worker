@@ -22,6 +22,7 @@ import com.iexec.worker.worker.WorkerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -43,13 +44,13 @@ public class PingService {
     public void pingScheduler() {
         String sessionId = customCoreFeignClient.ping();
         log.info("Send ping to scheduler " + sessionId);
-        if (sessionId == null || sessionId.isEmpty()) {
+        if (StringUtils.isEmpty(sessionId)) {
             log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
             return;
         }
 
         String currentSessionId = coreConfigurationService.getCoreSessionId();
-        if (currentSessionId == null || currentSessionId.isEmpty()) {
+        if (StringUtils.isEmpty(currentSessionId)) {
             log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
             coreConfigurationService.setCoreSessionId(sessionId);
             return;
@@ -59,9 +60,7 @@ public class PingService {
             // need to reconnect to the core by restarting the worker
             log.warn("Scheduler seems to have restarted [currentSessionId:{}, " +
                     "coreSessionId:{}]", currentSessionId, sessionId);
-            if (workerService.restartGracefully()) {
-                log.warn("The worker is restarting");
-            }
+            workerService.restartGracefully();
         }
     }
 }
