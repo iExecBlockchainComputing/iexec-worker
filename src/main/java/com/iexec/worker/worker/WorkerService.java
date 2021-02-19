@@ -47,7 +47,8 @@ public class WorkerService {
     private final RestartEndpoint restartEndpoint;
     private final DockerService dockerService;
 
-    public WorkerService(CredentialsService credentialsService,
+    public WorkerService(
+            CredentialsService credentialsService,
                          WorkerConfigurationService workerConfigService,
                          CoreConfigurationService coreConfigService,
                          PublicConfigurationService publicConfigService,
@@ -55,7 +56,8 @@ public class WorkerService {
                          VersionService versionService,
                          SconeTeeService sconeTeeService,
                          RestartEndpoint restartEndpoint,
-                         DockerService dockerService) {
+                         DockerService dockerService
+    ) {
         this.credentialsService = credentialsService;
         this.workerConfigService = workerConfigService;
         this.coreConfigService = coreConfigService;
