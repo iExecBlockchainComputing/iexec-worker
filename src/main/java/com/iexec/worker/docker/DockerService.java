@@ -160,8 +160,10 @@ public class DockerService {
         log.info("About to stop all running containers [runningContainers:{}]",
                 runningContainersRecord);
         runningContainersRecord.stream()
-                .filter(containerName ->
-                        !dockerClientService.stopContainer(containerName))
+                .filter(containerName -> {
+                    String containerId = dockerClientService.getContainerId(containerName);
+                    return !dockerClientService.stopContainer(containerId);
+                })
                 .forEach(unstoppedContainer ->
                         log.error("Failed to stop one container among all running " +
                                 "[unstoppedContainer:{}]", unstoppedContainer));

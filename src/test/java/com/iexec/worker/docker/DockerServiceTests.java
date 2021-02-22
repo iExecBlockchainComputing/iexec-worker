@@ -369,4 +369,32 @@ public class DockerServiceTests {
         Assertions.assertThat(dockerService.shouldPrintDeveloperLogs(dockerRunRequest)).isFalse();
     }
 
+    @Test
+    public void shouldStopRunningContainers() {
+        String containerName = "containerName";
+        String containerId = "containerId";
+        dockerService.addToRunningContainersRecord(containerName);
+        when(dockerClientService.getContainerId(containerName)).thenReturn(containerId);
+        when(dockerClientService.stopContainer(containerId)).thenReturn(true);
+
+        dockerService.stopRunningContainers();
+
+        verify(dockerClientService, times(1))
+                .stopContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotStopRunningContainers() {
+        String containerName = "containerName";
+        String containerId = "containerId";
+        //no running container
+        when(dockerClientService.getContainerId(containerName)).thenReturn(containerId);
+        when(dockerClientService.stopContainer(containerId)).thenReturn(true);
+
+        dockerService.stopRunningContainers();
+
+        verify(dockerClientService, times(0))
+                .stopContainer(containerId);
+    }
+
 }
