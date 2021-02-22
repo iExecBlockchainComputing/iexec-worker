@@ -40,11 +40,8 @@ import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
@@ -124,7 +121,7 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (computeManagerService.downloadApp(taskDescription)){
+        if (computeManagerService.downloadApp(taskDescription)) {
             return ReplicateActionResponse.success();
         }
         return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
@@ -179,7 +176,7 @@ public class TaskManagerService {
                                                                   ReplicateStatus errorStatus,
                                                                   ReplicateStatusCause errorCause) {
         if (resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause) &&
-                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()){
+                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
             logError(errorCause, context, chainTaskId);
             return ReplicateActionResponse.failure(errorCause);

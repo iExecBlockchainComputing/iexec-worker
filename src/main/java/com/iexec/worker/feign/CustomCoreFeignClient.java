@@ -27,11 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 
 @Slf4j
@@ -59,7 +55,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
      * successful, we return a ResponseEntity<T> with the response
      * body, otherwise, we return a ResponseEntity with the call's failure
      * status.
-     * 
+     *
      * How to pass call args?
      * We put call params in a Map<String, Object> (see below)
      * and we pass the Map as an argument to the lambda expression.
@@ -102,7 +98,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("jwtoken", loginService.getToken());
 
-        HttpCall<List<String>> httpCall = (args) ->
+        HttpCall<List<String>> httpCall = args ->
                 coreClient.getComputingTasks((String) args.get("jwtoken"));
 
         ResponseEntity<List<String>> response = makeHttpCall(httpCall, arguments, "getComputingTasks");

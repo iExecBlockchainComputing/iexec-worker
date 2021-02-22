@@ -21,7 +21,6 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
 import com.iexec.worker.compute.post.PostComputeResponse;
@@ -48,7 +47,6 @@ public class ComputeManagerService {
     private final AppComputeService appComputeService;
     private final PostComputeService postComputeService;
     private final WorkerConfigurationService workerConfigService;
-    private final IexecHubService iexecHubService;
     private final ResultService resultService;
 
     public ComputeManagerService(
@@ -57,7 +55,6 @@ public class ComputeManagerService {
             AppComputeService appComputeService,
             PostComputeService postComputeService,
             WorkerConfigurationService workerConfigService,
-            IexecHubService iexecHubService,
             ResultService resultService
     ) {
         this.dockerService = dockerService;
@@ -65,7 +62,6 @@ public class ComputeManagerService {
         this.appComputeService = appComputeService;
         this.postComputeService = postComputeService;
         this.workerConfigService = workerConfigService;
-        this.iexecHubService = iexecHubService;
         this.resultService = resultService;
     }
 
