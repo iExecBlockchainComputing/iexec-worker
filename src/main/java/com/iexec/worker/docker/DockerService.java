@@ -44,6 +44,19 @@ public class DockerService {
         this.runningContainersRecord = new HashSet<>();
     }
 
+    /**
+     * All docker run requests initiated through this method will get their
+     * yet-launched container kept in a local record.
+     *
+     * If a container stops by itself (or receives a stop signal from this
+     * outside), the container will be automatically docker removed in addition
+     * to be removed from the local record.
+     * If the worker has to abort on a task or shutdown, it should remove all
+     * running container created by itself to avoid container orphans.
+     *
+     * @param dockerRunRequest docker run request
+     * @return docker run response
+     */
     public DockerRunResponse run(DockerRunRequest dockerRunRequest) {
         DockerRunResponse dockerRunResponse = DockerRunResponse.builder().isSuccessful(false).build();
         String chainTaskId = dockerRunRequest.getChainTaskId();
