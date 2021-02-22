@@ -55,12 +55,14 @@ public class DockerService {
 
         String containerId = dockerClientService.createContainer(dockerRunRequest);
         if (containerId.isEmpty()) {
+            removeFromRunningContainersRecord(containerName);
             return dockerRunResponse;
         }
         log.info("Created container [containerName:{}, containerId:{}]",
                 containerName, containerId);
 
         if (!dockerClientService.startContainer(containerId)) {
+            removeFromRunningContainersRecord(containerName);
             dockerClientService.removeContainer(containerId);
             return dockerRunResponse;
         }
@@ -118,7 +120,7 @@ public class DockerService {
      * @return false if container to added to the record
      */
     boolean removeFromRunningContainersRecord(String containerName) {
-        if (runningContainersRecord.contains(containerName)) {
+        if (!runningContainersRecord.contains(containerName)) {
             log.error("Failed to remove running container from record, container " +
                     "does not exist [containerName:{}]", containerName);
             return false;
