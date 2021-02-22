@@ -16,6 +16,7 @@
 
 package com.iexec.worker.worker;
 
+import com.iexec.common.config.WorkerModel;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
@@ -26,13 +27,16 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.version.VersionService;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.cloud.context.restart.RestartEndpoint;
+import org.web3j.crypto.Credentials;
 
 import java.util.Collections;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 public class WorkerServiceTests {
@@ -65,6 +69,61 @@ public class WorkerServiceTests {
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
 
+    }
+
+    @Test
+    public void shouldRegisterWorker() {
+        String version = "version";
+        String walletAddress = "walletAddress";
+        String name = "name";
+        String os = "os";
+        String cpu = "cpu";
+        int cpuNb = 4;
+        int memorySize = 1024;
+        boolean isTee = true;
+        boolean isGpu = true;
+        when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
+        when(versionService.getVersion()).thenReturn(version);
+        Credentials credentials = mock(Credentials.class);
+        when(workerConfigService.getWorkerName()).thenReturn(name);
+        when(credentials.getAddress()).thenReturn(walletAddress);
+        when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(workerConfigService.getOS()).thenReturn(os);
+        when(workerConfigService.getCPU()).thenReturn(cpu);
+        when(workerConfigService.getNbCPU()).thenReturn(cpuNb);
+        when(workerConfigService.getMemorySize()).thenReturn(memorySize);
+        when(sconeTeeService.isTeeEnabled()).thenReturn(isTee);
+        when(workerConfigService.isGpuEnabled()).thenReturn(isGpu);
+        when(workerConfigService.getHttpProxyHost()).thenReturn("host");
+        when(workerConfigService.getHttpProxyPort()).thenReturn(1000);
+
+        assertThat(workerService.registerWorker()).isTrue();
+
+        ArgumentCaptor<WorkerModel> workerModelCaptor =
+                ArgumentCaptor.forClass(WorkerModel.class);
+        verify(customCoreFeignClient, times(1))
+                .registerWorker(workerModelCaptor.capture());
+        WorkerModel workerModel = workerModelCaptor.getValue();
+        assertThat(workerModel.getName()).isEqualTo(name);
+        assertThat(workerModel.getWalletAddress()).isEqualTo(walletAddress);
+        assertThat(workerModel.getOs()).isEqualTo(os);
+        assertThat(workerModel.getCpu()).isEqualTo(cpu);
+        assertThat(workerModel.getCpuNb()).isEqualTo(cpuNb);
+        assertThat(workerModel.getMemorySize()).isEqualTo(memorySize);
+        assertThat(workerModel.isTeeEnabled()).isEqualTo(isTee);
+        assertThat(workerModel.isGpuEnabled()).isEqualTo(isGpu);
+    }
+
+    @Test
+    public void shouldNotRegisterWorkerSinceBadVersion() {
+        String version = "version";
+        when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
+        when(versionService.getVersion()).thenReturn("someOtherVersion");
+
+        assertThat(workerService.registerWorker()).isFalse();
+        
+        verify(customCoreFeignClient, times(0))
+                .registerWorker(any());
     }
 
     @Test
