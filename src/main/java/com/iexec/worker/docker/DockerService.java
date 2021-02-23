@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 
@@ -47,7 +48,7 @@ public class DockerService {
     /**
      * All docker run requests initiated through this method will get their
      * yet-launched container kept in a local record.
-     *
+     * <p>
      * If a container stops by itself (or receives a stop signal from this
      * outside), the container will be automatically docker removed (unless if
      * started with maxExecutionTime = 0) in addition to be removed from the local
@@ -175,14 +176,17 @@ public class DockerService {
     public void stopRunningContainers() {
         log.info("About to stop all running containers [runningContainers:{}]",
                 runningContainersRecord);
-        runningContainersRecord.stream()
-                .filter(containerName -> {
+        new ArrayList<>(runningContainersRecord)
+                .forEach(containerName -> {
                     String containerId = dockerClientService.getContainerId(containerName);
-                    return !dockerClientService.stopContainer(containerId);
-                })
-                .forEach(unstoppedContainer ->
-                        log.error("Failed to stop one container among all running " +
-                                "[unstoppedContainer:{}]", unstoppedContainer));
+                    if (!containerId.isEmpty()
+                            && dockerClientService.stopContainer(containerId)) {
+                        removeFromRunningContainersRecord(containerName);
+                        return;
+                    }
+                    log.error("Failed to stop one container among all running " +
+                            "[unstoppedContainer:{}]", containerName);
+                });
     }
 
 }
