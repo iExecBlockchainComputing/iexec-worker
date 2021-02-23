@@ -49,8 +49,9 @@ public class DockerService {
      * yet-launched container kept in a local record.
      *
      * If a container stops by itself (or receives a stop signal from this
-     * outside), the container will be automatically docker removed in addition
-     * to be removed from the local record.
+     * outside), the container will be automatically docker removed (unless if
+     * started with maxExecutionTime = 0) in addition to be removed from the local
+     * record.
      * If the worker has to abort on a task or shutdown, it should remove all
      * running container created by itself to avoid container orphans.
      *
