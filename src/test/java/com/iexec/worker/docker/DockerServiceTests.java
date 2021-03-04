@@ -162,6 +162,23 @@ public class DockerServiceTests {
     }
 
     @Test
+    public void shouldNotRunSinceCantAddToRunningContainersRecord() {
+        String containerName = "containerName";
+        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .containerName(containerName)
+                .maxExecutionTime(5000)
+                .build();
+        //mock already existing container in record
+        dockerService.addToRunningContainersRecord(containerName);
+
+        DockerRunResponse dockerRunResponse =
+                dockerService.run(dockerRunRequest);
+
+        Assertions.assertThat(dockerRunResponse).isNotNull();
+        Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+    }
+
+    @Test
     public void shouldNotRunSinceCantCreateContainer() {
         String containerName = "containerName";
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
@@ -240,6 +257,30 @@ public class DockerServiceTests {
 
         Assertions.assertThat(dockerRunResponse).isNotNull();
         Assertions.assertThat(dockerRunResponse.isSuccessful()).isFalse();
+    }
+
+    @Test
+    public void shouldAddToRunningContainersRecord() {
+        String containerName = "containerName";
+        Assertions.assertThat(dockerService
+                .addToRunningContainersRecord(containerName)).isTrue();
+    }
+
+    @Test
+    public void shouldNotAddToRunningContainersRecord() {
+        String containerName = "containerName";
+        dockerService.addToRunningContainersRecord(containerName);
+        //add already existing name
+        Assertions.assertThat(dockerService
+                .addToRunningContainersRecord(containerName)).isFalse();
+    }
+
+    @Test
+    public void shouldNotRemoveFromRunningContainersRecord() {
+        String containerName = "containerName";
+
+        Assertions.assertThat(dockerService
+                .removeFromRunningContainersRecord(containerName)).isFalse();
     }
 
     @Test
@@ -326,6 +367,34 @@ public class DockerServiceTests {
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
 
         Assertions.assertThat(dockerService.shouldPrintDeveloperLogs(dockerRunRequest)).isFalse();
+    }
+
+    @Test
+    public void shouldStopRunningContainers() {
+        String containerName = "containerName";
+        String containerId = "containerId";
+        dockerService.addToRunningContainersRecord(containerName);
+        when(dockerClientService.getContainerId(containerName)).thenReturn(containerId);
+        when(dockerClientService.stopContainer(containerId)).thenReturn(true);
+
+        dockerService.stopRunningContainers();
+
+        verify(dockerClientService, times(1))
+                .stopContainer(containerId);
+    }
+
+    @Test
+    public void shouldNotStopRunningContainers() {
+        String containerName = "containerName";
+        String containerId = "containerId";
+        //no running container
+        when(dockerClientService.getContainerId(containerName)).thenReturn(containerId);
+        when(dockerClientService.stopContainer(containerId)).thenReturn(true);
+
+        dockerService.stopRunningContainers();
+
+        verify(dockerClientService, times(0))
+                .stopContainer(containerId);
     }
 
 }

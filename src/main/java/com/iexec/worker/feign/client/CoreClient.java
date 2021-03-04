@@ -64,6 +64,10 @@ public interface CoreClient {
     @GetMapping("/workers/config")
     ResponseEntity<PublicConfiguration> getPublicConfiguration() throws FeignException;
 
+    @GetMapping("/workers/computing")
+    ResponseEntity<List<String>> getComputingTasks(
+            @RequestHeader("Authorization") String bearerToken) throws FeignException;
+
     // Replicate
 
     @GetMapping("/replicates/available")
