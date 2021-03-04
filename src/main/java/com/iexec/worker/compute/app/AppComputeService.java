@@ -16,23 +16,21 @@
 
 package com.iexec.worker.compute.app;
 
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerRunRequest;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.tee.scone.SconeTeeService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
 
-
-@Slf4j
 @Service
 public class AppComputeService {
 
@@ -70,7 +68,7 @@ public class AppComputeService {
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT
         );
 
-        return dockerService.run(
+        DockerRunResponse dockerResponse = dockerService.getClient().run(
                 DockerRunRequest.builder()
                         .imageUri(taskDescription.getAppUri())
                         .containerName(getTaskContainerName(chainTaskId))
@@ -81,6 +79,11 @@ public class AppComputeService {
                         .isSgx(taskDescription.isTeeTask())
                         .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
+        return AppComputeResponse.builder()
+                .isSuccessful(dockerResponse.isSuccessful())
+                .stdout(dockerResponse.getStdout())
+                .stderr(dockerResponse.getStderr())
+                .build();
     }
 
 

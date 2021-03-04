@@ -78,11 +78,11 @@ public class ComputeManagerService {
         if (!isDockerType || taskDescription.getAppUri() == null) {
             return false;
         }
-        return dockerService.pullImage(taskDescription.getAppUri());
+        return dockerService.getClient().pullImage(taskDescription.getAppUri());
     }
 
     public boolean isAppDownloaded(String imageUri) {
-        return dockerService.isImagePulled(imageUri);
+        return dockerService.getClient().isImagePresent(imageUri);
     }
 
     /*

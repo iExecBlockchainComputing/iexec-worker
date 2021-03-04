@@ -16,30 +16,32 @@
 
 package com.iexec.worker.docker;
 
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.docker.client.DockerClientFactory;
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.time.Instant;
 import java.util.Date;
 
-
-@Slf4j
 @Service
 public class DockerService {
 
-    private final DockerClientService dockerClientService;
+    private final DockerClientInstance dockerClientInstance;
     private final WorkerConfigurationService workerConfigService;
 
-    public DockerService(
-            DockerClientService dockerClientService,
-            WorkerConfigurationService workerConfigService
-    ) {
-        this.dockerClientService = dockerClientService;
+    public DockerService(WorkerConfigurationService workerConfigService) {
+        this.dockerClientInstance = DockerClientFactory.get();
         this.workerConfigService = workerConfigService;
+    }
+
+    public DockerClientInstance getClient() {
+        return this.dockerClientInstance;
     }
 
     public DockerRunResponse run(DockerRunRequest dockerRunRequest) {
@@ -88,21 +90,6 @@ public class DockerService {
         return dockerRunResponse;
     }
 
-    public boolean pullImage(String image) {
-        return dockerClientService.pullImage(image);
-    }
-
-    public boolean isImagePulled(String image) {
-        return !dockerClientService.getImageId(image).isEmpty();
-    }
-
-    public boolean stopAndRemoveContainer(String containerName) {
-        if (dockerClientService.stopContainer(containerName)) {
-            return dockerClientService.removeContainer(containerName);
-        }
-        return false;
-    }
-
     boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
         return workerConfigService.isDeveloperLoggerEnabled() && dockerRunRequest.isShouldDisplayLogs();
     }
@@ -113,6 +100,4 @@ public class DockerService {
         String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
         return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout);
     }
-
-
 }
