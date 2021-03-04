@@ -111,7 +111,9 @@ public class WorkerService {
     /**
      * Before restarting, the worker will ask the core if the worker still
      * has computing task in progress.
-     * If the worker has computing task in progress, it won't restart
+     * If the worker has computing task in progress, it won't restart.
+         The worker will retry to restart in the next pings once there is
+         no more computing tasks.
      * If the worker hasn't computing task in progress, it will immediately restart
      * <p>
      * Note: In case of a restart, to avoid launched running containers to become
