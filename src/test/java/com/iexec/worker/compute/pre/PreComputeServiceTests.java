@@ -18,7 +18,6 @@ package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
@@ -108,7 +107,7 @@ public class PreComputeServiceTests {
     @Test
     public void shouldRunTeePreCompute() {
         taskDescription.setTeePostComputeImage("teePostComputeImage");
-        when(dockerService.pullImage(taskDescription.getTeePostComputeImage())).thenReturn(true);
+        when(dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())).thenReturn(true);
         String secureSessionId = "secureSessionId";
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
 
@@ -119,7 +118,7 @@ public class PreComputeServiceTests {
     @Test
     public void shouldNotRunTeePreComputeSinceCantPullPreComputeImage() {
         taskDescription.setTeePostComputeImage("teePostComputeImage");
-        when(dockerService.pullImage(taskDescription.getTeePostComputeImage())).thenReturn(false);
+        when(dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())).thenReturn(false);
         String secureSessionId = "secureSessionId";
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
 
@@ -130,7 +129,7 @@ public class PreComputeServiceTests {
     @Test
     public void shouldNotRunTeePreComputeSinceCantCreateTeeSession() {
         taskDescription.setTeePostComputeImage("teePostComputeImage");
-        when(dockerService.pullImage(taskDescription.getTeePostComputeImage())).thenReturn(true);
+        when(dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())).thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn("");
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))

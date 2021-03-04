@@ -22,8 +22,8 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import org.assertj.core.api.Assertions;
@@ -175,7 +175,7 @@ public class AppComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(false).build();
-        when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(dockerService.getClient().run(any())).thenReturn(expectedDockerRunResponse);
 
         ComputeResponse computeResponse =
                 appComputeService.runCompute(taskDescription,

@@ -16,8 +16,8 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
@@ -52,12 +52,12 @@ public class SconeTeeServiceTests {
     public void shouldStartLasService() {
         when(sconeLasConfig.getContainerName()).thenReturn("containerName");
         when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
-        when(dockerService.pullImage(IMAGE_URI)).thenReturn(true);
-        when(dockerService.run(any()))
+        when(dockerService.getClient().pullImage(IMAGE_URI)).thenReturn(true);
+        when(dockerService.getClient().run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
 
         Assertions.assertThat(sconeTeeService.startLasService()).isTrue();
-        verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
+        verify(dockerService.getClient()).run(dockerRunRequestArgumentCaptor.capture());
         DockerRunRequest dockerRunRequest = dockerRunRequestArgumentCaptor.getValue();
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
@@ -73,7 +73,7 @@ public class SconeTeeServiceTests {
     public void shouldNotStartLasServiceSinceCannotPullImage() {
         when(sconeLasConfig.getContainerName()).thenReturn("containerName");
         when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
-        when(dockerService.pullImage(IMAGE_URI)).thenReturn(false);
+        when(dockerService.getClient().pullImage(IMAGE_URI)).thenReturn(false);
 
         Assertions.assertThat(sconeTeeService.startLasService()).isFalse();
     }
@@ -82,8 +82,8 @@ public class SconeTeeServiceTests {
     public void shouldNotStartLasServiceSinceCannotRunDockerContainer() {
         when(sconeLasConfig.getContainerName()).thenReturn("containerName");
         when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
-        when(dockerService.pullImage(IMAGE_URI)).thenReturn(true);
-        when(dockerService.run(any()))
+        when(dockerService.getClient().pullImage(IMAGE_URI)).thenReturn(true);
+        when(dockerService.getClient().run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(false).build());
 
         Assertions.assertThat(sconeTeeService.startLasService()).isFalse();

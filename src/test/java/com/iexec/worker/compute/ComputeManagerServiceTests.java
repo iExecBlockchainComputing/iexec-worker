@@ -28,8 +28,8 @@ import com.iexec.worker.compute.post.PostComputeService;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerLogs;
-import com.iexec.worker.docker.DockerRunResponse;
+import com.iexec.common.docker.DockerLogs;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import org.assertj.core.api.Assertions;
@@ -102,13 +102,13 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldDownloadApp() {
-        when(dockerService.pullImage(taskDescription.getAppUri())).thenReturn(true);
+        when(dockerService.getClient().pullImage(taskDescription.getAppUri())).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
     @Test
     public void shouldNotDownloadAppSincePullImageFailed() {
-        when(dockerService.pullImage(taskDescription.getAppUri())).thenReturn(false);
+        when(dockerService.getClient().pullImage(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
@@ -131,13 +131,13 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldHaveImageDownloaded() {
-        when(dockerService.isImagePulled(taskDescription.getAppUri())).thenReturn(true);
+        when(dockerService.getClient().isImagePresent(taskDescription.getAppUri())).thenReturn(true);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isTrue();
     }
 
     @Test
     public void shouldNotHaveImageDownloaded() {
-        when(dockerService.isImagePulled(taskDescription.getAppUri())).thenReturn(false);
+        when(dockerService.getClient().isImagePresent(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isFalse();
     }
 
