@@ -29,7 +29,6 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 
 @Slf4j
@@ -73,7 +72,7 @@ public class DockerService {
             return dockerRunResponse;
         }
 
-        String containerId = dockerClientService.createContainer(dockerRunRequest);
+        String containerId = getClient().createContainer(dockerRunRequest);
         if (containerId.isEmpty()) {
             removeFromRunningContainersRecord(containerName);
             return dockerRunResponse;
@@ -81,9 +80,9 @@ public class DockerService {
         log.info("Created container [containerName:{}, containerId:{}]",
                 containerName, containerId);
 
-        if (!dockerClientService.startContainer(containerId)) {
+        if (!getClient().startContainer(containerId)) {
             removeFromRunningContainersRecord(containerName);
-            dockerClientService.removeContainer(containerId);
+            getClient().removeContainer(containerId);
             return dockerRunResponse;
         }
         log.info("Started container [containerName:{}, containerId:{}]", containerName, containerId);
@@ -92,17 +91,16 @@ public class DockerService {
             dockerRunResponse.setSuccessful(true);
             return dockerRunResponse;
         }
-
-        Long exitCode = dockerClientService.waitContainerUntilExitOrTimeout(containerId,
-                Date.from(Instant.now().plusMillis(dockerRunRequest.getMaxExecutionTime())));
+        Instant deadline = Instant.now().plusMillis(dockerRunRequest.getMaxExecutionTime());
+        Long exitCode = getClient().waitContainerUntilExitOrTimeout(containerId, deadline);
         removeFromRunningContainersRecord(containerName);
         boolean isTimeout = exitCode == null;
 
-        if (isTimeout && !dockerClientService.stopContainer(containerId)) {
+        if (isTimeout && !getClient().stopContainer(containerId)) {
             return dockerRunResponse;
         }
 
-        dockerClientService.getContainerLogs(containerId).ifPresent(containerLogs -> {
+        getClient().getContainerLogs(containerId).ifPresent(containerLogs -> {
             dockerRunResponse.setDockerLogs(containerLogs);
             //TODO: Set exit code for improving internal and external developer experience
             if (shouldPrintDeveloperLogs(dockerRunRequest)) {
@@ -111,7 +109,7 @@ public class DockerService {
             }
         });
 
-        if (!dockerClientService.removeContainer(containerId)) {
+        if (!getClient().removeContainer(containerId)) {
             return dockerRunResponse;
         }
         dockerRunResponse.setSuccessful(!isTimeout && exitCode == 0);
@@ -149,16 +147,16 @@ public class DockerService {
     }
 
     public boolean pullImage(String image) {
-        return dockerClientService.pullImage(image);
+        return getClient().pullImage(image);
     }
 
     public boolean isImagePulled(String image) {
-        return !dockerClientService.getImageId(image).isEmpty();
+        return !getClient().getImageId(image).isEmpty();
     }
 
     public boolean stopAndRemoveContainer(String containerName) {
-        if (dockerClientService.stopContainer(containerName)) {
-            return dockerClientService.removeContainer(containerName);
+        if (getClient().stopContainer(containerName)) {
+            return getClient().removeContainer(containerName);
         }
         return false;
     }
@@ -183,9 +181,9 @@ public class DockerService {
                 runningContainersRecord);
         new ArrayList<>(runningContainersRecord)
                 .forEach(containerName -> {
-                    String containerId = dockerClientService.getContainerId(containerName);
+                    String containerId = getClient().getContainerId(containerName);
                     if (!containerId.isEmpty()
-                            && dockerClientService.stopContainer(containerId)) {
+                            && getClient().stopContainer(containerId)) {
                         removeFromRunningContainersRecord(containerName);
                         return;
                     }
