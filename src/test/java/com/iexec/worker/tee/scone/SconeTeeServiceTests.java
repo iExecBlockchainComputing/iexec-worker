@@ -53,7 +53,7 @@ public class SconeTeeServiceTests {
         when(sconeLasConfig.getContainerName()).thenReturn("containerName");
         when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
         when(dockerService.getClient().pullImage(IMAGE_URI)).thenReturn(true);
-        when(dockerService.getClient().run(any()))
+        when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
 
         Assertions.assertThat(sconeTeeService.startLasService()).isTrue();
@@ -83,7 +83,7 @@ public class SconeTeeServiceTests {
         when(sconeLasConfig.getContainerName()).thenReturn("containerName");
         when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
         when(dockerService.getClient().pullImage(IMAGE_URI)).thenReturn(true);
-        when(dockerService.getClient().run(any()))
+        when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(false).build());
 
         Assertions.assertThat(sconeTeeService.startLasService()).isFalse();

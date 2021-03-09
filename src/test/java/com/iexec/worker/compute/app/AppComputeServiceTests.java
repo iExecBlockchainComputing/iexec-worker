@@ -175,7 +175,7 @@ public class AppComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(false).build();
-        when(dockerService.getClient().run(any())).thenReturn(expectedDockerRunResponse);
+        when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
         ComputeResponse computeResponse =
                 appComputeService.runCompute(taskDescription,

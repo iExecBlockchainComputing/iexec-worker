@@ -62,7 +62,7 @@ public class SconeTeeService {
             return false;
         }
 
-        DockerRunResponse dockerRunResponse = dockerService.getClient().run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
         if (!dockerRunResponse.isSuccessful()) {
             log.error("Couldn't start LAS service, will continue without TEE support");
             return false;

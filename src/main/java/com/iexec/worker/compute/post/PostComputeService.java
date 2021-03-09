@@ -20,7 +20,6 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
-import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
@@ -81,7 +80,7 @@ public class PostComputeService {
         return true;
     }
 
-    public ComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
+    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");
@@ -89,7 +88,7 @@ public class PostComputeService {
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT,
                 workerConfigService.getTaskOutputDir(chainTaskId) + ":" + FileHelper.SLASH_OUTPUT);
 
-        DockerRunResponse dockerResponse = dockerService.getClient().run(
+        DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                         .imageUri(taskDescription.getTeePostComputeImage())

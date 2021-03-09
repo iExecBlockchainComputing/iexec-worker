@@ -21,7 +21,6 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -51,7 +50,7 @@ public class AppComputeService {
         this.sconeTeeService = sconeTeeService;
     }
 
-    public ComputeResponse runCompute(TaskDescription taskDescription,
+    public AppComputeResponse runCompute(TaskDescription taskDescription,
                                       String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = EnvUtils.getContainerEnvList(taskDescription);
@@ -68,7 +67,7 @@ public class AppComputeService {
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT
         );
 
-        DockerRunResponse dockerResponse = dockerService.getClient().run(
+        DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
                         .imageUri(taskDescription.getAppUri())
                         .containerName(getTaskContainerName(chainTaskId))

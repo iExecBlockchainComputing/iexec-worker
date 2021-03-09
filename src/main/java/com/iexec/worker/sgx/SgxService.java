@@ -98,7 +98,7 @@ public class SgxService {
                 .build();
 
 
-        DockerRunResponse dockerRunResponse = dockerService.getClient().run(dockerRunRequest);
+        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
         if (!dockerRunResponse.isSuccessful()) {
             log.error("Failed to check SGX device, will continue without TEE support");
             return false;
