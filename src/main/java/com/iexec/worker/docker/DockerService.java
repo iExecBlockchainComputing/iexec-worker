@@ -20,16 +20,11 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.common.utils.FileHelper;
-import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -37,11 +32,9 @@ public class DockerService {
 
     private final DockerClientInstance dockerClientInstance;
     private final HashSet<String> runningContainersRecord;
-    private final WorkerConfigurationService workerConfigService;
 
-    public DockerService(WorkerConfigurationService workerConfigService) {
-        this.workerConfigService = workerConfigService;
-        this.dockerClientInstance = DockerClientFactory.get();
+    public DockerService() {
+        this.dockerClientInstance = DockerClientFactory.getDockerClientInstance();
         this.runningContainersRecord = new HashSet<>();
     }
 
@@ -64,55 +57,18 @@ public class DockerService {
      * @return docker run response
      */
     public DockerRunResponse run(DockerRunRequest dockerRunRequest) {
-        DockerRunResponse dockerRunResponse = DockerRunResponse.builder().isSuccessful(false).build();
-        String chainTaskId = dockerRunRequest.getChainTaskId();
+        DockerRunResponse dockerRunResponse = DockerRunResponse.builder()
+                .isSuccessful(false)
+                .build();
         String containerName = dockerRunRequest.getContainerName();
-
         if (!addToRunningContainersRecord(containerName)) {
             return dockerRunResponse;
         }
-
-        String containerId = getClient().createContainer(dockerRunRequest);
-        if (containerId.isEmpty()) {
+        dockerRunResponse = getClient().run(dockerRunRequest);
+        if (!dockerRunResponse.isSuccessful()
+            || dockerRunRequest.getMaxExecutionTime() != 0) {
             removeFromRunningContainersRecord(containerName);
-            return dockerRunResponse;
         }
-        log.info("Created container [containerName:{}, containerId:{}]",
-                containerName, containerId);
-
-        if (!getClient().startContainer(containerId)) {
-            removeFromRunningContainersRecord(containerName);
-            getClient().removeContainer(containerId);
-            return dockerRunResponse;
-        }
-        log.info("Started container [containerName:{}, containerId:{}]", containerName, containerId);
-
-        if (dockerRunRequest.getMaxExecutionTime() == 0) {
-            dockerRunResponse.setSuccessful(true);
-            return dockerRunResponse;
-        }
-        Instant deadline = Instant.now().plusMillis(dockerRunRequest.getMaxExecutionTime());
-        Long exitCode = getClient().waitContainerUntilExitOrTimeout(containerId, deadline);
-        removeFromRunningContainersRecord(containerName);
-        boolean isTimeout = exitCode == null;
-
-        if (isTimeout && !getClient().stopContainer(containerId)) {
-            return dockerRunResponse;
-        }
-
-        getClient().getContainerLogs(containerId).ifPresent(containerLogs -> {
-            dockerRunResponse.setDockerLogs(containerLogs);
-            //TODO: Set exit code for improving internal and external developer experience
-            if (shouldPrintDeveloperLogs(dockerRunRequest)) {
-                log.info("Developer logs of computing stage [chainTaskId:{}, logs:{}]", chainTaskId,
-                        getDockerExecutionDeveloperLogs(chainTaskId, containerLogs.getStdout()));
-            }
-        });
-
-        if (!getClient().removeContainer(containerId)) {
-            return dockerRunResponse;
-        }
-        dockerRunResponse.setSuccessful(!isTimeout && exitCode == 0);
         return dockerRunResponse;
     }
 
@@ -146,32 +102,6 @@ public class DockerService {
         return runningContainersRecord.remove(containerName);
     }
 
-    public boolean pullImage(String image) {
-        return getClient().pullImage(image);
-    }
-
-    public boolean isImagePulled(String image) {
-        return !getClient().getImageId(image).isEmpty();
-    }
-
-    public boolean stopAndRemoveContainer(String containerName) {
-        if (getClient().stopContainer(containerName)) {
-            return getClient().removeContainer(containerName);
-        }
-        return false;
-    }
-
-    boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
-        return workerConfigService.isDeveloperLoggerEnabled() && dockerRunRequest.isShouldDisplayLogs();
-    }
-
-    private String getDockerExecutionDeveloperLogs(String chainTaskId, String stdout) {
-        String iexecInTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskInputDir(chainTaskId)));
-        iexecInTree = iexecInTree.replace("├── input/", "├── iexec_in/");//confusing for developers if not replaced
-        String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
-        return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout);
-    }
-
     /**
      * This method will stop all running containers launched by the worker via
      * this current service.
@@ -179,17 +109,14 @@ public class DockerService {
     public void stopRunningContainers() {
         log.info("About to stop all running containers [runningContainers:{}]",
                 runningContainersRecord);
-        new ArrayList<>(runningContainersRecord)
-                .forEach(containerName -> {
-                    String containerId = getClient().getContainerId(containerName);
-                    if (!containerId.isEmpty()
-                            && getClient().stopContainer(containerId)) {
-                        removeFromRunningContainersRecord(containerName);
-                        return;
-                    }
-                    log.error("Failed to stop one container among all running " +
-                            "[unstoppedContainer:{}]", containerName);
-                });
+        List.copyOf(runningContainersRecord).forEach(containerName -> {
+            if (!getClient().stopContainer(containerName)) {
+                log.error("Failed to stop one container among all running " +
+                        "[unstoppedContainer:{}]", containerName);
+                return;
+            }
+            removeFromRunningContainersRecord(containerName);
+        });
     }
 
 }
