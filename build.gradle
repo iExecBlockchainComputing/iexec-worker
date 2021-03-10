@@ -147,12 +147,6 @@ uploadArchives {
 }
 uploadArchives.enabled = canUploadArchives
 
-test {
-    if (System.properties['test.profile'] == 'skipDocker') {
-        exclude '**/docker/DockerClientServiceTests*'
-    }
-}
-
 def imageName = "nexus.iex.ec/iexec-worker"
 
 project.ext.getDockerImageNameFull = {

@@ -74,11 +74,11 @@ public class ComputeManagerService {
         if (!isDockerType || taskDescription.getAppUri() == null) {
             return false;
         }
-        return dockerService.pullImage(taskDescription.getAppUri());
+        return dockerService.getClient().pullImage(taskDescription.getAppUri());
     }
 
     public boolean isAppDownloaded(String imageUri) {
-        return dockerService.isImagePulled(imageUri);
+        return dockerService.getClient().isImagePresent(imageUri);
     }
 
     /*
@@ -113,25 +113,21 @@ public class ComputeManagerService {
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId,
                 taskDescription.isTeeTask());
 
-        ComputeResponse computeResponse =
+        AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription, secureSessionId);
 
-        if (computeResponse.isSuccessful() && !computeResponse.getStdout().isEmpty()) {
+        if (appComputeResponse.isSuccessful() && !appComputeResponse.getStdout().isEmpty()) {
             // save /output/stdout.txt file
             String stdoutFilePath =
                     workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
             File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath
-                    , computeResponse.getStdout());
+                    , appComputeResponse.getStdout());
             log.info("Saved stdout file [path:{}]",
                     stdoutFile.getAbsolutePath());
             //TODO Make sure stdout is properly written
         }
 
-        return AppComputeResponse.builder()
-                .isSuccessful(computeResponse.isSuccessful())
-                .stdout(computeResponse.getStdout())
-                .stderr(computeResponse.getStderr())
-                .build();
+        return appComputeResponse;
     }
 
     /*
@@ -147,26 +143,26 @@ public class ComputeManagerService {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
-        PostComputeResponse postComputeResponse = new PostComputeResponse();
+        PostComputeResponse postComputeResponse = PostComputeResponse.builder()
+                .isSuccessful(false)
+                .build();
 
-        boolean isSuccessful = false;
         if (!taskDescription.isTeeTask()) {
-            isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
+            boolean isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
+            postComputeResponse.setSuccessful(isSuccessful);
         } else if (!secureSessionId.isEmpty()) {
-            ComputeResponse computeResponse = postComputeService.runTeePostCompute(taskDescription,
-                    secureSessionId);
-            isSuccessful = computeResponse.isSuccessful();
-            postComputeResponse.setStdout(computeResponse.getStdout());
-            postComputeResponse.setStderr(computeResponse.getStderr());
+            postComputeResponse = postComputeService
+                        .runTeePostCompute(taskDescription, secureSessionId);
         }
-        if (isSuccessful) {
-            ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-            if (computedFile != null) {
-                postComputeResponse.setSuccessful(true);
-                resultService.saveResultInfo(chainTaskId, taskDescription,
-                        computedFile);
-            }
+        if (!postComputeResponse.isSuccessful()) {
+            return postComputeResponse;
         }
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        if (computedFile == null) {
+            postComputeResponse.setSuccessful(false);
+            return postComputeResponse;
+        }
+        resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
         return postComputeResponse;
     }
 

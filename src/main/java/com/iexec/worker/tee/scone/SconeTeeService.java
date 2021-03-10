@@ -16,8 +16,8 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +58,7 @@ public class SconeTeeService {
                 .maxExecutionTime(0)
                 .build();
 
-        if (!dockerService.pullImage(sconeLasConfig.getImageUri())) {
+        if (!dockerService.getClient().pullImage(sconeLasConfig.getImageUri())) {
             return false;
         }
 
@@ -84,7 +84,7 @@ public class SconeTeeService {
     @PreDestroy
     void stopLasService() {
         if (isLasStarted) {
-            dockerService.stopAndRemoveContainer(sconeLasConfig.getContainerName());
+            dockerService.getClient().stopAndRemoveContainer(sconeLasConfig.getContainerName());
         }
     }
 }

@@ -19,11 +19,10 @@ package com.iexec.worker.compute.post;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
-import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -42,6 +41,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 public class PostComputeServiceTests {
@@ -187,11 +187,10 @@ public class PostComputeServiceTests {
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        ComputeResponse computeResponse =
-                postComputeService.runTeePostCompute(taskDescription,
-                        SECURE_SESSION_ID);
+        PostComputeResponse postComputeResponse =
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
 
-        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
+        assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(dockerService, times(1)).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
@@ -232,11 +231,10 @@ public class PostComputeServiceTests {
                 DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        ComputeResponse computeResponse =
-                postComputeService.runTeePostCompute(taskDescription,
-                        SECURE_SESSION_ID);
+        PostComputeResponse postComputeResponse =
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
 
-        Assertions.assertThat(computeResponse).isEqualTo(expectedDockerRunResponse);
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
         verify(dockerService, times(1)).run(any());
     }
 

@@ -28,8 +28,8 @@ import com.iexec.worker.compute.post.PostComputeService;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerLogs;
-import com.iexec.worker.docker.DockerRunResponse;
+import com.iexec.common.docker.DockerLogs;
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import org.assertj.core.api.Assertions;
@@ -82,6 +82,8 @@ public class ComputeManagerServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
+    private DockerClientInstance dockerClient;
+    @Mock
     private PreComputeService preComputeService;
     @Mock
     private AppComputeService appComputeService;
@@ -102,13 +104,15 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldDownloadApp() {
-        when(dockerService.pullImage(taskDescription.getAppUri())).thenReturn(true);
+        when(dockerService.getClient()).thenReturn(dockerClient);
+        when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
     @Test
     public void shouldNotDownloadAppSincePullImageFailed() {
-        when(dockerService.pullImage(taskDescription.getAppUri())).thenReturn(false);
+        when(dockerService.getClient()).thenReturn(dockerClient);
+        when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
@@ -131,13 +135,15 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldHaveImageDownloaded() {
-        when(dockerService.isImagePulled(taskDescription.getAppUri())).thenReturn(true);
+        when(dockerService.getClient()).thenReturn(dockerClient);
+        when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(true);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isTrue();
     }
 
     @Test
     public void shouldNotHaveImageDownloaded() {
-        when(dockerService.isImagePulled(taskDescription.getAppUri())).thenReturn(false);
+        when(dockerService.getClient()).thenReturn(dockerClient);
+        when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isFalse();
     }
 
@@ -202,13 +208,14 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunStandardCompute() throws IOException {
         taskDescription.setTeeTask(false);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder()
+        AppComputeResponse expectedDockerRunResponse =
+                AppComputeResponse.builder()
                         .isSuccessful(true)
-                        .dockerLogs(dockerLogs)
+                        .stdout(dockerLogs.getStdout())
+                        .stderr(dockerLogs.getStderr())
                         .build();
-        when(appComputeService.runCompute(taskDescription,
-                "")).thenReturn(expectedDockerRunResponse);
+        when(appComputeService.runCompute(taskDescription, ""))
+                .thenReturn(expectedDockerRunResponse);
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(jUnitTemporaryFolder.newFolder().getAbsolutePath());
 
@@ -227,13 +234,14 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunStandardComputeWithFailureResponse() {
         taskDescription.setTeeTask(false);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder()
+        AppComputeResponse expectedDockerRunResponse =
+        AppComputeResponse.builder()
                         .isSuccessful(false)
-                        .dockerLogs(dockerLogs)
+                        .stdout(dockerLogs.getStdout())
+                        .stderr(dockerLogs.getStderr())
                         .build();
-        when(appComputeService.runCompute(taskDescription,
-                "")).thenReturn(expectedDockerRunResponse);
+        when(appComputeService.runCompute(taskDescription, ""))
+                .thenReturn(expectedDockerRunResponse);
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription, "");
@@ -247,10 +255,11 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunTeeCompute() throws IOException {
         taskDescription.setTeeTask(true);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder()
+        AppComputeResponse expectedDockerRunResponse =
+                AppComputeResponse.builder()
                         .isSuccessful(true)
-                        .dockerLogs(dockerLogs)
+                        .stdout(dockerLogs.getStdout())
+                        .stderr(dockerLogs.getStderr())
                         .build();
         when(appComputeService.runCompute(taskDescription,
                 SECURE_SESSION_ID)).thenReturn(expectedDockerRunResponse);
@@ -273,12 +282,14 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunTeeComputeWithFailure() {
         taskDescription.setTeeTask(true);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder()
+        AppComputeResponse expectedDockerRunResponse =
+                AppComputeResponse.builder()
                         .isSuccessful(false)
-                        .dockerLogs(dockerLogs)
+                        .stdout(dockerLogs.getStdout())
+                        .stderr(dockerLogs.getStderr())
                         .build();
-        when(appComputeService.runCompute(taskDescription, SECURE_SESSION_ID)).thenReturn(expectedDockerRunResponse);
+        when(appComputeService.runCompute(taskDescription, SECURE_SESSION_ID))
+                .thenReturn(expectedDockerRunResponse);
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription,
@@ -324,10 +335,11 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunTeePostCompute() {
         taskDescription.setTeeTask(true);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder()
+        PostComputeResponse expectedDockerRunResponse =
+                PostComputeResponse.builder()
                         .isSuccessful(true)
-                        .dockerLogs(dockerLogs)
+                        .stdout(dockerLogs.getStdout())
+                        .stderr(dockerLogs.getStderr())
                         .build();
         when(postComputeService.runTeePostCompute(taskDescription,
                 SECURE_SESSION_ID))
@@ -352,10 +364,11 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldRunTeePostComputeWithFailureResponse() {
         taskDescription.setTeeTask(true);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder()
+        PostComputeResponse expectedDockerRunResponse =
+                PostComputeResponse.builder()
                         .isSuccessful(false)
-                        .dockerLogs(dockerLogs)
+                        .stdout(dockerLogs.getStdout())
+                        .stderr(dockerLogs.getStderr())
                         .build();
         when(postComputeService.runTeePostCompute(taskDescription,
                 SECURE_SESSION_ID))

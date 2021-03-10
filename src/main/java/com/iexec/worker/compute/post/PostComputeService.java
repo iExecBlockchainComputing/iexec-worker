@@ -20,10 +20,10 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
-import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
@@ -80,7 +80,7 @@ public class PostComputeService {
         return true;
     }
 
-    public ComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
+    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
                 publicConfigService.getSconeCasURL(), "3G");
@@ -88,7 +88,7 @@ public class PostComputeService {
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT,
                 workerConfigService.getTaskOutputDir(chainTaskId) + ":" + FileHelper.SLASH_OUTPUT);
 
-        return dockerService.run(
+        DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                         .imageUri(taskDescription.getTeePostComputeImage())
@@ -98,6 +98,11 @@ public class PostComputeService {
                         .isSgx(true)
                         .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
+        return PostComputeResponse.builder()
+                .isSuccessful(dockerResponse.isSuccessful())
+                .stdout(dockerResponse.getStdout())
+                .stderr(dockerResponse.getStderr())
+                .build();
     }
 
     private String getTaskTeePostComputeContainerName(String chainTaskId) {

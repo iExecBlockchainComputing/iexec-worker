@@ -16,9 +16,9 @@
 
 package com.iexec.worker.sgx;
 
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerRunRequest;
-import com.iexec.worker.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -84,7 +84,7 @@ public class SgxService {
         String alpineLatest = "alpine:latest";
         String cmd = "find /dev -name isgx -exec echo true ;";
 
-        if (!dockerService.pullImage(alpineLatest)) {
+        if (!dockerService.getClient().pullImage(alpineLatest)) {
             log.error("Failed to pull image for sgx check");
             return false;
         }

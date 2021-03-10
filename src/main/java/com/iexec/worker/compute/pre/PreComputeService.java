@@ -18,7 +18,6 @@ package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
@@ -63,7 +62,7 @@ public class PreComputeService {
 
     public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
-        if (!dockerService.pullImage(taskDescription.getTeePostComputeImage())) {
+        if (!dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())) {
             log.error("Cannot pull TEE post compute image [chainTaskId:{}, imageUri:{}]",
                     chainTaskId, taskDescription.getTeePostComputeImage());
             return "";
