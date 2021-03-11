@@ -24,6 +24,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
@@ -76,6 +77,8 @@ public class AppComputeServiceTests {
     private PublicConfigurationService publicConfigService;
     @Mock
     private SconeTeeService sconeTeeService;
+    @Mock
+    private SconeLasConfiguration sconeLasConfiguration;
 
     @Before
     public void beforeEach() throws IOException {
@@ -122,7 +125,7 @@ public class AppComputeServiceTests {
     }
 
     @Test
-    public void shouldRunComputeWithTee() {
+    public void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
         when(sconeTeeService.buildSconeDockerEnv(
                 SECURE_SESSION_ID + "/app",
@@ -134,6 +137,8 @@ public class AppComputeServiceTests {
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        String lasNetworkName = "lasNetworkName";
+        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
@@ -162,6 +167,7 @@ public class AppComputeServiceTests {
                                         IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT)
                         )
                         .isSgx(true)
+                        .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)
                         .build()
         );

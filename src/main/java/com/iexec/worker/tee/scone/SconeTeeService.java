@@ -53,7 +53,9 @@ public class SconeTeeService {
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(sconeLasConfig.getContainerName())
                 .imageUri(sconeLasConfig.getImageUri())
-                //.containerPort(sconeLasConfig.getPort()) //seems we don't need it
+                // application & post-compose enclaves will be
+                // able to talk to the LAS via this network
+                .dockerNetwork(sconeLasConfig.getDockerNetworkName())
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();

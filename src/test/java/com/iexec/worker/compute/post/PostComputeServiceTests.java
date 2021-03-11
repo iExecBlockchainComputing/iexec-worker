@@ -25,6 +25,7 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
@@ -77,6 +78,8 @@ public class PostComputeServiceTests {
     private ResultService resultService;
     @Mock
     private SconeTeeService sconeTeeService;
+    @Mock
+    private SconeLasConfiguration sconeLasConfiguration;
 
     @Before
     public void beforeEach() throws IOException {
@@ -169,7 +172,8 @@ public class PostComputeServiceTests {
      */
 
     @Test
-    public void shouldRunTeePostCompute() {
+    public void shouldRunTeePostComputeAndConnectToLasNetwork() {
+        String lasNetworkName = "networkName";
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
@@ -183,6 +187,7 @@ public class PostComputeServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
@@ -208,6 +213,7 @@ public class PostComputeServiceTests {
                         .binds(Arrays.asList(iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT,
                                 output + ":" + FileHelper.SLASH_OUTPUT))
                         .isSgx(true)
+                        .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)
                         .build()
         );
@@ -228,6 +234,7 @@ public class PostComputeServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);

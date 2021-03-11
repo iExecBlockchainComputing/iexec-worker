@@ -24,6 +24,7 @@ scone:
     image: ${IEXEC_LAS_IMAGE:iexechub/sconecuratedimages-iexec}
     version: ${IEXEC_LAS_VERSION:las-v3.0}
     port: ${IEXEC_LAS_PORT:18766}
+    dockerNetworkName: ${IEXEC_LAS_DOCKER_NETWORK_NAME:iexec-worker-net}
 
 decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
 encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
