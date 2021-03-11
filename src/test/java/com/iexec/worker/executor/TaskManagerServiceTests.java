@@ -964,8 +964,6 @@ public class TaskManagerServiceTests {
         TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
         String resultDigest = "resultDigest";
         ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
-        ChainReceipt chainReceipt =
-                ChainReceipt.builder().blockNumber(10).build();
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile);
         when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))
@@ -988,8 +986,6 @@ public class TaskManagerServiceTests {
         TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(consensusBlock).build();
         String resultDigest = "resultDigest";
         ComputedFile computedFile = ComputedFile.builder().resultDigest(resultDigest).build();
-        ChainReceipt chainReceipt =
-                ChainReceipt.builder().blockNumber(10).build();
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile);
         when(revealService.isConsensusBlockReached(CHAIN_TASK_ID, consensusBlock))

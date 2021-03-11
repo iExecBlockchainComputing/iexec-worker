@@ -69,6 +69,7 @@ public class AppComputeService {
 
         DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
+                        .chainTaskId(chainTaskId)
                         .imageUri(taskDescription.getAppUri())
                         .containerName(getTaskContainerName(chainTaskId))
                         .cmd(taskDescription.getCmd())

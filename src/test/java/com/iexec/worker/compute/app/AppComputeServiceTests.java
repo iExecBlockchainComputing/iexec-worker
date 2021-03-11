@@ -106,6 +106,7 @@ public class AppComputeServiceTests {
                 argumentCaptor.getAllValues().get(0);
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .chainTaskId(CHAIN_TASK_ID)
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
@@ -151,6 +152,7 @@ public class AppComputeServiceTests {
         Collections.sort(dockerRunRequest.getEnv());
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .chainTaskId(CHAIN_TASK_ID)
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)

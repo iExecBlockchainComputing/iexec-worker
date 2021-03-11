@@ -25,6 +25,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.util.HashSet;
@@ -63,7 +64,6 @@ public class DockerService {
      * @return docker run response
      */
     public DockerRunResponse run(DockerRunRequest dockerRunRequest) {
-        String chainTaskId = dockerRunRequest.getChainTaskId();
         DockerRunResponse dockerRunResponse = DockerRunResponse.builder()
                 .isSuccessful(false)
                 .build();
@@ -77,9 +77,14 @@ public class DockerService {
             removeFromRunningContainersRecord(containerName);
         }
         if (shouldPrintDeveloperLogs(dockerRunRequest)) {
-            log.info("Developer logs of compute stage [chainTaskId:{}]{}", chainTaskId,
-                    getComputeDeveloperLogs(chainTaskId, dockerRunResponse.getStdout(),
-                            dockerRunResponse.getStderr()));
+            String chainTaskId = dockerRunRequest.getChainTaskId();
+            if (StringUtils.isEmpty(chainTaskId)) {
+                log.error("Cannot print developer logs [chainTaskId:{}]", chainTaskId);
+            } else {
+                log.info("Developer logs of compute stage [chainTaskId:{}]{}", chainTaskId,
+                        getComputeDeveloperLogs(chainTaskId, dockerRunResponse.getStdout(),
+                                dockerRunResponse.getStderr()));
+            }
         }
         return dockerRunResponse;
     }

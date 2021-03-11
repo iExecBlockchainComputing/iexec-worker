@@ -90,6 +90,7 @@ public class PostComputeService {
 
         DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
+                        .chainTaskId(chainTaskId)
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                         .imageUri(taskDescription.getTeePostComputeImage())
                         .maxExecutionTime(taskDescription.getMaxExecutionTime())

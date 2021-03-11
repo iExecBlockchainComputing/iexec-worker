@@ -199,6 +199,7 @@ public class PostComputeServiceTests {
                 argumentCaptor.getAllValues().get(0);
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .chainTaskId(CHAIN_TASK_ID)
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID +
                                 "-tee-post-compute")
                         .imageUri(TEE_POST_COMPUTE_IMAGE)
