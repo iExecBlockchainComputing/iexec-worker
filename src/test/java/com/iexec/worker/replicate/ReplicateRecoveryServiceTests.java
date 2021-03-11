@@ -85,7 +85,6 @@ public class ReplicateRecoveryServiceTests {
 
     @Test
     public void shouldNotAskForReplicateSinceLocalBlockchainNotSynchronized() {
-        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
 
         replicateDemandService.askForReplicate();

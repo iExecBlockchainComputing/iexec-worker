@@ -20,6 +20,7 @@ import com.iexec.common.docker.DockerLogs;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,12 +38,15 @@ public class DockerServiceTests {
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
+    private WorkerConfigurationService workerConfigService = mock(WorkerConfigurationService.class);
+
     @Spy
-    private DockerService dockerService = new DockerService();
+    private DockerService dockerService = new DockerService(workerConfigService);
 
     @Before
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
+        when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
     }
 
@@ -189,5 +193,4 @@ public class DockerServiceTests {
         dockerService.stopRunningContainers();
         verify(dockerClientInstanceMock, never()).stopContainer(anyString());
     }
-
 }
