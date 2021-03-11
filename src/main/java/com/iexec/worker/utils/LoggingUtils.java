@@ -46,7 +46,7 @@ public class LoggingUtils {
         System.out.println(getHighlightedMessage(message));
     }
 
-    public static String prettifyDeveloperLogs(String iexecInTree, String iexecOutTree, String stdout) {
+    public static String prettifyDeveloperLogs(String iexecInTree, String iexecOutTree, String stdout, String stderr) {
         return "\n" +
                 "#################### DEV MODE ####################\n" +
                 "iexec_in folder\n" +
@@ -57,9 +57,13 @@ public class LoggingUtils {
                 "--------------------\n" +
                 iexecOutTree + "\n" +
                 "\n" +
-                "stdout file\n" +
+                "stdout\n" +
                 "--------------------\n" +
                 stdout + "\n" +
+                "\n" +
+                "stderr\n" +
+                "--------------------\n" +
+                stderr + "\n" +
                 "#################### DEV MODE ####################\n" +
                 "\n";
     }
