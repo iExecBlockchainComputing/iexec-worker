@@ -18,6 +18,7 @@ package com.iexec.worker.sgx;
 
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -32,10 +33,6 @@ import java.util.Collections;
 @Slf4j
 @Service
 public class SgxService {
-
-    public static final String SGX_DEVICE_PATH = "/dev/isgx";
-    public static final String SGX_CGROUP_PERMISSIONS = "rwm";
-    private static final String SGX_DRIVER_PATH = "/sys/module/isgx/version";
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
@@ -57,7 +54,7 @@ public class SgxService {
 
     private boolean isSgxSupported() {
         log.info("Checking SGX support");
-        boolean isSgxDriverFound = new File(SGX_DRIVER_PATH).exists();
+        boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
 
         if (!isSgxDriverFound) {
             log.info("SGX driver not found");

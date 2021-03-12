@@ -20,9 +20,14 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.utils.FileHelper;
+import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 
@@ -32,10 +37,12 @@ public class DockerService {
 
     private final DockerClientInstance dockerClientInstance;
     private final HashSet<String> runningContainersRecord;
+    private final WorkerConfigurationService workerConfigService;
 
-    public DockerService() {
+    public DockerService(WorkerConfigurationService workerConfigService) {
         this.dockerClientInstance = DockerClientFactory.getDockerClientInstance();
         this.runningContainersRecord = new HashSet<>();
+        this.workerConfigService = workerConfigService;
     }
 
     public DockerClientInstance getClient() {
@@ -68,6 +75,16 @@ public class DockerService {
         if (!dockerRunResponse.isSuccessful()
             || dockerRunRequest.getMaxExecutionTime() != 0) {
             removeFromRunningContainersRecord(containerName);
+        }
+        if (shouldPrintDeveloperLogs(dockerRunRequest)) {
+            String chainTaskId = dockerRunRequest.getChainTaskId();
+            if (StringUtils.isEmpty(chainTaskId)) {
+                log.error("Cannot print developer logs [chainTaskId:{}]", chainTaskId);
+            } else {
+                log.info("Developer logs of compute stage [chainTaskId:{}]{}", chainTaskId,
+                        getComputeDeveloperLogs(chainTaskId, dockerRunResponse.getStdout(),
+                                dockerRunResponse.getStderr()));
+            }
         }
         return dockerRunResponse;
     }
@@ -117,6 +134,17 @@ public class DockerService {
             }
             removeFromRunningContainersRecord(containerName);
         });
+    }
+
+    private boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
+        return workerConfigService.isDeveloperLoggerEnabled() && dockerRunRequest.isShouldDisplayLogs();
+    }
+
+    private String getComputeDeveloperLogs(String chainTaskId, String stdout, String stderr) {
+        String iexecInTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskInputDir(chainTaskId)));
+        iexecInTree = iexecInTree.replace("├── input/", "├── iexec_in/"); // confusing for developers if not replaced
+        String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
+        return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout, stderr);
     }
 
 }

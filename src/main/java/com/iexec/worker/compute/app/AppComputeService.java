@@ -24,6 +24,7 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import org.springframework.stereotype.Service;
 
@@ -37,17 +38,20 @@ public class AppComputeService {
     private final DockerService dockerService;
     private final PublicConfigurationService publicConfigService;
     private final SconeTeeService sconeTeeService;
+    private final SconeLasConfiguration sconeLasConfiguration;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             PublicConfigurationService publicConfigService,
             DockerService dockerService,
-            SconeTeeService sconeTeeService
+            SconeTeeService sconeTeeService,
+            SconeLasConfiguration sconeLasConfiguration
     ) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.dockerService = dockerService;
         this.sconeTeeService = sconeTeeService;
+        this.sconeLasConfiguration = sconeLasConfiguration;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -67,17 +71,22 @@ public class AppComputeService {
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT
         );
 
-        DockerRunResponse dockerResponse = dockerService.run(
-                DockerRunRequest.builder()
-                        .imageUri(taskDescription.getAppUri())
-                        .containerName(getTaskContainerName(chainTaskId))
-                        .cmd(taskDescription.getCmd())
-                        .env(env)
-                        .binds(binds)
-                        .maxExecutionTime(taskDescription.getMaxExecutionTime())
-                        .isSgx(taskDescription.isTeeTask())
-                        .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
-                        .build());
+        DockerRunRequest runRequest = DockerRunRequest.builder()
+                .chainTaskId(chainTaskId)
+                .imageUri(taskDescription.getAppUri())
+                .containerName(getTaskContainerName(chainTaskId))
+                .cmd(taskDescription.getCmd())
+                .env(env)
+                .binds(binds)
+                .maxExecutionTime(taskDescription.getMaxExecutionTime())
+                .isSgx(taskDescription.isTeeTask())
+                .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
+                .build();
+        // Enclave should be able to connect to the LAS
+        if (taskDescription.isTeeTask()) {
+            runRequest.setDockerNetwork(sconeLasConfiguration.getDockerNetworkName());
+        }
+        DockerRunResponse dockerResponse = dockerService.run(runRequest);
         return AppComputeResponse.builder()
                 .isSuccessful(dockerResponse.isSuccessful())
                 .stdout(dockerResponse.getStdout())
