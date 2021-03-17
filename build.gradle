@@ -1,28 +1,15 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
-buildscript {
-    ext {
-        springBootVersion = '2.1.6.RELEASE'
-    }
-    repositories {
-        mavenCentral()
-        jcenter()
-    }
-    dependencies {
-        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
-    }
-}
-
 plugins {
-    id "org.sonarqube" version "2.7"
+    id 'java'
+    id 'eclipse'
+    id 'maven'
+    id 'jacoco'
+	id 'org.springframework.boot' version '2.4.3'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.sonarqube' version '2.7'
+    id 'com.palantir.docker' version '0.25.0'
 }
-
-apply plugin: 'java'
-apply plugin: 'eclipse'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'io.spring.dependency-management'
-apply plugin: 'maven'
-apply plugin: 'jacoco'
 
 group = 'com.iexec.worker'
 sourceCompatibility = 11
@@ -31,9 +18,11 @@ targetCompatibility = 11
 repositories {
     mavenCentral()
     jcenter()
+    // iexec
     maven {
         url "https://nexus.iex.ec/repository/maven-public/"
     }
+    // ipfs
     maven {
         url "https://jitpack.io"
     }
@@ -45,8 +34,7 @@ configurations {
 
 
 ext {
-    //Greenwich.SR2 is a patch for Greenwich.RELEASE
-    springCloudVersion = 'Greenwich.SR2'
+    springCloudVersion = '2020.0.1'
 }
 
 dependencyManagement {
@@ -121,10 +109,15 @@ task createVersion(type: Copy) {
 // the createVersion task should be called before compileJava or the version service will not work
 compileJava.dependsOn createVersion
 
+// ##################
+// #    artifact    #
+// ##################
+
 def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
 def isMasterBranch = gitBranch == "master"
 def isDevelopBranch = gitBranch == "develop"
-def canUploadArchives = (isMasterBranch || isDevelopBranch ) && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
+def canPush = (isMasterBranch || isDevelopBranch ) &&
+        project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
 def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
 def isSnapshotVersion = project.version.contains("SNAPSHOT")
 
@@ -138,6 +131,7 @@ project.ext.getNexusMaven = {
 }
 
 uploadArchives {
+    enabled canPush
     repositories.mavenDeployer {
         configuration = configurations.deployerJars
         repository(url: getNexusMaven()) {
@@ -145,54 +139,65 @@ uploadArchives {
         }
     }
 }
-uploadArchives.enabled = canUploadArchives
 
+def canBuildImage = (isMasterBranch || isDevelopBranch ) ||
+        project.hasProperty("forceDockerBuild")
 def imageName = "nexus.iex.ec/iexec-worker"
+def buildDir = 'build/libs/'
+def jarName = 'iexec-worker.jar'
+def jarPath = buildDir + jarName
+
+task copyJar(type: Copy) {
+    from(buildDir + tasks.jar.archiveFile.get().asFile.getName())
+    into(buildDir)
+    rename { filename ->
+        filename.replace tasks.jar.archiveFile.get().asFile.getName(), jarName
+    }
+}
+build.dependsOn copyJar
+
+// ##################
+// #     docker     #
+// ##################
 
 project.ext.getDockerImageNameFull = {
     def imageNameWithVersion = imageName + ":${version}"
-    if (isSnapshotVersion) {
-        return imageNameWithVersion + "-" + gitShortCommit
-    } else {
-        return imageNameWithVersion
-    }
+    return isSnapshotVersion
+            ? imageNameWithVersion + "-" + gitShortCommit
+            : imageNameWithVersion
 }
 
 project.ext.getDockerImageNameShortCommit = {
     return imageName + ":" + gitShortCommit
 }
 
-task prepareDockerFile(type: Copy) {
-    delete 'build/main/resources/'
-    from 'Dockerfile'
-    into 'build/main/resources/'
-    filter(ReplaceTokens, tokens: [projectversion: "${version}".toString()])
+docker {
+    name getDockerImageNameFull()
+    tags 'dev'
+    dockerfile file('Dockerfile')
+    files jarPath
+    // buildArgs([JAR_PATH: jarPath ])
 }
+tasks.docker.enabled = canBuildImage
 
-
-task buildImage(type: Exec) {
-    description 'Build a docker image for the core'
-    commandLine("sh", "-c", "docker image build -f build/main/resources/Dockerfile -t " + getDockerImageNameFull() + " . &&" +
-            "docker tag " + getDockerImageNameFull() + " " + imageName + ":dev")
+task buildImage {
+    enabled = canBuildImage
+    dependsOn tasks.docker
+    dependsOn tasks.dockerTag
 }
-
-buildImage.dependsOn prepareDockerFile
-buildImage.enabled = (isMasterBranch || isDevelopBranch ) || project.hasProperty("forceDockerBuild")
 
 task pushImage(type: Exec) {
-    if (project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")) {
-        commandLine("sh", "-c", "docker login -u " + project.nexusUser + " -p " + project.nexusPassword + " nexus.iex.ec && " +
-                "docker push " + getDockerImageNameFull() + " && " +
-                "docker tag " + getDockerImageNameFull() + " " + getDockerImageNameShortCommit() + " && " +
-                "docker push " + getDockerImageNameShortCommit() + " && " +
-                "docker logout")
-    } else {
-        println "Credentials for DockerHub are missing, the images cannot be pushed"
-    }
+    enabled canPush
+    commandLine "sh", "-c", "docker login -u ${project.nexusUser} -p ${project.nexusPassword} nexus.iex.ec && " +
+            "docker push ${getDockerImageNameFull()} && " +
+            "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && "
+            "docker push ${getDockerImageNameShortCommit()} && " +
+            "docker logout"
 }
 
-pushImage.dependsOn buildImage
-pushImage.enabled = (isMasterBranch || isDevelopBranch ) && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
+// ##################
+// #     proxy     #
+// ##################
 
 //gradle bootRun -PproxyHost=192.168.XX.XXX -PproxyPort=3128
 project.ext.getJvmArgs = {
