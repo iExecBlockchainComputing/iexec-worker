@@ -114,22 +114,24 @@ public class DataService {
     }
 
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
+        // TODO decrypt file with java code
+        throw new UnsupportedOperationException("Cannot decrypt file with bash script");
+        // ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
 
-        try {
-            Process pr = pb.start();
+        // try {
+        //     Process pr = pb.start();
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-            String line;
+        //     BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+        //     String line;
 
-            while ((line = in.readLine()) != null) { log.info(line); }
+        //     while ((line = in.readLine()) != null) { log.info(line); }
 
-            pr.waitFor();
-            in.close();
-        } catch (Exception e) {
-            log.error("Error while trying to decrypt data [datasetFile{}, secretFile:{}]",
-                    dataFilePath, secretFilePath);
-            e.printStackTrace();
-        }
+        //     pr.waitFor();
+        //     in.close();
+        // } catch (Exception e) {
+        //     log.error("Error while trying to decrypt data [datasetFile{}, secretFile:{}]",
+        //             dataFilePath, secretFilePath);
+        //     e.printStackTrace();
+        // }
     }
 }
