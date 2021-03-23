@@ -38,8 +38,10 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.util.List;
 import java.util.Optional;
 
@@ -146,15 +148,27 @@ public class TaskManagerService {
 
         String datasetUri = taskDescription.getDatasetUri();
         if (!datasetUri.isEmpty()) {
-            boolean isDatasetReady = dataService.downloadFile(chainTaskId,
+            String datasetLocalFilePath = dataService.downloadFile(chainTaskId,
                     datasetUri);
-            if (taskDescription.isTeeTask()) {
-                isDatasetReady =
-                        dataService.unzipDownloadedTeeDataset(chainTaskId,
-                                datasetUri);
-                logError("unzip dataset error", context, chainTaskId);
+            if (datasetLocalFilePath.isEmpty()){
+                return triggerPostComputeHookOnError(chainTaskId, context,
+                        taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
-            if (!isDatasetReady) {
+
+            String expectedSha256 = taskDescription.getDatasetChecksum();
+            if (StringUtils.isEmpty(expectedSha256)){
+                log.warn("Unsecure, on-chain dataset checksum is empty, " +
+                        "won't check it [chainTaskId:{}]", chainTaskId);
+            } else {
+                if (!dataService.hasExpectedSha256(expectedSha256, datasetLocalFilePath)) {
+                    return triggerPostComputeHookOnError(chainTaskId, context,
+                            taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_BAD_CHECKSUM);
+                }
+            }
+
+            // Should be removed in next "Standard Dataset Encryption" version
+            if (taskDescription.isTeeTask() && !dataService.unzipDownloadedTeeDataset(chainTaskId,datasetUri)) {
+                logError("unzip dataset error", context, chainTaskId);
                 return triggerPostComputeHookOnError(chainTaskId, context,
                         taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }

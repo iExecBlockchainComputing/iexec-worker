@@ -17,6 +17,7 @@
 package com.iexec.worker.dataset;
 
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,23 +49,23 @@ public class DataService {
      * APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING (even when the dataset requested is 0x0).
      * In the 0x0 dataset case, we'll have an empty uri, and we'll consider the dataset as downloaded
      */
-    public boolean downloadFile(String chainTaskId, String uri) {
+    public String downloadFile(String chainTaskId, String uri) {
         if (chainTaskId.isEmpty()) {
             log.error("Failed to download, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
                     chainTaskId, uri);
-            return false;
+            return "";
         }
         if (uri.isEmpty()) {
             log.info("There's nothing to download for this task [chainTaskId:{}, uri:{}]",
                     chainTaskId, uri);
-            return true;
+            return "";
         }
-        return FileHelper.downloadFileInDirectory(uri, workerConfigurationService.getTaskInputDir(chainTaskId));
+        return FileHelper.downloadFile(uri, workerConfigurationService.getTaskInputDir(chainTaskId));
     }
 
     public boolean downloadFiles(String chainTaskId, List<String> uris) {
         for (String uri:uris){
-            if (!downloadFile(chainTaskId, uri)) {
+            if (downloadFile(chainTaskId, uri).isEmpty()) {
                 return false;
             }
         }
@@ -131,5 +132,15 @@ public class DataService {
                     dataFilePath, secretFilePath);
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Compute sha256 of a file and check if it matches the expected value
+     * @param expectedSha256 expected sha256 value
+     * @param filePathToCheck file path to check
+     * @return true if sha256 values are the same
+     */
+    public boolean hasExpectedSha256(String expectedSha256, String filePathToCheck) {
+        return HashUtils.getFileSha256(filePathToCheck).equals(expectedSha256);
     }
 }

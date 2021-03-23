@@ -54,6 +54,7 @@ import static org.mockito.Mockito.*;
 public class TaskManagerServiceTests {
 
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    public static final String PATH_TO_DOWNLOADED_FILE = "/path/to/downloaded/file";
 
     @InjectMocks
     private TaskManagerService taskManagerService;
@@ -319,7 +320,7 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(true);
+                .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(CHAIN_TASK_ID);
@@ -335,7 +336,7 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(false);
+                .thenReturn("");
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
@@ -357,7 +358,7 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(false);
+                .thenReturn("");
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
@@ -379,7 +380,7 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(false);
+                .thenReturn("");
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
@@ -393,6 +394,54 @@ public class TaskManagerServiceTests {
                 .isEqualTo(POST_COMPUTE_FAILED);
     }
 
+    // with dataset and on-chain checksum
+
+    @Test
+    public void shouldWithDatasetUriAndChecksumDownloadData() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        String datasetChecksum = "datasetChecksum";
+        taskDescription.setDatasetChecksum(datasetChecksum);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(PATH_TO_DOWNLOADED_FILE);
+        when(dataService.hasExpectedSha256(datasetChecksum, PATH_TO_DOWNLOADED_FILE))
+                .thenReturn(true);
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isTrue();
+    }
+
+    @Test
+    public void shouldWithDatasetUriAndBadChecksumDataDownloadFailedAndTriggerPostComputeHookWithSuccess() {
+        TaskDescription taskDescription = getStubTaskDescription(false);
+        String datasetChecksum = "datasetChecksum";
+        taskDescription.setDatasetChecksum(datasetChecksum);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+                .thenReturn(PATH_TO_DOWNLOADED_FILE);
+        when(dataService.hasExpectedSha256(datasetChecksum, PATH_TO_DOWNLOADED_FILE))
+                .thenReturn(false);
+        when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
+                .thenReturn(true);
+        when(computeManagerService.runPostCompute(taskDescription, ""))
+                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.downloadData(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause())
+                .isEqualTo(DATASET_FILE_BAD_CHECKSUM);
+    }
+
     // with dataset + TEE
 
     @Test
@@ -403,7 +452,7 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(true);
+                .thenReturn(PATH_TO_DOWNLOADED_FILE);
         when(dataService.unzipDownloadedTeeDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
                 .thenReturn(true);
 
@@ -421,7 +470,7 @@ public class TaskManagerServiceTests {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
         when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(true);
+                .thenReturn(PATH_TO_DOWNLOADED_FILE);
         when(dataService.unzipDownloadedTeeDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
                 .thenReturn(false);
 
