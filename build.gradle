@@ -5,8 +5,8 @@ plugins {
     id 'eclipse'
     id 'maven'
     id 'jacoco'
-	id 'org.springframework.boot' version '2.4.3'
-	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.springframework.boot' version '2.4.3'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'org.sonarqube' version '2.7'
     id 'com.palantir.docker' version '0.25.0'
 }
@@ -18,11 +18,9 @@ targetCompatibility = 11
 repositories {
     mavenCentral()
     jcenter()
-    // iexec
     maven {
         url "https://nexus.iex.ec/repository/maven-public/"
     }
-    // ipfs
     maven {
         url "https://jitpack.io"
     }
@@ -88,7 +86,6 @@ dependencies {
 
 jacoco {
     toolVersion = "0.8.3"
-    reportsDir = file("$buildDir/TestCoverageReport")
 }
 // the test coverage report will be created just before the build
 build.dependsOn jacocoTestReport
