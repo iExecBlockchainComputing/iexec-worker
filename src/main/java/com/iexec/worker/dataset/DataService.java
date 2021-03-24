@@ -112,8 +112,8 @@ public class DataService {
         return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
     }
 
+    // TODO decrypt file with java code
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        // TODO decrypt file with java code
         throw new UnsupportedOperationException("Cannot decrypt file with bash script");
         // ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
 

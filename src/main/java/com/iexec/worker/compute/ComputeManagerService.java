@@ -84,8 +84,8 @@ public class ComputeManagerService {
     /**
      * Standard tasks: download secrets && decrypt dataset (TODO: rewritte or remove)
      * <p>
-     * TEE tasks: download post-compute image, create SCONE secure session,
-     * and start pre-compute container.
+     * TEE tasks: download pre-compute and post-compute images,
+     * create SCONE secure session, and run pre-compute container.
      * 
      * @param taskDescription
      * @param workerpoolAuth
