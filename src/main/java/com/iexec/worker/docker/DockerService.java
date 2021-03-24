@@ -105,6 +105,34 @@ public class DockerService {
     }
 
     /**
+     * Get docker volume bind shared between the host and
+     * the container for input.
+     * <p>
+     * Expected: taskBaseDir/input:/iexec_in
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getIexecInBind(String chainTaskId) {
+        return workerConfigService.getTaskInputDir(chainTaskId) + ":" +
+                FileHelper.SLASH_IEXEC_IN;
+    }
+
+    /**
+     * Get docker volume bind shared between the host and
+     * the container for output.
+     * <p>
+     * Expected: taskBaseDir/output/iexec_out:/iexec_out
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getIexecOutBind(String chainTaskId) {
+        return workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" +
+                FileHelper.SLASH_IEXEC_OUT;
+    }
+
+    /**
      * Remove a container from the running containers record
      *
      * @param containerName name of the container to be removed from the record

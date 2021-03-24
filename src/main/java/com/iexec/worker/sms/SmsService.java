@@ -115,6 +115,18 @@ public class SmsService {
         }
     }
 
+    public String getPreComputeImageUri() {
+        try {
+            ResponseEntity<String> response = smsClient.getPreComputeImageUri();
+            return response.getStatusCode().is2xxSuccessful()
+                    ? response.getBody()
+                    : "";
+        } catch (Exception e) {
+            log.error("Failed to get pre-compute image URI from sms", e);
+            return "";
+        }
+    }
+
     /*
     * Don't retry createTeeSession for now, to avoid polluting logs in SMS & CAS
     * */

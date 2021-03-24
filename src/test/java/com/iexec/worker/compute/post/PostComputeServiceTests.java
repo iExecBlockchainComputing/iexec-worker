@@ -182,8 +182,7 @@ public class PostComputeServiceTests {
                 .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(sconeTeeService.buildSconeDockerEnv(SECURE_SESSION_ID + "/post" +
-                "-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
+        when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID)).thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
@@ -229,8 +228,7 @@ public class PostComputeServiceTests {
                 .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(sconeTeeService.buildSconeDockerEnv(SECURE_SESSION_ID + "/post" +
-                "-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
+        when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID)).thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);

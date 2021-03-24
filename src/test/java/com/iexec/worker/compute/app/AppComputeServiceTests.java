@@ -127,10 +127,8 @@ public class AppComputeServiceTests {
     @Test
     public void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
-        when(sconeTeeService.buildSconeDockerEnv(
-                SECURE_SESSION_ID + "/app",
-                SCONE_CAS_URL,
-                "1G")).thenReturn(Arrays.asList("var0", "var1"));
+        when(sconeTeeService.getComputeDockerEnv(SECURE_SESSION_ID))
+                .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
         env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
         Collections.sort(env);

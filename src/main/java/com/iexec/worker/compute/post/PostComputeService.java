@@ -20,7 +20,6 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
@@ -40,7 +39,6 @@ import java.util.List;
 public class PostComputeService {
 
     private final WorkerConfigurationService workerConfigService;
-    private final PublicConfigurationService publicConfigService;
     private final DockerService dockerService;
     private final ResultService resultService;
     private final SconeTeeService sconeTeeService;
@@ -48,14 +46,12 @@ public class PostComputeService {
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
-            PublicConfigurationService publicConfigService,
             DockerService dockerService,
             ResultService resultService,
             SconeTeeService sconeTeeService,
             SconeLasConfiguration sconeLasConfiguration
     ) {
         this.workerConfigService = workerConfigService;
-        this.publicConfigService = publicConfigService;
         this.dockerService = dockerService;
         this.resultService = resultService;
         this.sconeTeeService = sconeTeeService;
@@ -86,10 +82,9 @@ public class PostComputeService {
 
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        List<String> env = sconeTeeService.buildSconeDockerEnv(secureSessionId + "/post-compute",
-                publicConfigService.getSconeCasURL(), "3G");
+        List<String> env = sconeTeeService.getPostComputeDockerEnv(secureSessionId);
         List<String> binds = Arrays.asList(
-                workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT,
+                dockerService.getIexecOutBind(chainTaskId),
                 workerConfigService.getTaskOutputDir(chainTaskId) + ":" + FileHelper.SLASH_OUTPUT);
 
         DockerRunResponse dockerResponse = dockerService.run(

@@ -94,7 +94,7 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void buildSconeDockerEnv() {
+    public void shouldBuildPreComputeDockerEnv() {
         String sconeConfigId = "sconeConfigId";
         String sconeCasUrl = "sconeCasUrl";
         String sconeHeap = "sconeHeap";

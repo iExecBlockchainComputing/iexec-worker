@@ -18,11 +18,13 @@ package com.iexec.worker.tee.scone;
 
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
 import java.util.List;
 
@@ -31,17 +33,24 @@ import java.util.List;
 @Service
 public class SconeTeeService {
 
+    private static final String PRE_COMPUTE_HEAD_SIZE = "3G";
+    private static final String COMPUTE_HEAD_SIZE = "1G";
+    private static final String POST_COMPUTE_HEAD_SIZE = "3G";
+
     private final SconeLasConfiguration sconeLasConfig;
-    private final boolean isLasStarted;
     private final DockerService dockerService;
+    private final PublicConfigurationService publicConfigService;
+    private final boolean isLasStarted;
 
     public SconeTeeService(
-            SgxService sgxService,
             SconeLasConfiguration sconeLasConfig,
-            DockerService dockerService
+            DockerService dockerService,
+            PublicConfigurationService publicConfigService,
+            SgxService sgxService
     ) {
         this.sconeLasConfig = sconeLasConfig;
         this.dockerService = dockerService;
+        this.publicConfigService = publicConfigService;
         this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
     }
 
@@ -72,15 +81,37 @@ public class SconeTeeService {
         return true;
     }
 
-    public List<String> buildSconeDockerEnv(String sconeConfigId, String sconeCasUrl, String sconeHeap) {
-        SconeConfig sconeConfig = SconeConfig.builder()
+    public List<String> getPreComputeDockerEnv(@Nonnull String sessionId) {
+        String sconeConfigId = sessionId + "/pre-compute";
+        return SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(sconeCasUrl)
+                .sconeCasAddress(publicConfigService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
-                .sconeHeap(sconeHeap)
-                .build();
+                .sconeHeap(PRE_COMPUTE_HEAD_SIZE)
+                .build()
+                .toDockerEnv();
+    }
 
-        return sconeConfig.toDockerEnv();
+    public List<String> getComputeDockerEnv(@Nonnull String sessionId) {
+        String sconeConfigId = sessionId + "/app";
+        return SconeConfig.builder()
+                .sconeLasAddress(sconeLasConfig.getUrl())
+                .sconeCasAddress(publicConfigService.getSconeCasURL())
+                .sconeConfigId(sconeConfigId)
+                .sconeHeap(COMPUTE_HEAD_SIZE)
+                .build()
+                .toDockerEnv();
+    }
+
+    public List<String> getPostComputeDockerEnv(@Nonnull String sessionId) {
+        String sconeConfigId = sessionId + "/post-compute";
+        return SconeConfig.builder()
+                .sconeLasAddress(sconeLasConfig.getUrl())
+                .sconeCasAddress(publicConfigService.getSconeCasURL())
+                .sconeConfigId(sconeConfigId)
+                .sconeHeap(POST_COMPUTE_HEAD_SIZE)
+                .build()
+                .toDockerEnv();
     }
 
     @PreDestroy

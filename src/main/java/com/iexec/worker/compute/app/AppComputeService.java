@@ -19,9 +19,7 @@ package com.iexec.worker.compute.app;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecEnvUtils;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
@@ -36,19 +34,16 @@ public class AppComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final PublicConfigurationService publicConfigService;
     private final SconeTeeService sconeTeeService;
     private final SconeLasConfiguration sconeLasConfiguration;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
-            PublicConfigurationService publicConfigService,
             DockerService dockerService,
             SconeTeeService sconeTeeService,
             SconeLasConfiguration sconeLasConfiguration
     ) {
         this.workerConfigService = workerConfigService;
-        this.publicConfigService = publicConfigService;
         this.dockerService = dockerService;
         this.sconeTeeService = sconeTeeService;
         this.sconeLasConfiguration = sconeLasConfiguration;
@@ -59,16 +54,13 @@ public class AppComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
-            List<String> strings = sconeTeeService.buildSconeDockerEnv(
-                    secureSessionId + "/app",
-                    publicConfigService.getSconeCasURL(),
-                    "1G");
+            List<String> strings = sconeTeeService.getComputeDockerEnv(secureSessionId);
             env.addAll(strings);
         }
 
         List<String> binds = Arrays.asList(
-                workerConfigService.getTaskInputDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_IN,
-                workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT
+                dockerService.getIexecInBind(chainTaskId),
+                dockerService.getIexecOutBind(chainTaskId)
         );
 
         DockerRunRequest runRequest = DockerRunRequest.builder()
