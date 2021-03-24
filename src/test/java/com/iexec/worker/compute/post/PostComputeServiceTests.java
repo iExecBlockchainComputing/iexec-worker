@@ -83,7 +83,7 @@ public class PostComputeServiceTests {
 
     @Before
     public void beforeEach() throws IOException {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
         iexecOut = output + FileHelper.SLASH_IEXEC_OUT;

@@ -45,7 +45,7 @@ public class DockerServiceTests {
 
     @Before
     public void beforeEach() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
     }

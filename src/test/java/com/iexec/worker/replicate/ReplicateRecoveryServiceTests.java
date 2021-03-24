@@ -56,7 +56,7 @@ public class ReplicateRecoveryServiceTests {
 
     @Before
     public void init() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test

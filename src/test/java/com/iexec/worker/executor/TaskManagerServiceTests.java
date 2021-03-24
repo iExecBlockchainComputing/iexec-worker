@@ -77,7 +77,7 @@ public class TaskManagerServiceTests {
 
     @Before
     public void init() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
     }
 
     TaskDescription getStubTaskDescription(boolean isTeeTask) {

@@ -82,7 +82,7 @@ public class AppComputeServiceTests {
 
     @Before
     public void beforeEach() throws IOException {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
     }
 
