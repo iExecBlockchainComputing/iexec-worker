@@ -91,7 +91,7 @@ public class PreComputeService {
         }
         // download post-compute image
         if (!dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())) {
-            log.error("Cannot pull TEE post compute image [chainTaskId:{}, imageUri:{}]",
+            log.error("Cannot pull TEE post-compute image [chainTaskId:{}, imageUri:{}]",
                     chainTaskId, taskDescription.getTeePostComputeImage());
             return "";
         }
@@ -120,13 +120,10 @@ public class PreComputeService {
         int exitCodeValue = dockerResponse.getContainerExitCode();
         PreComputeExitCode exitCodeName = PreComputeExitCode.nameOf(exitCodeValue); // can be null
         if (!dockerResponse.isSuccessful()) {
-            log.error("Failed to run pre-compute container [chainTaskId:{}, " +
+            // TODO report exit error
+            log.error("Pre-compute container failed [chainTaskId:{}, " +
                     "exitCode:{}, error:{}]", chainTaskId, exitCodeValue, exitCodeName);
             return "";
-        }
-        if (!PreComputeExitCode.isSuccess(exitCodeValue)) {
-            log.error("Pre-compute container exited with error code [chainTaskId:{}, " +
-                    "exitCode:{}, error:{}", chainTaskId, exitCodeValue, exitCodeName);
         }
         return secureSessionId;
     }
