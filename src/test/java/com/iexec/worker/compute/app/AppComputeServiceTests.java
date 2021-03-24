@@ -17,8 +17,8 @@
 package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
@@ -113,7 +113,7 @@ public class AppComputeServiceTests {
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
-                        .env(EnvUtils.getContainerEnvList(taskDescription))
+                        .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
                         .binds(
                                 Arrays.asList(INPUT + ":" + FileHelper.SLASH_IEXEC_IN,
                                         IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT)
@@ -132,7 +132,7 @@ public class AppComputeServiceTests {
                 SCONE_CAS_URL,
                 "1G")).thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
-        env.addAll(EnvUtils.getContainerEnvList(taskDescription));
+        env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
         Collections.sort(env);
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);

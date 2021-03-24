@@ -38,10 +38,9 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.io.File;
 import java.util.List;
 import java.util.Optional;
 
@@ -156,7 +155,7 @@ public class TaskManagerService {
             }
 
             String expectedSha256 = taskDescription.getDatasetChecksum();
-            if (StringUtils.isEmpty(expectedSha256)){
+            if (!StringUtils.hasText(expectedSha256)) {
                 log.warn("Unsecure, on-chain dataset checksum is empty, " +
                         "won't check it [chainTaskId:{}]", chainTaskId);
             } else {

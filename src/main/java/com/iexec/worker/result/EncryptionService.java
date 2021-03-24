@@ -16,14 +16,9 @@
 
 package com.iexec.worker.result;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-
-@Slf4j
 @Service
 public class EncryptionService {
 
@@ -33,8 +28,8 @@ public class EncryptionService {
     public EncryptionService() {
     }
 
+    // TODO encrypt file with java code
     public void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
-        // TODO encrypt file with java code
         throw new UnsupportedOperationException("Cannot encrypt file with bash script");
         // String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
         //         taskOutputDir, resultZipFilePath, publicKeyFilePath);

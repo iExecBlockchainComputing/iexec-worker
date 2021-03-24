@@ -78,7 +78,7 @@ public class DockerService {
         }
         if (shouldPrintDeveloperLogs(dockerRunRequest)) {
             String chainTaskId = dockerRunRequest.getChainTaskId();
-            if (StringUtils.isEmpty(chainTaskId)) {
+            if (!StringUtils.hasText(chainTaskId)) {
                 log.error("Cannot print developer logs [chainTaskId:{}]", chainTaskId);
             } else {
                 log.info("Developer logs of compute stage [chainTaskId:{}]{}", chainTaskId,
