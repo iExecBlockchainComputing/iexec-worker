@@ -115,24 +115,60 @@ public class SmsService {
         }
     }
 
+    public String getPreComputeImageUri() {
+        try {
+            ResponseEntity<String> response = smsClient.getPreComputeImageUri();
+            return response.getStatusCode().is2xxSuccessful()
+                    ? response.getBody()
+                    : "";
+        } catch (Exception e) {
+            log.error("Failed to get pre-compute image URI from sms", e);
+            return "";
+        }
+    }
+
+    // TODO: use the below method with retry.
+    public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
+        String chainTaskId = workerpoolAuthorization.getChainTaskId();
+        log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
+        String authorization = getAuthorizationString(workerpoolAuthorization);
+        try {
+            ResponseEntity<String> response = smsClient
+                    .createTeeSession(authorization, workerpoolAuthorization);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.error("SMS failed to create TEE session [chainTaskId:{}, " +
+                        "httpStatus:{}]", chainTaskId, response.getStatusCode());
+                return "";
+            }
+            String sessionId = response.getBody();
+            log.info("Created TEE session [chainTaskId:{}, sessionId:{}]",
+                    chainTaskId, sessionId);
+            return sessionId;
+        } catch (Exception e) {
+            log.error("SMS failed to create TEE session [chainTaskId:{}]",
+                    chainTaskId, e);
+            return "";
+        }
+    }
+
     /*
     * Don't retry createTeeSession for now, to avoid polluting logs in SMS & CAS
     * */
-    //@Retryable(value = FeignException.class)
-    public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
-        String authorization = getAuthorizationString(workerpoolAuthorization);
-        ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
-        log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
-                workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
-        return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
-    }
+    // @Retryable(value = FeignException.class)
+    // public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
+    //     String authorization = getAuthorizationString(workerpoolAuthorization);
+    //     ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
+    //     log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
+    //             workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
+    //     return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
+    // }
 
-    //@Recover
-    private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
-        log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
-                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
-        return "";
-    }
+    // @Recover
+    // private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
+    //     log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
+    //             workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
+    //     return "";
+    // }
 
     private String getAuthorizationString(WorkerpoolAuthorization workerpoolAuthorization) {
         String challenge = workerpoolAuthorization.getHash();

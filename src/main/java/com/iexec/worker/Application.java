@@ -96,7 +96,7 @@ public class Application implements CommandLineRunner {
             System.exit(0);
         }
 
-        if (StringUtils.isEmpty(loginService.login())) {
+        if (!StringUtils.hasText(loginService.login())) {
             String message = "Worker wasn't able to login, stopping...";
             LoggingUtils.printHighlightedMessage(message);
             System.exit(0);

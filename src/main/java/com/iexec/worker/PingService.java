@@ -44,13 +44,13 @@ public class PingService {
     public void pingScheduler() {
         String sessionId = customCoreFeignClient.ping();
         log.info("Send ping to scheduler " + sessionId);
-        if (StringUtils.isEmpty(sessionId)) {
+        if (!StringUtils.hasText(sessionId)) {
             log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
             return;
         }
 
         String currentSessionId = coreConfigurationService.getCoreSessionId();
-        if (StringUtils.isEmpty(currentSessionId)) {
+        if (!StringUtils.hasText(currentSessionId)) {
             log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
             coreConfigurationService.setCoreSessionId(sessionId);
             return;

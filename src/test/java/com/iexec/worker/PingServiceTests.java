@@ -43,7 +43,7 @@ public class PingServiceTests {
 
     @Before
     public void beforeEach() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
 
     }
 

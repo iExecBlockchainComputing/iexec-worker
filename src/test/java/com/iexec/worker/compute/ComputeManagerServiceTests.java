@@ -98,7 +98,7 @@ public class ComputeManagerServiceTests {
 
     @Before
     public void beforeEach() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
 
     }
 

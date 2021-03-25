@@ -81,9 +81,15 @@ public class ComputeManagerService {
         return dockerService.getClient().isImagePresent(imageUri);
     }
 
-    /*
-     * non TEE: download secrets && decrypt dataset (TODO: rewritte or remove)
-     *     TEE: download post-compute image && create secure session
+    /**
+     * Standard tasks: download secrets && decrypt dataset (TODO: rewritte or remove)
+     * <p>
+     * TEE tasks: download pre-compute and post-compute images,
+     * create SCONE secure session, and run pre-compute container.
+     * 
+     * @param taskDescription
+     * @param workerpoolAuth
+     * @return
      */
     public PreComputeResponse runPreCompute(TaskDescription taskDescription,
                                             WorkerpoolAuthorization workerpoolAuth) {

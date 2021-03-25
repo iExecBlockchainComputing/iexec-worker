@@ -19,6 +19,7 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
@@ -32,23 +33,29 @@ import static org.mockito.Mockito.when;
 
 public class SconeTeeServiceTests {
 
-    private final static String IMAGE_URI = "IMAGE_URI";
+    private static final String IMAGE_URI = "IMAGE_URI";
+    private static final String SESSION_ID = "sessionId";
+    private static final String CAS_URL = "casUrl";
+    private static final String LAS_URL = "lasUrl";
+
     @Captor
     ArgumentCaptor<DockerRunRequest> dockerRunRequestArgumentCaptor;
     @InjectMocks
     private SconeTeeService sconeTeeService;
     @Mock
-    private SgxService sgxService;
-    @Mock
     private SconeLasConfiguration sconeLasConfig;
     @Mock
     private DockerService dockerService;
+    @Mock
+    PublicConfigurationService publicConfigService;
+    @Mock
+    private SgxService sgxService;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
     @Before
     public void init() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
     }
 
@@ -94,24 +101,45 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void buildSconeDockerEnv() {
-        String sconeConfigId = "sconeConfigId";
-        String sconeCasUrl = "sconeCasUrl";
-        String sconeHeap = "sconeHeap";
-        String url = "url";
-        when(sconeLasConfig.getUrl()).thenReturn(url);
+    public void shouldBuildPreComputeDockerEnv() {
+        when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
+        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
 
-        Assertions.assertThat(
-                sconeTeeService.buildSconeDockerEnv(sconeConfigId,
-                        sconeCasUrl,
-                        sconeHeap)).isEqualTo(
-                SconeConfig.builder()
-                        .sconeLasAddress(url)
-                        .sconeCasAddress(sconeCasUrl)
-                        .sconeConfigId(sconeConfigId)
-                        .sconeHeap(sconeHeap)
-                        .build().toDockerEnv()
-        );
+        Assertions.assertThat(sconeTeeService.getPreComputeDockerEnv(SESSION_ID))
+                .isEqualTo(SconeConfig.builder()
+                        .sconeLasAddress(LAS_URL)
+                        .sconeCasAddress(CAS_URL)
+                        .sconeConfigId(SESSION_ID + "/pre-compute")
+                        .sconeHeap("3G")
+                        .build().toDockerEnv());
+    }
+
+    @Test
+    public void shouldBuildComputeDockerEnv() {
+        when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
+        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+
+        Assertions.assertThat(sconeTeeService.getComputeDockerEnv(SESSION_ID))
+                .isEqualTo(SconeConfig.builder()
+                        .sconeLasAddress(LAS_URL)
+                        .sconeCasAddress(CAS_URL)
+                        .sconeConfigId(SESSION_ID + "/app")
+                        .sconeHeap("1G")
+                        .build().toDockerEnv());
+    }
+
+    @Test
+    public void shouldBuildPostComputeDockerEnv() {
+        when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
+        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+
+        Assertions.assertThat(sconeTeeService.getPostComputeDockerEnv(SESSION_ID))
+                .isEqualTo(SconeConfig.builder()
+                        .sconeLasAddress(LAS_URL)
+                        .sconeCasAddress(CAS_URL)
+                        .sconeConfigId(SESSION_ID + "/post-compute")
+                        .sconeHeap("3G")
+                        .build().toDockerEnv());
     }
 
 }

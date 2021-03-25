@@ -39,7 +39,7 @@ import java.io.IOException;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
-import static org.assertj.core.api.Java6Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 public class ResultServiceTests {
@@ -62,7 +62,7 @@ public class ResultServiceTests {
 
     @Before
     public void init() throws IOException {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         tmp = folderRule.newFolder().getAbsolutePath();
     }
 

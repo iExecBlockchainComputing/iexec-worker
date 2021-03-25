@@ -17,8 +17,8 @@
 package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.EnvUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
@@ -82,15 +82,17 @@ public class AppComputeServiceTests {
 
     @Before
     public void beforeEach() throws IOException {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
     public void shouldRunCompute() {
         taskDescription.setTeeTask(false);
-        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
+        String inputBind = INPUT + ":" + FileHelper.SLASH_IEXEC_IN;
+        when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
+        String iexecOutBind = IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
@@ -113,11 +115,8 @@ public class AppComputeServiceTests {
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
-                        .env(EnvUtils.getContainerEnvList(taskDescription))
-                        .binds(
-                                Arrays.asList(INPUT + ":" + FileHelper.SLASH_IEXEC_IN,
-                                        IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT)
-                        )
+                        .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
+                        .binds(Arrays.asList(inputBind, iexecOutBind))
                         .isSgx(false)
                         .shouldDisplayLogs(true)
                         .build()
@@ -127,15 +126,15 @@ public class AppComputeServiceTests {
     @Test
     public void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
-        when(sconeTeeService.buildSconeDockerEnv(
-                SECURE_SESSION_ID + "/app",
-                SCONE_CAS_URL,
-                "1G")).thenReturn(Arrays.asList("var0", "var1"));
+        when(sconeTeeService.getComputeDockerEnv(SECURE_SESSION_ID))
+                .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
-        env.addAll(EnvUtils.getContainerEnvList(taskDescription));
+        env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
         Collections.sort(env);
-        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
+        String inputBind = INPUT + ":" + FileHelper.SLASH_IEXEC_IN;
+        when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
+        String iexecOutBind = IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         String lasNetworkName = "lasNetworkName";
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(lasNetworkName);
@@ -162,10 +161,7 @@ public class AppComputeServiceTests {
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(
-                                Arrays.asList(INPUT + ":" + FileHelper.SLASH_IEXEC_IN,
-                                        IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT)
-                        )
+                        .binds(Arrays.asList(inputBind ,iexecOutBind))
                         .isSgx(true)
                         .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)

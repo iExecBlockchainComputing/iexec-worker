@@ -83,7 +83,7 @@ public class PostComputeServiceTests {
 
     @Before
     public void beforeEach() throws IOException {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
         iexecOut = output + FileHelper.SLASH_IEXEC_OUT;
@@ -182,8 +182,9 @@ public class PostComputeServiceTests {
                 .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(sconeTeeService.buildSconeDockerEnv(SECURE_SESSION_ID + "/post" +
-                "-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
+        when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID)).thenReturn(env);
+        String iexecOutBind = iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
@@ -210,7 +211,8 @@ public class PostComputeServiceTests {
                         .imageUri(TEE_POST_COMPUTE_IMAGE)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(Arrays.asList(iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT,
+                        .binds(Arrays.asList(
+                                iexecOutBind,
                                 output + ":" + FileHelper.SLASH_OUTPUT))
                         .isSgx(true)
                         .dockerNetwork(lasNetworkName)
@@ -229,8 +231,7 @@ public class PostComputeServiceTests {
                 .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(sconeTeeService.buildSconeDockerEnv(SECURE_SESSION_ID + "/post" +
-                "-compute", SCONE_CAS_URL, "3G")).thenReturn(env);
+        when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID)).thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);

@@ -78,10 +78,10 @@ public class DockerService {
         }
         if (shouldPrintDeveloperLogs(dockerRunRequest)) {
             String chainTaskId = dockerRunRequest.getChainTaskId();
-            if (StringUtils.isEmpty(chainTaskId)) {
+            if (!StringUtils.hasText(chainTaskId)) {
                 log.error("Cannot print developer logs [chainTaskId:{}]", chainTaskId);
             } else {
-                log.info("Developer logs of compute stage [chainTaskId:{}]{}", chainTaskId,
+                log.info("Developer logs of docker run [chainTaskId:{}]{}", chainTaskId,
                         getComputeDeveloperLogs(chainTaskId, dockerRunResponse.getStdout(),
                                 dockerRunResponse.getStderr()));
             }
@@ -102,6 +102,34 @@ public class DockerService {
             return false;
         }
         return runningContainersRecord.add(containerName);
+    }
+
+    /**
+     * Get docker volume bind shared between the host and
+     * the container for input.
+     * <p>
+     * Expected: taskBaseDir/input:/iexec_in
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getInputBind(String chainTaskId) {
+        return workerConfigService.getTaskInputDir(chainTaskId) + ":" +
+                FileHelper.SLASH_IEXEC_IN;
+    }
+
+    /**
+     * Get docker volume bind shared between the host and
+     * the container for output.
+     * <p>
+     * Expected: taskBaseDir/output/iexec_out:/iexec_out
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getIexecOutBind(String chainTaskId) {
+        return workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" +
+                FileHelper.SLASH_IEXEC_OUT;
     }
 
     /**

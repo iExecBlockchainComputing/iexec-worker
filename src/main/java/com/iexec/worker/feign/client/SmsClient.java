@@ -22,6 +22,7 @@ import com.iexec.common.sms.secret.SmsSecretResponse;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -32,11 +33,16 @@ import feign.FeignException;
 public interface SmsClient {
 
     @PostMapping("/untee/secrets")
-    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestHeader("Authorization") String authorization,
-                                                      @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
+    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
 
     @PostMapping("/tee/sessions")
-    ResponseEntity<String> createTeeSession(@RequestHeader("Authorization") String authorization,
-                                            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
+    ResponseEntity<String> createTeeSession(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
+
+    @GetMapping("/precompute/image")
+    ResponseEntity<String> getPreComputeImageUri() throws FeignException;
 
 }

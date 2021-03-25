@@ -24,9 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -114,24 +112,26 @@ public class DataService {
         return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
     }
 
+    // TODO decrypt file with java code
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
+        throw new UnsupportedOperationException("Cannot decrypt file with bash script");
+        // ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
 
-        try {
-            Process pr = pb.start();
+        // try {
+        //     Process pr = pb.start();
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-            String line;
+        //     BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+        //     String line;
 
-            while ((line = in.readLine()) != null) { log.info(line); }
+        //     while ((line = in.readLine()) != null) { log.info(line); }
 
-            pr.waitFor();
-            in.close();
-        } catch (Exception e) {
-            log.error("Error while trying to decrypt data [datasetFile{}, secretFile:{}]",
-                    dataFilePath, secretFilePath);
-            e.printStackTrace();
-        }
+        //     pr.waitFor();
+        //     in.close();
+        // } catch (Exception e) {
+        //     log.error("Error while trying to decrypt data [datasetFile{}, secretFile:{}]",
+        //             dataFilePath, secretFilePath);
+        //     e.printStackTrace();
+        // }
     }
 
     /**
