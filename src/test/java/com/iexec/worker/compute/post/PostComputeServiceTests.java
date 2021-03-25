@@ -183,6 +183,8 @@ public class PostComputeServiceTests {
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID)).thenReturn(env);
+        String iexecOutBind = iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
@@ -209,7 +211,8 @@ public class PostComputeServiceTests {
                         .imageUri(TEE_POST_COMPUTE_IMAGE)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(Arrays.asList(iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT,
+                        .binds(Arrays.asList(
+                                iexecOutBind,
                                 output + ":" + FileHelper.SLASH_OUTPUT))
                         .isSgx(true)
                         .dockerNetwork(lasNetworkName)

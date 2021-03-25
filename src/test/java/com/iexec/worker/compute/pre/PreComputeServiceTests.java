@@ -125,7 +125,7 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
                 .thenReturn(List.of("env"));
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind1");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn("/path:/iexec_in");
         String network = "network";
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
