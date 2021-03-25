@@ -26,6 +26,7 @@ scone:
     port: ${IEXEC_LAS_PORT:18766}
     dockerNetworkName: ${IEXEC_LAS_DOCKER_NETWORK_NAME:iexec-worker-net}
 
+# TODO remove this
 decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
 encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
 

@@ -33,9 +33,9 @@ import java.util.List;
 @Service
 public class SconeTeeService {
 
-    private static final String PRE_COMPUTE_HEAD_SIZE = "3G";
-    private static final String COMPUTE_HEAD_SIZE = "1G";
-    private static final String POST_COMPUTE_HEAD_SIZE = "3G";
+    private static final String PRE_COMPUTE_HEAP_SIZE = "3G";
+    private static final String COMPUTE_HEAP_SIZE = "1G";
+    private static final String POST_COMPUTE_HEAP_SIZE = "3G";
 
     private final SconeLasConfiguration sconeLasConfig;
     private final DockerService dockerService;
@@ -87,7 +87,7 @@ public class SconeTeeService {
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(publicConfigService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
-                .sconeHeap(PRE_COMPUTE_HEAD_SIZE)
+                .sconeHeap(PRE_COMPUTE_HEAP_SIZE)
                 .build()
                 .toDockerEnv();
     }
@@ -98,7 +98,7 @@ public class SconeTeeService {
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(publicConfigService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
-                .sconeHeap(COMPUTE_HEAD_SIZE)
+                .sconeHeap(COMPUTE_HEAP_SIZE)
                 .build()
                 .toDockerEnv();
     }
@@ -109,7 +109,7 @@ public class SconeTeeService {
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(publicConfigService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
-                .sconeHeap(POST_COMPUTE_HEAD_SIZE)
+                .sconeHeap(POST_COMPUTE_HEAP_SIZE)
                 .build()
                 .toDockerEnv();
     }

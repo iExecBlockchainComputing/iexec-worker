@@ -462,24 +462,6 @@ public class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isTrue();
     }
 
-    @Test
-    public void shouldNotDownloadDataWithDatasetUriAndTeeSinceCannotUnzip() {
-        TaskDescription taskDescription = getStubTaskDescription(true);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(PATH_TO_DOWNLOADED_FILE);
-        when(dataService.unzipDownloadedTeeDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
-                .thenReturn(false);
-
-        ReplicateActionResponse actionResponse =
-                taskManagerService.downloadData(CHAIN_TASK_ID);
-
-        assertThat(actionResponse.isSuccess()).isFalse();
-    }
-
     // with input files
 
     @Test

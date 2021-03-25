@@ -25,6 +25,7 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -160,16 +161,12 @@ public class TaskManagerService {
                         "won't check it [chainTaskId:{}]", chainTaskId);
             } else {
                 if (!dataService.hasExpectedSha256(expectedSha256, datasetLocalFilePath)) {
+                        log.error("Dataset does not have the expected checksum [chainTaskId:{}, " +
+                                "expected:{}, actual:{}]", chainTaskId, expectedSha256,
+                                HashUtils.getFileSha256(datasetLocalFilePath));
                     return triggerPostComputeHookOnError(chainTaskId, context,
                             taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_BAD_CHECKSUM);
                 }
-            }
-
-            // Should be removed in next "Standard Dataset Encryption" version
-            if (taskDescription.isTeeTask() && !dataService.unzipDownloadedTeeDataset(chainTaskId,datasetUri)) {
-                logError("unzip dataset error", context, chainTaskId);
-                return triggerPostComputeHookOnError(chainTaskId, context,
-                        taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
         }
 
@@ -188,10 +185,12 @@ public class TaskManagerService {
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
                                                                   ReplicateStatusCause errorCause) {
-        if (resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause) &&
-                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
+        // log original error
+        logError(errorCause, context, chainTaskId);
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause);
+        // try to run post-compute
+        if (isOk && computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
-            logError(errorCause, context, chainTaskId);
             return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute
