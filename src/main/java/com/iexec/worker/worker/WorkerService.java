@@ -28,6 +28,7 @@ import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.context.restart.RestartEndpoint;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -49,15 +50,14 @@ public class WorkerService {
 
     public WorkerService(
             CredentialsService credentialsService,
-                         WorkerConfigurationService workerConfigService,
-                         CoreConfigurationService coreConfigService,
-                         PublicConfigurationService publicConfigService,
-                         CustomCoreFeignClient customCoreFeignClient,
-                         VersionService versionService,
-                         SconeTeeService sconeTeeService,
-                         RestartEndpoint restartEndpoint,
-                         DockerService dockerService
-    ) {
+            WorkerConfigurationService workerConfigService,
+            CoreConfigurationService coreConfigService,
+            PublicConfigurationService publicConfigService,
+            CustomCoreFeignClient customCoreFeignClient,
+            VersionService versionService,
+            SconeTeeService sconeTeeService,
+            RestartEndpoint restartEndpoint,
+            DockerService dockerService) {
         this.credentialsService = credentialsService;
         this.workerConfigService = workerConfigService;
         this.coreConfigService = coreConfigService;
@@ -131,5 +131,15 @@ public class WorkerService {
         dockerService.stopRunningContainers();
         log.warn("The worker is about to restart");
         restartEndpoint.restart();
+    }
+
+    /**
+     * Fixes: required a bean of type
+     * 'org.springframework.cloud.context.restart.RestartEndpoint'
+     * could not be found.
+     */
+    @Bean
+    public static RestartEndpoint restartEndpoint() {
+        return new RestartEndpoint();
     }
 }
