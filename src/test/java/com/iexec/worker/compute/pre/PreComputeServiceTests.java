@@ -125,7 +125,7 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
                 .thenReturn(List.of("env"));
-        when(dockerService.getIexecInBind(chainTaskId)).thenReturn("bind1");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind1");
         String network = "network";
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
@@ -196,7 +196,7 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
                 .thenReturn(List.of("env"));
-        when(dockerService.getIexecInBind(chainTaskId)).thenReturn("bind1");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind1");
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(70)

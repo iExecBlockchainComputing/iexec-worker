@@ -113,7 +113,7 @@ public class DockerService {
      * @param chainTaskId
      * @return
      */
-    public String getIexecInBind(String chainTaskId) {
+    public String getInputBind(String chainTaskId) {
         return workerConfigService.getTaskInputDir(chainTaskId) + ":" +
                 FileHelper.SLASH_IEXEC_IN;
     }

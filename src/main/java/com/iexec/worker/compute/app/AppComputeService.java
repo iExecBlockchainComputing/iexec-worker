@@ -59,7 +59,7 @@ public class AppComputeService {
         }
 
         List<String> binds = Arrays.asList(
-                dockerService.getIexecInBind(chainTaskId),
+                dockerService.getInputBind(chainTaskId),
                 dockerService.getIexecOutBind(chainTaskId)
         );
 
