@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.executor;
 
 import com.iexec.common.notification.TaskNotification;
@@ -26,11 +42,11 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 @Service
 public class TaskNotificationService {
 
-    private TaskManagerService taskManagerService;
-    private CustomCoreFeignClient customCoreFeignClient;
-    private ApplicationEventPublisher applicationEventPublisher;
-    private SubscriptionService subscriptionService;
-    private ContributionService contributionService;
+    private final TaskManagerService taskManagerService;
+    private final CustomCoreFeignClient customCoreFeignClient;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final SubscriptionService subscriptionService;
+    private final ContributionService contributionService;
 
 
     public TaskNotificationService(TaskManagerService taskManagerService,
@@ -57,7 +73,7 @@ public class TaskNotificationService {
         TaskNotificationType action = notification.getTaskNotificationType();
         ReplicateActionResponse actionResponse = null;
         TaskNotificationType nextAction = null;
-        log.debug("Received TaskEvent [chainTaskId:{}, action:{}]", chainTaskId, action);
+        log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
         if (action == null) {
             log.error("No action to do [chainTaskId:{}]", chainTaskId);
@@ -141,15 +157,16 @@ public class TaskNotificationService {
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
                 actionResponse = taskManagerService.complete(chainTaskId);
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETED, actionResponse.getDetails());
                 } else {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
                 }
                 break;
-            //TODO merge abort
             case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
                 boolean isAborted = taskManagerService.abort(chainTaskId);
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 if (!isAborted) {
                     return;
                 }
@@ -157,16 +174,20 @@ public class TaskNotificationService {
                 break;
             case PLEASE_ABORT_CONSENSUS_REACHED:
                 boolean isAbortedAfterConsensusReached = taskManagerService.abort(chainTaskId);
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 if (!isAbortedAfterConsensusReached) {
                     return;
                 }
                 updateStatusAndGetNextAction(chainTaskId, ABORTED, CONSENSUS_REACHED);
                 break;
+            // TODO merge abort actions
+            case PLEASE_ABORT:
+                subscriptionService.unsubscribeFromTopic(chainTaskId);
+                break;
             default:
                 break;
         }
 
-        subscriptionService.handleSubscription(notification);
         if (nextAction != null){
             log.debug("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
             applicationEventPublisher.publishEvent(TaskNotification.builder()

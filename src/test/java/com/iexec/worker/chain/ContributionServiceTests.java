@@ -1,13 +1,25 @@
+/*
+ * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.*;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.security.Signature;
-import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.SignatureUtils;
 import com.iexec.common.utils.TestUtils;
 import com.iexec.common.worker.result.ResultUtils;
 import org.junit.Assert;
@@ -17,14 +29,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
-import org.web3j.crypto.ECKeyPair;
-import org.web3j.crypto.Keys;
-import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.util.Date;
 import java.util.Optional;
 

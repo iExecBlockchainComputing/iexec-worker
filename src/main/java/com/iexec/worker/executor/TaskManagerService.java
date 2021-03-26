@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.ChainReceipt;
@@ -5,14 +21,17 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
-import com.iexec.worker.compute.ComputeService;
-import com.iexec.worker.compute.Compute;
+import com.iexec.worker.compute.ComputeManagerService;
+import com.iexec.worker.compute.app.AppComputeResponse;
+import com.iexec.worker.compute.post.PostComputeResponse;
+import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
@@ -21,12 +40,11 @@ import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
+import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
+import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 
@@ -34,284 +52,300 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 @Service
 public class TaskManagerService {
 
-    private final int maxNbExecutions;
-    private DataService dataService;
-    private ResultService resultService;
-    private ContributionService contributionService;
-    private WorkerConfigurationService workerConfigurationService;
-    private SconeTeeService sconeTeeService;
-    private IexecHubService iexecHubService;
-    private RevealService revealService;
-    private ComputeService computeService;
-    private Set<String> tasksUsingCpu;
+    private final WorkerConfigurationService workerConfigurationService;
+    private final IexecHubService iexecHubService;
+    private final ContributionService contributionService;
+    private final RevealService revealService;
+    private final ComputeManagerService computeManagerService;
+    private final SconeTeeService sconeTeeService;
+    private final DataService dataService;
+    private final ResultService resultService;
 
-    public TaskManagerService(DataService dataService,
-                              ResultService resultService,
-                              ContributionService contributionService,
-                              WorkerConfigurationService workerConfigurationService,
-                              SconeTeeService sconeTeeService,
-                              IexecHubService iexecHubService,
-                              ComputeService computationService,
-                              RevealService revealService) {
+    public TaskManagerService(
+            WorkerConfigurationService workerConfigurationService,
+            IexecHubService iexecHubService,
+            ContributionService contributionService,
+            RevealService revealService,
+            ComputeManagerService computeManagerService,
+            SconeTeeService sconeTeeService,
+            DataService dataService,
+            ResultService resultService
+    ) {
+        this.workerConfigurationService = workerConfigurationService;
+        this.iexecHubService = iexecHubService;
+        this.contributionService = contributionService;
+        this.revealService = revealService;
+        this.computeManagerService = computeManagerService;
+        this.sconeTeeService = sconeTeeService;
         this.dataService = dataService;
         this.resultService = resultService;
-        this.contributionService = contributionService;
-        this.workerConfigurationService = workerConfigurationService;
-        this.sconeTeeService = sconeTeeService;
-        this.iexecHubService = iexecHubService;
-        this.computeService = computationService;
-        this.revealService = revealService;
-
-        maxNbExecutions = Runtime.getRuntime().availableProcessors() - 1;
-        tasksUsingCpu = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    }
-
-    public boolean canAcceptMoreReplicates() {
-        if (tasksUsingCpu.size() > 0) {
-            log.info("Some tasks are using CPU [tasksUsingCpu:{}, maxTasksUsingCpu:{}]", tasksUsingCpu.size(), maxNbExecutions);
-        }
-        return tasksUsingCpu.size() <= maxNbExecutions;
-    }
-
-    private void setTaskUsingCpu(String chainTaskId) {
-        if (tasksUsingCpu.contains(chainTaskId)) {
-            return;
-        }
-
-        tasksUsingCpu.add(chainTaskId);
-        log.info("Set task using CPU [tasksUsingCpu:{}]", tasksUsingCpu.size());
-    }
-
-    private void unsetTaskUsingCpu(String chainTaskId) {
-        tasksUsingCpu.remove(chainTaskId);
-        log.info("Unset task using CPU [tasksUsingCpu:{}]", tasksUsingCpu.size());
     }
 
     ReplicateActionResponse start(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
-        Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        Optional<ReplicateStatusCause> oErrorStatus =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "start";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot start [chainTaskId:{}, error:{}]", chainTaskId, oErrorStatus.get());
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        TaskDescription taskDescription =
+                iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot start, task description not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         if (taskDescription.isTeeTask() && !sconeTeeService.isTeeEnabled()) {
-            log.error("Cannot start, TEE not supported [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TEE_NOT_SUPPORTED);
+            return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
+                    context, chainTaskId);
         }
 
         return ReplicateActionResponse.success();
     }
 
     ReplicateActionResponse downloadApp(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
-        Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        Optional<ReplicateStatusCause> oErrorStatus =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "download app";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot download app, {} [chainTaskId:{}]", oErrorStatus.get(), chainTaskId);
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        TaskDescription taskDescription =
+                iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot download app, task description not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
-        if (!computeService.downloadApp(chainTaskId, taskDescription)) {
-            log.error("Failed to download app [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure();
+        if (computeManagerService.downloadApp(taskDescription)) {
+            return ReplicateActionResponse.success();
         }
-
-        return ReplicateActionResponse.success();
+        return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
+                APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
     }
 
     ReplicateActionResponse downloadData(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
-        Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        Optional<ReplicateStatusCause> oErrorStatus =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "download data";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot download data, {} [chainTaskId:{}]", oErrorStatus.get(), chainTaskId);
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        TaskDescription taskDescription =
+                iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot download data, task description not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
         String datasetUri = taskDescription.getDatasetUri();
-        List<String> inputFiles = taskDescription.getInputFiles();
         if (!datasetUri.isEmpty()) {
-            boolean isDatasetReady = dataService.downloadFile(chainTaskId, datasetUri);
-            String errorMessage = "Failed to download dataset";
+            boolean isDatasetReady = dataService.downloadFile(chainTaskId,
+                    datasetUri);
             if (taskDescription.isTeeTask()) {
-                isDatasetReady = dataService.unzipDownloadedTeeDataset(chainTaskId, datasetUri);
-                errorMessage = "Failed to unzip downloaded Tee dataset";
+                isDatasetReady =
+                        dataService.unzipDownloadedTeeDataset(chainTaskId,
+                                datasetUri);
+                logError("unzip dataset error", context, chainTaskId);
             }
             if (!isDatasetReady) {
-                log.error(errorMessage + " [chainTaskId:{}, datasetUri:{}]", chainTaskId, taskDescription.getDatasetUri());
-                return ReplicateActionResponse.failure();
+                return triggerPostComputeHookOnError(chainTaskId, context,
+                        taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
         }
 
-        if (inputFiles != null && !dataService.downloadFiles(chainTaskId, inputFiles)) {
-            log.error("Failed to download input files [chainTaskId:{}, inputFiles:{}]",
-                    chainTaskId, taskDescription.getInputFiles());
-            return ReplicateActionResponse.failure();
+        List<String> inputFiles = taskDescription.getInputFiles();
+        if (inputFiles != null && !dataService.downloadFiles(chainTaskId,
+                inputFiles)) {
+            return triggerPostComputeHookOnError(chainTaskId, context,
+                    taskDescription, DATA_DOWNLOAD_FAILED, INPUT_FILES_DOWNLOAD_FAILED);
         }
 
         return ReplicateActionResponse.success();
     }
 
+    private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
+                                                                  String context,
+                                                                  TaskDescription taskDescription,
+                                                                  ReplicateStatus errorStatus,
+                                                                  ReplicateStatusCause errorCause) {
+        if (resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause) &&
+                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
+            //Graceful error, worker will be prompt to contribute
+            logError(errorCause, context, chainTaskId);
+            return ReplicateActionResponse.failure(errorCause);
+        }
+        //Download failed hard, worker cannot contribute
+        logError(POST_COMPUTE_FAILED, context, chainTaskId);
+        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
+    }
+
     ReplicateActionResponse compute(String chainTaskId) {
-        setTaskUsingCpu(chainTaskId);
-
-        Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        Optional<ReplicateStatusCause> oErrorStatus =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "compute";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot compute [chainTaskId:{}, error:{}]", chainTaskId, oErrorStatus.get());
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(), context, chainTaskId);
         }
 
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        TaskDescription taskDescription =
+                iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot compute, task description not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
-        if (!computeService.isAppDownloaded(taskDescription.getAppUri())) {
-            log.error("Cannot compute, app not found locally [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(APP_NOT_FOUND_LOCALLY);
+        if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
+            return getFailureResponseAndPrintError(APP_NOT_FOUND_LOCALLY,
+                    context, chainTaskId);
         }
 
         WorkerpoolAuthorization workerpoolAuthorization =
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        Compute compute = Compute.builder().chainTaskId(chainTaskId).build();
-        computeService.runPreCompute(compute, taskDescription, workerpoolAuthorization);
-        if (!compute.isPreComputed()) {
-            log.error("Failed to pre-compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(PRE_COMPUTE_FAILED);
+        PreComputeResponse preResponse =
+                computeManagerService.runPreCompute(taskDescription,
+                        workerpoolAuthorization);
+        if (!preResponse.isSuccessful()) {
+            return getFailureResponseAndPrintError(PRE_COMPUTE_FAILED,
+                    context, chainTaskId);
         }
-        computeService.runCompute(compute, taskDescription);
-        if (!compute.isComputed()) {
-            log.error("Failed to compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(compute.getStdout());
+
+        AppComputeResponse appResponse =
+                computeManagerService.runCompute(taskDescription,
+                        preResponse.getSecureSessionId());
+        if (!appResponse.isSuccessful()) {
+            logError("app compute error", context, chainTaskId);
+            return ReplicateActionResponse.failureWithStdout(appResponse.getStdout());
         }
-        computeService.runPostCompute(compute, taskDescription);
-        if (!compute.isPostComputed()) {
-            log.error("Failed to post-compute [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED, compute.getStdout());
+
+        PostComputeResponse postResponse =
+                computeManagerService.runPostCompute(taskDescription,
+                        preResponse.getSecureSessionId());
+        if (!postResponse.isSuccessful()) {
+            logError("post compute error", context, chainTaskId);
+            return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED,
+                    postResponse.getStdout());
         }
-        resultService.saveResultInfo(chainTaskId, taskDescription);
-        return ReplicateActionResponse.successWithStdout(compute.getStdout());
+        return ReplicateActionResponse.successWithStdout(preResponse.getStdout() +
+                "\n" + appResponse.getStdout() + "\n" + postResponse.getStdout());
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
-
-        Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        Optional<ReplicateStatusCause> oErrorStatus =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
+        String context = "contribute";
         if (oErrorStatus.isPresent()) {
-            log.error("Cannot contribute [chainTaskId:{}, error:{}]", chainTaskId, oErrorStatus.get());
-            return ReplicateActionResponse.failure(oErrorStatus.get());
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
         }
 
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        TaskDescription taskDescription =
+                iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Cannot contribute, task description not found [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND);
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
+                    context, chainTaskId);
         }
 
-        boolean hasEnoughGas = checkGasBalance(chainTaskId);
-        if (!hasEnoughGas) {
-            log.error("Cannot contribute, no enough gas [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(OUT_OF_GAS);
-            // System.exit(0);
+        if (!hasEnoughGas()) {
+            return getFailureResponseAndPrintError(OUT_OF_GAS,
+                    context, chainTaskId);
         }
 
-        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
+        ComputedFile computedFile =
+                resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
-            log.error("Cannot contribute, getComputedFile [chainTaskId:{}]", chainTaskId);
+            logError("computed file error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        Contribution contribution = contributionService.getContribution(computedFile);
+        Contribution contribution =
+                contributionService.getContribution(computedFile);
         if (contribution == null) {
-            log.error("Failed to getContribution [chainTaskId:{}]", chainTaskId);
+            logError("get contribution error", context, chainTaskId);
             return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
 
-        Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
+        Optional<ChainReceipt> oChainReceipt =
+                contributionService.contribute(contribution);
 
-        if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
+        if (oChainReceipt.isEmpty() ||
+                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
             return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         }
 
         return ReplicateActionResponse.success(oChainReceipt.get());
     }
 
-    ReplicateActionResponse reveal(String chainTaskId, TaskNotificationExtra extra) {
-        unsetTaskUsingCpu(chainTaskId);
+    ReplicateActionResponse reveal(String chainTaskId,
+                                   TaskNotificationExtra extra) {
+        String context = "reveal";
+        if (extra == null || extra.getBlockNumber() == 0) {
+            return getFailureResponseAndPrintError(CONSENSUS_BLOCK_MISSING,
+                    context, chainTaskId);
+        }
+        long consensusBlock = extra.getBlockNumber();
 
-        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
-        String resultDigest = computedFile != null ? computedFile.getResultDigest() : "";
+        ComputedFile computedFile =
+                resultService.getComputedFile(chainTaskId);
+        String resultDigest = computedFile != null ?
+                computedFile.getResultDigest() : "";
 
         if (resultDigest.isEmpty()) {
-            log.error("Cannot reveal, resultDigest not found [chainTaskId:{}]", chainTaskId);
+            logError("get result digest error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        if (extra == null || extra.getBlockNumber() == 0) {
-            log.error("Cannot reveal, missing consensus block [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING);
+        if (!revealService.isConsensusBlockReached(chainTaskId,
+                consensusBlock)) {
+            return getFailureResponseAndPrintError(BLOCK_NOT_REACHED,
+                    context, chainTaskId
+            );
         }
 
-        long consensusBlock = extra.getBlockNumber();
-        boolean isBlockReached = revealService.isConsensusBlockReached(chainTaskId, consensusBlock);
-        if (!isBlockReached) {
-            log.error("Cannot reveal, consensus block not reached [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(BLOCK_NOT_REACHED);
+        if (!revealService.repeatCanReveal(chainTaskId,
+                resultDigest)) {
+            return getFailureResponseAndPrintError(CANNOT_REVEAL,
+                    context, chainTaskId);
         }
 
-        boolean canReveal = revealService.repeatCanReveal(chainTaskId, resultDigest);
-
-        if (!canReveal) {
-            log.error("Cannot reveal, one or more conditions are not satisfied [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(CANNOT_REVEAL);
-        }
-
-        boolean hasEnoughGas = checkGasBalance(chainTaskId);
-        if (!hasEnoughGas) {
-            log.error("Cannot reveal, no enough gas [chainTaskId:{}]", chainTaskId);
+        if (!hasEnoughGas()) {
+            logError(OUT_OF_GAS, context, chainTaskId);
+            // Don't we prefer an OUT_OF_GAS?
             System.exit(0);
         }
 
-        Optional<ChainReceipt> oChainReceipt = revealService.reveal(chainTaskId, resultDigest);
-        if (!isValidChainReceipt(chainTaskId, oChainReceipt)) {
-            return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
+        Optional<ChainReceipt> oChainReceipt =
+                revealService.reveal(chainTaskId, resultDigest);
+        if (oChainReceipt.isEmpty() ||
+                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
+            return getFailureResponseAndPrintError(CHAIN_RECEIPT_NOT_VALID,
+                    context, chainTaskId
+            );
         }
 
         return ReplicateActionResponse.success(oChainReceipt.get());
     }
 
     ReplicateActionResponse uploadResult(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
         String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
+        String context = "upload result";
         if (resultLink.isEmpty()) {
-            log.error("Cannot upload, resultLink missing [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.failure(RESULT_LINK_MISSING);
+            return getFailureResponseAndPrintError(RESULT_LINK_MISSING,
+                    context, chainTaskId
+            );
         }
 
-        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
-        String callbackData = computedFile != null ? computedFile.getCallbackData() : "";
+        ComputedFile computedFile =
+                resultService.getComputedFile(chainTaskId);
+        String callbackData = computedFile != null ?
+                computedFile.getCallbackData() : "";
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, resultLink, callbackData);
@@ -320,7 +354,6 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse complete(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
         if (!resultService.removeResult(chainTaskId)) {
             return ReplicateActionResponse.failure();
         }
@@ -329,35 +362,59 @@ public class TaskManagerService {
     }
 
     boolean abort(String chainTaskId) {
-        unsetTaskUsingCpu(chainTaskId);
         return resultService.removeResult(chainTaskId);
     }
 
-    boolean checkGasBalance(String chainTaskId) {
+    boolean hasEnoughGas() {
         if (iexecHubService.hasEnoughGas()) {
             return true;
         }
 
-        String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]",
+        String noEnoughGas = String.format("Out of gas! please refill your " +
+                        "wallet [walletAddress:%s]",
                 workerConfigurationService.getWorkerWalletAddress());
         LoggingUtils.printHighlightedMessage(noEnoughGas);
         return false;
     }
 
     //TODO Move that to contribute & reveal services
-    boolean isValidChainReceipt(String chainTaskId, Optional<ChainReceipt> oChainReceipt) {
+    boolean isValidChainReceipt(String chainTaskId,
+                                Optional<ChainReceipt> oChainReceipt) {
         if (oChainReceipt.isEmpty()) {
-            log.warn("The chain receipt is empty, nothing will be sent to the core [chainTaskId:{}]", chainTaskId);
+            log.warn("The chain receipt is empty, nothing will be sent to the" +
+                    " core [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         if (oChainReceipt.get().getBlockNumber() == 0) {
-            log.warn("The blockNumber of the receipt is equal to 0, status will not be "
-                    + "updated in the core [chainTaskId:{}]", chainTaskId);
+            log.warn("The blockNumber of the receipt is equal to 0, status " +
+                    "will not be updated in the core [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         return true;
+    }
+
+    private ReplicateActionResponse getFailureResponseAndPrintError(ReplicateStatusCause cause, String context, String chainTaskId) {
+        logError(cause, context, chainTaskId);
+        return ReplicateActionResponse.failure(cause);
+    }
+
+    /**
+     * This method, which a <String> 'cause' should disappear at some point
+     * Each error should have it proper ReplicateStatusCause so the core could
+     * keep track of it.
+     */
+    private void logError(String cause, String failureContext,
+                          String chainTaskId) {
+        log.error("Failed to {} [chainTaskId:'{}', cause:'{}']", failureContext,
+                chainTaskId, cause);
+    }
+
+    private void logError(ReplicateStatusCause cause, String failureContext,
+                          String chainTaskId) {
+        logError(cause != null ? cause.toString() : "", failureContext,
+                chainTaskId);
     }
 
 }

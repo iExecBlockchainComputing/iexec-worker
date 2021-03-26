@@ -1,6 +1,5 @@
 version: '3.4'
 
-
 networks:
   iexec-net:
     external: true
@@ -10,12 +9,12 @@ services:
     image: nexus.iex.ec/iexec-worker:${WORKER_VERSION}
     container_name: worker
     environment:
+      - IEXEC_CORE_PROTOCOL=http
       - IEXEC_CORE_HOST=core
       - IEXEC_CORE_PORT=18090
       - IEXEC_WORKER_NAME=worker
       - IEXEC_WORKER_WALLET_PATH=/iexec-wallets/encrypted-wallet_worker1.json
       - IEXEC_WORKER_BASE_DIR=/tmp/iexec-worker
-      - IEXEC_LAS_PORT=18766
     ports:
       - 18091:18091
     volumes:
@@ -25,13 +24,3 @@ services:
     restart: on-failure
     networks:
       - iexec-net
-
-  iexec-las:
-    image: nexus.iex.ec/iexec-las:${IEXEC_LAS_VERSION}
-    container_name: iexec-las
-    ports:
-      - 18766:18766
-    networks:
-      - iexec-net
-    devices:
-      - /dev/isgx

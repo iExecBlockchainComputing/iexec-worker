@@ -1,14 +1,35 @@
+/*
+ * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.result;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.compute.ComputeService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
@@ -29,28 +50,30 @@ import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 @Slf4j
 @Service
 public class ResultService {
+    public static final String ERROR_FILENAME = "error.txt";
 
-    private WorkerConfigurationService workerConfigService;
-    private PublicConfigurationService publicConfigService;
-    private CredentialsService credentialsService;
-    private IexecHubService iexecHubService;
-    private CustomResultFeignClient customResultFeignClient;
-    private ComputeService computeService;
+    private final WorkerConfigurationService workerConfigService;
+    private final PublicConfigurationService publicConfigService;
+    private final CredentialsService credentialsService;
+    private final IexecHubService iexecHubService;
+    private final CustomResultFeignClient customResultFeignClient;
+    private final EncryptionService encryptionService;
+    private final Map<String, ResultInfo> resultInfoMap;
 
-    private Map<String, ResultInfo> resultInfoMap;
-
-    public ResultService(WorkerConfigurationService workerConfigService,
-                         PublicConfigurationService publicConfigService,
-                         CredentialsService credentialsService,
-                         IexecHubService iexecHubService,
-                         CustomResultFeignClient customResultFeignClient,
-                         ComputeService computationService) {
+    public ResultService(
+            WorkerConfigurationService workerConfigService,
+            PublicConfigurationService publicConfigService,
+            CredentialsService credentialsService,
+            IexecHubService iexecHubService,
+            CustomResultFeignClient customResultFeignClient,
+            EncryptionService encryptionService
+    ) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
-        this.computeService = computationService;
+        this.encryptionService = encryptionService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -82,8 +105,32 @@ public class ResultService {
         return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
-    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription) {
-        ComputedFile computedFile = computeService.getComputedFile(chainTaskId);
+    public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
+                                        ReplicateStatusCause errorCause) {
+        String errorContent = String.format("[IEXEC] Error occurred while computing"
+                + " the task [error:%s, cause:%s]", errorStatus, errorCause);
+        ComputedFile computedFile = ComputedFile.builder()
+                .deterministicOutputPath(FileHelper.SLASH_IEXEC_OUT +
+                        File.separator + ERROR_FILENAME)
+                .build();
+        String computedFileJsonAsString;
+        try {
+            computedFileJsonAsString = new ObjectMapper().writeValueAsString(computedFile);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to prepare computed file [chainTaskId:{}]",
+                    chainTaskId, e);
+            return false;
+        }
+        String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
+                + File.separator;
+        return FileHelper.createFolder(hostIexecOutSlash)
+                && FileHelper.writeFile(hostIexecOutSlash + ERROR_FILENAME,
+                errorContent.getBytes())
+                && FileHelper.writeFile(hostIexecOutSlash
+                + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString.getBytes());
+    }
+
+    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription, ComputedFile computedFile) {
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
                 .cmd(taskDescription.getCmd())
@@ -271,5 +318,64 @@ public class ResultService {
 
     public boolean isResultAvailable(String chainTaskId) {
         return isResultZipFound(chainTaskId);
+    }
+
+    public boolean encryptResult(String chainTaskId) {
+        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
+        String resultZipFilePath = workerConfigService.getTaskOutputDir(chainTaskId);
+        String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
+        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
+                resultZipFilePath, beneficiarySecretFilePath);
+        encryptionService.encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
+        String encryptedResultFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        if (!new File(encryptedResultFilePath).exists()) {
+            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
+                    chainTaskId, encryptedResultFilePath);
+            return false;
+        }
+        // replace result file with the encypted one
+        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
+    }
+
+    public ComputedFile getComputedFile(String chainTaskId) {
+        ComputedFile computedFile =
+                IexecFileHelper.readComputedFile(chainTaskId,
+                        workerConfigService.getTaskOutputDir(chainTaskId));
+        if (computedFile == null) {
+            log.error("Failed to getComputedFile (computed.json missing)" +
+                    "[chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+        if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()) {
+            String resultDigest = computeResultDigest(computedFile);
+            if (resultDigest.isEmpty()) {
+                log.error("Failed to getComputedFile (resultDigest is empty " +
+                                "but cant compute it)" +
+                                "[chainTaskId:{}, computedFile:{}]",
+                        chainTaskId,
+                        computedFile);
+                return null;
+            }
+            computedFile.setResultDigest(resultDigest);
+        }
+        return computedFile;
+    }
+
+    private String computeResultDigest(ComputedFile computedFile) {
+        String chainTaskId = computedFile.getTaskId();
+        String resultDigest;
+        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()) {
+            resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
+        } else {
+            resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
+                    workerConfigService.getTaskOutputDir(chainTaskId));
+        }
+        if (resultDigest.isEmpty()) {
+            log.error("Failed to computeResultDigest (resultDigest empty)" +
+                            "[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
+            return "";
+        }
+        return resultDigest;
     }
 }

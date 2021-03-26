@@ -2,12 +2,12 @@ server:
   port: ${IEXEC_WORKER_PORT:18091}
 
 core:
-  protocol: ${IEXEC_CORE_PROTOCOL:https}
+  protocol: ${IEXEC_CORE_PROTOCOL:http}
   host: ${IEXEC_CORE_HOST:localhost}
-  port: ${IEXEC_CORE_PORT:18443}
+  port: ${IEXEC_CORE_PORT:18090}
 
 worker:
-  name: ${IEXEC_WORKER_NAME:customWorker}
+  name: ${IEXEC_WORKER_NAME:worker}
   workerBaseDir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
   gpuEnabled: ${IEXEC_WORKER_GPU_ENABLED:false}
   gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
@@ -24,6 +24,7 @@ scone:
     image: ${IEXEC_LAS_IMAGE:iexechub/sconecuratedimages-iexec}
     version: ${IEXEC_LAS_VERSION:las-v3.0}
     port: ${IEXEC_LAS_PORT:18766}
+    dockerNetworkName: ${IEXEC_LAS_DOCKER_NETWORK_NAME:iexec-worker-net}
 
 decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
 encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
