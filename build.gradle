@@ -191,6 +191,7 @@ task pushImage(type: Exec) {
             "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && " +
             "docker push ${getDockerImageNameShortCommit()} && " +
             "docker logout"
+    dependsOn tasks.buildImage
 }
 
 // ##################
