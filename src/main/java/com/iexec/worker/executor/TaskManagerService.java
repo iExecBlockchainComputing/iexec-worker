@@ -16,7 +16,6 @@
 
 package com.iexec.worker.executor;
 
-import com.google.common.io.Files;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
@@ -43,8 +42,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -153,7 +150,7 @@ public class TaskManagerService {
         if (!datasetUri.isEmpty()) {
             String datasetLocalFilePath = dataService.downloadFile(chainTaskId,
                     datasetUri, taskDescription.getDatasetName());
-            if (datasetLocalFilePath.isEmpty()){
+            if (datasetLocalFilePath.isEmpty()) {
                 return triggerPostComputeHookOnError(chainTaskId, context,
                         taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
@@ -163,9 +160,9 @@ public class TaskManagerService {
                         "won't check it [chainTaskId:{}]", chainTaskId);
             } else {
                 if (!dataService.hasExpectedSha256(expectedSha256, datasetLocalFilePath)) {
-                        log.error("Dataset does not have the expected checksum [chainTaskId:{}, " +
-                                "expected:{}, actual:{}]", chainTaskId, expectedSha256,
-                                HashUtils.getFileSha256(datasetLocalFilePath));
+                    log.error("Dataset does not have the expected checksum [chainTaskId:{}, " +
+                                    "expected:{}, actual:{}]", chainTaskId, expectedSha256,
+                            HashUtils.getFileSha256(datasetLocalFilePath));
                     return triggerPostComputeHookOnError(chainTaskId, context,
                             taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_BAD_CHECKSUM);
                 }
