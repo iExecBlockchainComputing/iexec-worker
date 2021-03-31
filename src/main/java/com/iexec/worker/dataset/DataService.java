@@ -20,7 +20,6 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -47,23 +46,27 @@ public class DataService {
      * APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING (even when the dataset requested is 0x0).
      * In the 0x0 dataset case, we'll have an empty uri, and we'll consider the dataset as downloaded
      */
-    public String downloadFile(String chainTaskId, String uri) {
-        if (chainTaskId.isEmpty()) {
-            log.error("Failed to download, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
-                    chainTaskId, uri);
+    public String downloadFile(String chainTaskId, String uri, String outputFilename) {
+        if (chainTaskId.isEmpty() || outputFilename.isEmpty()) {
+            log.error("Failed to download, args shouldn't be empty " +
+                            "[chainTaskId:{}, datasetUri:{}, outputFilename:{}]",
+                    chainTaskId, uri, outputFilename);
             return "";
         }
         if (uri.isEmpty()) {
-            log.info("There's nothing to download for this task [chainTaskId:{}, uri:{}]",
-                    chainTaskId, uri);
+            log.info("There's nothing to download for this task " +
+                            "[chainTaskId:{}, datasetUri:{}, outputFilename:{}]",
+                    chainTaskId, uri, outputFilename);
             return "";
         }
-        return FileHelper.downloadFile(uri, workerConfigurationService.getTaskInputDir(chainTaskId));
+        return FileHelper.downloadFile(uri,
+                workerConfigurationService.getTaskInputDir(chainTaskId),
+                outputFilename);
     }
 
     public boolean downloadFiles(String chainTaskId, List<String> uris) {
         for (String uri:uris){
-            if (downloadFile(chainTaskId, uri).isEmpty()) {
+            if (FileHelper.downloadFile(chainTaskId, uri).isEmpty()) {
                 return false;
             }
         }

@@ -16,6 +16,7 @@
 
 package com.iexec.worker.executor;
 
+import com.google.common.io.Files;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
@@ -42,6 +43,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -149,12 +152,11 @@ public class TaskManagerService {
         String datasetUri = taskDescription.getDatasetUri();
         if (!datasetUri.isEmpty()) {
             String datasetLocalFilePath = dataService.downloadFile(chainTaskId,
-                    datasetUri);
+                    datasetUri, taskDescription.getDatasetName());
             if (datasetLocalFilePath.isEmpty()){
                 return triggerPostComputeHookOnError(chainTaskId, context,
                         taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
-
             String expectedSha256 = taskDescription.getDatasetChecksum();
             if (!StringUtils.hasText(expectedSha256)) {
                 log.warn("Unsecure, on-chain dataset checksum is empty, " +
