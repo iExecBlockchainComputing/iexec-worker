@@ -169,9 +169,11 @@ public class DockerService {
     }
 
     private String getComputeDeveloperLogs(String chainTaskId, String stdout, String stderr) {
-        String iexecInTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskInputDir(chainTaskId)));
+        File iexecIn = new File(workerConfigService.getTaskInputDir(chainTaskId));
+        String iexecInTree = iexecIn.exists() ? FileHelper.printDirectoryTree(iexecIn) : "";
         iexecInTree = iexecInTree.replace("├── input/", "├── iexec_in/"); // confusing for developers if not replaced
-        String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
+        File iexecOut = new File(workerConfigService.getTaskIexecOutDir(chainTaskId));
+        String iexecOutTree = iexecOut.exists() ? FileHelper.printDirectoryTree(iexecOut) : "";
         return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout, stderr);
     }
 
