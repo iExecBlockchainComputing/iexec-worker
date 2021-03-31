@@ -20,6 +20,7 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -47,17 +48,17 @@ public class DataService {
      * In the 0x0 dataset case, we'll have an empty uri, and we'll consider the dataset as downloaded
      */
     public String downloadFile(String chainTaskId, String uri, String outputFilename) {
-        if (chainTaskId.isEmpty() || outputFilename.isEmpty()) {
+        if (StringUtils.isEmpty(chainTaskId) || StringUtils.isEmpty(outputFilename)) {
             log.error("Failed to download, args shouldn't be empty " +
                             "[chainTaskId:{}, datasetUri:{}, outputFilename:{}]",
                     chainTaskId, uri, outputFilename);
-            return "";
+            return StringUtils.EMPTY;
         }
-        if (uri.isEmpty()) {
+        if (StringUtils.isEmpty(uri)) {
             log.info("There's nothing to download for this task " +
                             "[chainTaskId:{}, datasetUri:{}, outputFilename:{}]",
                     chainTaskId, uri, outputFilename);
-            return "";
+            return StringUtils.EMPTY;
         }
         return FileHelper.downloadFile(uri,
                 workerConfigurationService.getTaskInputDir(chainTaskId),
@@ -65,8 +66,10 @@ public class DataService {
     }
 
     public boolean downloadFiles(String chainTaskId, List<String> uris) {
-        for (String uri:uris){
-            if (FileHelper.downloadFile(chainTaskId, uri).isEmpty()) {
+        for (String uri: uris){
+            String filename = !StringUtils.isEmpty(uri)?
+                    Paths.get(uri).getFileName().toString() : "";
+            if (downloadFile(chainTaskId, uri, filename).isEmpty()) {
                 return false;
             }
         }
