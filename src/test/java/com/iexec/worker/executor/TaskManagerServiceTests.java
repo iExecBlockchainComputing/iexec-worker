@@ -319,7 +319,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
@@ -335,7 +335,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn("");
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
@@ -357,7 +357,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn("");
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
@@ -379,7 +379,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn("");
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
@@ -405,7 +405,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
         when(dataService.hasExpectedSha256(datasetChecksum, PATH_TO_DOWNLOADED_FILE))
                 .thenReturn(true);
@@ -425,7 +425,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
         when(dataService.hasExpectedSha256(datasetChecksum, PATH_TO_DOWNLOADED_FILE))
                 .thenReturn(false);
@@ -451,7 +451,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
+        when(dataService.downloadFile(CHAIN_TASK_ID, taskDescription.getDatasetUri(), taskDescription.getDatasetName()))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
         when(dataService.unzipDownloadedTeeDataset(CHAIN_TASK_ID, taskDescription.getDatasetUri()))
                 .thenReturn(true);

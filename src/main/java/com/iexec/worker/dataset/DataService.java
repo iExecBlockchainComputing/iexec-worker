@@ -20,7 +20,7 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
-
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -47,23 +47,29 @@ public class DataService {
      * APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING (even when the dataset requested is 0x0).
      * In the 0x0 dataset case, we'll have an empty uri, and we'll consider the dataset as downloaded
      */
-    public String downloadFile(String chainTaskId, String uri) {
-        if (chainTaskId.isEmpty()) {
-            log.error("Failed to download, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
-                    chainTaskId, uri);
-            return "";
+    public String downloadFile(String chainTaskId, String uri, String outputFilename) {
+        if (StringUtils.isEmpty(chainTaskId) || StringUtils.isEmpty(outputFilename)) {
+            log.error("Failed to download, args shouldn't be empty " +
+                            "[chainTaskId:{}, datasetUri:{}, outputFilename:{}]",
+                    chainTaskId, uri, outputFilename);
+            return StringUtils.EMPTY;
         }
-        if (uri.isEmpty()) {
-            log.info("There's nothing to download for this task [chainTaskId:{}, uri:{}]",
-                    chainTaskId, uri);
-            return "";
+        if (StringUtils.isEmpty(uri)) {
+            log.info("There's nothing to download for this task " +
+                            "[chainTaskId:{}, datasetUri:{}, outputFilename:{}]",
+                    chainTaskId, uri, outputFilename);
+            return StringUtils.EMPTY;
         }
-        return FileHelper.downloadFile(uri, workerConfigurationService.getTaskInputDir(chainTaskId));
+        return FileHelper.downloadFile(uri,
+                workerConfigurationService.getTaskInputDir(chainTaskId),
+                outputFilename);
     }
 
     public boolean downloadFiles(String chainTaskId, List<String> uris) {
-        for (String uri:uris){
-            if (downloadFile(chainTaskId, uri).isEmpty()) {
+        for (String uri: uris){
+            String filename = !StringUtils.isEmpty(uri)?
+                    Paths.get(uri).getFileName().toString() : "";
+            if (downloadFile(chainTaskId, uri, filename).isEmpty()) {
                 return false;
             }
         }

@@ -149,21 +149,20 @@ public class TaskManagerService {
         String datasetUri = taskDescription.getDatasetUri();
         if (!datasetUri.isEmpty()) {
             String datasetLocalFilePath = dataService.downloadFile(chainTaskId,
-                    datasetUri);
-            if (datasetLocalFilePath.isEmpty()){
+                    datasetUri, taskDescription.getDatasetName());
+            if (datasetLocalFilePath.isEmpty()) {
                 return triggerPostComputeHookOnError(chainTaskId, context,
                         taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
             }
-
             String expectedSha256 = taskDescription.getDatasetChecksum();
             if (!StringUtils.hasText(expectedSha256)) {
                 log.warn("Unsecure, on-chain dataset checksum is empty, " +
                         "won't check it [chainTaskId:{}]", chainTaskId);
             } else {
                 if (!dataService.hasExpectedSha256(expectedSha256, datasetLocalFilePath)) {
-                        log.error("Dataset does not have the expected checksum [chainTaskId:{}, " +
-                                "expected:{}, actual:{}]", chainTaskId, expectedSha256,
-                                HashUtils.getFileSha256(datasetLocalFilePath));
+                    log.error("Dataset does not have the expected checksum [chainTaskId:{}, " +
+                                    "expected:{}, actual:{}]", chainTaskId, expectedSha256,
+                            HashUtils.getFileSha256(datasetLocalFilePath));
                     return triggerPostComputeHookOnError(chainTaskId, context,
                             taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_BAD_CHECKSUM);
                 }
