@@ -17,8 +17,8 @@
 package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecEnvUtils;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
@@ -89,9 +89,9 @@ public class AppComputeServiceTests {
     @Test
     public void shouldRunCompute() {
         taskDescription.setTeeTask(false);
-        String inputBind = INPUT + ":" + FileHelper.SLASH_IEXEC_IN;
+        String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
-        String iexecOutBind = IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT;
+        String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
@@ -131,9 +131,9 @@ public class AppComputeServiceTests {
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
         env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
         Collections.sort(env);
-        String inputBind = INPUT + ":" + FileHelper.SLASH_IEXEC_IN;
+        String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
-        String iexecOutBind = IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT;
+        String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         String lasNetworkName = "lasNetworkName";

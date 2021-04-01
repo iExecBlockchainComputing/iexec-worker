@@ -21,6 +21,7 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +107,20 @@ public class DockerService {
 
     /**
      * Get docker volume bind shared between the host and
+     * the container for pre-compute input.
+     * <p>
+     * Expected: taskBaseDir/pre-compute:/pre-compute
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getPreComputeInputBind(String chainTaskId) {
+        return workerConfigService.getTaskPreComputeInputDir(chainTaskId) + ":" +
+                IexecFileHelper.SLASH_PRE_COMPUTE;
+    }
+
+    /**
+     * Get docker volume bind shared between the host and
      * the container for input.
      * <p>
      * Expected: taskBaseDir/input:/iexec_in
@@ -115,7 +130,7 @@ public class DockerService {
      */
     public String getInputBind(String chainTaskId) {
         return workerConfigService.getTaskInputDir(chainTaskId) + ":" +
-                FileHelper.SLASH_IEXEC_IN;
+                IexecFileHelper.SLASH_IEXEC_IN;
     }
 
     /**
@@ -129,7 +144,7 @@ public class DockerService {
      */
     public String getIexecOutBind(String chainTaskId) {
         return workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" +
-                FileHelper.SLASH_IEXEC_OUT;
+                IexecFileHelper.SLASH_IEXEC_OUT;
     }
 
     /**

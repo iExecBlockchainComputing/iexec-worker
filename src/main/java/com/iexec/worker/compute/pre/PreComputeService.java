@@ -129,7 +129,9 @@ public class PreComputeService {
         }
         // run container
         List<String> env = sconeTeeService.getPreComputeDockerEnv(secureSessionId);
-        List<String> binds = List.of(dockerService.getInputBind(chainTaskId));
+        List<String> binds = List.of(
+                dockerService.getPreComputeInputBind(chainTaskId),
+                dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))

@@ -110,7 +110,7 @@ public class ResultService {
         String errorContent = String.format("[IEXEC] Error occurred while computing"
                 + " the task [error:%s, cause:%s]", errorStatus, errorCause);
         ComputedFile computedFile = ComputedFile.builder()
-                .deterministicOutputPath(FileHelper.SLASH_IEXEC_OUT +
+                .deterministicOutputPath(IexecFileHelper.SLASH_IEXEC_OUT +
                         File.separator + ERROR_FILENAME)
                 .build();
         String computedFileJsonAsString;
@@ -327,7 +327,7 @@ public class ResultService {
         log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
                 resultZipFilePath, beneficiarySecretFilePath);
         encryptionService.encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
-        String encryptedResultFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT + ".zip";
+        String encryptedResultFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_IEXEC_OUT + ".zip";
         if (!new File(encryptedResultFilePath).exists()) {
             log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
                     chainTaskId, encryptedResultFilePath);

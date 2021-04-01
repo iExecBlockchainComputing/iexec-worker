@@ -86,7 +86,7 @@ public class PostComputeServiceTests {
         MockitoAnnotations.openMocks(this);
         when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
-        iexecOut = output + FileHelper.SLASH_IEXEC_OUT;
+        iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
     }
 
@@ -183,7 +183,7 @@ public class PostComputeServiceTests {
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID)).thenReturn(env);
-        String iexecOutBind = iexecOut + ":" + FileHelper.SLASH_IEXEC_OUT;
+        String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
@@ -213,7 +213,7 @@ public class PostComputeServiceTests {
                         .env(env)
                         .binds(Arrays.asList(
                                 iexecOutBind,
-                                output + ":" + FileHelper.SLASH_OUTPUT))
+                                output + ":" + IexecFileHelper.SLASH_OUTPUT))
                         .isSgx(true)
                         .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)
