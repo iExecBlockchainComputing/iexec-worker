@@ -185,11 +185,13 @@ task buildImage {
 
 task pushImage(type: Exec) {
     enabled canPush
-    commandLine "sh", "-c", "docker login -u ${project.nexusUser} -p ${project.nexusPassword} nexus.iex.ec && " +
+    commandLine "sh", "-c",
+            "docker login -u $project.nexusUser -p $project.nexusPassword nexus.iex.ec && " +
             "docker push ${getDockerImageNameFull()} && " +
-            "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && "
+            "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && " +
             "docker push ${getDockerImageNameShortCommit()} && " +
             "docker logout"
+    dependsOn tasks.buildImage
 }
 
 // ##################
