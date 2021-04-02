@@ -19,11 +19,13 @@ package com.iexec.worker.utils;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Builder
 @Getter
 @Setter
+@NoArgsConstructor
 @SuppressWarnings("serial")
 public class WorkflowException extends Exception {
 

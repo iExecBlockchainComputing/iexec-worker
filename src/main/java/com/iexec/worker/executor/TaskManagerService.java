@@ -47,6 +47,7 @@ import java.util.Optional;
 import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static java.util.Objects.requireNonNull;
 
 
 @Slf4j
@@ -145,6 +146,7 @@ public class TaskManagerService {
      * or error statuses.
      */
     ReplicateActionResponse downloadData(TaskDescription taskDescription) {
+        requireNonNull(taskDescription, "task description must not be null");
         String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> errorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
