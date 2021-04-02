@@ -24,7 +24,9 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 
@@ -47,19 +49,22 @@ public class TaskNotificationService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SubscriptionService subscriptionService;
     private final ContributionService contributionService;
+    private final IexecHubService iexecHubService;
 
 
-    public TaskNotificationService(TaskManagerService taskManagerService,
-                                   CustomCoreFeignClient customCoreFeignClient,
-                                   ApplicationEventPublisher applicationEventPublisher,
-                                   SubscriptionService subscriptionService,
-                                   ContributionService contributionService
-                                   ) {
+    public TaskNotificationService(
+            TaskManagerService taskManagerService,
+            CustomCoreFeignClient customCoreFeignClient,
+            ApplicationEventPublisher applicationEventPublisher,
+            SubscriptionService subscriptionService,
+            ContributionService contributionService,
+            IexecHubService iexecHubService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
+        this.iexecHubService = iexecHubService;
     }
 
     /**
@@ -86,7 +91,12 @@ public class TaskNotificationService {
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
-
+        // TODO use taskDescription as arg for all methods
+        // and don't fetch it in each method.
+        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null) {
+            log.error("Failed to get task description [chainTaskId:{}]", chainTaskId);
+        }
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
@@ -108,7 +118,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_DOWNLOAD_DATA:
                 updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
-                actionResponse = taskManagerService.downloadData(chainTaskId);
+                actionResponse = taskManagerService.downloadData(taskDescription);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADED, actionResponse.getDetails());
                 } else {
@@ -188,7 +198,7 @@ public class TaskNotificationService {
                 break;
         }
 
-        if (nextAction != null){
+        if (nextAction != null) {
             log.debug("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
             applicationEventPublisher.publishEvent(TaskNotification.builder()
                     .chainTaskId(chainTaskId)

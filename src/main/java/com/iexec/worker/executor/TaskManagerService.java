@@ -25,7 +25,6 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.HashUtils;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -38,11 +37,11 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
+import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
-import java.util.List;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
@@ -130,52 +129,49 @@ public class TaskManagerService {
                 APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
     }
 
-    ReplicateActionResponse downloadData(String chainTaskId) {
-        Optional<ReplicateStatusCause> oErrorStatus =
+    /*
+     * Note: In order to keep a linear replicate workflow, we'll always have
+     * the steps: APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING
+     * (even when the dataset requested is 0x0).
+     * In the 0x0 dataset case, we'll have an empty uri, and we'll consider
+     * the dataset as downloaded
+     */
+
+    /**
+     * Download dataset file and input files if needed.
+     * 
+     * @param chainTaskId
+     * @return ReplicateActionResponse containing success
+     * or error statuses.
+     */
+    ReplicateActionResponse downloadData(TaskDescription taskDescription) {
+        String chainTaskId = taskDescription.getChainTaskId();
+        Optional<ReplicateStatusCause> errorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download data";
-        if (oErrorStatus.isPresent()) {
-            return getFailureResponseAndPrintError(oErrorStatus.get(),
+        if (errorStatus.isPresent()) {
+            return getFailureResponseAndPrintError(errorStatus.get(),
                     context, chainTaskId);
         }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
-                    context, chainTaskId);
-        }
-
-        String datasetUri = taskDescription.getDatasetUri();
-        if (!datasetUri.isEmpty()) {
-            String datasetLocalFilePath = dataService.downloadFile(chainTaskId,
-                    datasetUri, taskDescription.getDatasetName());
-            if (datasetLocalFilePath.isEmpty()) {
-                return triggerPostComputeHookOnError(chainTaskId, context,
-                        taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
-            }
-            String expectedSha256 = taskDescription.getDatasetChecksum();
-            if (!StringUtils.hasText(expectedSha256)) {
-                log.warn("Unsecure, on-chain dataset checksum is empty, " +
-                        "won't check it [chainTaskId:{}]", chainTaskId);
+        try {
+            // download dataset
+            String datasetUri = taskDescription.getDatasetUri();
+            if (StringUtils.isEmpty(datasetUri)) {
+                log.info("No dataset to download for this task [chainTaskId:{}]", chainTaskId);
             } else {
-                if (!dataService.hasExpectedSha256(expectedSha256, datasetLocalFilePath)) {
-                    log.error("Dataset does not have the expected checksum [chainTaskId:{}, " +
-                                    "expected:{}, actual:{}]", chainTaskId, expectedSha256,
-                            HashUtils.getFileSha256(datasetLocalFilePath));
-                    return triggerPostComputeHookOnError(chainTaskId, context,
-                            taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_BAD_CHECKSUM);
-                }
+                log.info("Downloading dataset [chainTaskId:{}, uri{}, name:{}]",
+                        chainTaskId, datasetUri, taskDescription.getDatasetName());
+                dataService.downloadDataset(taskDescription);
             }
+            // download input files
+            if (taskDescription.getInputFiles() != null) {
+                log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
+                dataService.downloadInputFiles(chainTaskId, taskDescription.getInputFiles());
+            }
+        } catch (WorkflowException e) {
+            return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
+                    DATA_DOWNLOAD_FAILED, e.getReplicateStatusCause());
         }
-
-        List<String> inputFiles = taskDescription.getInputFiles();
-        if (inputFiles != null && !dataService.downloadFiles(chainTaskId,
-                inputFiles)) {
-            return triggerPostComputeHookOnError(chainTaskId, context,
-                    taskDescription, DATA_DOWNLOAD_FAILED, INPUT_FILES_DOWNLOAD_FAILED);
-        }
-
         return ReplicateActionResponse.success();
     }
 

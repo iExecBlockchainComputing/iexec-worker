@@ -20,6 +20,7 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.precompute.PreComputeUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -116,7 +117,7 @@ public class DockerService {
      */
     public String getPreComputeInputBind(String chainTaskId) {
         return workerConfigService.getTaskPreComputeInputDir(chainTaskId) + ":" +
-                IexecFileHelper.SLASH_PRE_COMPUTE;
+                PreComputeUtils.SLASH_PRE_COMPUTE_IN;
     }
 
     /**
