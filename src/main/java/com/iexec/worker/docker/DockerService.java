@@ -20,7 +20,9 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.precompute.PreComputeUtils;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +108,20 @@ public class DockerService {
 
     /**
      * Get docker volume bind shared between the host and
+     * the container for pre-compute input.
+     * <p>
+     * Expected: taskBaseDir/pre-compute:/pre-compute
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getPreComputeInputBind(String chainTaskId) {
+        return workerConfigService.getTaskPreComputeInputDir(chainTaskId) + ":" +
+                PreComputeUtils.SLASH_PRE_COMPUTE_IN;
+    }
+
+    /**
+     * Get docker volume bind shared between the host and
      * the container for input.
      * <p>
      * Expected: taskBaseDir/input:/iexec_in
@@ -115,7 +131,7 @@ public class DockerService {
      */
     public String getInputBind(String chainTaskId) {
         return workerConfigService.getTaskInputDir(chainTaskId) + ":" +
-                FileHelper.SLASH_IEXEC_IN;
+                IexecFileHelper.SLASH_IEXEC_IN;
     }
 
     /**
@@ -129,7 +145,7 @@ public class DockerService {
      */
     public String getIexecOutBind(String chainTaskId) {
         return workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" +
-                FileHelper.SLASH_IEXEC_OUT;
+                IexecFileHelper.SLASH_IEXEC_OUT;
     }
 
     /**
@@ -169,9 +185,11 @@ public class DockerService {
     }
 
     private String getComputeDeveloperLogs(String chainTaskId, String stdout, String stderr) {
-        String iexecInTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskInputDir(chainTaskId)));
+        File iexecIn = new File(workerConfigService.getTaskInputDir(chainTaskId));
+        String iexecInTree = iexecIn.exists() ? FileHelper.printDirectoryTree(iexecIn) : "";
         iexecInTree = iexecInTree.replace("├── input/", "├── iexec_in/"); // confusing for developers if not replaced
-        String iexecOutTree = FileHelper.printDirectoryTree(new File(workerConfigService.getTaskIexecOutDir(chainTaskId)));
+        File iexecOut = new File(workerConfigService.getTaskIexecOutDir(chainTaskId));
+        String iexecOutTree = iexecOut.exists() ? FileHelper.printDirectoryTree(iexecOut) : "";
         return LoggingUtils.prettifyDeveloperLogs(iexecInTree, iexecOutTree, stdout, stderr);
     }
 

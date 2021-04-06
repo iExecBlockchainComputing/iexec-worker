@@ -16,7 +16,8 @@
 
 package com.iexec.worker.config;
 
-import com.iexec.common.utils.FileHelper;
+import com.iexec.common.precompute.PreComputeUtils;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -76,6 +77,18 @@ public class WorkerConfigurationService {
     }
 
     /**
+     * Get path to pre-compute input folder on the host side.
+     * <p>
+     * Expected: workerBaseDir/chainTaskId/pre-compute
+     * 
+     * @param chainTaskId
+     * @return
+     */
+    public String getTaskPreComputeInputDir(String chainTaskId) {
+        return getTaskBaseDir(chainTaskId) + PreComputeUtils.SLASH_PRE_COMPUTE_IN;
+    }
+
+    /**
      * Get path to input folder on the host side.
      * <p>
      * Expected: workerBaseDir/chainTaskId/input
@@ -84,7 +97,7 @@ public class WorkerConfigurationService {
      * @return
      */
     public String getTaskInputDir(String chainTaskId) {
-        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_INPUT;
+        return getTaskBaseDir(chainTaskId) + IexecFileHelper.SLASH_INPUT;
     }
 
     /**
@@ -96,7 +109,7 @@ public class WorkerConfigurationService {
      * @return
      */
     public String getTaskOutputDir(String chainTaskId) {
-        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_OUTPUT;
+        return getTaskBaseDir(chainTaskId) + IexecFileHelper.SLASH_OUTPUT;
     }
 
     /**
@@ -108,7 +121,7 @@ public class WorkerConfigurationService {
      * @return
      */
     public String getTaskIexecOutDir(String chainTaskId) {
-        return getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT;
+        return getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_IEXEC_OUT;
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {

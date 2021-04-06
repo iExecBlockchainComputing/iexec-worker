@@ -16,19 +16,24 @@
 
 package com.iexec.worker.dataset;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.utils.WorkflowException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.when;
 
 public class DataServiceTest {
@@ -37,52 +42,126 @@ public class DataServiceTest {
     public static final String URI =
             "https://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/iExec-RLC-RLC-icon.png";
     public static final String FILENAME = "icon.png";
+    public static final String CHECKSUM =
+            "0x240987ee1480e8e0b1b26fa806810fea04021191a8e6d8ab6325c15fa61fa9b6";
+
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
     @InjectMocks
     private DataService dataService;
+
     @Mock
     private WorkerConfigurationService workerConfigurationService;
-    private String tmp;
+
+    private String preComputeIn;
+    private String iexecIn;
+
+    private TaskDescription taskDescription = TaskDescription.builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .datasetUri(URI)
+            .datasetName(FILENAME)
+            .datasetChecksum(CHECKSUM)
+            .isTeeTask(false)
+            .build();
 
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        tmp = temporaryFolder.newFolder().getAbsolutePath();
+        preComputeIn = temporaryFolder.newFolder().getAbsolutePath();
+        iexecIn = temporaryFolder.newFolder().getAbsolutePath();
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
-                .thenReturn(tmp);
+                .thenReturn(iexecIn);
+        when(workerConfigurationService.getTaskPreComputeInputDir(CHAIN_TASK_ID))
+                .thenReturn(preComputeIn);
     }
 
     @Test
-    public void shouldDownloadFile() {
-        Assertions.assertEquals(tmp + "/" + FILENAME,
-                dataService.downloadFile(CHAIN_TASK_ID, URI, FILENAME));
+    public void shouldDownloadStandardTaskDataset() throws Exception {
+        String filepath = dataService.downloadDataset(taskDescription);
+        assertThat(filepath).isEqualTo(iexecIn + "/" + FILENAME);
     }
 
     @Test
-    public void shouldNotDownloadFileSinceEmptyChainTaskId() {
-        Assertions.assertTrue(dataService.downloadFile("",
-                URI,
-                FILENAME).isEmpty());
+    public void shouldDownloadTeeTaskDataset() throws Exception {
+        taskDescription.setTeeTask(true);
+        String filepath = dataService.downloadDataset(taskDescription);
+        assertThat(filepath).isEqualTo(preComputeIn + "/" + FILENAME);
+    }
+
+
+    @Test
+    public void shouldNotDownloadDatasetSinceEmptyChainTaskId() throws Exception {
+        taskDescription.setChainTaskId("");
+        WorkflowException e = assertThrows(
+                WorkflowException.class,
+                () -> dataService.downloadDataset(taskDescription));
+        assertThat(e.getReplicateStatusCause())
+                .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
 
     @Test
-    public void shouldNotDownloadFileSinceEmptyUri() {
-        Assertions.assertTrue(dataService.downloadFile(CHAIN_TASK_ID,
-                "",
-                FILENAME).isEmpty());
+    public void shouldNotDownloadDatasetSinceEmptyUri() throws Exception {
+        taskDescription.setDatasetUri("");
+        WorkflowException e = assertThrows(
+                WorkflowException.class,
+                () -> dataService.downloadDataset(taskDescription));
+        assertThat(e.getReplicateStatusCause())
+                .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
 
     @Test
-    public void shouldNotDownloadFileSinceEmptyFilename() {
-        Assertions.assertTrue(dataService.downloadFile(CHAIN_TASK_ID,
-                URI,
-                "").isEmpty());
+    public void shouldNotDownloadDatasetSinceEmptyFilename() throws Exception {
+        taskDescription.setDatasetName("");
+        WorkflowException e = assertThrows(
+                WorkflowException.class,
+                () -> dataService.downloadDataset(taskDescription));
+        assertThat(e.getReplicateStatusCause())
+                .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
 
     @Test
-    public void shouldNotDownloadFilesSinceNoUri() {
-        Assertions.assertFalse(dataService.downloadFiles(CHAIN_TASK_ID,
-                Collections.singletonList("")));
+    public void shouldNotDownloadDatasetSinceEmptyParentDirectory() throws Exception {
+        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
+        WorkflowException e = assertThrows(
+                WorkflowException.class,
+                () -> dataService.downloadDataset(taskDescription));
+        assertThat(e.getReplicateStatusCause())
+                .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
+    }
+
+    @Test
+    public void shouldNotDownloadDatasetSinceBadChecksum() throws Exception {
+        taskDescription.setDatasetChecksum("badChecksum");
+        WorkflowException e = assertThrows(
+                WorkflowException.class,
+                () -> dataService.downloadDataset(taskDescription));
+        assertThat(e.getReplicateStatusCause())
+                .isEqualTo(ReplicateStatusCause.DATASET_FILE_BAD_CHECKSUM);
+    }
+
+    @Test
+    public void shouldDownloadDatasetSinceEmptyOnchainChecksum() throws Exception {
+        taskDescription.setDatasetChecksum("");
+        assertThat(dataService.downloadDataset(taskDescription))
+                .isEqualTo(iexecIn + "/" + FILENAME);
+    }
+
+    @Test
+    public void shouldDownloadInputFiles() throws Exception {
+        List<String> uris = List.of(URI);
+        dataService.downloadInputFiles(CHAIN_TASK_ID, uris);
+        File inputFile = new File(iexecIn, "iExec-RLC-RLC-icon.png");
+        assertThat(inputFile).exists();
+    }
+
+    @Test
+    public void shouldNotDownloadInputFilesSinceNoUriList() throws Exception {
+        WorkflowException e = assertThrows(
+                WorkflowException.class,
+                () -> dataService.downloadInputFiles(CHAIN_TASK_ID, null));
+        assertThat(e.getReplicateStatusCause())
+                .isEqualTo(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+
     }
 }

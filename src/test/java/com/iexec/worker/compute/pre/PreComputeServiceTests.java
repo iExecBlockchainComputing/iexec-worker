@@ -125,7 +125,10 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
                 .thenReturn(List.of("env"));
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("/path:/iexec_in");
+        String preComputeBind = "/path:/pre-compute";
+        String iexecInBind = "/path:/iexec_in";
+        when(dockerService.getPreComputeInputBind(chainTaskId)).thenReturn(preComputeBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
         String network = "network";
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
@@ -141,6 +144,8 @@ public class PreComputeServiceTests {
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(preComputeImageUri);
         Assertions.assertThat(capturedRequest.isSgx()).isTrue();
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(preComputeBind);
+        Assertions.assertThat(capturedRequest.getBinds().get(1)).isEqualTo(iexecInBind);
     }
 
     @Test
@@ -196,7 +201,8 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
                 .thenReturn(List.of("env"));
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind1");
+        when(dockerService.getPreComputeInputBind(chainTaskId)).thenReturn("bind1");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind2");
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(70)
