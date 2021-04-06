@@ -385,8 +385,6 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(dataService.downloadDataset(taskDescription))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
-        when(dataService.hasExpectedSha256(datasetChecksum, PATH_TO_DOWNLOADED_FILE))
-                .thenReturn(true);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);

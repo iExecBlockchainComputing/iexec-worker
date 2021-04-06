@@ -153,16 +153,6 @@ public class DataService {
     }
 
     /**
-     * Compute sha256 of a file and check if it matches the expected value
-     * @param expectedSha256 expected sha256 value
-     * @param filePathToCheck file path to check
-     * @return true if sha256 values are the same
-     */
-    public boolean hasExpectedSha256(String expectedSha256, String filePathToCheck) {
-        return HashUtils.getFileSha256(filePathToCheck).equals(expectedSha256);
-    }
-
-    /**
      * Download a file from a URI in the provided parent
      * directory and save it with the provided filename.
      * 
