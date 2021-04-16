@@ -85,7 +85,7 @@ public class PostComputeService {
         List<String> env = sconeTeeService.getPostComputeDockerEnv(secureSessionId);
         List<String> binds = Arrays.asList(
                 dockerService.getIexecOutBind(chainTaskId),
-                workerConfigService.getTaskOutputDir(chainTaskId) + ":" + IexecFileHelper.SLASH_OUTPUT);
+                workerConfigService.getTaskOutputDir(chainTaskId) + ":" + IexecFileHelper.SLASH_OUTPUT);//TODO remove this now-useless binding
 
         DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
