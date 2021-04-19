@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -83,9 +84,8 @@ public class PostComputeService {
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = sconeTeeService.getPostComputeDockerEnv(secureSessionId);
-        List<String> binds = Arrays.asList(
-                dockerService.getIexecOutBind(chainTaskId),
-                workerConfigService.getTaskOutputDir(chainTaskId) + ":" + IexecFileHelper.SLASH_OUTPUT);//TODO remove this now-useless binding
+        List<String> binds =
+                Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
 
         DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()

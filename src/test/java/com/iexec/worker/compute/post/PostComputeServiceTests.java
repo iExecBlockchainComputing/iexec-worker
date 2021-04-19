@@ -40,6 +40,7 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -211,9 +212,7 @@ public class PostComputeServiceTests {
                         .imageUri(TEE_POST_COMPUTE_IMAGE)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(Arrays.asList(
-                                iexecOutBind,
-                                output + ":" + IexecFileHelper.SLASH_OUTPUT))
+                        .binds(Collections.singletonList(iexecOutBind))
                         .isSgx(true)
                         .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)

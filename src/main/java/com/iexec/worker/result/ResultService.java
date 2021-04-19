@@ -27,6 +27,7 @@ import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
@@ -49,6 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
+import static com.iexec.common.utils.BytesUtils.stringToBytes;
 
 @Slf4j
 @Service
@@ -387,23 +389,25 @@ public class ResultService {
                     chainTaskId, computedFile, chainTaskStatus);
             return false;
         }
-        if (IexecFileHelper.readComputedFile(chainTaskId,
-                workerConfigService.getTaskOutputDir(chainTaskId)) != null) {
+        if (new File(workerConfigService.getTaskOutputDir(chainTaskId)
+                + IexecFileHelper.SLASH_COMPUTED_JSON).exists()) {
             log.error("Cannot write computed file if already written " +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
-        if (StringUtils.isEmpty(computedFile.getResultDigest())) {
+        if (StringUtils.isEmpty(computedFile.getResultDigest())
+                || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
             log.error("Cannot write computed file if result digest is missing " +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
         boolean isSignatureRequired = iexecHubService.isTeeTask(chainTaskId);
-        if (isSignatureRequired
-                && StringUtils.isEmpty(computedFile.getEnclaveSignature())) {
-            log.error("Cannot write computed file if TEE signature is missing " +
+        if (isSignatureRequired &&
+                (StringUtils.isEmpty(computedFile.getEnclaveSignature())
+                        || !BytesUtils.isBytes32(stringToBytes(computedFile.getEnclaveSignature())))) {
+            log.error("Cannot write computed file if TEE signature is invalid " +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
