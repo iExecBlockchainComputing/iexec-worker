@@ -91,7 +91,7 @@ public class PreComputeService {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId);
             return "";
         }
-        // run pre-compute container if needed tp download and decrypt dataset
+        // run pre-compute container if needed to download and decrypt dataset
         if (isDatasetRequested(taskDescription) &&
                 !downloadAndDecryptTeeDataset(taskDescription, secureSessionId)) {
             log.error("Failed to download and decrypt TEE dataset [chainTaskId:{}]", chainTaskId);
