@@ -399,7 +399,7 @@ public class ResultService {
         }
         if (StringUtils.isEmpty(computedFile.getResultDigest())
                 || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
-            log.error("Cannot write computed file if result digest is missing" +
+            log.error("Cannot write computed file if result digest is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
@@ -407,7 +407,7 @@ public class ResultService {
         boolean isSignatureRequired = iexecHubService.isTeeTask(chainTaskId);
         if (isSignatureRequired &&
                 (StringUtils.isEmpty(computedFile.getEnclaveSignature())
-                        || !BytesUtils.isBytes32(stringToBytes(computedFile.getEnclaveSignature())))) {
+                        || stringToBytes(computedFile.getEnclaveSignature()).length != 65)) {
             log.error("Cannot write computed file if TEE signature is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
