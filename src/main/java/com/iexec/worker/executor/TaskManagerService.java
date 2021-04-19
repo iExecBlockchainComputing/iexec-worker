@@ -136,6 +136,11 @@ public class TaskManagerService {
      * (even when the dataset requested is 0x0).
      * In the 0x0 dataset case, we'll have an empty uri, and we'll consider
      * the dataset as downloaded
+     * 
+     * Note2: TEE datasets are not downloaded by the worker. Due to some technical
+     * limitations with SCONE technology (production enclaves not being able to
+     * read non trusted regions of the file system), the file will be directly
+     * fetched inside the pre-compute enclave.
      */
 
     /**
@@ -160,10 +165,13 @@ public class TaskManagerService {
             String datasetUri = taskDescription.getDatasetUri();
             if (StringUtils.isEmpty(datasetUri)) {
                 log.info("No dataset to download for this task [chainTaskId:{}]", chainTaskId);
+            } else if (taskDescription.isTeeTask()) {
+                log.info("TEE dataset will be downloaded by the pre-compute enclave " +
+                        "[chainTaskId:{}", chainTaskId);
             } else {
                 log.info("Downloading dataset [chainTaskId:{}, uri{}, name:{}]",
                         chainTaskId, datasetUri, taskDescription.getDatasetName());
-                dataService.downloadDataset(taskDescription);
+                dataService.downloadStandardDataset(taskDescription);
             }
             // download input files
             if (taskDescription.getInputFiles() != null) {

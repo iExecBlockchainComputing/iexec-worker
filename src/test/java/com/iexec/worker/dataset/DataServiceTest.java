@@ -54,7 +54,6 @@ public class DataServiceTest {
     @Mock
     private WorkerConfigurationService workerConfigurationService;
 
-    private String preComputeIn;
     private String iexecIn;
 
     private TaskDescription taskDescription = TaskDescription.builder()
@@ -68,25 +67,15 @@ public class DataServiceTest {
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        preComputeIn = temporaryFolder.newFolder().getAbsolutePath();
         iexecIn = temporaryFolder.newFolder().getAbsolutePath();
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
                 .thenReturn(iexecIn);
-        when(workerConfigurationService.getTaskPreComputeInputDir(CHAIN_TASK_ID))
-                .thenReturn(preComputeIn);
     }
 
     @Test
     public void shouldDownloadStandardTaskDataset() throws Exception {
-        String filepath = dataService.downloadDataset(taskDescription);
+        String filepath = dataService.downloadStandardDataset(taskDescription);
         assertThat(filepath).isEqualTo(iexecIn + "/" + FILENAME);
-    }
-
-    @Test
-    public void shouldDownloadTeeTaskDataset() throws Exception {
-        taskDescription.setTeeTask(true);
-        String filepath = dataService.downloadDataset(taskDescription);
-        assertThat(filepath).isEqualTo(preComputeIn + "/" + FILENAME);
     }
 
 
@@ -95,7 +84,7 @@ public class DataServiceTest {
         taskDescription.setChainTaskId("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadDataset(taskDescription));
+                () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
@@ -105,7 +94,7 @@ public class DataServiceTest {
         taskDescription.setDatasetUri("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadDataset(taskDescription));
+                () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
@@ -115,7 +104,7 @@ public class DataServiceTest {
         taskDescription.setDatasetName("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadDataset(taskDescription));
+                () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
@@ -125,7 +114,7 @@ public class DataServiceTest {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadDataset(taskDescription));
+                () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
@@ -135,7 +124,7 @@ public class DataServiceTest {
         taskDescription.setDatasetChecksum("badChecksum");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadDataset(taskDescription));
+                () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.DATASET_FILE_BAD_CHECKSUM);
     }
@@ -143,7 +132,7 @@ public class DataServiceTest {
     @Test
     public void shouldDownloadDatasetSinceEmptyOnchainChecksum() throws Exception {
         taskDescription.setDatasetChecksum("");
-        assertThat(dataService.downloadDataset(taskDescription))
+        assertThat(dataService.downloadStandardDataset(taskDescription))
                 .isEqualTo(iexecIn + "/" + FILENAME);
     }
 
