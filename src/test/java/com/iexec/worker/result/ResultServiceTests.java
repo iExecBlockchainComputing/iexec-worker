@@ -51,11 +51,11 @@ import static org.mockito.Mockito.when;
 
 public class ResultServiceTests {
 
+    public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
+    public static final String ENCLAVE_SIGNATURE = "0x0000000000000000000000000000000000000000000000000000000000000002";
     private static final String CHAIN_TASK_ID = "taskId";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test" +
             "/resources/tmp/test-worker";
-    public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
-    public static final String ENCLAVE_SIGNATURE = "0x0000000000000000000000000000000000000000000000000000000000000002";
     @Rule
     public TemporaryFolder folderRule = new TemporaryFolder();
     @Mock
@@ -436,6 +436,24 @@ public class ResultServiceTests {
         Assertions.assertThat(writtenComputeFileAsString).isEmpty();
     }
 
+    @Test
+    public void shouldNotWriteComputedFileSinceWriteFailed() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .taskId(CHAIN_TASK_ID)
+                .resultDigest(RESULT_DIGEST)
+                .enclaveSignature(ENCLAVE_SIGNATURE)
+                .build();
 
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(ChainTask.builder()
+                        .status(ChainTaskStatus.ACTIVE).build()));
+        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID))
+                .thenReturn(":somewhere");
+        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
+
+        boolean isWritten = resultService.writeComputedFile(computedFile);
+
+        Assertions.assertThat(isWritten).isFalse();
+    }
 
 }
