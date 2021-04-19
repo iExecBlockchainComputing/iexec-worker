@@ -250,6 +250,46 @@ public class ResultServiceTests {
     }
 
     @Test
+    public void shouldNotWriteComputedFileSinceNothingToWrite() {
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(ChainTask.builder()
+                        .status(ChainTaskStatus.ACTIVE).build()));
+        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
+
+        boolean isWritten = resultService.writeComputedFile(null);
+
+        Assertions.assertThat(isWritten).isFalse();
+        String writtenComputeFileAsString = FileHelper.readFile(tmp +
+                IexecFileHelper.SLASH_COMPUTED_JSON);
+        Assertions.assertThat(writtenComputeFileAsString).isEmpty();
+    }
+
+    @Test
+    public void shouldNotWriteComputedFileSinceNoChainTaskId() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .taskId("")
+                .resultDigest(RESULT_DIGEST)
+                .enclaveSignature(ENCLAVE_SIGNATURE)
+                .build();
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(ChainTask.builder()
+                        .status(ChainTaskStatus.ACTIVE).build()));
+        when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+        when(iexecHubService.isTeeTask(CHAIN_TASK_ID)).thenReturn(true);
+
+        boolean isWritten = resultService.writeComputedFile(computedFile);
+
+        Assertions.assertThat(isWritten).isFalse();
+        String writtenComputeFileAsString = FileHelper.readFile(tmp +
+                IexecFileHelper.SLASH_COMPUTED_JSON);
+        Assertions.assertThat(writtenComputeFileAsString).isEmpty();
+    }
+
+    @Test
     public void shouldNotWriteComputedFileSinceNotActive() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)

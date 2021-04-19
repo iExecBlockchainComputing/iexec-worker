@@ -56,6 +56,7 @@ import static com.iexec.common.utils.BytesUtils.stringToBytes;
 @Service
 public class ResultService {
     public static final String ERROR_FILENAME = "error.txt";
+    public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
     private final PublicConfigurationService publicConfigService;
@@ -391,14 +392,14 @@ public class ResultService {
         }
         if (new File(workerConfigService.getTaskOutputDir(chainTaskId)
                 + IexecFileHelper.SLASH_COMPUTED_JSON).exists()) {
-            log.error("Cannot write computed file if already written " +
-                            "[chainTaskId:{}, computedFile:{}]",
+            log.error("Cannot write computed file if already written" +
+                            WRITE_COMPUTED_FILE_LOG_ARGS,
                     chainTaskId, computedFile);
             return false;
         }
         if (StringUtils.isEmpty(computedFile.getResultDigest())
                 || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
-            log.error("Cannot write computed file if result digest is missing " +
+            log.error("Cannot write computed file if result digest is missing" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
@@ -407,7 +408,7 @@ public class ResultService {
         if (isSignatureRequired &&
                 (StringUtils.isEmpty(computedFile.getEnclaveSignature())
                         || !BytesUtils.isBytes32(stringToBytes(computedFile.getEnclaveSignature())))) {
-            log.error("Cannot write computed file if TEE signature is invalid " +
+            log.error("Cannot write computed file if TEE signature is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
@@ -419,7 +420,7 @@ public class ResultService {
             String json = mapper.writeValueAsString(computedFile);
             Files.write(Paths.get(outputFilePath), json.getBytes());
         } catch (IOException e) {
-            log.error("Cannot write computed file if write failed " +
+            log.error("Cannot write computed file if write failed" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile, e);
             return false;
