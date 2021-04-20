@@ -16,13 +16,13 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
@@ -30,7 +30,7 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -83,9 +83,8 @@ public class PostComputeService {
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = sconeTeeService.getPostComputeDockerEnv(secureSessionId);
-        List<String> binds = Arrays.asList(
-                dockerService.getIexecOutBind(chainTaskId),
-                workerConfigService.getTaskOutputDir(chainTaskId) + ":" + IexecFileHelper.SLASH_OUTPUT);
+        List<String> binds =
+                Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
 
         DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()
