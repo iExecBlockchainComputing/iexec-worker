@@ -18,6 +18,8 @@ package com.iexec.worker.result;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iexec.common.chain.ChainTask;
+import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
@@ -25,6 +27,7 @@ import com.iexec.common.result.ResultModel;
 import com.iexec.common.result.eip712.Eip712Challenge;
 import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
@@ -34,6 +37,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
@@ -46,11 +50,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
+import static com.iexec.common.utils.BytesUtils.stringToBytes;
 
 @Slf4j
 @Service
 public class ResultService {
     public static final String ERROR_FILENAME = "error.txt";
+    public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
     private final PublicConfigurationService publicConfigService;
@@ -359,6 +365,67 @@ public class ResultService {
             computedFile.setResultDigest(resultDigest);
         }
         return computedFile;
+    }
+
+    /**
+     * Write computed file. Most likely used by tee-post-compute.
+     * TODO: check compute stage is successful
+     *
+     * @param computedFile computed file to be written
+     * @return true is computed file is successfully written to disk
+     */
+    public boolean writeComputedFile(ComputedFile computedFile) {
+        if (computedFile == null || StringUtils.isEmpty(computedFile.getTaskId())) {
+            log.error("Cannot write computed file [computedFile:{}]", computedFile);
+            return false;
+        }
+        String chainTaskId = computedFile.getTaskId();
+        ChainTaskStatus chainTaskStatus =
+                iexecHubService.getChainTask(chainTaskId)
+                        .map(ChainTask::getStatus)
+                        .orElse(null);
+        if (chainTaskStatus != ChainTaskStatus.ACTIVE) {
+            log.error("Cannot write computed file if task is not active " +
+                            "[chainTaskId:{}, computedFile:{}, chainTaskStatus:{}]",
+                    chainTaskId, computedFile, chainTaskStatus);
+            return false;
+        }
+        String computedFilePath =
+                workerConfigService.getTaskOutputDir(chainTaskId)
+                        + IexecFileHelper.SLASH_COMPUTED_JSON;
+        if (new File(computedFilePath).exists()) {
+            log.error("Cannot write computed file if already written" +
+                            WRITE_COMPUTED_FILE_LOG_ARGS,
+                    chainTaskId, computedFile);
+            return false;
+        }
+        if (StringUtils.isEmpty(computedFile.getResultDigest())
+                || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
+            log.error("Cannot write computed file if result digest is invalid" +
+                            "[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
+            return false;
+        }
+        boolean isSignatureRequired = iexecHubService.isTeeTask(chainTaskId);
+        if (isSignatureRequired &&
+                (StringUtils.isEmpty(computedFile.getEnclaveSignature())
+                        || stringToBytes(computedFile.getEnclaveSignature()).length != 65)) {
+            log.error("Cannot write computed file if TEE signature is invalid" +
+                            "[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
+            return false;
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            String json = mapper.writeValueAsString(computedFile);
+            Files.write(Paths.get(computedFilePath), json.getBytes());
+        } catch (IOException e) {
+            log.error("Cannot write computed file if write failed" +
+                            "[chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile, e);
+            return false;
+        }
+        return true;
     }
 
     private String computeResultDigest(ComputedFile computedFile) {
