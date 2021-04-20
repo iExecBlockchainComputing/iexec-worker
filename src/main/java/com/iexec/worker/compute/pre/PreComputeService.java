@@ -81,11 +81,14 @@ public class PreComputeService {
     public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         // download post-compute image
+        /*
         if (!dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())) {
             log.error("Cannot pull TEE post-compute image [chainTaskId:{}, imageUri:{}]",
                     chainTaskId, taskDescription.getTeePostComputeImage());
             return "";
         }
+
+         */
         // create secure session
         String secureSessionId = smsService.createTeeSession(workerpoolAuth);
         if (secureSessionId.isEmpty()) {

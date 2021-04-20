@@ -42,7 +42,7 @@ public class PostComputeController {
     @PostMapping(path = "/iexec_out/{chainTaskId}/computed")
     public ResponseEntity<String> sendComputedFileForTee(@PathVariable String chainTaskId,
                                                          @RequestBody ComputedFile computedFile) {
-        if (!computedFile.getTaskId().equals(chainTaskId)) {
+        if (!chainTaskId.equals(computedFile.getTaskId())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST.value()).build();
         }
         if (!resultService.writeComputedFile(computedFile)) {

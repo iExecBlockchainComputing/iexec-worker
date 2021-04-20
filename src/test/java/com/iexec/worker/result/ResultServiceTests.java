@@ -52,7 +52,8 @@ import static org.mockito.Mockito.when;
 public class ResultServiceTests {
 
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
-    public static final String ENCLAVE_SIGNATURE = "0x0000000000000000000000000000000000000000000000000000000000000002";
+    // 32 + 32 + 1 = 65 bytes
+    public static final String ENCLAVE_SIGNATURE = "0x000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0c";
     private static final String CHAIN_TASK_ID = "taskId";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test" +
             "/resources/tmp/test-worker";
@@ -331,7 +332,7 @@ public class ResultServiceTests {
         resultService.writeComputedFile(ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(ENCLAVE_SIGNATURE)
                 .build());
         //write new file
         boolean isWritten = resultService.writeComputedFile(newComputedFile);

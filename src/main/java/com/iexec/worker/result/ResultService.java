@@ -390,8 +390,10 @@ public class ResultService {
                     chainTaskId, computedFile, chainTaskStatus);
             return false;
         }
-        if (new File(workerConfigService.getTaskOutputDir(chainTaskId)
-                + IexecFileHelper.SLASH_COMPUTED_JSON).exists()) {
+        String computedFilePath =
+                workerConfigService.getTaskOutputDir(chainTaskId)
+                        + IexecFileHelper.SLASH_COMPUTED_JSON;
+        if (new File(computedFilePath).exists()) {
             log.error("Cannot write computed file if already written" +
                             WRITE_COMPUTED_FILE_LOG_ARGS,
                     chainTaskId, computedFile);
@@ -413,12 +415,10 @@ public class ResultService {
                     chainTaskId, computedFile);
             return false;
         }
-        String outputFilePath = workerConfigService.getTaskOutputDir(chainTaskId)
-                + File.separator + IexecFileHelper.COMPUTED_JSON;
         ObjectMapper mapper = new ObjectMapper();
         try {
             String json = mapper.writeValueAsString(computedFile);
-            Files.write(Paths.get(outputFilePath), json.getBytes());
+            Files.write(Paths.get(computedFilePath), json.getBytes());
         } catch (IOException e) {
             log.error("Cannot write computed file if write failed" +
                             "[chainTaskId:{}, computedFile:{}]",
