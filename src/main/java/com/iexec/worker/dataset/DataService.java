@@ -50,25 +50,19 @@ public class DataService {
     }
 
     /**
-     * Download dataset file for a given task. For standard
-     * tasks the file will be saved in
-     * {@link IexecFileHelper#SLASH_IEXEC_IN}. If the task 
-     * is of type TEE, the encrypted dataset file is saved in 
-     * {@link PreComputeUtils#SLASH_PRE_COMPUTE_IN} in order
-     * to be decrypted by the pre-compute enclave.
+     * Download dataset file for a given standard task and save
+     * it in {@link IexecFileHelper#SLASH_IEXEC_IN}.
      * 
      * @param taskDescription
      * @return downloaded dataset file path
      * @throws WorkflowException if download fails or bad checksum.
      */
-    public String downloadDataset(@Nonnull TaskDescription taskDescription)
+    public String downloadStandardDataset(@Nonnull TaskDescription taskDescription)
             throws WorkflowException {
         String chainTaskId = taskDescription.getChainTaskId();
         String uri = taskDescription.getDatasetUri();
         String filename = taskDescription.getDatasetName();
-        String parentDirectoryPath = taskDescription.isTeeTask()
-                ? workerConfigurationService.getTaskPreComputeInputDir(chainTaskId)
-                : workerConfigurationService.getTaskInputDir(chainTaskId);
+        String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
         String datasetLocalFilePath =
                 downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
         if (datasetLocalFilePath.isEmpty()) {
@@ -80,7 +74,7 @@ public class DataService {
                     "[chainTaskId:{}]", chainTaskId);
             return datasetLocalFilePath;
         }
-        String actualSha256 = HashUtils.getFileSha256(datasetLocalFilePath);
+        String actualSha256 = HashUtils.sha256(new File(datasetLocalFilePath));
         if (!expectedSha256.equals(actualSha256)) {
             log.error("Dataset checksum mismatch [chainTaskId:{}, " +
                     "expected:{}, actual:{}]", chainTaskId, expectedSha256,

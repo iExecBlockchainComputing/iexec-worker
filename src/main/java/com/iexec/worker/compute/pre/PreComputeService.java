@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 
@@ -77,7 +78,6 @@ public class PreComputeService {
         return true;
     }
 
-
     public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         // download post-compute image
@@ -92,10 +92,10 @@ public class PreComputeService {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId);
             return "";
         }
-        // run pre-compute container if needed
+        // run pre-compute container if needed to download and decrypt dataset
         if (isDatasetRequested(taskDescription) &&
-                !decryptTeeDataset(taskDescription, secureSessionId)) {
-            log.error("Failed to decrypt TEE dataset [chainTaskId:{}]", chainTaskId);
+                !downloadAndDecryptTeeDataset(taskDescription, secureSessionId)) {
+            log.error("Failed to download and decrypt TEE dataset [chainTaskId:{}]", chainTaskId);
             return "";
         }
         return secureSessionId;
@@ -112,13 +112,13 @@ public class PreComputeService {
      * @param secureSessionId
      * @return
      */
-    private boolean decryptTeeDataset(TaskDescription taskDescription, String secureSessionId) {
+    private boolean downloadAndDecryptTeeDataset(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Decrypting TEE dataset [chainTaskId:{}]", chainTaskId);
+        log.info("Preparing TEE dataset [chainTaskId:{}]", chainTaskId);
         // get image URI
         String preComputeImageUri = smsService.getPreComputeImageUri();
         if (preComputeImageUri.isEmpty()) {
-            log.error("Failed to get TEE pre-compute image URI [chainTaskId:{}]", chainTaskId);
+            log.error("Failed to get TEE pre-compute image URI from SMS [chainTaskId:{}]", chainTaskId);
             return false;
         }
         // pull image
@@ -129,9 +129,7 @@ public class PreComputeService {
         }
         // run container
         List<String> env = sconeTeeService.getPreComputeDockerEnv(secureSessionId);
-        List<String> binds = List.of(
-                dockerService.getPreComputeInputBind(chainTaskId),
-                dockerService.getInputBind(chainTaskId));
+        List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))

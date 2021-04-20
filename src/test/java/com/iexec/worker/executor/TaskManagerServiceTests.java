@@ -269,7 +269,7 @@ public class TaskManagerServiceTests {
      * Note : Remember dataset URI is optional
      */
     @Test
-    public void shouldDownloadData() {
+    public void shouldReturnSuccessAndNotDownloadDataSinceEmptyUrl() {
         TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetUri("");
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
@@ -302,7 +302,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
@@ -317,7 +317,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
@@ -338,7 +338,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
@@ -359,7 +359,7 @@ public class TaskManagerServiceTests {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
@@ -383,7 +383,7 @@ public class TaskManagerServiceTests {
         taskDescription.setDatasetChecksum(datasetChecksum);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
@@ -400,7 +400,7 @@ public class TaskManagerServiceTests {
         taskDescription.setDatasetChecksum(datasetChecksum);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenThrow(new WorkflowException(DATASET_FILE_BAD_CHECKSUM));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
@@ -418,19 +418,21 @@ public class TaskManagerServiceTests {
     // with dataset + TEE
 
     @Test
-    public void shouldDownloadDataWithDatasetUriAndTee() throws Exception {
+    public void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess()
+            throws Exception {
         TaskDescription taskDescription = getStubTaskDescription(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(taskDescription);
-        when(dataService.downloadDataset(taskDescription))
+        when(dataService.downloadStandardDataset(taskDescription))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isTrue();
+        verify(dataService, never()).downloadStandardDataset(taskDescription);
     }
 
     // with input files

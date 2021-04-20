@@ -20,7 +20,6 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.common.precompute.PreComputeUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -104,20 +103,6 @@ public class DockerService {
             return false;
         }
         return runningContainersRecord.add(containerName);
-    }
-
-    /**
-     * Get docker volume bind shared between the host and
-     * the container for pre-compute input.
-     * <p>
-     * Expected: taskBaseDir/pre-compute:/pre-compute
-     * 
-     * @param chainTaskId
-     * @return
-     */
-    public String getPreComputeInputBind(String chainTaskId) {
-        return workerConfigService.getTaskPreComputeInputDir(chainTaskId) + ":" +
-                PreComputeUtils.SLASH_PRE_COMPUTE_IN;
     }
 
     /**

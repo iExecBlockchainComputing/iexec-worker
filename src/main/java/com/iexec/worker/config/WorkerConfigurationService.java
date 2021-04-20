@@ -16,7 +16,6 @@
 
 package com.iexec.worker.config;
 
-import com.iexec.common.precompute.PreComputeUtils;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.CredentialsService;
 import org.springframework.beans.factory.annotation.Value;
@@ -74,18 +73,6 @@ public class WorkerConfigurationService {
 
     public String getTaskBaseDir(String chainTaskId) {
         return getWorkerBaseDir() + File.separator + chainTaskId;
-    }
-
-    /**
-     * Get path to pre-compute input folder on the host side.
-     * <p>
-     * Expected: workerBaseDir/chainTaskId/pre-compute
-     * 
-     * @param chainTaskId
-     * @return
-     */
-    public String getTaskPreComputeInputDir(String chainTaskId) {
-        return getTaskBaseDir(chainTaskId) + PreComputeUtils.SLASH_PRE_COMPUTE_IN;
     }
 
     /**
