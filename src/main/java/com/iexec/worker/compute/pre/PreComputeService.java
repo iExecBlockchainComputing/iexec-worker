@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 
@@ -128,7 +129,7 @@ public class PreComputeService {
         }
         // run container
         List<String> env = sconeTeeService.getPreComputeDockerEnv(secureSessionId);
-        List<String> binds = List.of(dockerService.getInputBind(chainTaskId));
+        List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
