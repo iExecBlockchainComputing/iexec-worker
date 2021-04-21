@@ -25,8 +25,8 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.util.HashSet;
@@ -48,6 +48,17 @@ public class DockerService {
 
     public DockerClientInstance getClient() {
         return this.dockerClientInstance;
+    }
+
+    public DockerClientInstance getClient(String registryUsername,
+                                          String registryPassword) {
+        if (StringUtils.isEmpty(registryUsername) || StringUtils.isEmpty(registryPassword)){
+            log.error("Registry username and password are required " +
+                    "[registryUsername:{}]",registryUsername);
+            return null;
+        }
+        return DockerClientFactory.getDockerClientInstance(registryUsername,
+                registryPassword);
     }
 
     /**
@@ -79,7 +90,7 @@ public class DockerService {
         }
         if (shouldPrintDeveloperLogs(dockerRunRequest)) {
             String chainTaskId = dockerRunRequest.getChainTaskId();
-            if (!StringUtils.hasText(chainTaskId)) {
+            if (StringUtils.isEmpty(chainTaskId)) {
                 log.error("Cannot print developer logs [chainTaskId:{}]", chainTaskId);
             } else {
                 log.info("Developer logs of docker run [chainTaskId:{}]{}", chainTaskId,

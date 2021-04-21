@@ -37,6 +37,8 @@ public class SconeTeeServiceTests {
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
+    public static final String REGISTRY_USERNAME = "registryUsername";
+    public static final String REGISTRY_PASSWORD = "registryPassword";
 
     @Captor
     ArgumentCaptor<DockerRunRequest> dockerRunRequestArgumentCaptor;
@@ -56,11 +58,16 @@ public class SconeTeeServiceTests {
     @Before
     public void init() {
         MockitoAnnotations.openMocks(this);
+        when(sconeLasConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
+        when(sconeLasConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(dockerService.getClient(REGISTRY_USERNAME, REGISTRY_PASSWORD))
+                .thenReturn(dockerClientInstanceMock);
     }
 
     @Test
     public void shouldStartLasService() {
+        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
         when(sconeLasConfig.getContainerName()).thenReturn("containerName");
         when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
@@ -78,6 +85,14 @@ public class SconeTeeServiceTests {
                         .maxExecutionTime(0)
                         .build()
         );
+    }
+
+    @Test
+    public void shouldNotStartLasServiceSinceClientError() {
+        when(dockerService.getClient(REGISTRY_USERNAME, REGISTRY_PASSWORD))
+                .thenReturn(null);
+
+        Assertions.assertThat(sconeTeeService.startLasService()).isFalse();
     }
 
     @Test
@@ -110,7 +125,7 @@ public class SconeTeeServiceTests {
                         .sconeLasAddress(LAS_URL)
                         .sconeCasAddress(CAS_URL)
                         .sconeConfigId(SESSION_ID + "/pre-compute")
-                        .sconeHeap("3G")
+                        .sconeHeap("4G")
                         .build().toDockerEnv());
     }
 

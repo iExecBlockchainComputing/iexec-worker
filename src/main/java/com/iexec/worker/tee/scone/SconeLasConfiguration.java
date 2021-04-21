@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +34,16 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class SconeLasConfiguration {
+
+    //Eventually rename current service to SconeConfiguration
+    @Getter
+    @Value("${scone.registry.username}")
+    private String registryUsername;
+
+    @JsonIgnore
+    @Getter
+    @Value("${scone.registry.password}")
+    private String registryPassword;
 
     @Value("${scone.las.image}")
     private String image;
