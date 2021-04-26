@@ -16,7 +16,6 @@
 
 package com.iexec.worker.dataset;
 
-import com.iexec.common.precompute.PreComputeUtils;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;

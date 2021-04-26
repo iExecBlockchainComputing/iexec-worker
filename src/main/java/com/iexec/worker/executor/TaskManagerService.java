@@ -39,7 +39,6 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -162,19 +161,24 @@ public class TaskManagerService {
         }
         try {
             // download dataset
-            String datasetUri = taskDescription.getDatasetUri();
-            if (StringUtils.isEmpty(datasetUri)) {
+            if (!taskDescription.containsDataset()) {
                 log.info("No dataset to download for this task [chainTaskId:{}]", chainTaskId);
             } else if (taskDescription.isTeeTask()) {
-                log.info("TEE dataset will be downloaded by the pre-compute enclave " +
+                log.info("Dataset will be downloaded by the pre-compute enclave " +
                         "[chainTaskId:{}", chainTaskId);
             } else {
-                log.info("Downloading dataset [chainTaskId:{}, uri{}, name:{}]",
+                String datasetUri = taskDescription.getDatasetUri();
+                log.info("Downloading dataset [chainTaskId:{}, uri:{}, name:{}]",
                         chainTaskId, datasetUri, taskDescription.getDatasetName());
                 dataService.downloadStandardDataset(taskDescription);
             }
             // download input files
-            if (taskDescription.getInputFiles() != null) {
+            if (!taskDescription.containsInputFiles()) {
+                log.info("No input file for this task [chainTaskId:{}]", chainTaskId);
+            } else if (taskDescription.isTeeTask()) {
+                log.info("Input files will be downloaded by the pre-compute enclave " +
+                        "[chainTaskId:{}", chainTaskId);
+            } else {
                 log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
                 dataService.downloadInputFiles(chainTaskId, taskDescription.getInputFiles());
             }

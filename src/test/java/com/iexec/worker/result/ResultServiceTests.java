@@ -24,7 +24,6 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeUtils;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
@@ -57,6 +56,8 @@ public class ResultServiceTests {
     private static final String CHAIN_TASK_ID = "taskId";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test" +
             "/resources/tmp/test-worker";
+    private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
+
     @Rule
     public TemporaryFolder folderRule = new TemporaryFolder();
     @Mock
@@ -174,7 +175,7 @@ public class ResultServiceTests {
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
                         "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
-                TaskDescription.builder().isCallbackRequested(false).build());
+                TaskDescription.builder().callback(BytesUtils.EMPTY_ADDRESS).build());
 
         ComputedFile computedFile =
                 resultService.getComputedFile(chainTaskId);
@@ -195,7 +196,7 @@ public class ResultServiceTests {
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
                         "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
-                TaskDescription.builder().isCallbackRequested(false).build());
+                TaskDescription.builder().callback(BytesUtils.EMPTY_ADDRESS).build());
 
         ComputedFile computedFile =
                 resultService.getComputedFile(chainTaskId);
@@ -214,7 +215,7 @@ public class ResultServiceTests {
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
                         "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
-                TaskDescription.builder().isCallbackRequested(true).build());
+                TaskDescription.builder().callback(CALLBACK).build());
 
         ComputedFile computedFile =
                 resultService.getComputedFile(chainTaskId);
