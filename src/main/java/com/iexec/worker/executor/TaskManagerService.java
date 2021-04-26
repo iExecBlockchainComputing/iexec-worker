@@ -162,7 +162,7 @@ public class TaskManagerService {
         try {
             // download dataset
             if (!taskDescription.containsDataset()) {
-                log.info("No dataset to download for this task [chainTaskId:{}]", chainTaskId);
+                log.info("No dataset for this task [chainTaskId:{}]", chainTaskId);
             } else if (taskDescription.isTeeTask()) {
                 log.info("Dataset will be downloaded by the pre-compute enclave " +
                         "[chainTaskId:{}", chainTaskId);
@@ -174,13 +174,13 @@ public class TaskManagerService {
             }
             // download input files
             if (!taskDescription.containsInputFiles()) {
-                log.info("No input file for this task [chainTaskId:{}]", chainTaskId);
+                log.info("No input files for this task [chainTaskId:{}]", chainTaskId);
             } else if (taskDescription.isTeeTask()) {
                 log.info("Input files will be downloaded by the pre-compute enclave " +
                         "[chainTaskId:{}", chainTaskId);
             } else {
                 log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
-                dataService.downloadInputFiles(chainTaskId, taskDescription.getInputFiles());
+                dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getInputFiles());
             }
         } catch (WorkflowException e) {
             return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
