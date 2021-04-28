@@ -258,7 +258,7 @@ public class PreComputeServiceTests {
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
         verify(smsService).getPreComputeImageUri();
-        verify(dockerClientInstanceMock, never()).pullImage(anyString());
+        verify(dockerClientInstanceMock, never()).pullImage(preComputeImageUri);
     }
 
     @Test
