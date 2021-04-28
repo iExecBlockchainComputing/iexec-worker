@@ -55,26 +55,22 @@ public class SgxService {
     private boolean isSgxSupported() {
         log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
-
         if (!isSgxDriverFound) {
-            log.info("SGX driver not found");
+            LoggingUtils.printHighlightedMessage(
+                    "SGX driver not found, worker will not run TEE tasks");
             return false;
         }
-
-        boolean isSgxDeviceFound = isSgxDeviceFound();
-
-        if (!isSgxDeviceFound) {
-            String message = "SGX driver is installed but no SGX device found (SGX not enabled?)";
-            message += " We'll continue without TEE support";
+        if (!isSgxDevicePresent()) {
+            String message = "SGX driver is installed but no SGX device was found " +
+                             "(SGX not enabled?), worker will not run TEE tasks";
             LoggingUtils.printHighlightedMessage(message);
             return false;
         }
-
-        log.info("SGX is enabled, worker can execute TEE tasks");
+        log.info("SGX is enabled, worker will run TEE tasks");
         return true;
     }
 
-    private boolean isSgxDeviceFound() {
+    private boolean isSgxDevicePresent() {
         // "wallet-address-sgx-check" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
         String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
