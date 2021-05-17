@@ -43,7 +43,11 @@ public class PreComputeServiceTests {
     private final String datasetUri = "datasetUri";
     private final TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(chainTaskId)
+            .datasetAddress("datasetAddress")
             .datasetUri(datasetUri)
+            .datasetName("datasetName")
+            .datasetChecksum("datasetChecksum")
+            .teePostComputeImage("teePostComputeImage")
             .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
@@ -115,14 +119,15 @@ public class PreComputeServiceTests {
      */
 
     @Test
-    public void shouldRunTeePreCompute() {
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
-        when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        taskDescription.setTeePostComputeImage("teePostComputeImage");
+    public void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() {
+        taskDescription.setInputFiles(List.of("input-file1"));
+
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         String secureSessionId = "secureSessionId";
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
+        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
         when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
@@ -134,6 +139,8 @@ public class PreComputeServiceTests {
                 .isSuccessful(true)
                 .build());
 
+        Assertions.assertThat(taskDescription.containsDataset()).isTrue();
+        Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(secureSessionId);
@@ -146,59 +153,140 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunTeePreComputeSinceCantGetPreComputeImageUri() {
-        when(smsService.getPreComputeImageUri()).thenReturn("");
+    public void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() {
+        // taskDescription.setInputFiles(List.of("input-file1")); <--
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
-    }
-
-    @Test
-    public void shouldNotRunTeePreComputeSinceCantPullPreComputeImage() {
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
-        when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(false);
-
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
-    }
-
-    @Test
-    public void shouldNotRunTeePreComputeSinceCantPullPostComputeImage() {
+        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        String secureSessionId = "secureSessionId";
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        taskDescription.setTeePostComputeImage("teePostComputeImage");
+        when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
+                .thenReturn(List.of("env"));
+        String iexecInBind = "/path:/iexec_in";
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        String network = "network";
+        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
+        when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
+                .containerExitCode(0)
+                .isSuccessful(true)
+                .build());
+
+        Assertions.assertThat(taskDescription.containsDataset()).isTrue();
+        Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();        
+        Assertions.assertThat(preComputeService
+                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEqualTo(secureSessionId);
+        verify(dockerService).run(captor.capture());
+        DockerRunRequest capturedRequest = captor.getValue();
+        Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(preComputeImageUri);
+        Assertions.assertThat(capturedRequest.isSgx()).isTrue();
+        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+    }
+
+
+    @Test
+    public void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() {
+        taskDescription.setDatasetAddress("");
+        taskDescription.setInputFiles(List.of("input-file1"));
+
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        String secureSessionId = "secureSessionId";
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
+        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
+        when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
+                .thenReturn(List.of("env"));
+        String iexecInBind = "/path:/iexec_in";
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        String network = "network";
+        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
+        when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
+                .containerExitCode(0)
+                .isSuccessful(true)
+                .build());
+
+        Assertions.assertThat(taskDescription.containsDataset()).isFalse();
+        Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
+        Assertions.assertThat(preComputeService
+                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEqualTo(secureSessionId);
+        verify(dockerService).run(captor.capture());
+        DockerRunRequest capturedRequest = captor.getValue();
+        Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(preComputeImageUri);
+        Assertions.assertThat(capturedRequest.isSgx()).isTrue();
+        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+    }
+
+    @Test
+    public void shouldFailToRunTeePreComputeSinceCantPullPostComputeImage() {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(false);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
+        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
     }
 
     @Test
-    public void shouldNotRunTeePreComputeSinceCantCreateTeeSession() {
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
-        when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        taskDescription.setTeePostComputeImage("teePostComputeImage");
-        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
+    public void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn("");
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
+        verify(smsService).createTeeSession(workerpoolAuthorization);
+        verify(smsService, never()).getPreComputeImageUri();
     }
 
     @Test
-    public void shouldNotRunTeePreComputeSinceFailedToRunContainer() {
+    public void shouldFailToRunTeePreComputeSinceCantGetPreComputeImageUri() {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuthorization))
+                .thenReturn("secureSessionId");
+        when(smsService.getPreComputeImageUri()).thenReturn("");
+
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEmpty();
+        verify(smsService).getPreComputeImageUri();
+        verify(dockerClientInstanceMock, never()).pullImage(preComputeImageUri);
+    }
+
+    @Test
+    public void shouldFailToRunTeePreComputeSinceCantPullPreComputeImage() {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuthorization))
+                .thenReturn("secureSessionId");
+        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(false);
+
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEmpty();
+        verify(dockerClientInstanceMock).pullImage(preComputeImageUri);
+        verify(dockerService, never()).run(any());
+    }
+
+    @Test
+    public void shouldFailToRunTeePreComputeSinceDockerRunFailed() {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuthorization))
+                .thenReturn("secureSessionId");
         when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        taskDescription.setTeePostComputeImage("teePostComputeImage");
-        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
-        String secureSessionId = "secureSessionId";
-        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
-        when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
-                .thenReturn(List.of("env"));
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind2");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(70)
@@ -207,5 +295,6 @@ public class PreComputeServiceTests {
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
+        verify(dockerService).run(any());
     }
 }

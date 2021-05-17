@@ -16,7 +16,6 @@
 
 package com.iexec.worker.dataset;
 
-import com.iexec.common.precompute.PreComputeUtils;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
@@ -50,7 +49,7 @@ public class DataService {
     }
 
     /**
-     * Download dataset file for a given standard task and save
+     * Download dataset file for the given standard task and save
      * it in {@link IexecFileHelper#SLASH_IEXEC_IN}.
      * 
      * @param taskDescription
@@ -85,13 +84,14 @@ public class DataService {
     }
 
     /**
-     * Download input files and save them in the input folder.
+     * Download input files for the given standard task and save them
+     * in the input folder.
      * 
      * @param chainTaskId
      * @param uriList
      * @throws WorkflowException
      */
-    public void downloadInputFiles(String chainTaskId, @Nonnull List<String> uriList)
+    public void downloadStandardInputFiles(String chainTaskId, @Nonnull List<String> uriList)
             throws WorkflowException {
         if (uriList == null) {
             log.error("Null input files uri list [chainTaskId:{}]", chainTaskId);

@@ -139,7 +139,7 @@ public class DataServiceTest {
     @Test
     public void shouldDownloadInputFiles() throws Exception {
         List<String> uris = List.of(URI);
-        dataService.downloadInputFiles(CHAIN_TASK_ID, uris);
+        dataService.downloadStandardInputFiles(CHAIN_TASK_ID, uris);
         File inputFile = new File(iexecIn, "iExec-RLC-RLC-icon.png");
         assertThat(inputFile).exists();
     }
@@ -148,7 +148,7 @@ public class DataServiceTest {
     public void shouldNotDownloadInputFilesSinceNoUriList() throws Exception {
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadInputFiles(CHAIN_TASK_ID, null));
+                () -> dataService.downloadStandardInputFiles(CHAIN_TASK_ID, null));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
 

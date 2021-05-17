@@ -28,7 +28,6 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -92,29 +91,34 @@ public class PreComputeService {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId);
             return "";
         }
-        // run pre-compute container if needed to download and decrypt dataset
-        if (isDatasetRequested(taskDescription) &&
-                !downloadAndDecryptTeeDataset(taskDescription, secureSessionId)) {
-            log.error("Failed to download and decrypt TEE dataset [chainTaskId:{}]", chainTaskId);
-            return "";
+        // run TEE pre-compute container if needed
+        if (taskDescription.containsDataset() ||
+                taskDescription.containsInputFiles()) {
+            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
+                    "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
+                    taskDescription.containsInputFiles());
+            if (!prepareTeeInputData(taskDescription, secureSessionId)) {
+                log.error("Failed to prepare TEE input data [chainTaskId:{}]", chainTaskId);
+                return "";
+            }
         }
         return secureSessionId;
     }
 
-    private boolean isDatasetRequested(TaskDescription taskDescription) {
-        return StringUtils.isNotBlank(taskDescription.getDatasetUri());
-    }
-
     /**
-     * Download tee-worker-pre-compute container
-     * and run it to decrypt TEE dataset.
+     * 
+     * Download tee-worker-pre-compute docker image and run it. If the task
+     * contains a dataset, it is downloaded and decrypted for the compute
+     * stage. If the task contains a list of input files, they will be
+     * downloaded.
      * @param taskDescription
      * @param secureSessionId
-     * @return
+     * @return true if input data was successfully prepared, false if a
+     * problem occurs.
      */
-    private boolean downloadAndDecryptTeeDataset(TaskDescription taskDescription, String secureSessionId) {
+    private boolean prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Preparing TEE dataset [chainTaskId:{}]", chainTaskId);
+        log.info("Preparing TEE input data [chainTaskId:{}]", chainTaskId);
         // get image URI
         String preComputeImageUri = smsService.getPreComputeImageUri();
         if (preComputeImageUri.isEmpty()) {
@@ -146,11 +150,11 @@ public class PreComputeService {
         PreComputeExitCode exitCodeName = PreComputeExitCode.nameOf(exitCodeValue); // can be null
         if (!dockerResponse.isSuccessful()) {
             // TODO report exit error
-            log.error("Pre-compute container failed [chainTaskId:{}, " +
+            log.error("TEE pre-compute container failed [chainTaskId:{}, " +
                     "exitCode:{}, error:{}]", chainTaskId, exitCodeValue, exitCodeName);
             return false;
         }
-        log.error("Decrypted TEE dataset [chainTaskId:{}]", chainTaskId);
+        log.info("Prepared TEE input data successfully [chainTaskId:{}]", chainTaskId);
         return true;
     }
 

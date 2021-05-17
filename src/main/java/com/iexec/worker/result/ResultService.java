@@ -213,7 +213,7 @@ public class ResultService {
         TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
 
         // Offchain computing - basic & tee
-        if (task.isCallbackRequested()) {
+        if (task.containsCallback()) {
             log.info("Web3 storage, no need to upload [chainTaskId:{}]", chainTaskId);
             return getWeb3ResultLink(chainTaskId);
         }
@@ -431,7 +431,7 @@ public class ResultService {
     private String computeResultDigest(ComputedFile computedFile) {
         String chainTaskId = computedFile.getTaskId();
         String resultDigest;
-        if (iexecHubService.getTaskDescription(chainTaskId).isCallbackRequested()) {
+        if (iexecHubService.getTaskDescription(chainTaskId).containsCallback()) {
             resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
         } else {
             resultDigest = ResultUtils.computeWeb2ResultDigest(computedFile,
