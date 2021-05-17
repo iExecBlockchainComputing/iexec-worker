@@ -18,6 +18,7 @@ package com.iexec.worker.tee.scone;
 
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
@@ -33,7 +34,7 @@ import java.util.List;
 @Service
 public class SconeTeeService {
 
-    private static final String PRE_COMPUTE_HEAP_SIZE = "3G";
+    private static final String PRE_COMPUTE_HEAP_SIZE = "4G";
     private static final String COMPUTE_HEAP_SIZE = "1G";
     private static final String POST_COMPUTE_HEAP_SIZE = "3G";
 
@@ -68,8 +69,13 @@ public class SconeTeeService {
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();
-
-        if (!dockerService.getClient().pullImage(sconeLasConfig.getImageUri())) {
+        DockerClientInstance client =
+                dockerService.getClient(sconeLasConfig.getRegistryUsername(),
+                        sconeLasConfig.getRegistryPassword());
+        if (client == null) {
+            return false;
+        }
+        if (!client.pullImage(sconeLasConfig.getImageUri())) {
             return false;
         }
 

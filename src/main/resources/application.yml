@@ -20,9 +20,12 @@ wallet:
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
 
 scone:
+  registry:
+    username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:} #https://registry.scontain.com:5050
+    password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
   las:
-    image: ${IEXEC_LAS_IMAGE:iexechub/sconecuratedimages-iexec}
-    version: ${IEXEC_LAS_VERSION:las-v3.0}
+    image: ${IEXEC_LAS_IMAGE:registry.scontain.com:5050/sconecuratedimages/services}
+    version: ${IEXEC_LAS_VERSION:las-scone5.3.0}
     port: ${IEXEC_LAS_PORT:18766}
     dockerNetworkName: ${IEXEC_LAS_DOCKER_NETWORK_NAME:iexec-worker-net}
 
