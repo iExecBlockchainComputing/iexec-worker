@@ -29,6 +29,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -122,8 +123,11 @@ public class PreComputeService {
         log.info("Preparing TEE input data [chainTaskId:{}]", chainTaskId);
         // get image URI
         PreComputeConfig preComputeConfig = smsService.getPreComputeConfiguration();
-        if (preComputeConfig == null) {
-            log.error("Failed to get TEE pre-compute configuration from SMS [chainTaskId:{}]", chainTaskId);
+        if (preComputeConfig == null
+                || StringUtils.isEmpty(preComputeConfig.getImage())
+                || StringUtils.isEmpty(preComputeConfig.getHeapSize())) {
+            log.error("Failed to get TEE pre-compute configuration from SMS " +
+                    "[chainTaskId:{}]", chainTaskId);
             return false;
         }
         String preComputeImageUri = preComputeConfig.getImage();
