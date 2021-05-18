@@ -18,6 +18,7 @@ package com.iexec.worker.feign.client;
 
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 
 import org.springframework.cloud.openfeign.FeignClient;
@@ -42,7 +43,7 @@ public interface SmsClient {
             @RequestHeader("Authorization") String authorization,
             @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
 
-    @GetMapping("/precompute/image")
-    ResponseEntity<String> getPreComputeImageUri() throws FeignException;
+    @GetMapping("/precompute/config")
+    ResponseEntity<PreComputeConfig> getPreComputeConfiguration() throws FeignException;
 
 }

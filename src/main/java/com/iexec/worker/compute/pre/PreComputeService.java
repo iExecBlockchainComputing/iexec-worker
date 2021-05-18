@@ -19,6 +19,7 @@ package com.iexec.worker.compute.pre;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.precompute.PreComputeExitCode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -28,6 +29,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -120,11 +122,15 @@ public class PreComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing TEE input data [chainTaskId:{}]", chainTaskId);
         // get image URI
-        String preComputeImageUri = smsService.getPreComputeImageUri();
-        if (preComputeImageUri.isEmpty()) {
-            log.error("Failed to get TEE pre-compute image URI from SMS [chainTaskId:{}]", chainTaskId);
+        PreComputeConfig preComputeConfig = smsService.getPreComputeConfiguration();
+        if (preComputeConfig == null
+                || StringUtils.isEmpty(preComputeConfig.getImage())
+                || StringUtils.isEmpty(preComputeConfig.getHeapSize())) {
+            log.error("Failed to get TEE pre-compute configuration from SMS " +
+                    "[chainTaskId:{}]", chainTaskId);
             return false;
         }
+        String preComputeImageUri = preComputeConfig.getImage();
         // pull image
         if (!dockerService.getClient().pullImage(preComputeImageUri)) {
             log.error("Failed to pull TEE pre-compute image [chainTaskId:{}, uri:{}]",
@@ -132,7 +138,8 @@ public class PreComputeService {
             return false;
         }
         // run container
-        List<String> env = sconeTeeService.getPreComputeDockerEnv(secureSessionId);
+        List<String> env = sconeTeeService.buildPreComputeDockerEnv(secureSessionId,
+                preComputeConfig.getHeapSize());
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)

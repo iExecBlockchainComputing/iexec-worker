@@ -17,6 +17,7 @@
 package com.iexec.worker.sms;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.sms.secret.SmsSecret;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
@@ -115,15 +116,15 @@ public class SmsService {
         }
     }
 
-    public String getPreComputeImageUri() {
+    public PreComputeConfig getPreComputeConfiguration() {
         try {
-            ResponseEntity<String> response = smsClient.getPreComputeImageUri();
+            ResponseEntity<PreComputeConfig> response = smsClient.getPreComputeConfiguration();
             return response.getStatusCode().is2xxSuccessful()
                     ? response.getBody()
-                    : "";
+                    : null;
         } catch (Exception e) {
             log.error("Failed to get pre-compute image URI from sms", e);
-            return "";
+            return null;
         }
     }
 

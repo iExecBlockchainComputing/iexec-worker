@@ -34,9 +34,8 @@ import java.util.List;
 @Service
 public class SconeTeeService {
 
-    private static final String PRE_COMPUTE_HEAP_SIZE = "4G";
     private static final String COMPUTE_HEAP_SIZE = "1G";
-    private static final String POST_COMPUTE_HEAP_SIZE = "3G";
+    private static final String POST_COMPUTE_HEAP_SIZE = "4G";
 
     private final SconeLasConfiguration sconeLasConfig;
     private final DockerService dockerService;
@@ -87,13 +86,14 @@ public class SconeTeeService {
         return true;
     }
 
-    public List<String> getPreComputeDockerEnv(@Nonnull String sessionId) {
+    public List<String> buildPreComputeDockerEnv(@Nonnull String sessionId,
+                                                 String heapSize) {
         String sconeConfigId = sessionId + "/pre-compute";
         return SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(publicConfigService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
-                .sconeHeap(PRE_COMPUTE_HEAP_SIZE)
+                .sconeHeap(heapSize)
                 .build()
                 .toDockerEnv();
     }
