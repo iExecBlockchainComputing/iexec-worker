@@ -120,12 +120,14 @@ public class SconeTeeServiceTests {
         when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
         when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
 
-        Assertions.assertThat(sconeTeeService.getPreComputeDockerEnv(SESSION_ID))
+        String preComputeHeapSize = "preComputeHeapSize";
+        Assertions.assertThat(sconeTeeService.buildPreComputeDockerEnv(SESSION_ID,
+                preComputeHeapSize))
                 .isEqualTo(SconeConfig.builder()
                         .sconeLasAddress(LAS_URL)
                         .sconeCasAddress(CAS_URL)
                         .sconeConfigId(SESSION_ID + "/pre-compute")
-                        .sconeHeap("4G")
+                        .sconeHeap(preComputeHeapSize)
                         .build().toDockerEnv());
     }
 
@@ -153,7 +155,7 @@ public class SconeTeeServiceTests {
                         .sconeLasAddress(LAS_URL)
                         .sconeCasAddress(CAS_URL)
                         .sconeConfigId(SESSION_ID + "/post-compute")
-                        .sconeHeap("3G")
+                        .sconeHeap("4G")
                         .build().toDockerEnv());
     }
 

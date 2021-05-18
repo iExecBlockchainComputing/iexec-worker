@@ -20,6 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -39,6 +40,8 @@ import static org.mockito.Mockito.*;
 
 public class PreComputeServiceTests {
 
+    private static final String preComputeHeapSize = "preComputeHeapSize";
+    private static final String preComputeImageUri = "preComputeImageUri";
     private final String chainTaskId = "chainTaskId";
     private final String datasetUri = "datasetUri";
     private final TaskDescription taskDescription = TaskDescription.builder()
@@ -51,7 +54,9 @@ public class PreComputeServiceTests {
             .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
-    private String preComputeImageUri = "preComputeImageUri";
+    private static final PreComputeConfig preComputeConfig = new PreComputeConfig(preComputeImageUri,
+            "preComputeFingerPrint",
+            preComputeHeapSize);
 
     @InjectMocks
     private PreComputeService preComputeService;
@@ -126,9 +131,9 @@ public class PreComputeServiceTests {
                 .thenReturn(true);
         String secureSessionId = "secureSessionId";
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(smsService.getPreComputeConfiguration()).thenReturn(preComputeConfig);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
+        when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, preComputeHeapSize))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -160,9 +165,9 @@ public class PreComputeServiceTests {
                 .thenReturn(true);
         String secureSessionId = "secureSessionId";
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(smsService.getPreComputeConfiguration()).thenReturn(preComputeConfig);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
+        when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, preComputeHeapSize))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -196,9 +201,9 @@ public class PreComputeServiceTests {
                 .thenReturn(true);
         String secureSessionId = "secureSessionId";
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(smsService.getPreComputeConfiguration()).thenReturn(preComputeConfig);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
-        when(sconeTeeService.getPreComputeDockerEnv(secureSessionId))
+        when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, preComputeHeapSize))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -243,7 +248,7 @@ public class PreComputeServiceTests {
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
         verify(smsService).createTeeSession(workerpoolAuthorization);
-        verify(smsService, never()).getPreComputeImageUri();
+        verify(smsService, never()).getPreComputeConfiguration();
     }
 
     @Test
@@ -253,11 +258,11 @@ public class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn("secureSessionId");
-        when(smsService.getPreComputeImageUri()).thenReturn("");
+        when(smsService.getPreComputeConfiguration()).thenReturn(null);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
-        verify(smsService).getPreComputeImageUri();
+        verify(smsService).getPreComputeConfiguration();
         verify(dockerClientInstanceMock, never()).pullImage(preComputeImageUri);
     }
 
@@ -268,7 +273,7 @@ public class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn("secureSessionId");
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(smsService.getPreComputeConfiguration()).thenReturn(preComputeConfig);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(false);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
@@ -284,7 +289,7 @@ public class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn("secureSessionId");
-        when(smsService.getPreComputeImageUri()).thenReturn(preComputeImageUri);
+        when(smsService.getPreComputeConfiguration()).thenReturn(preComputeConfig);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
         when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("network");
