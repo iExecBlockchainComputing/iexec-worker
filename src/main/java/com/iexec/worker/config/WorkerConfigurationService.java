@@ -51,6 +51,9 @@ public class WorkerConfigurationService {
     @Value("${worker.developerLoggerEnabled}")
     private boolean developerLoggerEnabled;
 
+    @Value("${worker.teeComputeMaxHeapSizeGB}")
+    private int teeComputeMaxHeapSizeGB;
+
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
     }
@@ -157,6 +160,10 @@ public class WorkerConfigurationService {
 
     public boolean isDeveloperLoggerEnabled() {
         return developerLoggerEnabled;
+    }
+
+    public int getTeeComputeMaxHeapSizeGB() {
+        return teeComputeMaxHeapSizeGB;
     }
 
     public String getHttpProxyHost() {

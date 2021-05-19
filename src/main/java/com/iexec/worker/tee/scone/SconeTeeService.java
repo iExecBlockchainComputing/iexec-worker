@@ -98,13 +98,14 @@ public class SconeTeeService {
                 .toDockerEnv();
     }
 
-    public List<String> getComputeDockerEnv(@Nonnull String sessionId) {
+    public List<String> buildComputeDockerEnv(@Nonnull String sessionId,
+                                              long heapSize) {
         String sconeConfigId = sessionId + "/app";
         return SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
                 .sconeCasAddress(publicConfigService.getSconeCasURL())
                 .sconeConfigId(sconeConfigId)
-                .sconeHeap(COMPUTE_HEAP_SIZE)
+                .sconeHeap(String.valueOf(heapSize))
                 .build()
                 .toDockerEnv();
     }

@@ -19,6 +19,7 @@ package com.iexec.worker.compute.app;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -54,7 +55,10 @@ public class AppComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
-            List<String> strings = sconeTeeService.getComputeDockerEnv(secureSessionId);
+            TeeEnclaveConfiguration enclaveConfig =
+                    taskDescription.getAppEnclaveConfiguration();
+            List<String> strings = sconeTeeService.buildComputeDockerEnv(secureSessionId,
+                    enclaveConfig != null ? enclaveConfig.getHeapSize() : 0);
             env.addAll(strings);
         }
 

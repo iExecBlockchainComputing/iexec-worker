@@ -14,6 +14,7 @@ worker:
   gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
   overrideBlockchainNodeAddress: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
   developerLoggerEnabled: ${IEXEC_DEVELOPER_LOGGER_ENABLED:false}
+  teeComputeMaxHeapSizeGB: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
 
 wallet:
   encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
