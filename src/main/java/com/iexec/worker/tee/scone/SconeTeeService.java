@@ -72,15 +72,17 @@ public class SconeTeeService {
                 dockerService.getClient(sconeLasConfig.getRegistryUsername(),
                         sconeLasConfig.getRegistryPassword());
         if (client == null) {
+            log.error("Docker client with credentials is required to enable TEE support");
             return false;
         }
         if (!client.pullImage(sconeLasConfig.getImageUri())) {
+            log.error("Failed to download LAS image");
             return false;
         }
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
         if (!dockerRunResponse.isSuccessful()) {
-            log.error("Couldn't start LAS service, will continue without TEE support");
+            log.error("Failed to start LAS service");
             return false;
         }
         return true;

@@ -66,7 +66,7 @@ public class SgxService {
             LoggingUtils.printHighlightedMessage(message);
             return false;
         }
-        log.info("SGX is enabled, worker will run TEE tasks");
+        log.info("SGX is enabled, worker can run TEE tasks");
         return true;
     }
 
