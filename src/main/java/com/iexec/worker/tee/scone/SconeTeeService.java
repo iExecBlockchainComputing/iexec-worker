@@ -22,6 +22,7 @@ import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +53,11 @@ public class SconeTeeService {
         this.dockerService = dockerService;
         this.publicConfigService = publicConfigService;
         this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
+        if (this.isLasStarted) {
+            log.info("Worker can run TEE tasks");
+        } else {
+            LoggingUtils.printHighlightedMessage("Worker will not run TEE tasks");
+        }
     }
 
     public boolean isTeeEnabled() {

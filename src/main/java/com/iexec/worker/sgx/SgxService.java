@@ -21,7 +21,6 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -56,17 +55,15 @@ public class SgxService {
         log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
         if (!isSgxDriverFound) {
-            LoggingUtils.printHighlightedMessage(
-                    "SGX driver not found, worker will not run TEE tasks");
+            log.error("SGX driver not found");
             return false;
         }
         if (!isSgxDevicePresent()) {
-            String message = "SGX driver is installed but no SGX device was found " +
-                             "(SGX not enabled?), worker will not run TEE tasks";
-            LoggingUtils.printHighlightedMessage(message);
+            log.error("SGX driver is installed but no SGX device was found " +
+                    "(SGX not enabled?)");
             return false;
         }
-        log.info("SGX is enabled, worker can run TEE tasks");
+        log.info("SGX is enabled");
         return true;
     }
 
