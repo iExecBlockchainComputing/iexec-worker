@@ -23,6 +23,7 @@ import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.precompute.PreComputeExitCode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -86,26 +87,18 @@ public class PreComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         // verify enclave configuration for compute stage
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
-        if (StringUtils.isEmpty(enclaveConfig.getFingerprint())
-                || BytesUtils.stringToBytes(enclaveConfig.getFingerprint()).length != 32) {
-            log.error("Enclave configuration should define a proper " +
-                            "fingerprint [chainTaskId:{}, fingerprint:{}]",
-                    chainTaskId, enclaveConfig.getFingerprint());
+        if (!enclaveConfig.getValidator().isValid()){
+            log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
+                    chainTaskId, enclaveConfig.getValidator().validate().toString());
             return "";
         }
         long teeComputeMaxHeapSize = DataSize
                 .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGB())
                 .toBytes();
-        if (enclaveConfig.getHeapSize() <= 0
-                || enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
+        if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
             log.error("Enclave configuration should define a proper heap " +
-                            "size [chainTaskId:{}, heapSize:{}]",
-                    chainTaskId, enclaveConfig.getHeapSize());
-            return "";
-        }
-        if (StringUtils.isEmpty(enclaveConfig.getEntrypoint())) {
-            log.error("Enclave configuration should define a proper " +
-                    "entrypoint [chainTaskId:{}]", chainTaskId);
+                            "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
+                    chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
             return "";
         }
         // download post-compute image

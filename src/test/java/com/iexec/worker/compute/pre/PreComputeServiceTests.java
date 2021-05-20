@@ -23,6 +23,7 @@ import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -37,6 +38,7 @@ import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 import org.springframework.util.unit.DataUnit;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -238,26 +240,13 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldFailToRunTeePreComputeSinceNoComputeFingerprint() {
-        taskDescription.getAppEnclaveConfiguration().setFingerprint("");
-
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
-        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
-    }
-
-    @Test
-    public void shouldFailToRunTeePreComputeSinceWrongComputeFingerprint() {
-        taskDescription.getAppEnclaveConfiguration().setFingerprint("wrongFingerprint");
-
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
-        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
-    }
-
-    @Test
-    public void shouldFailToRunTeePreComputeSinceNoComputeHeapSize() {
-        taskDescription.getAppEnclaveConfiguration().setHeapSize(0);
+    public void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
+        TeeEnclaveConfiguration enclaveConfig = mock(TeeEnclaveConfiguration.class);
+        taskDescription.setAppEnclaveConfiguration(enclaveConfig);
+        TeeEnclaveConfigurationValidator validator = mock(TeeEnclaveConfigurationValidator.class);
+        when(enclaveConfig.getValidator()).thenReturn(validator);
+        when(validator.isValid()).thenReturn(false);
+        when(validator.validate()).thenReturn(Collections.singletonList("validation error"));
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
@@ -266,16 +255,7 @@ public class PreComputeServiceTests {
 
     @Test
     public void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
-        taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(16).toBytes() + 1);
-
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
-        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
-    }
-
-    @Test
-    public void shouldFailToRunTeePreComputeSinceNoComputeEntrypoint() {
-        taskDescription.getAppEnclaveConfiguration().setEntrypoint("");
+        taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(8).toBytes() + 1);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
