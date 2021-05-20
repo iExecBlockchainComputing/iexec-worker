@@ -22,6 +22,9 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
@@ -32,7 +35,10 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.*;
+import org.springframework.util.unit.DataSize;
+import org.springframework.util.unit.DataUnit;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,6 +57,11 @@ public class PreComputeServiceTests {
             .datasetName("datasetName")
             .datasetChecksum("datasetChecksum")
             .teePostComputeImage("teePostComputeImage")
+            .appEnclaveConfiguration(TeeEnclaveConfiguration.builder()
+                    .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
+                    .heapSize(1024)
+                    .entrypoint("python /app/app.py")
+                    .build())
             .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
@@ -81,6 +92,7 @@ public class PreComputeServiceTests {
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(workerConfigService.getTeeComputeMaxHeapSizeGB()).thenReturn(8);
     }
 
     /**
@@ -225,6 +237,29 @@ public class PreComputeServiceTests {
         Assertions.assertThat(capturedRequest.isSgx()).isTrue();
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+    }
+
+    @Test
+    public void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
+        TeeEnclaveConfiguration enclaveConfig = mock(TeeEnclaveConfiguration.class);
+        taskDescription.setAppEnclaveConfiguration(enclaveConfig);
+        TeeEnclaveConfigurationValidator validator = mock(TeeEnclaveConfigurationValidator.class);
+        when(enclaveConfig.getValidator()).thenReturn(validator);
+        when(validator.isValid()).thenReturn(false);
+        when(validator.validate()).thenReturn(Collections.singletonList("validation error"));
+
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEmpty();
+        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
+    }
+
+    @Test
+    public void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
+        taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(8).toBytes() + 1);
+
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEmpty();
+        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
     }
 
     @Test

@@ -22,6 +22,9 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.precompute.PreComputeExitCode;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
+import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
@@ -31,6 +34,7 @@ import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
 import java.util.List;
@@ -81,6 +85,22 @@ public class PreComputeService {
 
     public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
+        // verify enclave configuration for compute stage
+        TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
+        if (!enclaveConfig.getValidator().isValid()){
+            log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
+                    chainTaskId, enclaveConfig.getValidator().validate().toString());
+            return "";
+        }
+        long teeComputeMaxHeapSize = DataSize
+                .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGB())
+                .toBytes();
+        if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
+            log.error("Enclave configuration should define a proper heap " +
+                            "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
+                    chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
+            return "";
+        }
         // download post-compute image
         if (!dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())) {
             log.error("Cannot pull TEE post-compute image [chainTaskId:{}, imageUri:{}]",
@@ -97,7 +117,7 @@ public class PreComputeService {
         if (taskDescription.containsDataset() ||
                 taskDescription.containsInputFiles()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
-                    "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
+                            "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
             if (!prepareTeeInputData(taskDescription, secureSessionId)) {
                 log.error("Failed to prepare TEE input data [chainTaskId:{}]", chainTaskId);
@@ -108,11 +128,11 @@ public class PreComputeService {
     }
 
     /**
-     * 
      * Download tee-worker-pre-compute docker image and run it. If the task
      * contains a dataset, it is downloaded and decrypted for the compute
      * stage. If the task contains a list of input files, they will be
      * downloaded.
+     *
      * @param taskDescription
      * @param secureSessionId
      * @return true if input data was successfully prepared, false if a

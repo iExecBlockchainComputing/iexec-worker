@@ -17,6 +17,7 @@
 package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
@@ -55,6 +56,7 @@ public class AppComputeServiceTests {
     private final static long MAX_EXECUTION_TIME = 1000;
     private final static String INPUT = "INPUT";
     private final static String IEXEC_OUT = "IEXEC_OUT";
+    public static final long heapSize = 1024;
 
     private final TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
@@ -126,7 +128,9 @@ public class AppComputeServiceTests {
     @Test
     public void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
-        when(sconeTeeService.getComputeDockerEnv(SECURE_SESSION_ID))
+        taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
+                .builder().heapSize(heapSize).build());
+        when(sconeTeeService.buildComputeDockerEnv(SECURE_SESSION_ID, heapSize))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
         env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
