@@ -39,6 +39,7 @@ public class SconeTeeServiceTests {
     private static final String LAS_URL = "lasUrl";
     public static final String REGISTRY_USERNAME = "registryUsername";
     public static final String REGISTRY_PASSWORD = "registryPassword";
+    public static final long heapSize = 1024;
 
     @Captor
     ArgumentCaptor<DockerRunRequest> dockerRunRequestArgumentCaptor;
@@ -136,12 +137,12 @@ public class SconeTeeServiceTests {
         when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
         when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
 
-        Assertions.assertThat(sconeTeeService.getComputeDockerEnv(SESSION_ID))
+        Assertions.assertThat(sconeTeeService.buildComputeDockerEnv(SESSION_ID, heapSize))
                 .isEqualTo(SconeConfig.builder()
                         .sconeLasAddress(LAS_URL)
                         .sconeCasAddress(CAS_URL)
                         .sconeConfigId(SESSION_ID + "/app")
-                        .sconeHeap("1G")
+                        .sconeHeap(String.valueOf(1024))
                         .build().toDockerEnv());
     }
 
