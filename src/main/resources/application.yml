@@ -8,16 +8,17 @@ core:
 
 worker:
   name: ${IEXEC_WORKER_NAME:worker}
-  workerBaseDir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
-  gpuEnabled: ${IEXEC_WORKER_GPU_ENABLED:false}
-  gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
-  gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
-  overrideBlockchainNodeAddress: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
-  developerLoggerEnabled: ${IEXEC_DEVELOPER_LOGGER_ENABLED:false}
-  teeComputeMaxHeapSizeGB: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
+  worker-base-dir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
+  gpu-enabled: ${IEXEC_WORKER_GPU_ENABLED:false}
+  gas-price-multiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
+  gas-price-cap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
+  override-blockchain-node-address: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
+  developer-logger-enabled: ${IEXEC_DEVELOPER_LOGGER_ENABLED:false}
+  tee-compute-max-heap-size-GB: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
+  docker-network-name: ${IEXEC_WORKER_DOCKER_NETWORK_NAME:iexec-worker-net}
 
 wallet:
-  encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
+  encrypted-file-path: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
 
 scone:
@@ -28,11 +29,6 @@ scone:
     image: ${IEXEC_LAS_IMAGE:registry.scontain.com:5050/sconecuratedimages/services}
     version: ${IEXEC_LAS_VERSION:las-scone5.3.0}
     port: ${IEXEC_LAS_PORT:18766}
-    dockerNetworkName: ${IEXEC_LAS_DOCKER_NETWORK_NAME:iexec-worker-net}
-
-# TODO remove this
-decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
-encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
 
 management:
   endpoint:
