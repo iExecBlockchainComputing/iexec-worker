@@ -26,7 +26,7 @@ public class CredentialsService extends CredentialsAbstractService {
 
     public CredentialsService(
             @Value("${wallet.password}") String walletPassword,
-            @Value("${wallet.encryptedFilePath}") String walletPath
+            @Value("${wallet.encrypted-file-path}") String walletPath
     ) throws Exception {
         super(walletPassword, walletPath);
     }
