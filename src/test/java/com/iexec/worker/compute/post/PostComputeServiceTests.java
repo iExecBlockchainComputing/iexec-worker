@@ -85,7 +85,7 @@ public class PostComputeServiceTests {
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
+        when(sconeLasConfiguration.getSconeCasUrl()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
@@ -189,7 +189,7 @@ public class PostComputeServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(lasNetworkName);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
@@ -234,7 +234,7 @@ public class PostComputeServiceTests {
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("lasNetworkName");
+        when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);

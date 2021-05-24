@@ -23,13 +23,10 @@ import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.precompute.PreComputeExitCode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
-import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -48,7 +45,6 @@ public class PreComputeService {
     private final DataService dataService;
     private final DockerService dockerService;
     private final SconeTeeService sconeTeeService;
-    private final SconeLasConfiguration sconeLasConfiguration;
     private final WorkerConfigurationService workerConfigService;
 
     public PreComputeService(
@@ -56,14 +52,11 @@ public class PreComputeService {
             DataService dataService,
             DockerService dockerService,
             SconeTeeService sconeTeeService,
-            SconeLasConfiguration sconeLasConfiguration,
-            WorkerConfigurationService workerConfigService
-    ) {
+            WorkerConfigurationService workerConfigService) {
         this.smsService = smsService;
         this.dataService = dataService;
         this.dockerService = dockerService;
         this.sconeTeeService = sconeTeeService;
-        this.sconeLasConfiguration = sconeLasConfiguration;
         this.workerConfigService = workerConfigService;
     }
 
@@ -169,7 +162,7 @@ public class PreComputeService {
                 .env(env)
                 .binds(binds)
                 .isSgx(true)
-                .dockerNetwork(sconeLasConfiguration.getDockerNetworkName())
+                .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);

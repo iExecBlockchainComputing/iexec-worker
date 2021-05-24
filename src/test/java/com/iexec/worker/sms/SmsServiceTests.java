@@ -25,8 +25,6 @@ import java.io.IOException;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.client.SmsClient;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

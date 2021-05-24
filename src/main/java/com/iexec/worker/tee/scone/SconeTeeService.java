@@ -19,7 +19,7 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -35,23 +35,21 @@ import java.util.List;
 @Service
 public class SconeTeeService {
 
-    private static final String COMPUTE_HEAP_SIZE = "1G";
     private static final String POST_COMPUTE_HEAP_SIZE = "4G";
 
     private final SconeLasConfiguration sconeLasConfig;
+    private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final PublicConfigurationService publicConfigService;
     private final boolean isLasStarted;
 
     public SconeTeeService(
             SconeLasConfiguration sconeLasConfig,
+            WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            PublicConfigurationService publicConfigService,
-            SgxService sgxService
-    ) {
+            SgxService sgxService) {
         this.sconeLasConfig = sconeLasConfig;
+        this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.publicConfigService = publicConfigService;
         this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
         if (this.isLasStarted) {
             log.info("Worker can run TEE tasks");
@@ -70,7 +68,7 @@ public class SconeTeeService {
                 .imageUri(sconeLasConfig.getImageUri())
                 // application & post-compose enclaves will be
                 // able to talk to the LAS via this network
-                .dockerNetwork(sconeLasConfig.getDockerNetworkName())
+                .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();
@@ -99,7 +97,7 @@ public class SconeTeeService {
         String sconeConfigId = sessionId + "/pre-compute";
         return SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(publicConfigService.getSconeCasURL())
+                .sconeCasAddress(sconeLasConfig.getSconeCasUrl())
                 .sconeConfigId(sconeConfigId)
                 .sconeHeap(heapSize)
                 .build()
@@ -111,7 +109,7 @@ public class SconeTeeService {
         String sconeConfigId = sessionId + "/app";
         return SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(publicConfigService.getSconeCasURL())
+                .sconeCasAddress(sconeLasConfig.getSconeCasUrl())
                 .sconeConfigId(sconeConfigId)
                 .sconeHeap(String.valueOf(heapSize))
                 .build()
@@ -122,7 +120,7 @@ public class SconeTeeService {
         String sconeConfigId = sessionId + "/post-compute";
         return SconeConfig.builder()
                 .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(publicConfigService.getSconeCasURL())
+                .sconeCasAddress(sconeLasConfig.getSconeCasUrl())
                 .sconeConfigId(sconeConfigId)
                 .sconeHeap(POST_COMPUTE_HEAP_SIZE)
                 .build()

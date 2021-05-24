@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.feign.client;
+package com.iexec.worker.sms;
 
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
@@ -33,6 +33,9 @@ import feign.FeignException;
 @FeignClient(name = "SmsClient", url = "#{publicConfigurationService.smsURL}", decode404 = true)
 public interface SmsClient {
 
+    @GetMapping("/cas")
+    ResponseEntity<String> getSconeCasUrl() throws FeignException;
+
     @PostMapping("/untee/secrets")
     ResponseEntity<SmsSecretResponse> getUnTeeSecrets(
             @RequestHeader("Authorization") String authorization,
@@ -46,4 +49,6 @@ public interface SmsClient {
     @GetMapping("/precompute/config")
     ResponseEntity<PreComputeConfig> getPreComputeConfiguration() throws FeignException;
 
+    @GetMapping("/postcompute/config")
+    ResponseEntity<PreComputeConfig> getPostComputeConfiguration() throws FeignException;
 }

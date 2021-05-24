@@ -24,7 +24,6 @@ import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
@@ -36,7 +35,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
-import org.springframework.util.unit.DataUnit;
 
 import java.util.Collections;
 import java.util.List;
@@ -150,7 +148,7 @@ public class PreComputeServiceTests {
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
         String network = "network";
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .isSuccessful(true)
@@ -184,7 +182,7 @@ public class PreComputeServiceTests {
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
         String network = "network";
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .isSuccessful(true)
@@ -220,7 +218,7 @@ public class PreComputeServiceTests {
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
         String network = "network";
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(network);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .isSuccessful(true)
@@ -327,7 +325,7 @@ public class PreComputeServiceTests {
         when(smsService.getPreComputeConfiguration()).thenReturn(preComputeConfig);
         when(dockerClientInstanceMock.pullImage(preComputeImageUri)).thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn("network");
+        when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(70)
                 .isSuccessful(false)

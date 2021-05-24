@@ -23,7 +23,6 @@ import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.client.SmsClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -125,6 +124,18 @@ public class SmsService {
         } catch (Exception e) {
             log.error("Failed to get pre-compute image URI from sms", e);
             return null;
+        }
+    }
+
+    public String getSconeCasUrl() {
+        try {
+            ResponseEntity<String> response = smsClient.getSconeCasUrl();
+            return response.getStatusCode().is2xxSuccessful()
+                    ? response.getBody()
+                    : "";
+        } catch (Exception e) {
+            log.error("Failed to get scone las configuration from sms", e);
+            return "";
         }
     }
 

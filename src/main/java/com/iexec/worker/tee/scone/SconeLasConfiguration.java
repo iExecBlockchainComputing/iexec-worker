@@ -18,7 +18,10 @@ package com.iexec.worker.tee.scone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.sms.SmsService;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -56,13 +59,17 @@ public class SconeLasConfiguration {
     private int port;
 
     @Getter
-    @Value("${scone.las.dockerNetworkName}")
-    private String dockerNetworkName;
+    private final String sconeCasUrl;
 
     @Getter
     private final String containerName;
 
-    public SconeLasConfiguration(WorkerConfigurationService workerConfigService) {
+    public SconeLasConfiguration(SmsService smsService,
+            WorkerConfigurationService workerConfigService) {
+        sconeCasUrl = smsService.getSconeCasUrl();
+        if (StringUtils.isEmpty(sconeCasUrl)) {
+            throw new BeanInstantiationException(this.getClass(), "Missing cas url");
+        }
         // "iexec-las-0xWalletAddress" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
         containerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();

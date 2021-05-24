@@ -23,7 +23,6 @@ import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import org.springframework.stereotype.Service;
 
@@ -36,18 +35,14 @@ public class AppComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final SconeTeeService sconeTeeService;
-    private final SconeLasConfiguration sconeLasConfiguration;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            SconeTeeService sconeTeeService,
-            SconeLasConfiguration sconeLasConfiguration
-    ) {
+            SconeTeeService sconeTeeService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.sconeTeeService = sconeTeeService;
-        this.sconeLasConfiguration = sconeLasConfiguration;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -80,7 +75,7 @@ public class AppComputeService {
                 .build();
         // Enclave should be able to connect to the LAS
         if (taskDescription.isTeeTask()) {
-            runRequest.setDockerNetwork(sconeLasConfiguration.getDockerNetworkName());
+            runRequest.setDockerNetwork(workerConfigService.getDockerNetworkName());
         }
         DockerRunResponse dockerResponse = dockerService.run(runRequest);
         return AppComputeResponse.builder()

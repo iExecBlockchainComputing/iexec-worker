@@ -20,6 +20,7 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
@@ -47,6 +48,8 @@ public class SconeTeeServiceTests {
     private SconeTeeService sconeTeeService;
     @Mock
     private SconeLasConfiguration sconeLasConfig;
+    @Mock
+    private WorkerConfigurationService workerConfigService;
     @Mock
     private DockerService dockerService;
     @Mock
@@ -119,7 +122,7 @@ public class SconeTeeServiceTests {
     @Test
     public void shouldBuildPreComputeDockerEnv() {
         when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
-        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getSconeCasUrl()).thenReturn(CAS_URL);
 
         String preComputeHeapSize = "preComputeHeapSize";
         Assertions.assertThat(sconeTeeService.buildPreComputeDockerEnv(SESSION_ID,
@@ -135,7 +138,7 @@ public class SconeTeeServiceTests {
     @Test
     public void shouldBuildComputeDockerEnv() {
         when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
-        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getSconeCasUrl()).thenReturn(CAS_URL);
 
         Assertions.assertThat(sconeTeeService.buildComputeDockerEnv(SESSION_ID, heapSize))
                 .isEqualTo(SconeConfig.builder()
@@ -149,7 +152,7 @@ public class SconeTeeServiceTests {
     @Test
     public void shouldBuildPostComputeDockerEnv() {
         when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
-        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getSconeCasUrl()).thenReturn(CAS_URL);
 
         Assertions.assertThat(sconeTeeService.getPostComputeDockerEnv(SESSION_ID))
                 .isEqualTo(SconeConfig.builder()

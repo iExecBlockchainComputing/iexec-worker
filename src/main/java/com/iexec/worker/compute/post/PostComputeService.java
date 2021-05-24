@@ -25,7 +25,6 @@ import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,20 +41,16 @@ public class PostComputeService {
     private final DockerService dockerService;
     private final ResultService resultService;
     private final SconeTeeService sconeTeeService;
-    private final SconeLasConfiguration sconeLasConfiguration;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             ResultService resultService,
-            SconeTeeService sconeTeeService,
-            SconeLasConfiguration sconeLasConfiguration
-    ) {
+            SconeTeeService sconeTeeService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.resultService = resultService;
         this.sconeTeeService = sconeTeeService;
-        this.sconeLasConfiguration = sconeLasConfiguration;
     }
 
     public boolean runStandardPostCompute(TaskDescription taskDescription) {
@@ -95,7 +90,7 @@ public class PostComputeService {
                         .env(env)
                         .binds(binds)
                         .isSgx(true)
-                        .dockerNetwork(sconeLasConfiguration.getDockerNetworkName())
+                        .dockerNetwork(workerConfigService.getDockerNetworkName())
                         .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
         return PostComputeResponse.builder()

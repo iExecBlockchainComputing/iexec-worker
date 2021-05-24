@@ -19,7 +19,6 @@ package com.iexec.worker.compute.post;
 
 import com.iexec.common.result.ComputedFile;
 import com.iexec.worker.result.ResultService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.http.ResponseEntity.ok;
 
-@Slf4j
 @RestController
 public class PostComputeController {
 
