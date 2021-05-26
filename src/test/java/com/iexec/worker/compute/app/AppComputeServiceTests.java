@@ -85,7 +85,7 @@ public class AppComputeServiceTests {
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        when(sconeLasConfiguration.getSconeCasUrl()).thenReturn(SCONE_CAS_URL);
+        when(sconeLasConfiguration.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test

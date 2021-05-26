@@ -22,6 +22,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
@@ -41,16 +42,19 @@ public class PostComputeService {
     private final DockerService dockerService;
     private final ResultService resultService;
     private final SconeTeeService sconeTeeService;
+    private final TeeWorkflowConfiguration teeWorkflowConfig;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             ResultService resultService,
-            SconeTeeService sconeTeeService) {
+            SconeTeeService sconeTeeService,
+            TeeWorkflowConfiguration teeWorkflowConfig) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.resultService = resultService;
         this.sconeTeeService = sconeTeeService;
+        this.teeWorkflowConfig = teeWorkflowConfig;
     }
 
     public boolean runStandardPostCompute(TaskDescription taskDescription) {
@@ -77,7 +81,20 @@ public class PostComputeService {
 
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        List<String> env = sconeTeeService.getPostComputeDockerEnv(secureSessionId);
+        String postComputeImage = teeWorkflowConfig.getPostComputeImage();
+        long postComputeHeapSize = teeWorkflowConfig.getPostComputeHeapSize();
+        // ###############################################################################
+        // TODO: activate this when user specific post-compute is properly
+        // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
+        // ###############################################################################
+        // // Use specific post-compute image if requested.
+        // if (taskDescription.containsPostCompute()) {
+        //     postComputeImage = taskDescription.getTeePostComputeImage();
+        //     postComputeHeapSize = taskDescription.getTeePostComputeHeapSize();
+        // }
+        // ###############################################################################
+        List<String> env = sconeTeeService.
+                getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
         List<String> binds =
                 Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
 
@@ -85,7 +102,7 @@ public class PostComputeService {
                 DockerRunRequest.builder()
                         .chainTaskId(chainTaskId)
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
-                        .imageUri(taskDescription.getTeePostComputeImage())
+                        .imageUri(postComputeImage)
                         .maxExecutionTime(taskDescription.getMaxExecutionTime())
                         .env(env)
                         .binds(binds)

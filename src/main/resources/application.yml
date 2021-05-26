@@ -22,6 +22,8 @@ wallet:
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
 
 scone:
+  show-version: ${IEXEC_SCONE_SHOW_VERSION:true}
+  log-level: ${IEXEC_SCONE_LOG_LEVEL:debug}
   registry:
     username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:} #https://registry.scontain.com:5050
     password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
