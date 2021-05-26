@@ -16,39 +16,14 @@
 
 package com.iexec.worker.result;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EncryptionService {
 
-    @Value("${encryptFilePath}")
-    private String scriptFilePath;
-
-    public EncryptionService() {
-    }
-
     // TODO encrypt file with java code
     public void encryptFile(String taskOutputDir, String resultZipFilePath, String publicKeyFilePath) {
         throw new UnsupportedOperationException("Cannot encrypt file with bash script");
-        // String options = String.format("--root-dir=%s --result-file=%s --key-file=%s",
-        //         taskOutputDir, resultZipFilePath, publicKeyFilePath);
-        // String cmd = this.scriptFilePath + " " + options;
-        // ProcessBuilder pb = new ProcessBuilder(cmd.split(" "));
-        // try {
-        //     Process pr = pb.start();
-        //     BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-        //     String line;
-        //     while ((line = in.readLine()) != null) {
-        //         log.info(line);
-        //     }
-        //     pr.waitFor();
-        //     in.close();
-        // } catch (Exception e) {
-        //     log.error("Error while trying to encrypt result [resultZipFilePath{}, publicKeyFilePath:{}]",
-        //             resultZipFilePath, publicKeyFilePath);
-        //     e.printStackTrace();
-        // }
     }
 
 }
