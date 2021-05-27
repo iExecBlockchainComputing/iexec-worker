@@ -21,33 +21,50 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+
+import javax.annotation.PostConstruct;
 
 /**
  * Configuration of tee workflow. It contains: pre-compute image, pre-compute
  * heap size, post-compute image, post-compute heap size. Images are downloaded
  * at initialization.
  */
+@Slf4j
 @Configuration
 public class TeeWorkflowConfiguration {
 
+    private final SconeTeeService sconeTeeService;
+    private final SmsService smsService;
+    private final DockerService dockerService;
+
     @Getter
-    private String preComputeImage;
+    private String preComputeImage = "";
     @Getter
-    private long preComputeHeapSize;
+    private long preComputeHeapSize = 0;
     @Getter
-    private String postComputeImage;
+    private String postComputeImage = "";
     @Getter
-    private long postComputeHeapSize;
+    private long postComputeHeapSize = 0;
 
     public TeeWorkflowConfiguration(
             SconeTeeService sconeTeeService,
             SmsService smsService,
             DockerService dockerService) {
+        this.sconeTeeService = sconeTeeService;
+        this.smsService = smsService;
+        this.dockerService = dockerService;
+    }
+
+    @PostConstruct
+    private void pullPrePostComputeImages() {
         if (!sconeTeeService.isTeeEnabled()) {
             return;
         }
-        TeeWorkflowSharedConfiguration config = smsService.getTeeWorkflowConfiguration();
+        TeeWorkflowSharedConfiguration config =
+                smsService.getTeeWorkflowConfiguration();
+        log.info("Received tee workflow configuration [{}]", config);
         if (config == null) {
             throw new RuntimeException("Missing tee workflow configuration");
         }
@@ -55,7 +72,7 @@ public class TeeWorkflowConfiguration {
                 .pullImage(config.getPreComputeImage())) {
             throw new RuntimeException("Failed to download pre-compute image");
         }
-        if (dockerService.getClient()
+        if (!dockerService.getClient()
                 .pullImage(config.getPostComputeImage())) {
             throw new RuntimeException("Failed to download post-compute image");
         }

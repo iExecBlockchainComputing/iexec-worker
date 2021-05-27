@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.sms.SmsService;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,7 @@ import org.springframework.stereotype.Service;
  * MREnclave: an enclave identifier, created by hashing all its
  * code. It guarantees that a code behaves exactly as expected.
  */
+@Slf4j
 @Service
 public class SconeLasConfiguration {
 
@@ -78,6 +80,7 @@ public class SconeLasConfiguration {
         lasContainerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
         // Get cas url from sms
         casUrl = smsService.getSconeCasUrl();
+        log.info("Received cas url [{}]", casUrl);
         if (StringUtils.isEmpty(casUrl)) {
             throw new BeanInstantiationException(this.getClass(), "Missing cas url");
         }
