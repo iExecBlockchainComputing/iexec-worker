@@ -56,9 +56,9 @@ public class WorkerConfigurationService {
     @Getter
     private boolean developerLoggerEnabled;
 
-    @Value("${worker.tee-compute-max-heap-size-GB}")
+    @Value("${worker.tee-compute-max-heap-size-gb}")
     @Getter
-    private int teeComputeMaxHeapSizeGB;
+    private int teeComputeMaxHeapSizeGb;
 
     @Value("${worker.docker-network-name}")
     @Getter

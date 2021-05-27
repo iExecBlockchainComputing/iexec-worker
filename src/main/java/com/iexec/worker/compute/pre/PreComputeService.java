@@ -98,7 +98,7 @@ public class PreComputeService {
             return "";
         }
         long teeComputeMaxHeapSize = DataSize
-                .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGB())
+                .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGb())
                 .toBytes();
         if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
             log.error("Enclave configuration should define a proper heap " +

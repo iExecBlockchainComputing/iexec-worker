@@ -89,7 +89,7 @@ public class PreComputeServiceTests {
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(workerConfigService.getTeeComputeMaxHeapSizeGB()).thenReturn(8);
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
     }
 
     /**
