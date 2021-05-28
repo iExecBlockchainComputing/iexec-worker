@@ -140,6 +140,8 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
+                .thenReturn(true);
         when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
@@ -174,6 +176,8 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
+                .thenReturn(true);
         when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
@@ -210,6 +214,8 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
+                .thenReturn(true);
         when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
@@ -271,6 +277,23 @@ public class PreComputeServiceTests {
     }
 
     @Test
+    public void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuthorization))
+                .thenReturn("secureSessionId");
+        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
+                .thenReturn(false);
+
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEmpty();
+        verify(dockerService, never()).run(any());
+    }
+
+    @Test
     public void shouldFailToRunTeePreComputeSinceDockerRunFailed() {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
@@ -279,6 +302,8 @@ public class PreComputeServiceTests {
                 .thenReturn("secureSessionId");
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
+                .thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()

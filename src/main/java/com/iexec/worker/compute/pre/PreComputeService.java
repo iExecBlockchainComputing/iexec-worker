@@ -153,15 +153,22 @@ public class PreComputeService {
      */
     private boolean prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Preparing TEE input data [chainTaskId:{}]", chainTaskId);
+        log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
+        // check that docker image is present
+        String preComputeImage = teeWorkflowConfig.getPreComputeImage();
+        long preComputeHeapSize = teeWorkflowConfig.getPreComputeHeapSize();
+        if (!dockerService.getClient().isImagePresent(preComputeImage)) {
+            log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
         // run container
         List<String> env = sconeTeeService.buildPreComputeDockerEnv(secureSessionId,
-                teeWorkflowConfig.getPreComputeHeapSize());
+                preComputeHeapSize);
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
-                .imageUri(teeWorkflowConfig.getPreComputeImage())
+                .imageUri(preComputeImage)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)
@@ -174,11 +181,11 @@ public class PreComputeService {
         PreComputeExitCode exitCodeName = PreComputeExitCode.nameOf(exitCodeValue); // can be null
         if (!dockerResponse.isSuccessful()) {
             // TODO report exit error
-            log.error("TEE pre-compute container failed [chainTaskId:{}, " +
+            log.error("Tee pre-compute container failed [chainTaskId:{}, " +
                     "exitCode:{}, error:{}]", chainTaskId, exitCodeValue, exitCodeName);
             return false;
         }
-        log.info("Prepared TEE input data successfully [chainTaskId:{}]", chainTaskId);
+        log.info("Prepared tee input data successfully [chainTaskId:{}]", chainTaskId);
         return true;
     }
 

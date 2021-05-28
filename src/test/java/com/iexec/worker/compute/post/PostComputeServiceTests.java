@@ -24,6 +24,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeLasConfiguration;
@@ -84,10 +85,13 @@ public class PostComputeServiceTests {
     private SconeLasConfiguration sconeLasConfiguration;
     @Mock
     private TeeWorkflowConfiguration teeWorkflowConfig;
+    @Mock
+    private DockerClientInstance dockerClientInstanceMock;
 
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(sconeLasConfiguration.getCasUrl()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -188,6 +192,8 @@ public class PostComputeServiceTests {
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
+                .thenReturn(true);
         when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
                 .thenReturn(env);
         String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -227,6 +233,26 @@ public class PostComputeServiceTests {
     }
 
     @Test
+    public void shouldNotRunTeePostComputeSinceDockerImageNotFoundLocally() {
+        taskDescription = TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .datasetUri(DATASET_URI)
+                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
+                .developerLoggerEnabled(true)
+                .build();
+        when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
+                .thenReturn(false);
+
+        PostComputeResponse postComputeResponse =
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
+        verify(dockerService, never()).run(any());
+    }
+
+    @Test
     public void shouldRunTeePostComputeWithFailDockerResponse() {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
@@ -238,6 +264,8 @@ public class PostComputeServiceTests {
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
+                .thenReturn(true);
         when(sconeTeeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
                 .thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);

@@ -91,8 +91,14 @@ public class PostComputeService {
         // if (taskDescription.containsPostCompute()) {
         //     postComputeImage = taskDescription.getTeePostComputeImage();
         //     postComputeHeapSize = taskDescription.getTeePostComputeHeapSize();
+        //     pull image
         // }
         // ###############################################################################
+        if (!dockerService.getClient().isImagePresent(postComputeImage)) {
+            log.error("Tee post-compute image not found locally [chainTaskId:{}]",
+                    chainTaskId);
+            return PostComputeResponse.builder().isSuccessful(false).build();
+        }
         List<String> env = sconeTeeService.
                 getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
         List<String> binds =

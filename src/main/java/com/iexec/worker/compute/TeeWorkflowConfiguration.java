@@ -57,6 +57,13 @@ public class TeeWorkflowConfiguration {
         this.dockerService = dockerService;
     }
 
+    /**
+     * If the worker is TEE enabled, get configuration of pre/post compute
+     * images and pull them for TEE tasks.
+     * 
+     * Note: /!\ the worker needs to be manually restarted if the configuration
+     * on the SMS changes.
+     */
     @PostConstruct
     private void pullPrePostComputeImages() {
         if (!sconeTeeService.isTeeEnabled()) {
