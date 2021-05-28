@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.feign.client;
+package com.iexec.worker.sms;
 
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.sms.secret.SmsSecretResponse;
-
+import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +32,9 @@ import feign.FeignException;
 @FeignClient(name = "SmsClient", url = "#{publicConfigurationService.smsURL}", decode404 = true)
 public interface SmsClient {
 
+    @GetMapping("/cas/url")
+    ResponseEntity<String> getSconeCasUrl() throws FeignException;
+
     @PostMapping("/untee/secrets")
     ResponseEntity<SmsSecretResponse> getUnTeeSecrets(
             @RequestHeader("Authorization") String authorization,
@@ -43,7 +45,6 @@ public interface SmsClient {
             @RequestHeader("Authorization") String authorization,
             @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
 
-    @GetMapping("/precompute/config")
-    ResponseEntity<PreComputeConfig> getPreComputeConfiguration() throws FeignException;
-
+    @GetMapping("/tee/workflow/config")
+    ResponseEntity<TeeWorkflowSharedConfiguration> getTeeWorkflowConfiguration() throws FeignException;
 }

@@ -20,12 +20,15 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.*;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -37,6 +40,8 @@ public class SconeTeeServiceTests {
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
+    private static final boolean SHOW_VERSION = true;
+    private static final String LOG_LEVEL = "debug";
     public static final String REGISTRY_USERNAME = "registryUsername";
     public static final String REGISTRY_PASSWORD = "registryPassword";
     public static final long heapSize = 1024;
@@ -47,6 +52,8 @@ public class SconeTeeServiceTests {
     private SconeTeeService sconeTeeService;
     @Mock
     private SconeLasConfiguration sconeLasConfig;
+    @Mock
+    private WorkerConfigurationService workerConfigService;
     @Mock
     private DockerService dockerService;
     @Mock
@@ -68,9 +75,8 @@ public class SconeTeeServiceTests {
 
     @Test
     public void shouldStartLasService() {
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
-        when(sconeLasConfig.getContainerName()).thenReturn("containerName");
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
+        when(sconeLasConfig.getLasContainerName()).thenReturn("containerName");
+        when(sconeLasConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
@@ -98,8 +104,8 @@ public class SconeTeeServiceTests {
 
     @Test
     public void shouldNotStartLasServiceSinceCannotPullImage() {
-        when(sconeLasConfig.getContainerName()).thenReturn("containerName");
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
+        when(sconeLasConfig.getLasContainerName()).thenReturn("containerName");
+        when(sconeLasConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(false);
 
         Assertions.assertThat(sconeTeeService.startLasService()).isFalse();
@@ -107,8 +113,8 @@ public class SconeTeeServiceTests {
 
     @Test
     public void shouldNotStartLasServiceSinceCannotRunDockerContainer() {
-        when(sconeLasConfig.getContainerName()).thenReturn("containerName");
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
+        when(sconeLasConfig.getLasContainerName()).thenReturn("containerName");
+        when(sconeLasConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(false).build());
@@ -118,46 +124,55 @@ public class SconeTeeServiceTests {
 
     @Test
     public void shouldBuildPreComputeDockerEnv() {
-        when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
-        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getLasUrl()).thenReturn(LAS_URL);
+        when(sconeLasConfig.getCasUrl()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getLogLevel()).thenReturn(LOG_LEVEL);
+        when(sconeLasConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        String preComputeHeapSize = "preComputeHeapSize";
+        long preComputeHeapSize = 1024;
         Assertions.assertThat(sconeTeeService.buildPreComputeDockerEnv(SESSION_ID,
                 preComputeHeapSize))
-                .isEqualTo(SconeConfig.builder()
-                        .sconeLasAddress(LAS_URL)
-                        .sconeCasAddress(CAS_URL)
-                        .sconeConfigId(SESSION_ID + "/pre-compute")
-                        .sconeHeap(preComputeHeapSize)
-                        .build().toDockerEnv());
+                .isEqualTo(List.of(
+                    "SCONE_CAS_ADDR=" + CAS_URL,
+                    "SCONE_LAS_ADDR=" + LAS_URL,
+                    "SCONE_CONFIG_ID=" + SESSION_ID + "/pre-compute",
+                    "SCONE_HEAP=" + 1024,
+                    "SCONE_LOG=" + LOG_LEVEL,
+                    "SCONE_VERSION=" + 1));
     }
 
     @Test
     public void shouldBuildComputeDockerEnv() {
-        when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
-        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getLasUrl()).thenReturn(LAS_URL);
+        when(sconeLasConfig.getCasUrl()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getLogLevel()).thenReturn(LOG_LEVEL);
+        when(sconeLasConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
         Assertions.assertThat(sconeTeeService.buildComputeDockerEnv(SESSION_ID, heapSize))
-                .isEqualTo(SconeConfig.builder()
-                        .sconeLasAddress(LAS_URL)
-                        .sconeCasAddress(CAS_URL)
-                        .sconeConfigId(SESSION_ID + "/app")
-                        .sconeHeap(String.valueOf(1024))
-                        .build().toDockerEnv());
+                .isEqualTo(List.of(
+                    "SCONE_CAS_ADDR=" + CAS_URL,
+                    "SCONE_LAS_ADDR=" + LAS_URL,
+                    "SCONE_CONFIG_ID=" + SESSION_ID + "/app",
+                    "SCONE_HEAP=" + 1024,
+                    "SCONE_LOG=" + LOG_LEVEL,
+                    "SCONE_VERSION=" + 1));
     }
 
     @Test
     public void shouldBuildPostComputeDockerEnv() {
-        when(sconeLasConfig.getUrl()).thenReturn(LAS_URL);
-        when(publicConfigService.getSconeCasURL()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getLasUrl()).thenReturn(LAS_URL);
+        when(sconeLasConfig.getCasUrl()).thenReturn(CAS_URL);
+        when(sconeLasConfig.getLogLevel()).thenReturn(LOG_LEVEL);
+        when(sconeLasConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(sconeTeeService.getPostComputeDockerEnv(SESSION_ID))
-                .isEqualTo(SconeConfig.builder()
-                        .sconeLasAddress(LAS_URL)
-                        .sconeCasAddress(CAS_URL)
-                        .sconeConfigId(SESSION_ID + "/post-compute")
-                        .sconeHeap("4G")
-                        .build().toDockerEnv());
+        Assertions.assertThat(sconeTeeService.getPostComputeDockerEnv(SESSION_ID, 1024))
+                .isEqualTo(List.of(
+                    "SCONE_CAS_ADDR=" + CAS_URL,
+                    "SCONE_LAS_ADDR=" + LAS_URL,
+                    "SCONE_CONFIG_ID=" + SESSION_ID + "/post-compute",
+                    "SCONE_HEAP=" + 1024,
+                    "SCONE_LOG=" + LOG_LEVEL,
+                    "SCONE_VERSION=" + 1));
     }
 
 }

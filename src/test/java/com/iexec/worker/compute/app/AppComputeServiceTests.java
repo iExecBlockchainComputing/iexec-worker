@@ -85,7 +85,7 @@ public class AppComputeServiceTests {
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
+        when(sconeLasConfiguration.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
@@ -141,7 +141,7 @@ public class AppComputeServiceTests {
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         String lasNetworkName = "lasNetworkName";
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(lasNetworkName);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);

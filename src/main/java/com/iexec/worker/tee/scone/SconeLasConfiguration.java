@@ -18,7 +18,11 @@ package com.iexec.worker.tee.scone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.sms.SmsService;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -32,10 +36,18 @@ import org.springframework.stereotype.Service;
  * MREnclave: an enclave identifier, created by hashing all its
  * code. It guarantees that a code behaves exactly as expected.
  */
+@Slf4j
 @Service
 public class SconeLasConfiguration {
 
-    //Eventually rename current service to SconeConfiguration
+    @Getter
+    @Value("${scone.show-version}")
+    private boolean showVersion;
+
+    @Getter
+    @Value("${scone.log-level}")
+    private String logLevel;
+
     @Getter
     @Value("${scone.registry.username}")
     private String registryUsername;
@@ -46,33 +58,39 @@ public class SconeLasConfiguration {
     private String registryPassword;
 
     @Value("${scone.las.image}")
-    private String image;
+    private String lasImage;
 
     @Value("${scone.las.version}")
-    private String version;
+    private String lasVersion;
 
     @Getter
     @Value("${scone.las.port}")
-    private int port;
+    private int lasPort;
 
     @Getter
-    @Value("${scone.las.dockerNetworkName}")
-    private String dockerNetworkName;
+    private final String lasContainerName;
 
     @Getter
-    private final String containerName;
+    private final String casUrl;
 
-    public SconeLasConfiguration(WorkerConfigurationService workerConfigService) {
-        // "iexec-las-0xWalletAddress" as containerName to avoid naming conflict
+    public SconeLasConfiguration(SmsService smsService,
+            WorkerConfigurationService workerConfigService) {
+        // "iexec-las-0xWalletAddress" as lasContainerName to avoid naming conflict
         // when running multiple workers on the same machine.
-        containerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
+        lasContainerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
+        // Get cas url from sms
+        casUrl = smsService.getSconeCasUrl();
+        log.info("Received cas url [{}]", casUrl);
+        if (StringUtils.isEmpty(casUrl)) {
+            throw new BeanInstantiationException(this.getClass(), "Missing cas url");
+        }
     }
 
-    public String getImageUri() {
-        return image + ":" + version;
+    public String getLasImageUri() {
+        return lasImage + ":" + lasVersion;
     }
 
-    public String getUrl() {
-        return containerName + ":" + port;
+    public String getLasUrl() {
+        return lasContainerName + ":" + lasPort;
     }
 }

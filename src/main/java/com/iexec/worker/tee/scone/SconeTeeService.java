@@ -19,7 +19,7 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
+
 import java.util.List;
 
 
@@ -35,23 +36,27 @@ import java.util.List;
 @Service
 public class SconeTeeService {
 
-    private static final String COMPUTE_HEAP_SIZE = "1G";
-    private static final String POST_COMPUTE_HEAP_SIZE = "4G";
+    private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
+    private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";
+    private static final String SCONE_CONFIG_ID = "SCONE_CONFIG_ID";
+    private static final String SCONE_HEAP = "SCONE_HEAP";
+    private static final String SCONE_LOG = "SCONE_LOG";
+    private static final String SCONE_VERSION = "SCONE_VERSION";
+    // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
     private final SconeLasConfiguration sconeLasConfig;
+    private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final PublicConfigurationService publicConfigService;
     private final boolean isLasStarted;
 
     public SconeTeeService(
             SconeLasConfiguration sconeLasConfig,
+            WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            PublicConfigurationService publicConfigService,
-            SgxService sgxService
-    ) {
+            SgxService sgxService) {
         this.sconeLasConfig = sconeLasConfig;
+        this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.publicConfigService = publicConfigService;
         this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
         if (this.isLasStarted) {
             log.info("Worker can run TEE tasks");
@@ -66,11 +71,11 @@ public class SconeTeeService {
 
     boolean startLasService() {
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
-                .containerName(sconeLasConfig.getContainerName())
-                .imageUri(sconeLasConfig.getImageUri())
+                .containerName(sconeLasConfig.getLasContainerName())
+                .imageUri(sconeLasConfig.getLasImageUri())
                 // application & post-compose enclaves will be
                 // able to talk to the LAS via this network
-                .dockerNetwork(sconeLasConfig.getDockerNetworkName())
+                .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();
@@ -81,7 +86,7 @@ public class SconeTeeService {
             log.error("Docker client with credentials is required to enable TEE support");
             return false;
         }
-        if (!client.pullImage(sconeLasConfig.getImageUri())) {
+        if (!client.pullImage(sconeLasConfig.getLasImageUri())) {
             log.error("Failed to download LAS image");
             return false;
         }
@@ -94,45 +99,43 @@ public class SconeTeeService {
         return true;
     }
 
-    public List<String> buildPreComputeDockerEnv(@Nonnull String sessionId,
-                                                 String heapSize) {
+    public List<String> buildPreComputeDockerEnv(
+            @Nonnull String sessionId,
+            long heapSize) {
         String sconeConfigId = sessionId + "/pre-compute";
-        return SconeConfig.builder()
-                .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(publicConfigService.getSconeCasURL())
-                .sconeConfigId(sconeConfigId)
-                .sconeHeap(heapSize)
-                .build()
-                .toDockerEnv();
+        return getDockerEnv(sconeConfigId, heapSize);
     }
 
-    public List<String> buildComputeDockerEnv(@Nonnull String sessionId,
-                                              long heapSize) {
+    public List<String> buildComputeDockerEnv(
+            @Nonnull String sessionId,
+            long heapSize) {
         String sconeConfigId = sessionId + "/app";
-        return SconeConfig.builder()
-                .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(publicConfigService.getSconeCasURL())
-                .sconeConfigId(sconeConfigId)
-                .sconeHeap(String.valueOf(heapSize))
-                .build()
-                .toDockerEnv();
+        return getDockerEnv(sconeConfigId, heapSize);
     }
 
-    public List<String> getPostComputeDockerEnv(@Nonnull String sessionId) {
+    public List<String> getPostComputeDockerEnv(
+            @Nonnull String sessionId,
+            long heapSize) {
         String sconeConfigId = sessionId + "/post-compute";
-        return SconeConfig.builder()
-                .sconeLasAddress(sconeLasConfig.getUrl())
-                .sconeCasAddress(publicConfigService.getSconeCasURL())
-                .sconeConfigId(sconeConfigId)
-                .sconeHeap(POST_COMPUTE_HEAP_SIZE)
-                .build()
-                .toDockerEnv();
+        return getDockerEnv(sconeConfigId, heapSize);
+    }
+
+    private List<String> getDockerEnv(String sconeConfigId, long sconeHeap) {
+        String sconeVersion = sconeLasConfig.isShowVersion() ? "1" : "0";
+        return List.of(
+                SCONE_CAS_ADDR  + "=" + sconeLasConfig.getCasUrl(),
+                SCONE_LAS_ADDR  + "=" + sconeLasConfig.getLasUrl(),
+                SCONE_CONFIG_ID + "=" + sconeConfigId,
+                SCONE_HEAP      + "=" + sconeHeap,
+                SCONE_LOG       + "=" + sconeLasConfig.getLogLevel(),
+                SCONE_VERSION   + "=" + sconeVersion);
     }
 
     @PreDestroy
-    void stopLasService() {
+    private void stopLasService() {
         if (isLasStarted) {
-            dockerService.getClient().stopAndRemoveContainer(sconeLasConfig.getContainerName());
+            dockerService.getClient().stopAndRemoveContainer(
+                    sconeLasConfig.getLasContainerName());
         }
     }
 }

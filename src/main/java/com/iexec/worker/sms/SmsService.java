@@ -17,13 +17,12 @@
 package com.iexec.worker.sms;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.sms.secret.SmsSecret;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
+import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.client.SmsClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -116,15 +115,35 @@ public class SmsService {
         }
     }
 
-    public PreComputeConfig getPreComputeConfiguration() {
+    /**
+     * Get the configuration needed for TEE workflow from the SMS. This
+     * configuration contains: pre-compute image uri, pre-compute heap
+     * size, post-compute image uri, post-compute heap size.
+     * 
+     * @return configuration if success, null otherwise
+     */
+    public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration() {
         try {
-            ResponseEntity<PreComputeConfig> response = smsClient.getPreComputeConfiguration();
+            ResponseEntity<TeeWorkflowSharedConfiguration> response =
+                    smsClient.getTeeWorkflowConfiguration();
             return response.getStatusCode().is2xxSuccessful()
                     ? response.getBody()
                     : null;
         } catch (Exception e) {
-            log.error("Failed to get pre-compute image URI from sms", e);
+            log.error("Failed to get tee workflow configuration from sms", e);
             return null;
+        }
+    }
+
+    public String getSconeCasUrl() {
+        try {
+            ResponseEntity<String> response = smsClient.getSconeCasUrl();
+            return response.getStatusCode().is2xxSuccessful()
+                    ? response.getBody()
+                    : "";
+        } catch (Exception e) {
+            log.error("Failed to get scone cas configuration from sms", e);
+            return "";
         }
     }
 

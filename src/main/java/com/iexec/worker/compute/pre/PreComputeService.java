@@ -19,20 +19,16 @@ package com.iexec.worker.compute.pre;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
-import com.iexec.common.precompute.PreComputeConfig;
 import com.iexec.common.precompute.PreComputeExitCode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
-import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
-import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
 import com.iexec.worker.tee.scone.SconeTeeService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -48,23 +44,22 @@ public class PreComputeService {
     private final DataService dataService;
     private final DockerService dockerService;
     private final SconeTeeService sconeTeeService;
-    private final SconeLasConfiguration sconeLasConfiguration;
     private final WorkerConfigurationService workerConfigService;
+    private final TeeWorkflowConfiguration teeWorkflowConfig;
 
     public PreComputeService(
             SmsService smsService,
             DataService dataService,
             DockerService dockerService,
             SconeTeeService sconeTeeService,
-            SconeLasConfiguration sconeLasConfiguration,
-            WorkerConfigurationService workerConfigService
-    ) {
+            WorkerConfigurationService workerConfigService,
+            TeeWorkflowConfiguration teeWorkflowConfig) {
         this.smsService = smsService;
         this.dataService = dataService;
         this.dockerService = dockerService;
         this.sconeTeeService = sconeTeeService;
-        this.sconeLasConfiguration = sconeLasConfiguration;
         this.workerConfigService = workerConfigService;
+        this.teeWorkflowConfig = teeWorkflowConfig;
     }
 
     public boolean runStandardPreCompute(TaskDescription taskDescription) {
@@ -83,6 +78,16 @@ public class PreComputeService {
         return true;
     }
 
+    /**
+     * Check the heap size of the application enclave and create a new tee session.
+     * If a user specific post-compute is specified it will be downloaded.
+     * If the task contains a dataset or some input files, the pre-compute enclave
+     * is started to handle them.
+     * 
+     * @param taskDescription
+     * @param workerpoolAuth
+     * @return created tee session id if success, empty string otherwise
+     */
     public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         // verify enclave configuration for compute stage
@@ -93,7 +98,7 @@ public class PreComputeService {
             return "";
         }
         long teeComputeMaxHeapSize = DataSize
-                .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGB())
+                .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGb())
                 .toBytes();
         if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
             log.error("Enclave configuration should define a proper heap " +
@@ -101,12 +106,21 @@ public class PreComputeService {
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
             return "";
         }
-        // download post-compute image
-        if (!dockerService.getClient().pullImage(taskDescription.getTeePostComputeImage())) {
-            log.error("Cannot pull TEE post-compute image [chainTaskId:{}, imageUri:{}]",
-                    chainTaskId, taskDescription.getTeePostComputeImage());
-            return "";
-        }
+        // ###############################################################################
+        // TODO: activate this when user specific post-compute is properly
+        // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
+        // ###############################################################################
+        // Download specific post-compute image if requested.
+        // Otherwise the default one will be used. 
+        // if (taskDescription.containsPostCompute() &&
+        //         !dockerService.getClient()
+        //                 .pullImage(taskDescription.getTeePostComputeImage())) {
+        //     log.error("Failed to pull specified tee post-compute image " +
+        //             "[chainTaskId:{}, imageUri:{}]", chainTaskId,
+        //             taskDescription.getTeePostComputeImage());
+        //     return "";
+        // }
+        // ###############################################################################
         // create secure session
         String secureSessionId = smsService.createTeeSession(workerpoolAuth);
         if (secureSessionId.isEmpty()) {
@@ -128,10 +142,9 @@ public class PreComputeService {
     }
 
     /**
-     * Download tee-worker-pre-compute docker image and run it. If the task
-     * contains a dataset, it is downloaded and decrypted for the compute
-     * stage. If the task contains a list of input files, they will be
-     * downloaded.
+     * Run tee-worker-pre-compute docker image. The pre-compute enclave downloads
+     * the dataset and decrypts it for the compute stage. It also downloads input
+     * files if requested.
      *
      * @param taskDescription
      * @param secureSessionId
@@ -140,36 +153,27 @@ public class PreComputeService {
      */
     private boolean prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Preparing TEE input data [chainTaskId:{}]", chainTaskId);
-        // get image URI
-        PreComputeConfig preComputeConfig = smsService.getPreComputeConfiguration();
-        if (preComputeConfig == null
-                || StringUtils.isEmpty(preComputeConfig.getImage())
-                || StringUtils.isEmpty(preComputeConfig.getHeapSize())) {
-            log.error("Failed to get TEE pre-compute configuration from SMS " +
-                    "[chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-        String preComputeImageUri = preComputeConfig.getImage();
-        // pull image
-        if (!dockerService.getClient().pullImage(preComputeImageUri)) {
-            log.error("Failed to pull TEE pre-compute image [chainTaskId:{}, uri:{}]",
-                    chainTaskId, preComputeImageUri);
+        log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
+        // check that docker image is present
+        String preComputeImage = teeWorkflowConfig.getPreComputeImage();
+        long preComputeHeapSize = teeWorkflowConfig.getPreComputeHeapSize();
+        if (!dockerService.getClient().isImagePresent(preComputeImage)) {
+            log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
             return false;
         }
         // run container
         List<String> env = sconeTeeService.buildPreComputeDockerEnv(secureSessionId,
-                preComputeConfig.getHeapSize());
+                preComputeHeapSize);
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
-                .imageUri(preComputeImageUri)
+                .imageUri(preComputeImage)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)
                 .isSgx(true)
-                .dockerNetwork(sconeLasConfiguration.getDockerNetworkName())
+                .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);
@@ -177,11 +181,11 @@ public class PreComputeService {
         PreComputeExitCode exitCodeName = PreComputeExitCode.nameOf(exitCodeValue); // can be null
         if (!dockerResponse.isSuccessful()) {
             // TODO report exit error
-            log.error("TEE pre-compute container failed [chainTaskId:{}, " +
+            log.error("Tee pre-compute container failed [chainTaskId:{}, " +
                     "exitCode:{}, error:{}]", chainTaskId, exitCodeValue, exitCodeName);
             return false;
         }
-        log.info("Prepared TEE input data successfully [chainTaskId:{}]", chainTaskId);
+        log.info("Prepared tee input data successfully [chainTaskId:{}]", chainTaskId);
         return true;
     }
 

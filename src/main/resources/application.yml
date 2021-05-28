@@ -14,7 +14,7 @@ worker:
   gas-price-cap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
   override-blockchain-node-address: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
   developer-logger-enabled: ${IEXEC_DEVELOPER_LOGGER_ENABLED:false}
-  tee-compute-max-heap-size-GB: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
+  tee-compute-max-heap-size-gb: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
   docker-network-name: ${IEXEC_WORKER_DOCKER_NETWORK_NAME:iexec-worker-net}
 
 wallet:
@@ -22,6 +22,8 @@ wallet:
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
 
 scone:
+  show-version: ${IEXEC_SCONE_SHOW_VERSION:true}
+  log-level: ${IEXEC_SCONE_LOG_LEVEL:debug}
   registry:
     username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:} #https://registry.scontain.com:5050
     password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
