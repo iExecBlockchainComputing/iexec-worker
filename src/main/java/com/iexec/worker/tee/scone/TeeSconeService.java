@@ -34,7 +34,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class SconeTeeService {
+public class TeeSconeService {
 
     private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
     private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";
@@ -44,17 +44,17 @@ public class SconeTeeService {
     private static final String SCONE_VERSION = "SCONE_VERSION";
     // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
-    private final SconeLasConfiguration sconeLasConfig;
+    private final SconeConfiguration sconeConfig;
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final boolean isLasStarted;
 
-    public SconeTeeService(
-            SconeLasConfiguration sconeLasConfig,
+    public TeeSconeService(
+            SconeConfiguration sconeConfig,
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             SgxService sgxService) {
-        this.sconeLasConfig = sconeLasConfig;
+        this.sconeConfig = sconeConfig;
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
@@ -71,8 +71,8 @@ public class SconeTeeService {
 
     boolean startLasService() {
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
-                .containerName(sconeLasConfig.getLasContainerName())
-                .imageUri(sconeLasConfig.getLasImageUri())
+                .containerName(sconeConfig.getLasContainerName())
+                .imageUri(sconeConfig.getLasImageUri())
                 // application & post-compose enclaves will be
                 // able to talk to the LAS via this network
                 .dockerNetwork(workerConfigService.getDockerNetworkName())
@@ -80,13 +80,13 @@ public class SconeTeeService {
                 .maxExecutionTime(0)
                 .build();
         DockerClientInstance client =
-                dockerService.getClient(sconeLasConfig.getRegistryUsername(),
-                        sconeLasConfig.getRegistryPassword());
+                dockerService.getClient(sconeConfig.getRegistryUsername(),
+                        sconeConfig.getRegistryPassword());
         if (client == null) {
             log.error("Docker client with credentials is required to enable TEE support");
             return false;
         }
-        if (!client.pullImage(sconeLasConfig.getLasImageUri())) {
+        if (!client.pullImage(sconeConfig.getLasImageUri())) {
             log.error("Failed to download LAS image");
             return false;
         }
@@ -121,13 +121,13 @@ public class SconeTeeService {
     }
 
     private List<String> getDockerEnv(String sconeConfigId, long sconeHeap) {
-        String sconeVersion = sconeLasConfig.isShowVersion() ? "1" : "0";
+        String sconeVersion = sconeConfig.isShowVersion() ? "1" : "0";
         return List.of(
-                SCONE_CAS_ADDR  + "=" + sconeLasConfig.getCasUrl(),
-                SCONE_LAS_ADDR  + "=" + sconeLasConfig.getLasUrl(),
+                SCONE_CAS_ADDR  + "=" + sconeConfig.getCasUrl(),
+                SCONE_LAS_ADDR  + "=" + sconeConfig.getLasUrl(),
                 SCONE_CONFIG_ID + "=" + sconeConfigId,
                 SCONE_HEAP      + "=" + sconeHeap,
-                SCONE_LOG       + "=" + sconeLasConfig.getLogLevel(),
+                SCONE_LOG       + "=" + sconeConfig.getLogLevel(),
                 SCONE_VERSION   + "=" + sconeVersion);
     }
 
@@ -135,7 +135,7 @@ public class SconeTeeService {
     private void stopLasService() {
         if (isLasStarted) {
             dockerService.getClient().stopAndRemoveContainer(
-                    sconeLasConfig.getLasContainerName());
+                    sconeConfig.getLasContainerName());
         }
     }
 }

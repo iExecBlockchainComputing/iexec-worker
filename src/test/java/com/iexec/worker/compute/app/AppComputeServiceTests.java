@@ -25,8 +25,8 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.SconeConfiguration;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -78,14 +78,14 @@ public class AppComputeServiceTests {
     @Mock
     private PublicConfigurationService publicConfigService;
     @Mock
-    private SconeTeeService sconeTeeService;
+    private TeeSconeService teeSconeService;
     @Mock
-    private SconeLasConfiguration sconeLasConfiguration;
+    private SconeConfiguration sconeConfig;
 
     @Before
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        when(sconeLasConfiguration.getCasUrl()).thenReturn(SCONE_CAS_URL);
+        when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
@@ -130,7 +130,7 @@ public class AppComputeServiceTests {
         taskDescription.setTeeTask(true);
         taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
                 .builder().heapSize(heapSize).build());
-        when(sconeTeeService.buildComputeDockerEnv(SECURE_SESSION_ID, heapSize))
+        when(teeSconeService.buildComputeDockerEnv(SECURE_SESSION_ID, heapSize))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
         env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));

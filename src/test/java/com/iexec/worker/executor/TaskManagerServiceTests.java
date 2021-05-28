@@ -35,7 +35,7 @@ import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
@@ -71,7 +71,7 @@ public class TaskManagerServiceTests {
     @Mock
     private ComputeManagerService computeManagerService;
     @Mock
-    private SconeTeeService sconeTeeService;
+    private TeeSconeService teeSconeService;
     @Mock
     private DataService dataService;
     @Mock
@@ -111,7 +111,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(getStubTaskDescription(false));
-        when(sconeTeeService.isTeeEnabled()).thenReturn(false);
+        when(teeSconeService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(CHAIN_TASK_ID);
@@ -151,7 +151,7 @@ public class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(getStubTaskDescription(true));
-        when(sconeTeeService.isTeeEnabled()).thenReturn(false);
+        when(teeSconeService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(CHAIN_TASK_ID);

@@ -19,7 +19,7 @@ package com.iexec.worker.compute;
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -35,7 +35,7 @@ import javax.annotation.PostConstruct;
 @Configuration
 public class TeeWorkflowConfiguration {
 
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final SmsService smsService;
     private final DockerService dockerService;
 
@@ -49,10 +49,10 @@ public class TeeWorkflowConfiguration {
     private long postComputeHeapSize = 0;
 
     public TeeWorkflowConfiguration(
-            SconeTeeService sconeTeeService,
+            TeeSconeService teeSconeService,
             SmsService smsService,
             DockerService dockerService) {
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.smsService = smsService;
         this.dockerService = dockerService;
     }
@@ -66,7 +66,7 @@ public class TeeWorkflowConfiguration {
      */
     @PostConstruct
     private void pullPrePostComputeImages() {
-        if (!sconeTeeService.isTeeEnabled()) {
+        if (!teeSconeService.isTeeEnabled()) {
             return;
         }
         TeeWorkflowSharedConfiguration config =
