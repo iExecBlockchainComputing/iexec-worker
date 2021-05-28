@@ -28,8 +28,8 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.SconeConfiguration;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,9 +73,9 @@ public class PreComputeServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
-    private SconeTeeService sconeTeeService;
+    private TeeSconeService teeSconeService;
     @Mock
-    private SconeLasConfiguration sconeLasConfiguration;
+    private SconeConfiguration sconeConfig;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
@@ -142,7 +142,7 @@ public class PreComputeServiceTests {
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
+        when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -178,7 +178,7 @@ public class PreComputeServiceTests {
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
+        when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -216,7 +216,7 @@ public class PreComputeServiceTests {
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(sconeTeeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
+        when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -273,7 +273,7 @@ public class PreComputeServiceTests {
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();
         verify(smsService).createTeeSession(workerpoolAuthorization);
-        verify(sconeTeeService, never()).buildPreComputeDockerEnv(anyString(), anyLong());
+        verify(teeSconeService, never()).buildPreComputeDockerEnv(anyString(), anyLong());
     }
 
     @Test

@@ -23,7 +23,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +44,7 @@ public class WorkerService {
     private final PublicConfigurationService publicConfigService;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final VersionService versionService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final RestartEndpoint restartEndpoint;
     private final DockerService dockerService;
 
@@ -55,7 +55,7 @@ public class WorkerService {
             PublicConfigurationService publicConfigService,
             CustomCoreFeignClient customCoreFeignClient,
             VersionService versionService,
-            SconeTeeService sconeTeeService,
+            TeeSconeService teeSconeService,
             RestartEndpoint restartEndpoint,
             DockerService dockerService) {
         this.credentialsService = credentialsService;
@@ -64,7 +64,7 @@ public class WorkerService {
         this.publicConfigService = publicConfigService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.versionService = versionService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.restartEndpoint = restartEndpoint;
         this.dockerService = dockerService;
     }
@@ -99,7 +99,7 @@ public class WorkerService {
                 .cpu(workerConfigService.getCPU())
                 .cpuNb(workerConfigService.getNbCPU())
                 .memorySize(workerConfigService.getMemorySize())
-                .teeEnabled(sconeTeeService.isTeeEnabled())
+                .teeEnabled(teeSconeService.isTeeEnabled())
                 .gpuEnabled(workerConfigService.isGpuEnabled())
                 .build();
 

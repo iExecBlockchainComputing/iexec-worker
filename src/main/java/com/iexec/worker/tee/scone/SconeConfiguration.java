@@ -38,7 +38,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-public class SconeLasConfiguration {
+public class SconeConfiguration {
 
     @Getter
     @Value("${scone.show-version}")
@@ -73,7 +73,7 @@ public class SconeLasConfiguration {
     @Getter
     private final String casUrl;
 
-    public SconeLasConfiguration(SmsService smsService,
+    public SconeConfiguration(SmsService smsService,
             WorkerConfigurationService workerConfigService) {
         // "iexec-las-0xWalletAddress" as lasContainerName to avoid naming conflict
         // when running multiple workers on the same machine.

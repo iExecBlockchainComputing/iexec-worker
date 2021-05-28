@@ -35,7 +35,7 @@ import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +58,7 @@ public class TaskManagerService {
     private final ContributionService contributionService;
     private final RevealService revealService;
     private final ComputeManagerService computeManagerService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final DataService dataService;
     private final ResultService resultService;
 
@@ -68,7 +68,7 @@ public class TaskManagerService {
             ContributionService contributionService,
             RevealService revealService,
             ComputeManagerService computeManagerService,
-            SconeTeeService sconeTeeService,
+            TeeSconeService teeSconeService,
             DataService dataService,
             ResultService resultService
     ) {
@@ -77,7 +77,7 @@ public class TaskManagerService {
         this.contributionService = contributionService;
         this.revealService = revealService;
         this.computeManagerService = computeManagerService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.dataService = dataService;
         this.resultService = resultService;
     }
@@ -98,7 +98,7 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !sconeTeeService.isTeeEnabled()) {
+        if (taskDescription.isTeeTask() && !teeSconeService.isTeeEnabled()) {
             return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
                     context, chainTaskId);
         }

@@ -23,7 +23,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.version.VersionService;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +59,7 @@ public class WorkerServiceTests {
     @Mock
     private VersionService versionService;
     @Mock
-    private SconeTeeService sconeTeeService;
+    private TeeSconeService teeSconeService;
     @Mock
     private RestartEndpoint restartEndpoint;
     @Mock
@@ -92,7 +92,7 @@ public class WorkerServiceTests {
         when(workerConfigService.getCPU()).thenReturn(cpu);
         when(workerConfigService.getNbCPU()).thenReturn(cpuNb);
         when(workerConfigService.getMemorySize()).thenReturn(memorySize);
-        when(sconeTeeService.isTeeEnabled()).thenReturn(isTee);
+        when(teeSconeService.isTeeEnabled()).thenReturn(isTee);
         when(workerConfigService.isGpuEnabled()).thenReturn(isGpu);
         when(workerConfigService.getHttpProxyHost()).thenReturn("host");
         when(workerConfigService.getHttpProxyPort()).thenReturn(1000);

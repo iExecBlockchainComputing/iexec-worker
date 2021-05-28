@@ -27,7 +27,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
@@ -43,7 +43,7 @@ public class PreComputeService {
     private final SmsService smsService;
     private final DataService dataService;
     private final DockerService dockerService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final WorkerConfigurationService workerConfigService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
 
@@ -51,13 +51,13 @@ public class PreComputeService {
             SmsService smsService,
             DataService dataService,
             DockerService dockerService,
-            SconeTeeService sconeTeeService,
+            TeeSconeService teeSconeService,
             WorkerConfigurationService workerConfigService,
             TeeWorkflowConfiguration teeWorkflowConfig) {
         this.smsService = smsService;
         this.dataService = dataService;
         this.dockerService = dockerService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.workerConfigService = workerConfigService;
         this.teeWorkflowConfig = teeWorkflowConfig;
     }
@@ -162,7 +162,7 @@ public class PreComputeService {
             return false;
         }
         // run container
-        List<String> env = sconeTeeService.buildPreComputeDockerEnv(secureSessionId,
+        List<String> env = teeSconeService.buildPreComputeDockerEnv(secureSessionId,
                 preComputeHeapSize);
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()

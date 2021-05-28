@@ -23,7 +23,7 @@ import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -34,15 +34,15 @@ public class AppComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            SconeTeeService sconeTeeService) {
+            TeeSconeService teeSconeService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -52,7 +52,7 @@ public class AppComputeService {
         if (taskDescription.isTeeTask()) {
             TeeEnclaveConfiguration enclaveConfig =
                     taskDescription.getAppEnclaveConfiguration();
-            List<String> strings = sconeTeeService.buildComputeDockerEnv(secureSessionId,
+            List<String> strings = teeSconeService.buildComputeDockerEnv(secureSessionId,
                     enclaveConfig != null ? enclaveConfig.getHeapSize() : 0);
             env.addAll(strings);
         }

@@ -26,7 +26,7 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -41,19 +41,19 @@ public class PostComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final ResultService resultService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             ResultService resultService,
-            SconeTeeService sconeTeeService,
+            TeeSconeService teeSconeService,
             TeeWorkflowConfiguration teeWorkflowConfig) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.resultService = resultService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.teeWorkflowConfig = teeWorkflowConfig;
     }
 
@@ -99,7 +99,7 @@ public class PostComputeService {
                     chainTaskId);
             return PostComputeResponse.builder().isSuccessful(false).build();
         }
-        List<String> env = sconeTeeService.
+        List<String> env = teeSconeService.
                 getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
         List<String> binds =
                 Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
