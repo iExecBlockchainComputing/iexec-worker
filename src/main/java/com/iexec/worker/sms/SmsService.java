@@ -39,6 +39,7 @@ public class SmsService {
 
     private final CredentialsService credentialsService;
     private final SmsClient smsClient;
+    private TeeWorkflowSharedConfiguration teeWorkflowConfiguration;
 
     public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
         this.credentialsService = credentialsService;
@@ -117,22 +118,24 @@ public class SmsService {
 
     /**
      * Get the configuration needed for TEE workflow from the SMS. This
-     * configuration contains: pre-compute image uri, pre-compute heap
+     * configuration contains: las image, pre-compute image uri, pre-compute heap
      * size, post-compute image uri, post-compute heap size.
-     * 
+     * Note: Caching response to avoid calling the SMS
      * @return configuration if success, null otherwise
      */
     public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration() {
-        try {
-            ResponseEntity<TeeWorkflowSharedConfiguration> response =
-                    smsClient.getTeeWorkflowConfiguration();
-            return response.getStatusCode().is2xxSuccessful()
-                    ? response.getBody()
-                    : null;
-        } catch (Exception e) {
-            log.error("Failed to get tee workflow configuration from sms", e);
-            return null;
+        if (teeWorkflowConfiguration == null){
+            try {
+                ResponseEntity<TeeWorkflowSharedConfiguration> response =
+                        smsClient.getTeeWorkflowConfiguration();
+                teeWorkflowConfiguration = response.getStatusCode().is2xxSuccessful()
+                        ? response.getBody()
+                        : null;
+            } catch (Exception e) {
+                log.error("Failed to get tee workflow configuration from sms", e);
+            }
         }
+        return teeWorkflowConfiguration;
     }
 
     public String getSconeCasUrl() {

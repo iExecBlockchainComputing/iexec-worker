@@ -30,13 +30,15 @@ import org.mockito.*;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class SconeTeeServiceTests {
 
-    private static final String IMAGE_URI = "IMAGE_URI";
+    private static final String REGISTRY_NAME = "registryName";
+    private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
@@ -66,6 +68,7 @@ public class SconeTeeServiceTests {
     @Before
     public void init() {
         MockitoAnnotations.openMocks(this);
+        when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
         when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
         when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
@@ -95,7 +98,21 @@ public class SconeTeeServiceTests {
     }
 
     @Test
+    public void shouldNotStartLasServiceSinceUnknownRegistry() {
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
+        when(sconeConfig.getRegistryName()).thenReturn("unknownRegistry");
+
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            teeSconeService.startLasService();
+        });
+
+        Assertions.assertThat(exception.getMessage().contains("not from a known registry"))
+                .isTrue();
+    }
+
+    @Test
     public void shouldNotStartLasServiceSinceClientError() {
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerService.getClient(REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
 
