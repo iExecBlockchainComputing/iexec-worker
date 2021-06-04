@@ -56,6 +56,7 @@ public class PostComputeServiceTests {
     private final static String WORKER_NAME = "WORKER_NAME";
     private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private final static long TEE_POST_COMPUTE_HEAP = 1024;
+    private final static String TEE_POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
     private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
     private final static long MAX_EXECUTION_TIME = 1000;
 
@@ -192,6 +193,7 @@ public class PostComputeServiceTests {
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
@@ -222,6 +224,7 @@ public class PostComputeServiceTests {
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID +
                                 "-tee-post-compute")
                         .imageUri(TEE_POST_COMPUTE_IMAGE)
+                        .entrypoint(TEE_POST_COMPUTE_ENTRYPOINT)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
                         .binds(Collections.singletonList(iexecOutBind))
@@ -243,6 +246,7 @@ public class PostComputeServiceTests {
                 .build();
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -264,6 +268,7 @@ public class PostComputeServiceTests {
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))

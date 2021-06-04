@@ -169,6 +169,7 @@ public class PreComputeService {
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
                 .imageUri(preComputeImage)
+                .entrypoint(teeWorkflowConfig.getPreComputeEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)

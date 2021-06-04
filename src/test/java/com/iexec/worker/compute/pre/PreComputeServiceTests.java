@@ -46,6 +46,7 @@ public class PreComputeServiceTests {
 
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP = 1024;
+    private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
     private final String chainTaskId = "chainTaskId";
     private final String datasetUri = "datasetUri";
     private final TaskDescription taskDescription = TaskDescription.builder()
@@ -140,6 +141,7 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
@@ -161,6 +163,7 @@ public class PreComputeServiceTests {
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
+        Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.isSgx()).isTrue();
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
@@ -176,6 +179,7 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
@@ -197,6 +201,7 @@ public class PreComputeServiceTests {
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
+        Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.isSgx()).isTrue();
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
@@ -214,6 +219,7 @@ public class PreComputeServiceTests {
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
@@ -235,6 +241,7 @@ public class PreComputeServiceTests {
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
+        Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.isSgx()).isTrue();
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
@@ -285,6 +292,7 @@ public class PreComputeServiceTests {
                 .thenReturn("secureSessionId");
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -302,6 +310,7 @@ public class PreComputeServiceTests {
                 .thenReturn("secureSessionId");
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
