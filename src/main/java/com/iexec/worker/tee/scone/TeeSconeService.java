@@ -28,7 +28,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
-
 import java.util.List;
 
 
@@ -70,15 +69,20 @@ public class TeeSconeService {
     }
 
     boolean startLasService() {
+        String lasImage = sconeConfig.getLasImageUri();
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(sconeConfig.getLasContainerName())
-                .imageUri(sconeConfig.getLasImageUri())
+                .imageUri(lasImage)
                 // application & post-compose enclaves will be
                 // able to talk to the LAS via this network
                 .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .isSgx(true)
                 .maxExecutionTime(0)
                 .build();
+        if (!lasImage.contains(sconeConfig.getRegistryName())) {
+            throw new RuntimeException(String.format("LAS image (%s) is not " +
+                    "from a known registry (%s)", lasImage, sconeConfig.getRegistryName()));
+        }
         DockerClientInstance client =
                 dockerService.getClient(sconeConfig.getRegistryUsername(),
                         sconeConfig.getRegistryPassword());
@@ -86,7 +90,7 @@ public class TeeSconeService {
             log.error("Docker client with credentials is required to enable TEE support");
             return false;
         }
-        if (!client.pullImage(sconeConfig.getLasImageUri())) {
+        if (!client.pullImage(lasImage)) {
             log.error("Failed to download LAS image");
             return false;
         }
@@ -123,12 +127,12 @@ public class TeeSconeService {
     private List<String> getDockerEnv(String sconeConfigId, long sconeHeap) {
         String sconeVersion = sconeConfig.isShowVersion() ? "1" : "0";
         return List.of(
-                SCONE_CAS_ADDR  + "=" + sconeConfig.getCasUrl(),
-                SCONE_LAS_ADDR  + "=" + sconeConfig.getLasUrl(),
+                SCONE_CAS_ADDR + "=" + sconeConfig.getCasUrl(),
+                SCONE_LAS_ADDR + "=" + sconeConfig.getLasUrl(),
                 SCONE_CONFIG_ID + "=" + sconeConfigId,
-                SCONE_HEAP      + "=" + sconeHeap,
-                SCONE_LOG       + "=" + sconeConfig.getLogLevel(),
-                SCONE_VERSION   + "=" + sconeVersion);
+                SCONE_HEAP + "=" + sconeHeap,
+                SCONE_LOG + "=" + sconeConfig.getLogLevel(),
+                SCONE_VERSION + "=" + sconeVersion);
     }
 
     @PreDestroy

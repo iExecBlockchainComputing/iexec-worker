@@ -25,12 +25,10 @@ scone:
   show-version: ${IEXEC_SCONE_SHOW_VERSION:true}
   log-level: ${IEXEC_SCONE_LOG_LEVEL:debug}
   registry:
-    username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:} #https://registry.scontain.com:5050
+    name: ${IEXEC_WORKER_SCONTAIN_REGISTRY_NAME:registry.scontain.com:5050}
+    username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:}
     password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
-  las:
-    image: ${IEXEC_LAS_IMAGE:registry.scontain.com:5050/sconecuratedimages/services}
-    version: ${IEXEC_LAS_VERSION:las-scone5.3.0}
-    port: ${IEXEC_LAS_PORT:18766}
+  las-port: ${IEXEC_LAS_PORT:18766}
 
 management:
   endpoint:

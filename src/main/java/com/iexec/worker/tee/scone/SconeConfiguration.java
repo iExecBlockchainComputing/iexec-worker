@@ -17,6 +17,7 @@
 package com.iexec.worker.tee.scone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.sms.SmsService;
 import lombok.Getter;
@@ -32,13 +33,15 @@ import org.springframework.stereotype.Service;
  * (eg compute enclave measurement - MREnclave - and attest it through Intel
  * Attestation Service).
  * It must be on the same machine as the attested program/enclave.
- * 
+ *
  * MREnclave: an enclave identifier, created by hashing all its
  * code. It guarantees that a code behaves exactly as expected.
  */
 @Slf4j
 @Service
 public class SconeConfiguration {
+
+    private final SmsService smsService;
 
     @Getter
     @Value("${scone.show-version}")
@@ -49,6 +52,10 @@ public class SconeConfiguration {
     private String logLevel;
 
     @Getter
+    @Value("${scone.registry.name}")
+    private String registryName;
+
+    @Getter
     @Value("${scone.registry.username}")
     private String registryUsername;
 
@@ -57,14 +64,8 @@ public class SconeConfiguration {
     @Value("${scone.registry.password}")
     private String registryPassword;
 
-    @Value("${scone.las.image}")
-    private String lasImage;
-
-    @Value("${scone.las.version}")
-    private String lasVersion;
-
     @Getter
-    @Value("${scone.las.port}")
+    @Value("${scone.las-port}")
     private int lasPort;
 
     @Getter
@@ -73,8 +74,9 @@ public class SconeConfiguration {
     @Getter
     private final String casUrl;
 
-    public SconeConfiguration(SmsService smsService,
-            WorkerConfigurationService workerConfigService) {
+    public SconeConfiguration(WorkerConfigurationService workerConfigService,
+                              SmsService smsService) {
+        this.smsService = smsService;
         // "iexec-las-0xWalletAddress" as lasContainerName to avoid naming conflict
         // when running multiple workers on the same machine.
         lasContainerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
@@ -84,10 +86,16 @@ public class SconeConfiguration {
         if (StringUtils.isEmpty(casUrl)) {
             throw new BeanInstantiationException(this.getClass(), "Missing cas url");
         }
+        TeeWorkflowSharedConfiguration config = smsService.getTeeWorkflowConfiguration();
+        if (config == null) {
+            throw new RuntimeException("Missing tee workflow configuration");
+        }
     }
 
     public String getLasImageUri() {
-        return lasImage + ":" + lasVersion;
+        TeeWorkflowSharedConfiguration config = smsService.getTeeWorkflowConfiguration();
+        return config != null && !StringUtils.isEmpty(config.getLasImage()) ?
+                config.getLasImage() : "";
     }
 
     public String getLasUrl() {
