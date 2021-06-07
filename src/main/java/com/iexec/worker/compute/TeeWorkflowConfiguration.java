@@ -44,9 +44,13 @@ public class TeeWorkflowConfiguration {
     @Getter
     private long preComputeHeapSize = 0;
     @Getter
+    private String preComputeEntrypoint = "";
+    @Getter
     private String postComputeImage = "";
     @Getter
     private long postComputeHeapSize = 0;
+    @Getter
+    private String postComputeEntrypoint = "";
 
     public TeeWorkflowConfiguration(
             TeeSconeService teeSconeService,
@@ -85,7 +89,9 @@ public class TeeWorkflowConfiguration {
         }
         preComputeImage = config.getPreComputeImage();
         preComputeHeapSize = config.getPreComputeHeapSize();
+        preComputeEntrypoint = config.getPreComputeEntrypoint();
         postComputeImage = config.getPostComputeImage();
         postComputeHeapSize = config.getPostComputeHeapSize();
+        postComputeEntrypoint = config.getPostComputeEntrypoint();
     }
 }

@@ -109,6 +109,7 @@ public class PostComputeService {
                         .chainTaskId(chainTaskId)
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                         .imageUri(postComputeImage)
+                        .entrypoint(teeWorkflowConfig.getPostComputeEntrypoint())
                         .maxExecutionTime(taskDescription.getMaxExecutionTime())
                         .env(env)
                         .binds(binds)
