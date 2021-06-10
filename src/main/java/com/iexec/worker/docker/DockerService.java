@@ -76,7 +76,8 @@ public class DockerService {
      * @return auth for the registry
      */
     Optional<DockerRegistryConfiguration.RegistryAuth> getAuthForRegistry(String registryAddress) {
-        if (StringUtils.isEmpty(registryAddress)) {
+        if (StringUtils.isEmpty(registryAddress)
+                || dockerRegistryConfiguration.getRegistries() == null) {
             return Optional.empty();
         }
         return dockerRegistryConfiguration.getRegistries().stream()
