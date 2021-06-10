@@ -52,7 +52,7 @@ public class DockerService {
     }
 
     /**
-     * Get a docker.io authenticated Docker client if credentials as present,
+     * Get a docker.io authenticated Docker client if credentials are present,
      * else get an unauthenticated Docker client.
      *
      * @return a Docker client
