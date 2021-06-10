@@ -22,6 +22,7 @@ import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.worker.config.DockerRegistryConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -31,30 +32,66 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
 public class DockerService {
 
-    private final DockerClientInstance dockerClientInstance;
+    private static final String DEFAULT_REGISTRY_ADDRESS = "docker.io";
     private final HashSet<String> runningContainersRecord;
     private final WorkerConfigurationService workerConfigService;
+    private final DockerRegistryConfiguration dockerRegistryConfiguration;
+    private DockerClientInstance dockerClientInstance;
 
-    public DockerService(WorkerConfigurationService workerConfigService) {
-        this.dockerClientInstance = DockerClientFactory.getDockerClientInstance();
+    public DockerService(WorkerConfigurationService workerConfigService,
+                         DockerRegistryConfiguration dockerRegistryConfiguration) {
+        this.dockerRegistryConfiguration = dockerRegistryConfiguration;
         this.runningContainersRecord = new HashSet<>();
         this.workerConfigService = workerConfigService;
     }
 
+    /**
+     * Get a docker.io authenticated Docker client if credentials as present,
+     * else get an unauthenticated Docker client.
+     *
+     * @return an Docker client
+     */
     public DockerClientInstance getClient() {
-        return this.dockerClientInstance;
+        if (dockerClientInstance == null) {
+            dockerClientInstance = getAuthForRegistry(DEFAULT_REGISTRY_ADDRESS)
+                    .map(defaultAuth ->
+                            DockerClientFactory.getDockerClientInstance(defaultAuth.getUsername(),
+                                    defaultAuth.getPassword()))
+                    .orElse(DockerClientFactory.getDockerClientInstance());
+        }
+        return dockerClientInstance;
+    }
+
+    /**
+     * Get Docker username and password for a given registry address
+     *
+     * @param registryAddress address of the registry (docker.io,
+     *                        mcr.microsoft.com, ecr.us-east-2.amazonaws.com)
+     * @return auth for the registry
+     */
+    Optional<DockerRegistryConfiguration.RegistryAuth> getAuthForRegistry(String registryAddress) {
+        if (StringUtils.isEmpty(registryAddress)) {
+            return Optional.empty();
+        }
+        return dockerRegistryConfiguration.getRegistries().stream()
+                .filter(registryAuth -> registryAddress.equals(registryAuth.getAddress())
+                        && StringUtils.isNotBlank(registryAuth.getUsername())
+                        && StringUtils.isNotBlank(registryAuth.getPassword())
+                )
+                .findFirst();
     }
 
     public DockerClientInstance getClient(String registryUsername,
                                           String registryPassword) {
-        if (StringUtils.isEmpty(registryUsername) || StringUtils.isEmpty(registryPassword)){
+        if (StringUtils.isEmpty(registryUsername) || StringUtils.isEmpty(registryPassword)) {
             log.error("Registry username and password are required " +
-                    "[registryUsername:{}]",registryUsername);
+                    "[registryUsername:{}]", registryUsername);
             return null;
         }
         return DockerClientFactory.getDockerClientInstance(registryUsername,
@@ -85,7 +122,7 @@ public class DockerService {
         }
         dockerRunResponse = getClient().run(dockerRunRequest);
         if (!dockerRunResponse.isSuccessful()
-            || dockerRunRequest.getMaxExecutionTime() != 0) {
+                || dockerRunRequest.getMaxExecutionTime() != 0) {
             removeFromRunningContainersRecord(containerName);
         }
         if (shouldPrintDeveloperLogs(dockerRunRequest)) {
@@ -121,7 +158,7 @@ public class DockerService {
      * the container for input.
      * <p>
      * Expected: taskBaseDir/input:/iexec_in
-     * 
+     *
      * @param chainTaskId
      * @return
      */
@@ -135,7 +172,7 @@ public class DockerService {
      * the container for output.
      * <p>
      * Expected: taskBaseDir/output/iexec_out:/iexec_out
-     * 
+     *
      * @param chainTaskId
      * @return
      */

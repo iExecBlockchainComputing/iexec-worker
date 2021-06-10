@@ -20,6 +20,7 @@ import com.iexec.common.docker.DockerLogs;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.worker.config.DockerRegistryConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
@@ -27,6 +28,9 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+
+import java.util.Collections;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -39,15 +43,79 @@ public class DockerServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
 
     private WorkerConfigurationService workerConfigService = mock(WorkerConfigurationService.class);
+    private DockerRegistryConfiguration dockerRegistryConfiguration = mock(DockerRegistryConfiguration.class);
 
     @Spy
-    private DockerService dockerService = new DockerService(workerConfigService);
+    private DockerService dockerService = new DockerService(workerConfigService, dockerRegistryConfiguration);
 
     @Before
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+    }
+
+    @Test
+    public void shouldGetAuthForRegistry() {
+        String registryName = "registryName";
+        String registryUsername = "registryUsername";
+        String registryPassword = "registryPassword";
+        when(dockerRegistryConfiguration.getRegistries())
+                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
+                        .address(registryName)
+                        .username(registryUsername)
+                        .password(registryPassword)
+                        .build()));
+        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
+                dockerService.getAuthForRegistry(registryName);
+        assertThat(authForRegistry.isPresent());
+        assertThat(authForRegistry.get().getAddress()).isEqualTo(registryName);
+        assertThat(authForRegistry.get().getUsername()).isEqualTo(registryUsername);
+        assertThat(authForRegistry.get().getPassword()).isEqualTo(registryPassword);
+    }
+
+    @Test
+    public void shouldNotGetAuthForRegistrySinceUnknownRegistry() {
+        String registryName = "registryName";
+        String registryUsername = "registryUsername";
+        String registryPassword = "registryPassword";
+        when(dockerRegistryConfiguration.getRegistries())
+                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
+                        .address(registryName)
+                        .username(registryUsername)
+                        .password(registryPassword)
+                        .build()));
+        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
+                dockerService.getAuthForRegistry("unknownRegistryName");
+        assertThat(authForRegistry.isEmpty());
+    }
+
+    @Test
+    public void shouldNotGetAuthForRegistrySinceMissingUsernameInConfig() {
+        String registryName = "registryName";
+        when(dockerRegistryConfiguration.getRegistries())
+                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
+                        .address(registryName)
+                        .username("")
+                        .password("registryPassword")
+                        .build()));
+        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
+                dockerService.getAuthForRegistry(registryName);
+        assertThat(authForRegistry.isEmpty());
+    }
+
+    @Test
+    public void shouldNotGetAuthForRegistrySinceMissingPasswordInConfig() {
+        String registryName = "registryName";
+        when(dockerRegistryConfiguration.getRegistries())
+                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
+                        .address(registryName)
+                        .username("registryUsername")
+                        .password("")
+                        .build()));
+        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
+                dockerService.getAuthForRegistry(registryName);
+        assertThat(authForRegistry.isEmpty());
     }
 
     @Test
