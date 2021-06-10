@@ -55,7 +55,7 @@ public class DockerService {
      * Get a docker.io authenticated Docker client if credentials as present,
      * else get an unauthenticated Docker client.
      *
-     * @return an Docker client
+     * @return a Docker client
      */
     public DockerClientInstance getClient() {
         if (dockerClientInstance == null) {
