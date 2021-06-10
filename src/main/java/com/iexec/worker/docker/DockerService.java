@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.core.NameParser;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
@@ -65,6 +66,21 @@ public class DockerService {
                     .orElse(DockerClientFactory.getDockerClientInstance());
         }
         return dockerClientInstance;
+    }
+
+    public DockerClientInstance getClient(String imageName) {
+        String registryAddress = parseRegistryAddress(imageName);
+        return getAuthForRegistry(registryAddress)
+                .map(registryAuth ->
+                        DockerClientFactory.getDockerClientInstance(registryAuth.getUsername(),
+                                registryAuth.getPassword()))
+                .orElse(getClient());
+    }
+
+    private static String parseRegistryAddress(String imageName) {
+        NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
+        NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
+        return hostnameReposName.hostname;
     }
 
     /**

@@ -79,11 +79,11 @@ public class TeeWorkflowConfiguration {
         if (config == null) {
             throw new RuntimeException("Missing tee workflow configuration");
         }
-        if (!dockerService.getClient()
+        if (!dockerService.getClient(config.getPreComputeImage())
                 .pullImage(config.getPreComputeImage())) {
             throw new RuntimeException("Failed to download pre-compute image");
         }
-        if (!dockerService.getClient()
+        if (!dockerService.getClient(config.getPostComputeImage())
                 .pullImage(config.getPostComputeImage())) {
             throw new RuntimeException("Failed to download post-compute image");
         }
