@@ -22,7 +22,6 @@ import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
-import com.iexec.worker.config.DockerRegistryConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;

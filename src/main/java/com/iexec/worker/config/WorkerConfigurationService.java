@@ -60,7 +60,7 @@ public class WorkerConfigurationService {
     @Getter
     private int teeComputeMaxHeapSizeGb;
 
-    @Value("${worker.docker.network-name}")
+    @Value("${worker.docker-network-name}")
     @Getter
     private String dockerNetworkName;
 

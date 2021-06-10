@@ -20,7 +20,6 @@ import com.iexec.common.docker.DockerLogs;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.worker.config.DockerRegistryConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
@@ -246,7 +245,7 @@ public class DockerServiceTests {
         String container2 = "container2";
         dockerService.addToRunningContainersRecord(container1);
         dockerService.addToRunningContainersRecord(container2);
-        
+
         when(dockerClientInstanceMock.stopContainer(container1)).thenReturn(true);
         when(dockerClientInstanceMock.stopContainer(container2)).thenReturn(true);
 

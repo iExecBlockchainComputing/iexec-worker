@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.config;
+package com.iexec.worker.docker;
 
 import lombok.*;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-@ConfigurationProperties(prefix = "worker.docker")
+@ConfigurationProperties(prefix = "docker")
 public class DockerRegistryConfiguration {
 
     @Setter
