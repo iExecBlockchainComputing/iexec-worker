@@ -17,30 +17,64 @@
 package com.iexec.worker.docker;
 
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
+
+import javax.annotation.PostConstruct;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
-@Component
+@Slf4j
+@Configuration
 @ConfigurationProperties(prefix = "docker")
 public class DockerRegistryConfiguration {
 
     @Setter
     @Getter
-    private List<RegistryAuth> registries;
+    private List<RegistryCredentials> registries;
 
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Setter
-    @Getter
-    public static class RegistryAuth {
-
-        private String address;
-        private String username;
-        private String password;
-
+    /**
+     * Check that if a Docker registry's username is present, then its password is also
+     * present, otherwise the worker will fail to start.
+     */
+    @PostConstruct
+    void validateRegistries() throws Exception {
+        if (registries == null || registries.isEmpty()) {
+            log.warn("Docker registry list is empty");
+            return;
+        }
+        List<RegistryCredentials> registriesWithMissingPasswords = registries.stream()
+                // get registries with usernames
+                .filter(registryAuth -> StringUtils.isNotBlank(registryAuth.getUsername()))
+                // from those registries get the ones where the password is missing
+                .filter(registryAuth -> StringUtils.isBlank(registryAuth.getPassword()))
+                .collect(Collectors.toList());
+        if (!registriesWithMissingPasswords.isEmpty()) {
+            throw new Exception("Missing passwords for registries with usernames: "
+                    + registriesWithMissingPasswords);
+        }
     }
 
+    /**
+     * Get Docker username and password for a given registry address.
+     *
+     * @param registryAddress address of the registry (docker.io,
+     *                        mcr.microsoft.com, ecr.us-east-2.amazonaws.com)
+     * @return auth for the registry
+     */
+    public Optional<RegistryCredentials> getAuthForRegistry(String registryAddress) {
+        if (StringUtils.isEmpty(registryAddress) || getRegistries() == null) {
+            return Optional.empty();
+        }
+        return getRegistries().stream()
+                .filter(registryAuth -> registryAddress.equals(registryAuth.getAddress())
+                        && StringUtils.isNotBlank(registryAuth.getUsername())
+                        && StringUtils.isNotBlank(registryAuth.getPassword())
+                )
+                .findFirst();
+    }
 }
