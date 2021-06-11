@@ -32,7 +32,6 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -59,7 +58,7 @@ public class DockerService {
      */
     public DockerClientInstance getClient() {
         if (dockerClientInstance == null) {
-            dockerClientInstance = getAuthForRegistry(DEFAULT_REGISTRY_ADDRESS)
+            dockerClientInstance = dockerRegistryConfiguration.getRegistryCredentials(DEFAULT_REGISTRY_ADDRESS)
                     .map(defaultAuth ->
                             DockerClientFactory.getDockerClientInstance(defaultAuth.getUsername(),
                                     defaultAuth.getPassword()))
@@ -68,9 +67,21 @@ public class DockerService {
         return dockerClientInstance;
     }
 
+    /**
+     * Try to get a Docker client that is authenticated to the registry of the provided image.
+     * If no credentials are found for the identified registry, an unauthenticated Docker client
+     * is provided instead.
+     * <p>
+     * e.g. for the image "nexus.iex.ec/image:tag" we try to connect to
+     * "nexus.iex.ec" and for "docker.io/iexechub/image:tag" we try to connect to DockerHub.
+     * 
+     * @param imageName
+     * @return an authenticated Docker client if credentials for the image's registry are
+     * to be found, an unauthenticated client otherwise.
+     */
     public DockerClientInstance getClient(String imageName) {
         String registryAddress = parseRegistryAddress(imageName);
-        return getAuthForRegistry(registryAddress)
+        return dockerRegistryConfiguration.getRegistryCredentials(registryAddress)
                 .map(registryAuth ->
                         DockerClientFactory.getDockerClientInstance(registryAuth.getUsername(),
                                 registryAuth.getPassword()))
@@ -81,26 +92,6 @@ public class DockerService {
         NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
         NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
         return hostnameReposName.hostname;
-    }
-
-    /**
-     * Get Docker username and password for a given registry address
-     *
-     * @param registryAddress address of the registry (docker.io,
-     *                        mcr.microsoft.com, ecr.us-east-2.amazonaws.com)
-     * @return auth for the registry
-     */
-    Optional<DockerRegistryConfiguration.RegistryAuth> getAuthForRegistry(String registryAddress) {
-        if (StringUtils.isEmpty(registryAddress)
-                || dockerRegistryConfiguration.getRegistries() == null) {
-            return Optional.empty();
-        }
-        return dockerRegistryConfiguration.getRegistries().stream()
-                .filter(registryAuth -> registryAddress.equals(registryAuth.getAddress())
-                        && StringUtils.isNotBlank(registryAuth.getUsername())
-                        && StringUtils.isNotBlank(registryAuth.getPassword())
-                )
-                .findFirst();
     }
 
     public DockerClientInstance getClient(String registryUsername,

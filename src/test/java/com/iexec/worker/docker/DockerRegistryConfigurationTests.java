@@ -74,7 +74,7 @@ public class DockerRegistryConfigurationTests {
         RegistryCredentials credentials = configuration.getRegistries().get(0);
 
         Optional<RegistryCredentials> authForRegistry =
-                configuration.getAuthForRegistry(credentials.getAddress());
+                configuration.getRegistryCredentials(credentials.getAddress());
         assertThat(authForRegistry.isPresent());
         assertThat(authForRegistry.get().getAddress()).isEqualTo(credentials.getAddress());
         assertThat(authForRegistry.get().getUsername()).isEqualTo(credentials.getUsername());
@@ -85,13 +85,13 @@ public class DockerRegistryConfigurationTests {
     public void shouldNotGetAuthForRegistrySinceNoRegistries() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         configuration.setRegistries(null); // no list
-        assertThat(configuration.getAuthForRegistry("whatever")).isEmpty();
+        assertThat(configuration.getRegistryCredentials("whatever")).isEmpty();
     }
 
     @Test
     public void shouldNotGetAuthForRegistrySinceUnknownRegistry() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
-        assertThat(configuration.getAuthForRegistry("unknownRegistry")).isEmpty();
+        assertThat(configuration.getRegistryCredentials("unknownRegistry")).isEmpty();
     }
 
     @Test
@@ -99,7 +99,7 @@ public class DockerRegistryConfigurationTests {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         RegistryCredentials credentials = configuration.getRegistries().get(0);
         credentials.setUsername(null); // no username
-        assertThat(configuration.getAuthForRegistry(credentials.getAddress())).isEmpty();
+        assertThat(configuration.getRegistryCredentials(credentials.getAddress())).isEmpty();
     }
 
     @Test
@@ -107,6 +107,6 @@ public class DockerRegistryConfigurationTests {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         RegistryCredentials credentials = configuration.getRegistries().get(0);
         credentials.setPassword(null); // no password
-        assertThat(configuration.getAuthForRegistry(credentials.getAddress())).isEmpty();
+        assertThat(configuration.getRegistryCredentials(credentials.getAddress())).isEmpty();
     }
 }

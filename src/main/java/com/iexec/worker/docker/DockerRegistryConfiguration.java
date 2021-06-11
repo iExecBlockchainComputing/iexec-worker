@@ -66,7 +66,7 @@ public class DockerRegistryConfiguration {
      *                        mcr.microsoft.com, ecr.us-east-2.amazonaws.com)
      * @return auth for the registry
      */
-    public Optional<RegistryCredentials> getAuthForRegistry(String registryAddress) {
+    public Optional<RegistryCredentials> getRegistryCredentials(String registryAddress) {
         if (StringUtils.isEmpty(registryAddress) || getRegistries() == null) {
             return Optional.empty();
         }
