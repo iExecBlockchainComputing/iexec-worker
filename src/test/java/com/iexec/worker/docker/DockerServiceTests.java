@@ -76,7 +76,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldGetUnauthenticatedClientWhenNoCredentialsFound() throws Exception {
+    public void shouldGetUnauthenticatedClientWhenCredentialsNotFound() throws Exception {
         doCallRealMethod().when(dockerService).getClient();
         when(dockerRegistryConfiguration.getRegistryCredentials(DEFAULT_REGISTRY_ADDRESS))
                 .thenReturn(Optional.empty());
@@ -201,29 +201,33 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldGetUnautneticatedClientWhenNoCredentialsFound() throws Exception {
-        doCallRealMethod().when(dockerService).getClient();
-        when(dockerRegistryConfiguration.getRegistryCredentials(DEFAULT_REGISTRY_ADDRESS))
+    public void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
+        String registry = "nexus.iex.ec";
+        String imageName = registry + "/name:tag";
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.empty());
-        dockerService.getClient();
+        dockerService.getClient(imageName);
         verify(dockerService, never()).getClient(anyString(), anyString(), anyString());
         verify(dockerService).getUnauthenticatedClient();
     }
 
     @Test
-    public void shouldGetUnautneticatedClientWithDefaultRegistryWhenAuthFailure() throws Exception {
+    public void shouldGetUnauthenticatedClientWithDefaultRegistryWhenAuthFailureWithCustomRegistry() throws Exception {
+        String registry = "nexus.iex.ec";
+        String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
                 .username("username")
                 .password("password")
                 .build();
-        doCallRealMethod().when(dockerService).getClient();
-        when(dockerRegistryConfiguration.getRegistryCredentials(DEFAULT_REGISTRY_ADDRESS))
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
         doThrow(DockerException.class)
                 .when(dockerService)
-                .getClient("", credentials.getUsername(), credentials.getPassword());
-        dockerService.getClient();
-        verify(dockerService).getClient("", credentials.getUsername(), credentials.getPassword());
+                .getClient(registry, credentials.getUsername(), credentials.getPassword());
+        dockerService.getClient(imageName);
+        verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
         verify(dockerService).getUnauthenticatedClient();
     }
 
