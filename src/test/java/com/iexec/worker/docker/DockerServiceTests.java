@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.exception.DockerException;
 import com.iexec.common.docker.DockerLogs;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
@@ -28,9 +29,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
-import java.util.Collections;
 import java.util.Optional;
 
+import static com.iexec.common.docker.client.DockerClientInstance.DOCKER_IO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -54,67 +55,137 @@ public class DockerServiceTests {
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
     }
 
+    // getClient()
+
     @Test
-    public void shouldGetAuthForRegistry() {
-        String registryName = "registryName";
-        String registryUsername = "registryUsername";
-        String registryPassword = "registryPassword";
-        when(dockerRegistryConfiguration.getRegistries())
-                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
-                        .address(registryName)
-                        .username(registryUsername)
-                        .password(registryPassword)
-                        .build()));
-        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
-                dockerService.getAuthForRegistry(registryName);
-        assertThat(authForRegistry.isPresent());
-        assertThat(authForRegistry.get().getAddress()).isEqualTo(registryName);
-        assertThat(authForRegistry.get().getUsername()).isEqualTo(registryUsername);
-        assertThat(authForRegistry.get().getPassword()).isEqualTo(registryPassword);
+    public void shouldGetUnauthenticatedClient() {
+        doCallRealMethod().when(dockerService).getClient();
+        DockerClientInstance dockerClientInstance = dockerService.getClient();
+        assertThat(dockerClientInstance.getClient().authConfig().getPassword()).isNull();
+    }
+
+    // getClient(imageName)
+
+    // docker.io/image:tag
+
+    @Test
+    public void shouldGetAuthenticatedClientWithDockerIoRegistry() throws Exception {
+        String registry = DockerClientInstance.DOCKER_IO;
+        String imageName = registry + "/name:tag";
+        RegistryCredentials credentials = RegistryCredentials.builder()
+                .address(registry)
+                .username("username")
+                .password("password")
+                .build();
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
+                .thenReturn(Optional.of(credentials));
+        doReturn(dockerClientInstanceMock)
+                .when(dockerService)
+                .getClient(registry, credentials.getUsername(), credentials.getPassword());
+        dockerService.getClient(imageName);
+        verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
+        verify(dockerService, never()).getClient();
+    }
+
+    // registry.xyz/name:tag
+    @Test
+    public void shouldGetAuthenticatedClientWithCustomRegistry() throws Exception {
+        String registry = "registry.xyz";
+        String imageName = registry + "/name:tag";
+        RegistryCredentials credentials = RegistryCredentials.builder()
+                .address(registry)
+                .username("username")
+                .password("password")
+                .build();
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
+                .thenReturn(Optional.of(credentials));
+        doReturn(dockerClientInstanceMock)
+                .when(dockerService)
+                .getClient(registry, credentials.getUsername(), credentials.getPassword());
+        dockerService.getClient(imageName);
+        verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
+        verify(dockerService, never()).getClient();
+    }
+
+    // registry:port/image:tag
+    @Test
+    public void shouldGetAuthenticatedClientWithCustomRegistryAndPort() throws Exception {
+        String registry = "registry.host.com:5050";
+        String imageName = registry + "/name:tag";
+        RegistryCredentials credentials = RegistryCredentials.builder()
+                .address(registry)
+                .username("username")
+                .password("password")
+                .build();
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
+                .thenReturn(Optional.of(credentials));
+        doReturn(dockerClientInstanceMock)
+                .when(dockerService)
+                .getClient(registry, credentials.getUsername(), credentials.getPassword());
+        dockerService.getClient(imageName);
+        verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
+        verify(dockerService, never()).getClient();
+    }
+    
+    // image:tag
+    @Test
+    public void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() throws Exception {
+        String registry = "";
+        String imageName = registry + "name:tag";
+        RegistryCredentials credentials = RegistryCredentials.builder()
+                .address(registry)
+                .username("username")
+                .password("password")
+                .build();
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(DOCKER_IO))
+                .thenReturn(Optional.of(credentials));
+        doReturn(dockerClientInstanceMock)
+                .when(dockerService)
+                .getClient(
+                        DOCKER_IO,
+                        credentials.getUsername(),
+                        credentials.getPassword());
+        dockerService.getClient(imageName);
+        verify(dockerService).getClient(
+                        DOCKER_IO,
+                        credentials.getUsername(),
+                        credentials.getPassword());
+        verify(dockerService, never()).getClient();
     }
 
     @Test
-    public void shouldNotGetAuthForRegistrySinceUnknownRegistry() {
-        String registryName = "registryName";
-        String registryUsername = "registryUsername";
-        String registryPassword = "registryPassword";
-        when(dockerRegistryConfiguration.getRegistries())
-                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
-                        .address(registryName)
-                        .username(registryUsername)
-                        .password(registryPassword)
-                        .build()));
-        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
-                dockerService.getAuthForRegistry("unknownRegistryName");
-        assertThat(authForRegistry.isEmpty());
+    public void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
+        String registry = "nexus.iex.ec";
+        String imageName = registry + "/name:tag";
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
+                .thenReturn(Optional.empty());
+        dockerService.getClient(imageName);
+        verify(dockerService, never()).getClient(anyString(), anyString(), anyString());
+        verify(dockerService).getClient();
     }
 
     @Test
-    public void shouldNotGetAuthForRegistrySinceMissingUsernameInConfig() {
-        String registryName = "registryName";
-        when(dockerRegistryConfiguration.getRegistries())
-                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
-                        .address(registryName)
-                        .username("")
-                        .password("registryPassword")
-                        .build()));
-        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
-                dockerService.getAuthForRegistry(registryName);
-        assertThat(authForRegistry.isEmpty());
-    }
-
-    @Test
-    public void shouldNotGetAuthForRegistrySinceMissingPasswordInConfig() {
-        String registryName = "registryName";
-        when(dockerRegistryConfiguration.getRegistries())
-                .thenReturn(Collections.singletonList(DockerRegistryConfiguration.RegistryAuth.builder()
-                        .address(registryName)
-                        .username("registryUsername")
-                        .password("")
-                        .build()));
-        Optional<DockerRegistryConfiguration.RegistryAuth> authForRegistry =
-                dockerService.getAuthForRegistry(registryName);
-        assertThat(authForRegistry.isEmpty());
+    public void shouldGetUnauthenticatedClientWithDefaultRegistryWhenAuthFailureWithCustomRegistry() throws Exception {
+        String registry = "nexus.iex.ec";
+        String imageName = registry + "/name:tag";
+        RegistryCredentials credentials = RegistryCredentials.builder()
+                .username("username")
+                .password("password")
+                .build();
+        doCallRealMethod().when(dockerService).getClient(imageName);
+        when(dockerRegistryConfiguration.getRegistryCredentials(registry))
+                .thenReturn(Optional.of(credentials));
+        doThrow(DockerException.class)
+                .when(dockerService)
+                .getClient(registry, credentials.getUsername(), credentials.getPassword());
+        dockerService.getClient(imageName);
+        verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
+        verify(dockerService).getClient();
     }
 
     @Test

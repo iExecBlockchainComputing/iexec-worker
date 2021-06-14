@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.model.AuthConfig;
 import com.github.dockerjava.core.NameParser;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
@@ -38,7 +39,6 @@ import java.util.Optional;
 @Service
 public class DockerService {
 
-    private static final String DEFAULT_REGISTRY_ADDRESS = "docker.io";
     private final HashSet<String> runningContainersRecord;
     private final WorkerConfigurationService workerConfigService;
     private final DockerRegistryConfiguration dockerRegistryConfiguration;
@@ -52,65 +52,67 @@ public class DockerService {
     }
 
     /**
-     * Get a docker.io authenticated Docker client if credentials are present,
-     * else get an unauthenticated Docker client.
+     * Get an unauthenticated Docker client.
      *
-     * @return a Docker client
+     * @return an unauthenticated Docker client
      */
     public DockerClientInstance getClient() {
         if (dockerClientInstance == null) {
-            dockerClientInstance = getAuthForRegistry(DEFAULT_REGISTRY_ADDRESS)
-                    .map(defaultAuth ->
-                            DockerClientFactory.getDockerClientInstance(defaultAuth.getUsername(),
-                                    defaultAuth.getPassword()))
-                    .orElse(DockerClientFactory.getDockerClientInstance());
+            dockerClientInstance = DockerClientFactory.getDockerClientInstance();
         }
         return dockerClientInstance;
     }
 
+    /**
+     * Try to get a Docker client that is authenticated to the registry of the provided image.
+     * If no credentials are found for the identified registry, an unauthenticated Docker client
+     * is provided instead.
+     * <p>
+     * e.g. for the image "nexus.iex.ec/image:tag" we try to connect to
+     * "nexus.iex.ec" and for "docker.io/iexechub/image:tag" we try to connect to DockerHub.
+     * 
+     * @param imageName
+     * @return an authenticated Docker client if credentials for the image's registry are
+     * to be found, an unauthenticated client otherwise.
+     */
     public DockerClientInstance getClient(String imageName) {
         String registryAddress = parseRegistryAddress(imageName);
-        return getAuthForRegistry(registryAddress)
-                .map(registryAuth ->
-                        DockerClientFactory.getDockerClientInstance(registryAuth.getUsername(),
-                                registryAuth.getPassword()))
-                .orElse(getClient());
-    }
-
-    private static String parseRegistryAddress(String imageName) {
-        NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
-        NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
-        return hostnameReposName.hostname;
+        Optional<RegistryCredentials> registryCredentials = dockerRegistryConfiguration
+                .getRegistryCredentials(registryAddress);
+        if (registryCredentials.isPresent()) {
+            try {
+                return getClient(
+                        registryAddress,
+                        registryCredentials.get().getUsername(),
+                        registryCredentials.get().getPassword());
+            } catch (Exception e) {
+                log.error("Failed to get authenticated Docker client: [registry:{}, username:{}]",
+                        registryAddress, registryCredentials.get().getUsername(), e);
+            }
+        }
+        return getClient();
     }
 
     /**
-     * Get Docker username and password for a given registry address
-     *
-     * @param registryAddress address of the registry (docker.io,
-     *                        mcr.microsoft.com, ecr.us-east-2.amazonaws.com)
-     * @return auth for the registry
+     * Get a Docker client that is authenticated to the specified registry.
+     * 
+     * @param registryAddress
+     * @param registryUsername
+     * @param registryPassword
+     * @return
+     * @throws Exception when authentication fails
      */
-    Optional<DockerRegistryConfiguration.RegistryAuth> getAuthForRegistry(String registryAddress) {
-        if (StringUtils.isEmpty(registryAddress)
-                || dockerRegistryConfiguration.getRegistries() == null) {
-            return Optional.empty();
-        }
-        return dockerRegistryConfiguration.getRegistries().stream()
-                .filter(registryAuth -> registryAddress.equals(registryAuth.getAddress())
-                        && StringUtils.isNotBlank(registryAuth.getUsername())
-                        && StringUtils.isNotBlank(registryAuth.getPassword())
-                )
-                .findFirst();
-    }
-
-    public DockerClientInstance getClient(String registryUsername,
-                                          String registryPassword) {
+    public DockerClientInstance getClient(String registryAddress,
+                                          String registryUsername,
+                                          String registryPassword) throws Exception {
         if (StringUtils.isEmpty(registryUsername) || StringUtils.isEmpty(registryPassword)) {
             log.error("Registry username and password are required " +
-                    "[registryUsername:{}]", registryUsername);
-            return null;
+                    "[regsitryAddress:{}, registryUsername:{}]", registryAddress, registryUsername);
+            throw new Exception("Docker registry credentials must be provided: " + registryAddress);
         }
-        return DockerClientFactory.getDockerClientInstance(registryUsername,
+        return DockerClientFactory.getDockerClientInstance(
+                registryAddress,
+                registryUsername,
                 registryPassword);
     }
 
@@ -227,6 +229,15 @@ public class DockerService {
             }
             removeFromRunningContainersRecord(containerName);
         });
+    }
+
+    private static String parseRegistryAddress(String imageName) {
+        NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
+        NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
+        String registry = hostnameReposName.hostname;
+        return registry == AuthConfig.DEFAULT_SERVER_ADDRESS
+                ? DockerClientInstance.DOCKER_IO // default docker registry
+                : registry; // custom docker registry
     }
 
     private boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
