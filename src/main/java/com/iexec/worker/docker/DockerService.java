@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.model.AuthConfig;
 import com.github.dockerjava.core.NameParser;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
@@ -38,7 +39,6 @@ import java.util.Optional;
 @Service
 public class DockerService {
 
-    static final String DEFAULT_REGISTRY_ADDRESS = "docker.io";
     private final HashSet<String> runningContainersRecord;
     private final WorkerConfigurationService workerConfigService;
     private final DockerRegistryConfiguration dockerRegistryConfiguration;
@@ -52,29 +52,15 @@ public class DockerService {
     }
 
     /**
-     * Get a docker.io authenticated Docker client if credentials are present,
-     * else get an unauthenticated Docker client.
+     * Get an unauthenticated Docker client.
      *
-     * @return a Docker client
+     * @return an unauthenticated Docker client
      */
     public DockerClientInstance getClient() {
-        if (dockerClientInstance != null) {
-            return dockerClientInstance;
+        if (dockerClientInstance == null) {
+            dockerClientInstance = DockerClientFactory.getDockerClientInstance();
         }
-        Optional<RegistryCredentials> registryCredentials = dockerRegistryConfiguration
-                .getRegistryCredentials(DEFAULT_REGISTRY_ADDRESS);
-        if (registryCredentials.isPresent()) {
-            try {
-                return getClient(
-                        "",
-                        registryCredentials.get().getUsername(),
-                        registryCredentials.get().getPassword());
-            } catch (Exception e) {
-                log.error("Failed to get Default authenticated Docker client: [registry:{}, username:{}]",
-                        DEFAULT_REGISTRY_ADDRESS, registryCredentials.get().getUsername(), e);
-            }
-        }
-        return getUnauthenticatedClient();
+        return dockerClientInstance;
     }
 
     /**
@@ -104,7 +90,7 @@ public class DockerService {
                         registryAddress, registryCredentials.get().getUsername(), e);
             }
         }
-        return getUnauthenticatedClient();
+        return getClient();
     }
 
     /**
@@ -128,15 +114,6 @@ public class DockerService {
                 registryAddress,
                 registryUsername,
                 registryPassword);
-    }
-
-    /**
-     * Get a Docker client that is not authenticated to any registry.
-     * 
-     * @return unauthenticated client
-     */
-    public DockerClientInstance getUnauthenticatedClient() {
-        return DockerClientFactory.getDockerClientInstance();
     }
 
     /**
@@ -257,7 +234,10 @@ public class DockerService {
     private static String parseRegistryAddress(String imageName) {
         NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
         NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
-        return hostnameReposName.hostname;
+        String registry = hostnameReposName.hostname;
+        return registry == AuthConfig.DEFAULT_SERVER_ADDRESS
+                ? DockerClientInstance.DOCKER_IO // default docker registry
+                : registry; // custom docker registry
     }
 
     private boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
