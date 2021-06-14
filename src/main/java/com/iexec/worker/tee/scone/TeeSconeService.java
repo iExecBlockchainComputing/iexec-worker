@@ -83,9 +83,16 @@ public class TeeSconeService {
             throw new RuntimeException(String.format("LAS image (%s) is not " +
                     "from a known registry (%s)", lasImage, sconeConfig.getRegistryName()));
         }
-        DockerClientInstance client =
-                dockerService.getClient(sconeConfig.getRegistryUsername(),
-                        sconeConfig.getRegistryPassword());
+        DockerClientInstance client;
+        try {
+            client = dockerService.getClient(
+                    sconeConfig.getRegistryName(),
+                    sconeConfig.getRegistryUsername(),
+                    sconeConfig.getRegistryPassword());
+        } catch (Exception e) {
+            log.error("", e);
+            throw new RuntimeException("Failed to get Docker authenticated client to run LAS");
+        }
         if (client == null) {
             log.error("Docker client with credentials is required to enable TEE support");
             return false;
