@@ -49,7 +49,8 @@ public class DockerRegistryConfiguration {
         }
         List<RegistryCredentials> registriesWithMissingPasswords = registries.stream()
                 // get registries with usernames
-                .filter(registryAuth -> StringUtils.isNotBlank(registryAuth.getUsername()))
+                .filter(registryAuth -> StringUtils.isNotBlank(registryAuth.getAddress())
+                        && StringUtils.isNotBlank(registryAuth.getUsername()))
                 // from those registries get the ones where the password is missing
                 .filter(registryAuth -> StringUtils.isBlank(registryAuth.getPassword()))
                 .collect(Collectors.toList());
