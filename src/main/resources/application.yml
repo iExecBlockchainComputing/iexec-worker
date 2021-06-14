@@ -17,6 +17,17 @@ worker:
   tee-compute-max-heap-size-gb: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
   docker-network-name: ${IEXEC_WORKER_DOCKER_NETWORK_NAME:iexec-worker-net}
 
+docker:
+  registries:
+    -
+      address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_0:docker.io}
+      username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_0:}
+      password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_0:}
+    -
+      address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_1:}
+      username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_1:}
+      password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_1:}
+
 wallet:
   encrypted-file-path: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}

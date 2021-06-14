@@ -66,13 +66,13 @@ public class SconeTeeServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
 
     @Before
-    public void init() {
+    public void init() throws Exception {
         MockitoAnnotations.openMocks(this);
         when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
         when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
         when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(dockerService.getClient(REGISTRY_USERNAME, REGISTRY_PASSWORD))
+        when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(dockerClientInstanceMock);
     }
 
@@ -111,9 +111,9 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void shouldNotStartLasServiceSinceClientError() {
+    public void shouldNotStartLasServiceSinceClientError() throws Exception {
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
-        when(dockerService.getClient(REGISTRY_USERNAME, REGISTRY_PASSWORD))
+        when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
 
         Assertions.assertThat(teeSconeService.startLasService()).isFalse();

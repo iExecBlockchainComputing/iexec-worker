@@ -16,6 +16,8 @@
 
 package com.iexec.worker.docker;
 
+import com.github.dockerjava.api.model.AuthConfig;
+import com.github.dockerjava.core.NameParser;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
@@ -31,33 +33,86 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
 public class DockerService {
 
-    private final DockerClientInstance dockerClientInstance;
     private final HashSet<String> runningContainersRecord;
     private final WorkerConfigurationService workerConfigService;
+    private final DockerRegistryConfiguration dockerRegistryConfiguration;
+    private DockerClientInstance dockerClientInstance;
 
-    public DockerService(WorkerConfigurationService workerConfigService) {
-        this.dockerClientInstance = DockerClientFactory.getDockerClientInstance();
+    public DockerService(WorkerConfigurationService workerConfigService,
+                         DockerRegistryConfiguration dockerRegistryConfiguration) {
+        this.dockerRegistryConfiguration = dockerRegistryConfiguration;
         this.runningContainersRecord = new HashSet<>();
         this.workerConfigService = workerConfigService;
     }
 
+    /**
+     * Get an unauthenticated Docker client.
+     *
+     * @return an unauthenticated Docker client
+     */
     public DockerClientInstance getClient() {
-        return this.dockerClientInstance;
+        if (dockerClientInstance == null) {
+            dockerClientInstance = DockerClientFactory.getDockerClientInstance();
+        }
+        return dockerClientInstance;
     }
 
-    public DockerClientInstance getClient(String registryUsername,
-                                          String registryPassword) {
-        if (StringUtils.isEmpty(registryUsername) || StringUtils.isEmpty(registryPassword)){
-            log.error("Registry username and password are required " +
-                    "[registryUsername:{}]",registryUsername);
-            return null;
+    /**
+     * Try to get a Docker client that is authenticated to the registry of the provided image.
+     * If no credentials are found for the identified registry, an unauthenticated Docker client
+     * is provided instead.
+     * <p>
+     * e.g. for the image "nexus.iex.ec/image:tag" we try to connect to
+     * "nexus.iex.ec" and for "docker.io/iexechub/image:tag" we try to connect to DockerHub.
+     * 
+     * @param imageName
+     * @return an authenticated Docker client if credentials for the image's registry are
+     * to be found, an unauthenticated client otherwise.
+     */
+    public DockerClientInstance getClient(String imageName) {
+        String registryAddress = parseRegistryAddress(imageName);
+        Optional<RegistryCredentials> registryCredentials = dockerRegistryConfiguration
+                .getRegistryCredentials(registryAddress);
+        if (registryCredentials.isPresent()) {
+            try {
+                return getClient(
+                        registryAddress,
+                        registryCredentials.get().getUsername(),
+                        registryCredentials.get().getPassword());
+            } catch (Exception e) {
+                log.error("Failed to get authenticated Docker client: [registry:{}, username:{}]",
+                        registryAddress, registryCredentials.get().getUsername(), e);
+            }
         }
-        return DockerClientFactory.getDockerClientInstance(registryUsername,
+        return getClient();
+    }
+
+    /**
+     * Get a Docker client that is authenticated to the specified registry.
+     * 
+     * @param registryAddress
+     * @param registryUsername
+     * @param registryPassword
+     * @return
+     * @throws Exception when authentication fails
+     */
+    public DockerClientInstance getClient(String registryAddress,
+                                          String registryUsername,
+                                          String registryPassword) throws Exception {
+        if (StringUtils.isEmpty(registryUsername) || StringUtils.isEmpty(registryPassword)) {
+            log.error("Registry username and password are required " +
+                    "[regsitryAddress:{}, registryUsername:{}]", registryAddress, registryUsername);
+            throw new Exception("Docker registry credentials must be provided: " + registryAddress);
+        }
+        return DockerClientFactory.getDockerClientInstance(
+                registryAddress,
+                registryUsername,
                 registryPassword);
     }
 
@@ -85,7 +140,7 @@ public class DockerService {
         }
         dockerRunResponse = getClient().run(dockerRunRequest);
         if (!dockerRunResponse.isSuccessful()
-            || dockerRunRequest.getMaxExecutionTime() != 0) {
+                || dockerRunRequest.getMaxExecutionTime() != 0) {
             removeFromRunningContainersRecord(containerName);
         }
         if (shouldPrintDeveloperLogs(dockerRunRequest)) {
@@ -121,7 +176,7 @@ public class DockerService {
      * the container for input.
      * <p>
      * Expected: taskBaseDir/input:/iexec_in
-     * 
+     *
      * @param chainTaskId
      * @return
      */
@@ -135,7 +190,7 @@ public class DockerService {
      * the container for output.
      * <p>
      * Expected: taskBaseDir/output/iexec_out:/iexec_out
-     * 
+     *
      * @param chainTaskId
      * @return
      */
@@ -174,6 +229,15 @@ public class DockerService {
             }
             removeFromRunningContainersRecord(containerName);
         });
+    }
+
+    private static String parseRegistryAddress(String imageName) {
+        NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
+        NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
+        String registry = hostnameReposName.hostname;
+        return registry == AuthConfig.DEFAULT_SERVER_ADDRESS
+                ? DockerClientInstance.DOCKER_IO // default docker registry
+                : registry; // custom docker registry
     }
 
     private boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {

@@ -74,7 +74,8 @@ public class ComputeManagerService {
         if (!isDockerType || taskDescription.getAppUri() == null) {
             return false;
         }
-        return dockerService.getClient().pullImage(taskDescription.getAppUri());
+        return dockerService.getClient(taskDescription.getAppUri())
+                .pullImage(taskDescription.getAppUri());
     }
 
     public boolean isAppDownloaded(String imageUri) {
