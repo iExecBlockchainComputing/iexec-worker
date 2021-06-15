@@ -20,7 +20,7 @@ worker:
 docker:
   registries:
     -
-      address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_0:docker.io}
+      address: docker.io # do not update this line
       username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_0:}
       password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_0:}
     -
