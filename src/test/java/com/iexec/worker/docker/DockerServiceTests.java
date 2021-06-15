@@ -31,7 +31,7 @@ import org.mockito.Spy;
 
 import java.util.Optional;
 
-import static com.iexec.common.docker.client.DockerClientInstance.DOCKER_IO;
+import static com.iexec.common.docker.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -52,32 +52,32 @@ public class DockerServiceTests {
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
-        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
     }
 
-    // getClient()
+    /**
+     * getClient()
+     */
 
     @Test
     public void shouldGetUnauthenticatedClient() {
-        doCallRealMethod().when(dockerService).getClient();
         DockerClientInstance dockerClientInstance = dockerService.getClient();
         assertThat(dockerClientInstance.getClient().authConfig().getPassword()).isNull();
     }
 
-    // getClient(imageName)
+    /**
+     * getClient(imageName)
+     */
 
     // docker.io/image:tag
-
     @Test
     public void shouldGetAuthenticatedClientWithDockerIoRegistry() throws Exception {
-        String registry = DockerClientInstance.DOCKER_IO;
+        String registry = DEFAULT_DOCKER_REGISTRY;
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
                 .address(registry)
                 .username("username")
                 .password("password")
                 .build();
-        doCallRealMethod().when(dockerService).getClient(imageName);
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
         doReturn(dockerClientInstanceMock)
@@ -98,7 +98,6 @@ public class DockerServiceTests {
                 .username("username")
                 .password("password")
                 .build();
-        doCallRealMethod().when(dockerService).getClient(imageName);
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
         doReturn(dockerClientInstanceMock)
@@ -119,7 +118,6 @@ public class DockerServiceTests {
                 .username("username")
                 .password("password")
                 .build();
-        doCallRealMethod().when(dockerService).getClient(imageName);
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
         doReturn(dockerClientInstanceMock)
@@ -140,18 +138,17 @@ public class DockerServiceTests {
                 .username("username")
                 .password("password")
                 .build();
-        doCallRealMethod().when(dockerService).getClient(imageName);
-        when(dockerRegistryConfiguration.getRegistryCredentials(DOCKER_IO))
+        when(dockerRegistryConfiguration.getRegistryCredentials(DEFAULT_DOCKER_REGISTRY))
                 .thenReturn(Optional.of(credentials));
         doReturn(dockerClientInstanceMock)
                 .when(dockerService)
                 .getClient(
-                        DOCKER_IO,
+                        DEFAULT_DOCKER_REGISTRY,
                         credentials.getUsername(),
                         credentials.getPassword());
         dockerService.getClient(imageName);
         verify(dockerService).getClient(
-                        DOCKER_IO,
+                        DEFAULT_DOCKER_REGISTRY,
                         credentials.getUsername(),
                         credentials.getPassword());
         verify(dockerService, never()).getClient();
@@ -159,34 +156,37 @@ public class DockerServiceTests {
 
     @Test
     public void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
-        String registry = "nexus.iex.ec";
+        String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
-        doCallRealMethod().when(dockerService).getClient(imageName);
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.empty());
-        dockerService.getClient(imageName);
+        DockerClientInstance instance = dockerService.getClient(imageName);
+        assertThat(instance.getClient().authConfig().getRegistryAddress()).isEqualTo(registry);
+        assertThat(instance.getClient().authConfig().getPassword()).isNull();
         verify(dockerService, never()).getClient(anyString(), anyString(), anyString());
-        verify(dockerService).getClient();
     }
 
     @Test
-    public void shouldGetUnauthenticatedClientWithDefaultRegistryWhenAuthFailureWithCustomRegistry() throws Exception {
-        String registry = "nexus.iex.ec";
+    public void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() throws Exception {
+        String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
                 .username("username")
                 .password("password")
                 .build();
-        doCallRealMethod().when(dockerService).getClient(imageName);
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
         doThrow(DockerException.class)
                 .when(dockerService)
                 .getClient(registry, credentials.getUsername(), credentials.getPassword());
-        dockerService.getClient(imageName);
+        DockerClientInstance instance = dockerService.getClient(imageName);
+        assertThat(instance.getClient().authConfig().getRegistryAddress()).isEqualTo(registry);
         verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
-        verify(dockerService).getClient();
     }
+
+    /**
+     * run()
+     */
 
     @Test
     public void shouldRecordContainerThenRunThenRemoveContainerRecord() {
@@ -202,6 +202,7 @@ public class DockerServiceTests {
                         .stderr("stderr")
                         .build())
                 .build();
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.run(dockerRunRequest))
                 .thenReturn(successResponse);
 
@@ -246,6 +247,7 @@ public class DockerServiceTests {
                         .stderr("stderr")
                         .build())
                 .build();
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.run(dockerRunRequest))
                 .thenReturn(failureResponse);
 
@@ -269,6 +271,7 @@ public class DockerServiceTests {
         DockerRunResponse successResponse = DockerRunResponse.builder()
                 .isSuccessful(true)
                 .build();
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.run(dockerRunRequest))
                 .thenReturn(successResponse);
 
@@ -280,7 +283,9 @@ public class DockerServiceTests {
         verify(dockerService, never()).removeFromRunningContainersRecord(containerName);
     }
 
-    // addToRunningContainersRecord
+    /**
+     * addToRunningContainersRecord()
+     */
 
     @Test
     public void shouldAddToRunningContainersRecord() {
@@ -298,7 +303,9 @@ public class DockerServiceTests {
                 .addToRunningContainersRecord(containerName)).isFalse();
     }
 
-    // removeFromRunningContainersRecord
+    /**
+     * removeFromRunningContainersRecord()
+     */
 
     @Test
     public void shouldNotRemoveFromRunningContainersRecord() {
@@ -308,7 +315,9 @@ public class DockerServiceTests {
                 .removeFromRunningContainersRecord(containerName)).isFalse();
     }
 
-    // stopRunningContainers
+    /**
+     * stopRunningContainers
+     */
 
     @Test
     public void shouldStopRunningContainers() {
@@ -317,6 +326,7 @@ public class DockerServiceTests {
         dockerService.addToRunningContainersRecord(container1);
         dockerService.addToRunningContainersRecord(container2);
 
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.stopContainer(container1)).thenReturn(true);
         when(dockerClientInstanceMock.stopContainer(container2)).thenReturn(true);
 
@@ -328,6 +338,7 @@ public class DockerServiceTests {
     @Test
     public void shouldNotStopRunningContainers() {
         // no running container
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         dockerService.stopRunningContainers();
         verify(dockerClientInstanceMock, never()).stopContainer(anyString());
     }
