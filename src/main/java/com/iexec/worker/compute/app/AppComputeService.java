@@ -19,13 +19,11 @@ package com.iexec.worker.compute.app;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.EnvUtils;
-import com.iexec.common.utils.FileHelper;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -36,39 +34,32 @@ public class AppComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final PublicConfigurationService publicConfigService;
-    private final SconeTeeService sconeTeeService;
-    private final SconeLasConfiguration sconeLasConfiguration;
+    private final TeeSconeService teeSconeService;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
-            PublicConfigurationService publicConfigService,
             DockerService dockerService,
-            SconeTeeService sconeTeeService,
-            SconeLasConfiguration sconeLasConfiguration
-    ) {
+            TeeSconeService teeSconeService) {
         this.workerConfigService = workerConfigService;
-        this.publicConfigService = publicConfigService;
         this.dockerService = dockerService;
-        this.sconeTeeService = sconeTeeService;
-        this.sconeLasConfiguration = sconeLasConfiguration;
+        this.teeSconeService = teeSconeService;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
                                       String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
-        List<String> env = EnvUtils.getContainerEnvList(taskDescription);
+        List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
-            List<String> strings = sconeTeeService.buildSconeDockerEnv(
-                    secureSessionId + "/app",
-                    publicConfigService.getSconeCasURL(),
-                    "1G");
+            TeeEnclaveConfiguration enclaveConfig =
+                    taskDescription.getAppEnclaveConfiguration();
+            List<String> strings = teeSconeService.buildComputeDockerEnv(secureSessionId,
+                    enclaveConfig != null ? enclaveConfig.getHeapSize() : 0);
             env.addAll(strings);
         }
 
         List<String> binds = Arrays.asList(
-                workerConfigService.getTaskInputDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_IN,
-                workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" + FileHelper.SLASH_IEXEC_OUT
+                dockerService.getInputBind(chainTaskId),
+                dockerService.getIexecOutBind(chainTaskId)
         );
 
         DockerRunRequest runRequest = DockerRunRequest.builder()
@@ -84,7 +75,7 @@ public class AppComputeService {
                 .build();
         // Enclave should be able to connect to the LAS
         if (taskDescription.isTeeTask()) {
-            runRequest.setDockerNetwork(sconeLasConfiguration.getDockerNetworkName());
+            runRequest.setDockerNetwork(workerConfigService.getDockerNetworkName());
         }
         DockerRunResponse dockerResponse = dockerService.run(runRequest);
         return AppComputeResponse.builder()

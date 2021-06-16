@@ -16,16 +16,20 @@
 
 package com.iexec.worker.dataset;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.HashUtils;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.beans.factory.annotation.Value;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
+import javax.annotation.Nonnull;
+
 import java.io.File;
-import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -34,53 +38,72 @@ import java.util.List;
 @Service
 public class DataService {
 
-    @Value("${decryptFilePath}")
-    private String scriptFilePath;
-
     private final WorkerConfigurationService workerConfigurationService;
 
     public DataService(WorkerConfigurationService workerConfigurationService) {
         this.workerConfigurationService = workerConfigurationService;
     }
 
-    /*
-     * In order to keep a linear replicate workflow, we'll always have the steps:
-     * APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING (even when the dataset requested is 0x0).
-     * In the 0x0 dataset case, we'll have an empty uri, and we'll consider the dataset as downloaded
+    /**
+     * Download dataset file for the given standard task and save
+     * it in {@link IexecFileHelper#SLASH_IEXEC_IN}.
+     * 
+     * @param taskDescription
+     * @return downloaded dataset file path
+     * @throws WorkflowException if download fails or bad checksum.
      */
-    public boolean downloadFile(String chainTaskId, String uri) {
-        if (chainTaskId.isEmpty()) {
-            log.error("Failed to download, chainTaskId shouldn't be empty [chainTaskId:{}, datasetUri:{}]",
-                    chainTaskId, uri);
-            return false;
+    public String downloadStandardDataset(@Nonnull TaskDescription taskDescription)
+            throws WorkflowException {
+        String chainTaskId = taskDescription.getChainTaskId();
+        String uri = taskDescription.getDatasetUri();
+        String filename = taskDescription.getDatasetName();
+        String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
+        String datasetLocalFilePath =
+                downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
+        if (datasetLocalFilePath.isEmpty()) {
+            throw new WorkflowException(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
         }
-        if (uri.isEmpty()) {
-            log.info("There's nothing to download for this task [chainTaskId:{}, uri:{}]",
-                    chainTaskId, uri);
-            return true;
+        String expectedSha256 = taskDescription.getDatasetChecksum();
+        if (StringUtils.isEmpty(expectedSha256)) {
+            log.warn("INSECURE! Cannot check empty on-chain dataset checksum " +
+                    "[chainTaskId:{}]", chainTaskId);
+            return datasetLocalFilePath;
         }
-        return FileHelper.downloadFileInDirectory(uri, workerConfigurationService.getTaskInputDir(chainTaskId));
+        String actualSha256 = HashUtils.sha256(new File(datasetLocalFilePath));
+        if (!expectedSha256.equals(actualSha256)) {
+            log.error("Dataset checksum mismatch [chainTaskId:{}, " +
+                    "expected:{}, actual:{}]", chainTaskId, expectedSha256,
+                    actualSha256);
+            throw new WorkflowException(ReplicateStatusCause.DATASET_FILE_BAD_CHECKSUM);
+        }
+        return datasetLocalFilePath;
     }
 
-    public boolean downloadFiles(String chainTaskId, List<String> uris) {
-        for (String uri:uris){
-            if (!downloadFile(chainTaskId, uri)) {
-                return false;
+    /**
+     * Download input files for the given standard task and save them
+     * in the input folder.
+     * 
+     * @param chainTaskId
+     * @param uriList
+     * @throws WorkflowException
+     */
+    public void downloadStandardInputFiles(String chainTaskId, @Nonnull List<String> uriList)
+            throws WorkflowException {
+        if (uriList == null) {
+            log.error("Null input files uri list [chainTaskId:{}]", chainTaskId);
+            throw new WorkflowException(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+        }
+        for (String uri: uriList) {
+            String filename = !StringUtils.isEmpty(uri)
+                    ? Paths.get(uri).getFileName().toString()
+                    : "";
+            String parenDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
+            if (downloadFile(chainTaskId, uri, parenDirectoryPath, filename).isEmpty()) {
+                throw new WorkflowException(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
             }
         }
-        return true;
     }
-
-    public boolean unzipDownloadedTeeDataset(String chainTaskId, String datasetUri) {
-        if (datasetUri.isEmpty()){
-            log.info("Failed to unzipDownloadedTeeDataset (empty datasetUri) [chainTaskId:{}, datasetUri:{}]", chainTaskId, datasetUri);
-            return false;
-        }
-        String datasetFilename = Paths.get(datasetUri).getFileName().toString();
-        String taskInputDirPath = workerConfigurationService.getTaskInputDir(chainTaskId);
-        return FileHelper.unZipFile(taskInputDirPath + "/" + datasetFilename, taskInputDirPath);
-    }
-
+    
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {
         String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
 
@@ -92,6 +115,7 @@ public class DataService {
         return true;
     }
 
+    @Deprecated(forRemoval = true)
     public boolean decryptDataset(String chainTaskId, String datasetUri) {
         String datasetFileName = Paths.get(datasetUri).getFileName().toString();
         String datasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + datasetFileName;
@@ -113,23 +137,32 @@ public class DataService {
         return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
     }
 
+    @Deprecated(forRemoval = true)
     private void decryptFile(String dataFilePath, String secretFilePath) {
-        ProcessBuilder pb = new ProcessBuilder(this.scriptFilePath, dataFilePath, secretFilePath);
+        throw new UnsupportedOperationException("Cannot decrypt file with bash script");
+    }
 
-        try {
-            Process pr = pb.start();
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-            String line;
-
-            while ((line = in.readLine()) != null) { log.info(line); }
-
-            pr.waitFor();
-            in.close();
-        } catch (Exception e) {
-            log.error("Error while trying to decrypt data [datasetFile{}, secretFile:{}]",
-                    dataFilePath, secretFilePath);
-            e.printStackTrace();
+    /**
+     * Download a file from a URI in the provided parent
+     * directory and save it with the provided filename.
+     * 
+     * @param chainTaskId
+     * @param uri
+     * @param parentDirectoryPath
+     * @param filename
+     * @return absolute path of the saved file
+     */
+    private String downloadFile(String chainTaskId, String uri,
+            String parentDirectoryPath, String filename) {
+        if (StringUtils.isEmpty(chainTaskId) ||
+                StringUtils.isEmpty(uri) ||
+                StringUtils.isEmpty(parentDirectoryPath) ||
+                StringUtils.isEmpty(filename)) {
+            log.error("Failed to download, args shouldn't be empty " +
+                    "[chainTaskId:{}, datasetUri:{}, parentDir:{}, filename:{}]",
+                    chainTaskId, uri, parentDirectoryPath, filename);
+            return StringUtils.EMPTY;
         }
+        return FileHelper.downloadFile(uri, parentDirectoryPath, filename);
     }
 }

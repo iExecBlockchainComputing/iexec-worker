@@ -57,7 +57,7 @@ public class SubscriptionServiceTests {
 
     @Before
     public void init() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         when(workerConfigurationService.getWorkerWalletAddress())
                 .thenReturn(WORKER_WALLET_ADDRESS);
     }

@@ -1,33 +1,45 @@
 server:
-  port: ${IEXEC_WORKER_PORT:18091}
+  port: ${IEXEC_WORKER_PORT:13100}
 
 core:
   protocol: ${IEXEC_CORE_PROTOCOL:http}
   host: ${IEXEC_CORE_HOST:localhost}
-  port: ${IEXEC_CORE_PORT:18090}
+  port: ${IEXEC_CORE_PORT:13000}
 
 worker:
   name: ${IEXEC_WORKER_NAME:worker}
-  workerBaseDir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
-  gpuEnabled: ${IEXEC_WORKER_GPU_ENABLED:false}
-  gasPriceMultiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
-  gasPriceCap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
-  overrideBlockchainNodeAddress: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
-  developerLoggerEnabled: ${IEXEC_DEVELOPER_LOGGER_ENABLED:false}
+  worker-base-dir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
+  gpu-enabled: ${IEXEC_WORKER_GPU_ENABLED:false}
+  gas-price-multiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
+  gas-price-cap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
+  override-blockchain-node-address: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core
+  developer-logger-enabled: ${IEXEC_DEVELOPER_LOGGER_ENABLED:false}
+  tee-compute-max-heap-size-gb: ${IEXEC_WORKER_TEE_COMPUTE_MAX_HEAP_SIZE_GB:8}
+  docker-network-name: ${IEXEC_WORKER_DOCKER_NETWORK_NAME:iexec-worker-net}
+
+docker:
+  registries:
+    -
+      address: docker.io # do not update this line
+      username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_0:}
+      password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_0:}
+    -
+      address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_1:}
+      username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_1:}
+      password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_1:}
 
 wallet:
-  encryptedFilePath: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
+  encrypted-file-path: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
   password: ${IEXEC_WORKER_WALLET_PASSWORD:whatever}
 
 scone:
-  las:
-    image: ${IEXEC_LAS_IMAGE:iexechub/sconecuratedimages-iexec}
-    version: ${IEXEC_LAS_VERSION:las-v3.0}
-    port: ${IEXEC_LAS_PORT:18766}
-    dockerNetworkName: ${IEXEC_LAS_DOCKER_NETWORK_NAME:iexec-worker-net}
-
-decryptFilePath: ${IEXEC_DECRYPT_FILE_PATH:./src/main/resources/decrypt-dataset.sh}
-encryptFilePath: ${IEXEC_ENCRYPT_FILE_PATH:./src/main/resources/encrypt-result.sh}
+  show-version: ${IEXEC_SCONE_SHOW_VERSION:true}
+  log-level: ${IEXEC_SCONE_LOG_LEVEL:debug}
+  registry:
+    name: ${IEXEC_WORKER_SCONTAIN_REGISTRY_NAME:registry.scontain.com:5050}
+    username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:}
+    password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
+  las-port: ${IEXEC_LAS_PORT:18766}
 
 management:
   endpoint:

@@ -23,11 +23,12 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.context.restart.RestartEndpoint;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -43,28 +44,27 @@ public class WorkerService {
     private final PublicConfigurationService publicConfigService;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final VersionService versionService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final RestartEndpoint restartEndpoint;
     private final DockerService dockerService;
 
     public WorkerService(
             CredentialsService credentialsService,
-                         WorkerConfigurationService workerConfigService,
-                         CoreConfigurationService coreConfigService,
-                         PublicConfigurationService publicConfigService,
-                         CustomCoreFeignClient customCoreFeignClient,
-                         VersionService versionService,
-                         SconeTeeService sconeTeeService,
-                         RestartEndpoint restartEndpoint,
-                         DockerService dockerService
-    ) {
+            WorkerConfigurationService workerConfigService,
+            CoreConfigurationService coreConfigService,
+            PublicConfigurationService publicConfigService,
+            CustomCoreFeignClient customCoreFeignClient,
+            VersionService versionService,
+            TeeSconeService teeSconeService,
+            RestartEndpoint restartEndpoint,
+            DockerService dockerService) {
         this.credentialsService = credentialsService;
         this.workerConfigService = workerConfigService;
         this.coreConfigService = coreConfigService;
         this.publicConfigService = publicConfigService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.versionService = versionService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.restartEndpoint = restartEndpoint;
         this.dockerService = dockerService;
     }
@@ -99,7 +99,7 @@ public class WorkerService {
                 .cpu(workerConfigService.getCPU())
                 .cpuNb(workerConfigService.getNbCPU())
                 .memorySize(workerConfigService.getMemorySize())
-                .teeEnabled(sconeTeeService.isTeeEnabled())
+                .teeEnabled(teeSconeService.isTeeEnabled())
                 .gpuEnabled(workerConfigService.isGpuEnabled())
                 .build();
 
@@ -131,5 +131,15 @@ public class WorkerService {
         dockerService.stopRunningContainers();
         log.warn("The worker is about to restart");
         restartEndpoint.restart();
+    }
+
+    /**
+     * Fixes: required a bean of type
+     * 'org.springframework.cloud.context.restart.RestartEndpoint'
+     * could not be found.
+     */
+    @Bean
+    public static RestartEndpoint restartEndpoint() {
+        return new RestartEndpoint();
     }
 }

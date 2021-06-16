@@ -16,8 +16,9 @@
 
 package com.iexec.worker.config;
 
-import com.iexec.common.utils.FileHelper;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.CredentialsService;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,23 +34,35 @@ public class WorkerConfigurationService {
     @Value("${worker.name}")
     private String workerName;
 
-    @Value("${worker.workerBaseDir}")
+    @Value("${worker.worker-base-dir}")
     private String workerBaseDir;
 
-    @Value("${worker.gpuEnabled}")
+    @Value("${worker.gpu-enabled}")
     private boolean isGpuEnabled;
 
-    @Value("${worker.gasPriceMultiplier}")
+    @Value("${worker.gas-price-multiplier}")
+    @Getter
     private float gasPriceMultiplier;
 
-    @Value("${worker.gasPriceCap}")
+    @Value("${worker.gas-price-cap}")
+    @Getter
     private long gasPriceCap;
 
-    @Value("${worker.overrideBlockchainNodeAddress}")
+    @Value("${worker.override-blockchain-node-address}")
+    @Getter
     private String overrideBlockchainNodeAddress;
 
-    @Value("${worker.developerLoggerEnabled}")
+    @Value("${worker.developer-logger-enabled}")
+    @Getter
     private boolean developerLoggerEnabled;
+
+    @Value("${worker.tee-compute-max-heap-size-gb}")
+    @Getter
+    private int teeComputeMaxHeapSizeGb;
+
+    @Value("${worker.docker-network-name}")
+    @Getter
+    private String dockerNetworkName;
 
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
@@ -75,16 +88,40 @@ public class WorkerConfigurationService {
         return getWorkerBaseDir() + File.separator + chainTaskId;
     }
 
+    /**
+     * Get path to input folder on the host side.
+     * <p>
+     * Expected: workerBaseDir/chainTaskId/input
+     * 
+     * @param chainTaskId
+     * @return
+     */
     public String getTaskInputDir(String chainTaskId) {
-        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_INPUT;
+        return getTaskBaseDir(chainTaskId) + IexecFileHelper.SLASH_INPUT;
     }
 
+    /**
+     * Get path to output folder on the host side.
+     * <p>
+     * Expected: workerBaseDir/chainTaskId/output
+     * 
+     * @param chainTaskId
+     * @return
+     */
     public String getTaskOutputDir(String chainTaskId) {
-        return getTaskBaseDir(chainTaskId) + FileHelper.SLASH_OUTPUT;
+        return getTaskBaseDir(chainTaskId) + IexecFileHelper.SLASH_OUTPUT;
     }
 
+    /**
+     * Get path to output folder inside the container.
+     * <p>
+     * Expected: workerBaseDir/chainTaskId/output/iexec_in
+     * 
+     * @param chainTaskId
+     * @return
+     */
     public String getTaskIexecOutDir(String chainTaskId) {
-        return getTaskOutputDir(chainTaskId) + FileHelper.SLASH_IEXEC_OUT;
+        return getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_IEXEC_OUT;
     }
 
     public String getDatasetSecretFilePath(String chainTaskId) {
@@ -117,22 +154,6 @@ public class WorkerConfigurationService {
     public int getMemorySize() {
         com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
         return Long.valueOf(os.getTotalPhysicalMemorySize() / (1024 * 1024 * 1024)).intValue();//in GB
-    }
-
-    public float getGasPriceMultiplier() {
-        return gasPriceMultiplier;
-    }
-
-    public long getGasPriceCap() {
-        return gasPriceCap;
-    }
-
-    public String getOverrideBlockchainNodeAddress() {
-        return overrideBlockchainNodeAddress;
-    }
-
-    public boolean isDeveloperLoggerEnabled() {
-        return developerLoggerEnabled;
     }
 
     public String getHttpProxyHost() {

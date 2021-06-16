@@ -17,15 +17,16 @@
 package com.iexec.worker.compute.app;
 
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.EnvUtils;
-import com.iexec.common.utils.FileHelper;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.common.utils.IexecEnvUtils;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.tee.scone.SconeLasConfiguration;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.SconeConfiguration;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,6 +56,7 @@ public class AppComputeServiceTests {
     private final static long MAX_EXECUTION_TIME = 1000;
     private final static String INPUT = "INPUT";
     private final static String IEXEC_OUT = "IEXEC_OUT";
+    public static final long heapSize = 1024;
 
     private final TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
@@ -76,21 +78,23 @@ public class AppComputeServiceTests {
     @Mock
     private PublicConfigurationService publicConfigService;
     @Mock
-    private SconeTeeService sconeTeeService;
+    private TeeSconeService teeSconeService;
     @Mock
-    private SconeLasConfiguration sconeLasConfiguration;
+    private SconeConfiguration sconeConfig;
 
     @Before
     public void beforeEach() throws IOException {
-        MockitoAnnotations.initMocks(this);
-        when(publicConfigService.getSconeCasURL()).thenReturn(SCONE_CAS_URL);
+        MockitoAnnotations.openMocks(this);
+        when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
     public void shouldRunCompute() {
         taskDescription.setTeeTask(false);
-        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
+        String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
+        when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
+        String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
@@ -113,11 +117,8 @@ public class AppComputeServiceTests {
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
-                        .env(EnvUtils.getContainerEnvList(taskDescription))
-                        .binds(
-                                Arrays.asList(INPUT + ":" + FileHelper.SLASH_IEXEC_IN,
-                                        IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT)
-                        )
+                        .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
+                        .binds(Arrays.asList(inputBind, iexecOutBind))
                         .isSgx(false)
                         .shouldDisplayLogs(true)
                         .build()
@@ -127,18 +128,20 @@ public class AppComputeServiceTests {
     @Test
     public void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
-        when(sconeTeeService.buildSconeDockerEnv(
-                SECURE_SESSION_ID + "/app",
-                SCONE_CAS_URL,
-                "1G")).thenReturn(Arrays.asList("var0", "var1"));
+        taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
+                .builder().heapSize(heapSize).build());
+        when(teeSconeService.buildComputeDockerEnv(SECURE_SESSION_ID, heapSize))
+                .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
-        env.addAll(EnvUtils.getContainerEnvList(taskDescription));
+        env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
         Collections.sort(env);
-        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
+        String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
+        when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
+        String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         String lasNetworkName = "lasNetworkName";
-        when(sconeLasConfiguration.getDockerNetworkName()).thenReturn(lasNetworkName);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
@@ -162,10 +165,7 @@ public class AppComputeServiceTests {
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(
-                                Arrays.asList(INPUT + ":" + FileHelper.SLASH_IEXEC_IN,
-                                        IEXEC_OUT + ":" + FileHelper.SLASH_IEXEC_OUT)
-                        )
+                        .binds(Arrays.asList(inputBind ,iexecOutBind))
                         .isSgx(true)
                         .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)

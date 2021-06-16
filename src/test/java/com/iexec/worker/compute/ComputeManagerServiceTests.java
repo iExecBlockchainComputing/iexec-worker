@@ -98,20 +98,20 @@ public class ComputeManagerServiceTests {
 
     @Before
     public void beforeEach() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
 
     }
 
     @Test
     public void shouldDownloadApp() {
-        when(dockerService.getClient()).thenReturn(dockerClient);
+        when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
     @Test
     public void shouldNotDownloadAppSincePullImageFailed() {
-        when(dockerService.getClient()).thenReturn(dockerClient);
+        when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }

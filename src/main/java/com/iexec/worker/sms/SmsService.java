@@ -20,9 +20,9 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.sms.secret.SmsSecret;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
+import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.client.SmsClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +39,7 @@ public class SmsService {
 
     private final CredentialsService credentialsService;
     private final SmsClient smsClient;
+    private TeeWorkflowSharedConfiguration teeWorkflowConfiguration;
 
     public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
         this.credentialsService = credentialsService;
@@ -115,24 +116,82 @@ public class SmsService {
         }
     }
 
+    /**
+     * Get the configuration needed for TEE workflow from the SMS. This
+     * configuration contains: las image, pre-compute image uri, pre-compute heap
+     * size, post-compute image uri, post-compute heap size.
+     * Note: Caching response to avoid calling the SMS
+     * @return configuration if success, null otherwise
+     */
+    public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration() {
+        if (teeWorkflowConfiguration == null){
+            try {
+                ResponseEntity<TeeWorkflowSharedConfiguration> response =
+                        smsClient.getTeeWorkflowConfiguration();
+                teeWorkflowConfiguration = response.getStatusCode().is2xxSuccessful()
+                        ? response.getBody()
+                        : null;
+            } catch (Exception e) {
+                log.error("Failed to get tee workflow configuration from sms", e);
+            }
+        }
+        return teeWorkflowConfiguration;
+    }
+
+    public String getSconeCasUrl() {
+        try {
+            ResponseEntity<String> response = smsClient.getSconeCasUrl();
+            return response.getStatusCode().is2xxSuccessful()
+                    ? response.getBody()
+                    : "";
+        } catch (Exception e) {
+            log.error("Failed to get scone cas configuration from sms", e);
+            return "";
+        }
+    }
+
+    // TODO: use the below method with retry.
+    public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
+        String chainTaskId = workerpoolAuthorization.getChainTaskId();
+        log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
+        String authorization = getAuthorizationString(workerpoolAuthorization);
+        try {
+            ResponseEntity<String> response = smsClient
+                    .createTeeSession(authorization, workerpoolAuthorization);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.error("SMS failed to create TEE session [chainTaskId:{}, " +
+                        "httpStatus:{}]", chainTaskId, response.getStatusCode());
+                return "";
+            }
+            String sessionId = response.getBody();
+            log.info("Created TEE session [chainTaskId:{}, sessionId:{}]",
+                    chainTaskId, sessionId);
+            return sessionId;
+        } catch (Exception e) {
+            log.error("SMS failed to create TEE session [chainTaskId:{}]",
+                    chainTaskId, e);
+            return "";
+        }
+    }
+
     /*
     * Don't retry createTeeSession for now, to avoid polluting logs in SMS & CAS
     * */
-    //@Retryable(value = FeignException.class)
-    public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
-        String authorization = getAuthorizationString(workerpoolAuthorization);
-        ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
-        log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
-                workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
-        return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
-    }
+    // @Retryable(value = FeignException.class)
+    // public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
+    //     String authorization = getAuthorizationString(workerpoolAuthorization);
+    //     ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
+    //     log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
+    //             workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
+    //     return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
+    // }
 
-    //@Recover
-    private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
-        log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
-                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
-        return "";
-    }
+    // @Recover
+    // private String createTeeSession(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
+    //     log.error("Failed to create secure session [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
+    //             workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
+    //     return "";
+    // }
 
     private String getAuthorizationString(WorkerpoolAuthorization workerpoolAuthorization) {
         String challenge = workerpoolAuthorization.getHash();

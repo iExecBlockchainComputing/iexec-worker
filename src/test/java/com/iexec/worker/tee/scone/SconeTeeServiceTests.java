@@ -19,6 +19,8 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
@@ -26,41 +28,63 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.*;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class SconeTeeServiceTests {
 
-    private final static String IMAGE_URI = "IMAGE_URI";
+    private static final String REGISTRY_NAME = "registryName";
+    private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
+    private static final String SESSION_ID = "sessionId";
+    private static final String CAS_URL = "casUrl";
+    private static final String LAS_URL = "lasUrl";
+    private static final boolean SHOW_VERSION = true;
+    private static final String LOG_LEVEL = "debug";
+    public static final String REGISTRY_USERNAME = "registryUsername";
+    public static final String REGISTRY_PASSWORD = "registryPassword";
+    public static final long heapSize = 1024;
+
     @Captor
     ArgumentCaptor<DockerRunRequest> dockerRunRequestArgumentCaptor;
     @InjectMocks
-    private SconeTeeService sconeTeeService;
+    private TeeSconeService teeSconeService;
     @Mock
-    private SgxService sgxService;
+    private SconeConfiguration sconeConfig;
     @Mock
-    private SconeLasConfiguration sconeLasConfig;
+    private WorkerConfigurationService workerConfigService;
     @Mock
     private DockerService dockerService;
+    @Mock
+    PublicConfigurationService publicConfigService;
+    @Mock
+    private SgxService sgxService;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
     @Before
-    public void init() {
-        MockitoAnnotations.initMocks(this);
+    public void init() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
+        when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
+        when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
+                .thenReturn(dockerClientInstanceMock);
     }
 
     @Test
     public void shouldStartLasService() {
-        when(sconeLasConfig.getContainerName()).thenReturn("containerName");
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
+        when(sconeConfig.getLasContainerName()).thenReturn("containerName");
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
 
-        Assertions.assertThat(sconeTeeService.startLasService()).isTrue();
+        Assertions.assertThat(teeSconeService.startLasService()).isTrue();
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
         DockerRunRequest dockerRunRequest = dockerRunRequestArgumentCaptor.getValue();
         Assertions.assertThat(dockerRunRequest).isEqualTo(
@@ -74,44 +98,98 @@ public class SconeTeeServiceTests {
     }
 
     @Test
+    public void shouldNotStartLasServiceSinceUnknownRegistry() {
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
+        when(sconeConfig.getRegistryName()).thenReturn("unknownRegistry");
+
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            teeSconeService.startLasService();
+        });
+
+        Assertions.assertThat(exception.getMessage().contains("not from a known registry"))
+                .isTrue();
+    }
+
+    @Test
+    public void shouldNotStartLasServiceSinceClientError() throws Exception {
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
+        when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
+                .thenReturn(null);
+
+        Assertions.assertThat(teeSconeService.startLasService()).isFalse();
+    }
+
+    @Test
     public void shouldNotStartLasServiceSinceCannotPullImage() {
-        when(sconeLasConfig.getContainerName()).thenReturn("containerName");
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
+        when(sconeConfig.getLasContainerName()).thenReturn("containerName");
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(false);
 
-        Assertions.assertThat(sconeTeeService.startLasService()).isFalse();
+        Assertions.assertThat(teeSconeService.startLasService()).isFalse();
     }
 
     @Test
     public void shouldNotStartLasServiceSinceCannotRunDockerContainer() {
-        when(sconeLasConfig.getContainerName()).thenReturn("containerName");
-        when(sconeLasConfig.getImageUri()).thenReturn(IMAGE_URI);
+        when(sconeConfig.getLasContainerName()).thenReturn("containerName");
+        when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(false).build());
 
-        Assertions.assertThat(sconeTeeService.startLasService()).isFalse();
+        Assertions.assertThat(teeSconeService.startLasService()).isFalse();
     }
 
     @Test
-    public void buildSconeDockerEnv() {
-        String sconeConfigId = "sconeConfigId";
-        String sconeCasUrl = "sconeCasUrl";
-        String sconeHeap = "sconeHeap";
-        String url = "url";
-        when(sconeLasConfig.getUrl()).thenReturn(url);
+    public void shouldBuildPreComputeDockerEnv() {
+        when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
+        when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
+        when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
+        when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(
-                sconeTeeService.buildSconeDockerEnv(sconeConfigId,
-                        sconeCasUrl,
-                        sconeHeap)).isEqualTo(
-                SconeConfig.builder()
-                        .sconeLasAddress(url)
-                        .sconeCasAddress(sconeCasUrl)
-                        .sconeConfigId(sconeConfigId)
-                        .sconeHeap(sconeHeap)
-                        .build().toDockerEnv()
-        );
+        long preComputeHeapSize = 1024;
+        Assertions.assertThat(teeSconeService.buildPreComputeDockerEnv(SESSION_ID,
+                preComputeHeapSize))
+                .isEqualTo(List.of(
+                    "SCONE_CAS_ADDR=" + CAS_URL,
+                    "SCONE_LAS_ADDR=" + LAS_URL,
+                    "SCONE_CONFIG_ID=" + SESSION_ID + "/pre-compute",
+                    "SCONE_HEAP=" + 1024,
+                    "SCONE_LOG=" + LOG_LEVEL,
+                    "SCONE_VERSION=" + 1));
+    }
+
+    @Test
+    public void shouldBuildComputeDockerEnv() {
+        when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
+        when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
+        when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
+        when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
+
+        Assertions.assertThat(teeSconeService.buildComputeDockerEnv(SESSION_ID, heapSize))
+                .isEqualTo(List.of(
+                    "SCONE_CAS_ADDR=" + CAS_URL,
+                    "SCONE_LAS_ADDR=" + LAS_URL,
+                    "SCONE_CONFIG_ID=" + SESSION_ID + "/app",
+                    "SCONE_HEAP=" + 1024,
+                    "SCONE_LOG=" + LOG_LEVEL,
+                    "SCONE_VERSION=" + 1));
+    }
+
+    @Test
+    public void shouldBuildPostComputeDockerEnv() {
+        when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
+        when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
+        when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
+        when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
+
+        Assertions.assertThat(teeSconeService.getPostComputeDockerEnv(SESSION_ID, 1024))
+                .isEqualTo(List.of(
+                    "SCONE_CAS_ADDR=" + CAS_URL,
+                    "SCONE_LAS_ADDR=" + LAS_URL,
+                    "SCONE_CONFIG_ID=" + SESSION_ID + "/post-compute",
+                    "SCONE_HEAP=" + 1024,
+                    "SCONE_LOG=" + LOG_LEVEL,
+                    "SCONE_VERSION=" + 1));
     }
 
 }

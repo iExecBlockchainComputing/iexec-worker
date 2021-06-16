@@ -21,7 +21,9 @@ import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
+import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 
@@ -50,13 +52,15 @@ public class TaskNotificationServiceTest {
     private ApplicationEventPublisher applicationEventPublisher;
     @Mock
     private ContributionService contributionService;
+    @Mock
+    private IexecHubService iexecHubService;
 
     @InjectMocks
     private TaskNotificationService taskNotificationService;
 
     @Before
     public void init() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
@@ -130,13 +134,19 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_DATA)
                 .build();
-        when(taskManagerService.downloadData(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        TaskDescription taskDescription = TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        when(taskManagerService.downloadData(taskDescription))
+                .thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(taskManagerService, Mockito.times(1)).downloadData(CHAIN_TASK_ID);
+        verify(taskManagerService, Mockito.times(1)).downloadData(taskDescription);
         TaskNotification nextNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPUTE)

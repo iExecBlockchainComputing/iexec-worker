@@ -69,10 +69,6 @@ public class PublicConfigurationService {
         return publicConfiguration.getSmsURL();
     }
 
-    public String getSconeCasURL() {
-        return publicConfiguration.getSconeCasURL();
-    }
-
     public String getRequiredWorkerVersion() {
         return publicConfiguration.getRequiredWorkerVersion();
     }

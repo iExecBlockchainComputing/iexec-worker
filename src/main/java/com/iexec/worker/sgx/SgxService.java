@@ -21,7 +21,6 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -55,26 +54,20 @@ public class SgxService {
     private boolean isSgxSupported() {
         log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
-
         if (!isSgxDriverFound) {
-            log.info("SGX driver not found");
+            log.error("SGX driver not found");
             return false;
         }
-
-        boolean isSgxDeviceFound = isSgxDeviceFound();
-
-        if (!isSgxDeviceFound) {
-            String message = "SGX driver is installed but no SGX device found (SGX not enabled?)";
-            message += " We'll continue without TEE support";
-            LoggingUtils.printHighlightedMessage(message);
+        if (!isSgxDevicePresent()) {
+            log.error("SGX driver is installed but no SGX device was found " +
+                    "(SGX not enabled?)");
             return false;
         }
-
-        log.info("SGX is enabled, worker can execute TEE tasks");
+        log.info("SGX is enabled");
         return true;
     }
 
-    private boolean isSgxDeviceFound() {
+    private boolean isSgxDevicePresent() {
         // "wallet-address-sgx-check" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
         String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";

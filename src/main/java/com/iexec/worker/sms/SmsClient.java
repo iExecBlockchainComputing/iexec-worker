@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.feign.client;
+package com.iexec.worker.sms;
 
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.sms.secret.SmsSecretResponse;
-
+import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -31,12 +32,19 @@ import feign.FeignException;
 @FeignClient(name = "SmsClient", url = "#{publicConfigurationService.smsURL}", decode404 = true)
 public interface SmsClient {
 
+    @GetMapping("/cas/url")
+    ResponseEntity<String> getSconeCasUrl() throws FeignException;
+
     @PostMapping("/untee/secrets")
-    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(@RequestHeader("Authorization") String authorization,
-                                                      @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
+    ResponseEntity<SmsSecretResponse> getUnTeeSecrets(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
 
     @PostMapping("/tee/sessions")
-    ResponseEntity<String> createTeeSession(@RequestHeader("Authorization") String authorization,
-                                            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
+    ResponseEntity<String> createTeeSession(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody WorkerpoolAuthorization workerpoolAuthorization) throws FeignException;
 
+    @GetMapping("/tee/workflow/config")
+    ResponseEntity<TeeWorkflowSharedConfiguration> getTeeWorkflowConfiguration() throws FeignException;
 }

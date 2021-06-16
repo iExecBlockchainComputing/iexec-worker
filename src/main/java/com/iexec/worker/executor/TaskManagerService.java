@@ -35,17 +35,18 @@ import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.SconeTeeService;
+import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
+import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static java.util.Objects.requireNonNull;
 
 
 @Slf4j
@@ -57,7 +58,7 @@ public class TaskManagerService {
     private final ContributionService contributionService;
     private final RevealService revealService;
     private final ComputeManagerService computeManagerService;
-    private final SconeTeeService sconeTeeService;
+    private final TeeSconeService teeSconeService;
     private final DataService dataService;
     private final ResultService resultService;
 
@@ -67,7 +68,7 @@ public class TaskManagerService {
             ContributionService contributionService,
             RevealService revealService,
             ComputeManagerService computeManagerService,
-            SconeTeeService sconeTeeService,
+            TeeSconeService teeSconeService,
             DataService dataService,
             ResultService resultService
     ) {
@@ -76,7 +77,7 @@ public class TaskManagerService {
         this.contributionService = contributionService;
         this.revealService = revealService;
         this.computeManagerService = computeManagerService;
-        this.sconeTeeService = sconeTeeService;
+        this.teeSconeService = teeSconeService;
         this.dataService = dataService;
         this.resultService = resultService;
     }
@@ -97,7 +98,7 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !sconeTeeService.isTeeEnabled()) {
+        if (taskDescription.isTeeTask() && !teeSconeService.isTeeEnabled()) {
             return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
                     context, chainTaskId);
         }
@@ -128,45 +129,63 @@ public class TaskManagerService {
                 APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
     }
 
-    ReplicateActionResponse downloadData(String chainTaskId) {
-        Optional<ReplicateStatusCause> oErrorStatus =
+    /*
+     * Note: In order to keep a linear replicate workflow, we'll always have
+     * the steps: APP_DOWNLOADING, ..., DATA_DOWNLOADING, ..., COMPUTING
+     * (even when the dataset requested is 0x0).
+     * In the 0x0 dataset case, we'll have an empty uri, and we'll consider
+     * the dataset as downloaded
+     * 
+     * Note2: TEE datasets are not downloaded by the worker. Due to some technical
+     * limitations with SCONE technology (production enclaves not being able to
+     * read non trusted regions of the file system), the file will be directly
+     * fetched inside the pre-compute enclave.
+     */
+
+    /**
+     * Download dataset file and input files if needed.
+     * 
+     * @param chainTaskId
+     * @return ReplicateActionResponse containing success
+     * or error statuses.
+     */
+    ReplicateActionResponse downloadData(TaskDescription taskDescription) {
+        requireNonNull(taskDescription, "task description must not be null");
+        String chainTaskId = taskDescription.getChainTaskId();
+        Optional<ReplicateStatusCause> errorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download data";
-        if (oErrorStatus.isPresent()) {
-            return getFailureResponseAndPrintError(oErrorStatus.get(),
+        if (errorStatus.isPresent()) {
+            return getFailureResponseAndPrintError(errorStatus.get(),
                     context, chainTaskId);
         }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
-                    context, chainTaskId);
-        }
-
-        String datasetUri = taskDescription.getDatasetUri();
-        if (!datasetUri.isEmpty()) {
-            boolean isDatasetReady = dataService.downloadFile(chainTaskId,
-                    datasetUri);
-            if (taskDescription.isTeeTask()) {
-                isDatasetReady =
-                        dataService.unzipDownloadedTeeDataset(chainTaskId,
-                                datasetUri);
-                logError("unzip dataset error", context, chainTaskId);
+        try {
+            // download dataset
+            if (!taskDescription.containsDataset()) {
+                log.info("No dataset for this task [chainTaskId:{}]", chainTaskId);
+            } else if (taskDescription.isTeeTask()) {
+                log.info("Dataset will be downloaded by the pre-compute enclave " +
+                        "[chainTaskId:{}", chainTaskId);
+            } else {
+                String datasetUri = taskDescription.getDatasetUri();
+                log.info("Downloading dataset [chainTaskId:{}, uri:{}, name:{}]",
+                        chainTaskId, datasetUri, taskDescription.getDatasetName());
+                dataService.downloadStandardDataset(taskDescription);
             }
-            if (!isDatasetReady) {
-                return triggerPostComputeHookOnError(chainTaskId, context,
-                        taskDescription, DATA_DOWNLOAD_FAILED, DATASET_FILE_DOWNLOAD_FAILED);
+            // download input files
+            if (!taskDescription.containsInputFiles()) {
+                log.info("No input files for this task [chainTaskId:{}]", chainTaskId);
+            } else if (taskDescription.isTeeTask()) {
+                log.info("Input files will be downloaded by the pre-compute enclave " +
+                        "[chainTaskId:{}", chainTaskId);
+            } else {
+                log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
+                dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getInputFiles());
             }
+        } catch (WorkflowException e) {
+            return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
+                    DATA_DOWNLOAD_FAILED, e.getReplicateStatusCause());
         }
-
-        List<String> inputFiles = taskDescription.getInputFiles();
-        if (inputFiles != null && !dataService.downloadFiles(chainTaskId,
-                inputFiles)) {
-            return triggerPostComputeHookOnError(chainTaskId, context,
-                    taskDescription, DATA_DOWNLOAD_FAILED, INPUT_FILES_DOWNLOAD_FAILED);
-        }
-
         return ReplicateActionResponse.success();
     }
 
@@ -175,10 +194,12 @@ public class TaskManagerService {
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
                                                                   ReplicateStatusCause errorCause) {
-        if (resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause) &&
-                computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
+        // log original error
+        logError(errorCause, context, chainTaskId);
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause);
+        // try to run post-compute
+        if (isOk && computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
-            logError(errorCause, context, chainTaskId);
             return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute

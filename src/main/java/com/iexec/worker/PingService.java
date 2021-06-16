@@ -20,9 +20,11 @@ import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.worker.WorkerService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+
+import java.time.LocalTime;
 
 @Slf4j
 @Service
@@ -43,19 +45,20 @@ public class PingService {
     @Scheduled(fixedRate = 10000)
     public void pingScheduler() {
         String sessionId = customCoreFeignClient.ping();
-        log.info("Send ping to scheduler " + sessionId);
+        // log once in an hour
+        if (LocalTime.now().getMinute() == 0) {
+            log.info("Sent ping to scheduler " + sessionId);
+        }
         if (StringUtils.isEmpty(sessionId)) {
             log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
             return;
         }
-
         String currentSessionId = coreConfigurationService.getCoreSessionId();
         if (StringUtils.isEmpty(currentSessionId)) {
             log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
             coreConfigurationService.setCoreSessionId(sessionId);
             return;
         }
-
         if (!sessionId.equalsIgnoreCase(currentSessionId)) {
             // need to reconnect to the core by restarting the worker
             log.warn("Scheduler seems to have restarted [currentSessionId:{}, " +

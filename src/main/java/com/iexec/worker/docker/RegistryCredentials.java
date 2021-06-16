@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2021 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.chain;
+package com.iexec.worker.docker;
 
-import com.iexec.common.chain.CredentialsAbstractService;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RegistryCredentials {
 
-@Service
-public class CredentialsService extends CredentialsAbstractService {
-
-    public CredentialsService(
-            @Value("${wallet.password}") String walletPassword,
-            @Value("${wallet.encrypted-file-path}") String walletPath
-    ) throws Exception {
-        super(walletPassword, walletPath);
-    }
+    private String address;
+    private String username;
+    private String password;
 }

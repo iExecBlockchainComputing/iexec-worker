@@ -14,20 +14,30 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.chain;
+package com.iexec.worker.utils;
 
-import com.iexec.common.chain.CredentialsAbstractService;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+@Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@SuppressWarnings("serial")
+public class WorkflowException extends Exception {
 
-@Service
-public class CredentialsService extends CredentialsAbstractService {
+    private ReplicateStatusCause replicateStatusCause;
 
-    public CredentialsService(
-            @Value("${wallet.password}") String walletPassword,
-            @Value("${wallet.encrypted-file-path}") String walletPath
-    ) throws Exception {
-        super(walletPassword, walletPath);
+    public WorkflowException(ReplicateStatusCause cause) {
+        this(cause, cause.name());
     }
+
+    public WorkflowException(ReplicateStatusCause cause, String message) {
+        super(message);
+        this.replicateStatusCause = cause;
+    }
+
 }
