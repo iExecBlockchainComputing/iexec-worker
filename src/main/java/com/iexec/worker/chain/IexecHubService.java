@@ -21,6 +21,7 @@ import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -48,14 +49,17 @@ public class IexecHubService extends IexecHubAbstractService {
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
     private final Web3jService web3jService;
+    private final WorkerConfigurationService configurationService;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           PublicConfigurationService publicConfigurationService) {
+                           PublicConfigurationService publicConfigurationService,
+                           WorkerConfigurationService configurationService) {
         super(credentialsService.getCredentials(), web3jService, publicConfigurationService.getIexecHubAddress());
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
+        this.configurationService = configurationService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
@@ -76,7 +80,7 @@ public class IexecHubService extends IexecHubAbstractService {
         TransactionReceipt contributeReceipt;
         String chainTaskId = contribution.getChainTaskId();
 
-        RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
+        RemoteCall<TransactionReceipt> contributeCall = getWriteableHubContract().contribute(
                 stringToBytes(chainTaskId),
                 stringToBytes(contribution.getResultHash()),
                 stringToBytes(contribution.getResultSeal()),
@@ -110,6 +114,10 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
+    private IexecHubContract getWriteableHubContract() {
+        return getHubContract(web3jService.getWritingContractGasProvider(), configurationService.getChainId());
+    }
+
     private boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
         if (txEvent == null || txEvent.log == null) {
             return false;
@@ -136,7 +144,7 @@ public class IexecHubService extends IexecHubAbstractService {
 
     private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
         TransactionReceipt revealReceipt;
-        RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
+        RemoteCall<TransactionReceipt> revealCall = getWriteableHubContract().reveal(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultDigest));
 

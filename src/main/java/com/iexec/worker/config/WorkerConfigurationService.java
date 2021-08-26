@@ -40,6 +40,10 @@ public class WorkerConfigurationService {
     @Value("${worker.gpu-enabled}")
     private boolean isGpuEnabled;
 
+    @Value("${worker.chain-id}")
+    @Getter
+    private long chainId;
+
     @Value("${worker.gas-price-multiplier}")
     @Getter
     private float gasPriceMultiplier;
