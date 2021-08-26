@@ -30,6 +30,8 @@ import java.time.LocalTime;
 @Service
 public class PingService {
 
+    private static final int PING_RATE = 10; // seconds
+
     private final CustomCoreFeignClient customCoreFeignClient;
     private final CoreConfigurationService coreConfigurationService;
     private final WorkerService workerService;
@@ -42,11 +44,12 @@ public class PingService {
         this.workerService = workerService;
     }
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = PING_RATE * 1000)
     public void pingScheduler() {
         String sessionId = customCoreFeignClient.ping();
-        // log once in an hour
-        if (LocalTime.now().getMinute() == 0) {
+        // log once an hour
+        if (LocalTime.now().getMinute() == 0 /* First minute of the hour */
+                && LocalTime.now().getSecond() <= PING_RATE /* Fist ping of the minute */ ) {
             log.info("Sent ping to scheduler " + sessionId);
         }
         if (StringUtils.isEmpty(sessionId)) {
