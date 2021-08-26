@@ -10,7 +10,6 @@ worker:
   name: ${IEXEC_WORKER_NAME:worker}
   worker-base-dir: ${IEXEC_WORKER_BASE_DIR:/tmp/iexec-worker}
   gpu-enabled: ${IEXEC_WORKER_GPU_ENABLED:false}
-  chain-id: ${IEXEC_WORKER_CHAIN_ID:65535}
   gas-price-multiplier: ${IEXEC_GAS_PRICE_MULTIPLIER:1.3} # txs will be send with networkGasPrice*gasPriceMultiplier, 4.0 means super fast
   gas-price-cap: ${IEXEC_GAS_PRICE_CAP:22000000000} #in Wei, will be used for txs if networkGasPrice*gasPriceMultiplier > gasPriceCap
   override-blockchain-node-address: ${IEXEC_WORKER_OVERRIDE_BLOCKCHAIN_NODE_ADDRESS:} #will use it if set, else will use the one given by the core

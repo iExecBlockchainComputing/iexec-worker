@@ -21,7 +21,6 @@ import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.worker.config.PublicConfigurationService;
-import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -49,18 +48,17 @@ public class IexecHubService extends IexecHubAbstractService {
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
     private final Web3jService web3jService;
-    private final WorkerConfigurationService configurationService;
+    private final Integer chainId;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           PublicConfigurationService publicConfigurationService,
-                           WorkerConfigurationService configurationService) {
+                           PublicConfigurationService publicConfigurationService) {
         super(credentialsService.getCredentials(), web3jService, publicConfigurationService.getIexecHubAddress());
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
-        this.configurationService = configurationService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
+        this.chainId = publicConfigurationService.getChainId();
     }
 
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
@@ -115,7 +113,7 @@ public class IexecHubService extends IexecHubAbstractService {
     }
 
     private IexecHubContract getWriteableHubContract() {
-        return getHubContract(web3jService.getWritingContractGasProvider(), configurationService.getChainId());
+        return getHubContract(web3jService.getWritingContractGasProvider(), chainId);
     }
 
     private boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
