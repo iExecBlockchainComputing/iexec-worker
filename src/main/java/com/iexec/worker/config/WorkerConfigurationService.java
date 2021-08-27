@@ -154,13 +154,11 @@ public class WorkerConfigurationService {
      * Get the number of CPUs dedicated to the worker.
      * 
      * @return number of CPUs set by the worker admin if defined, otherwise
-     * get the maximum value between (numberOfHostCpus -1) and 1.
+     * get max(numberOfJvmCpus -1, 1).
      */
     public int getNbCPU() {
-        int maxAvailableCpuCount = Runtime.getRuntime().availableProcessors() - 1;
-        return overrideAvailableCpuCount <= 0
-                ? Math.max(maxAvailableCpuCount, 1) // Don't return 0
-                : overrideAvailableCpuCount;
+        int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
+        return overrideAvailableCpuCount > 0 ? overrideAvailableCpuCount : defaultAvailableCpuCount;
     }
 
     public int getMemorySize() {
