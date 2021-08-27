@@ -48,6 +48,7 @@ public class IexecHubService extends IexecHubAbstractService {
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
     private final Web3jService web3jService;
+    private final Integer chainId;
 
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
@@ -57,6 +58,7 @@ public class IexecHubService extends IexecHubAbstractService {
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
+        this.chainId = publicConfigurationService.getChainId();
     }
 
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
@@ -76,7 +78,7 @@ public class IexecHubService extends IexecHubAbstractService {
         TransactionReceipt contributeReceipt;
         String chainTaskId = contribution.getChainTaskId();
 
-        RemoteCall<TransactionReceipt> contributeCall = getHubContract(web3jService.getWritingContractGasProvider()).contribute(
+        RemoteCall<TransactionReceipt> contributeCall = getWriteableHubContract().contribute(
                 stringToBytes(chainTaskId),
                 stringToBytes(contribution.getResultHash()),
                 stringToBytes(contribution.getResultSeal()),
@@ -110,6 +112,10 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
+    private IexecHubContract getWriteableHubContract() {
+        return getHubContract(web3jService.getWritingContractGasProvider(), chainId);
+    }
+
     private boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
         if (txEvent == null || txEvent.log == null) {
             return false;
@@ -136,7 +142,7 @@ public class IexecHubService extends IexecHubAbstractService {
 
     private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
         TransactionReceipt revealReceipt;
-        RemoteCall<TransactionReceipt> revealCall = getHubContract(web3jService.getWritingContractGasProvider()).reveal(
+        RemoteCall<TransactionReceipt> revealCall = getWriteableHubContract().reveal(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultDigest));
 
