@@ -37,6 +37,9 @@ public class WorkerConfigurationService {
     @Value("${worker.worker-base-dir}")
     private String workerBaseDir;
 
+    @Value("${worker.override-available-cpu-count}")
+    private int overrideAvailableCpuCount;
+
     @Value("${worker.gpu-enabled}")
     private boolean isGpuEnabled;
 
@@ -147,8 +150,15 @@ public class WorkerConfigurationService {
         return System.getProperty("os.arch");
     }
 
+    /**
+     * Get the number of CPUs dedicated to the worker.
+     * 
+     * @return number of CPUs set by the worker admin if defined, otherwise
+     * get max(numberOfJvmCpus -1, 1).
+     */
     public int getNbCPU() {
-        return Runtime.getRuntime().availableProcessors();
+        int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
+        return overrideAvailableCpuCount > 0 ? overrideAvailableCpuCount : defaultAvailableCpuCount;
     }
 
     public int getMemorySize() {
