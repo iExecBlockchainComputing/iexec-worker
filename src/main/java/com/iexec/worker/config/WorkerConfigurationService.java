@@ -127,21 +127,6 @@ public class WorkerConfigurationService {
         return getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_IEXEC_OUT;
     }
 
-    public String getDatasetSecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/input/dataset.secret
-        return getTaskInputDir(chainTaskId) + File.separator + "dataset.secret";
-    }
-
-    public String getBeneficiarySecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/beneficiary.secret
-        return getTaskBaseDir(chainTaskId) + File.separator + "beneficiary.secret";
-    }
-
-    public String getEnclaveSecretFilePath(String chainTaskId) {
-        // /worker-base-dir/chainTaskId/enclave.secret
-        return getTaskBaseDir(chainTaskId) + File.separator + "enclave.secret";
-    }
-
     public String getOS() {
         return System.getProperty("os.name").trim();
     }
@@ -156,7 +141,7 @@ public class WorkerConfigurationService {
      * @return number of CPUs set by the worker admin if defined, otherwise
      * get max(numberOfJvmCpus -1, 1).
      */
-    public int getNbCPU() {
+    public int getCpuCount() {
         int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
         return overrideAvailableCpuCount > 0 ? overrideAvailableCpuCount : defaultAvailableCpuCount;
     }

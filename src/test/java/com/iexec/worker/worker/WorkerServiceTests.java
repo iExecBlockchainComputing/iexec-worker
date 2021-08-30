@@ -90,7 +90,7 @@ public class WorkerServiceTests {
         when(credentialsService.getCredentials()).thenReturn(credentials);
         when(workerConfigService.getOS()).thenReturn(os);
         when(workerConfigService.getCPU()).thenReturn(cpu);
-        when(workerConfigService.getNbCPU()).thenReturn(cpuNb);
+        when(workerConfigService.getCpuCount()).thenReturn(cpuNb);
         when(workerConfigService.getMemorySize()).thenReturn(memorySize);
         when(teeSconeService.isTeeEnabled()).thenReturn(isTee);
         when(workerConfigService.isGpuEnabled()).thenReturn(isGpu);
