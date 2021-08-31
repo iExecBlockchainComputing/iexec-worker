@@ -22,6 +22,8 @@ import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+
 import java.io.File;
 
 import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
@@ -38,7 +40,7 @@ public class WorkerConfigurationService {
     private String workerBaseDir;
 
     @Value("${worker.override-available-cpu-count}")
-    private int overrideAvailableCpuCount;
+    private Integer overrideAvailableCpuCount;
 
     @Value("${worker.gpu-enabled}")
     private boolean isGpuEnabled;
@@ -69,6 +71,14 @@ public class WorkerConfigurationService {
 
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
+    }
+
+    @PostConstruct
+    private void postConstruct() {
+        if (overrideAvailableCpuCount != null && overrideAvailableCpuCount <= 0) {
+            throw new IllegalArgumentException(
+                    "Override available CPU count must not be less or equal to 0");
+        }
     }
 
     public String getWorkerName() {
@@ -158,7 +168,10 @@ public class WorkerConfigurationService {
      */
     public int getNbCPU() {
         int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
-        return overrideAvailableCpuCount > 0 ? overrideAvailableCpuCount : defaultAvailableCpuCount;
+        if (overrideAvailableCpuCount == null) {
+            return defaultAvailableCpuCount;
+        }
+        return overrideAvailableCpuCount;
     }
 
     public int getMemorySize() {
