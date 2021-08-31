@@ -38,7 +38,7 @@ public class WorkerConfigurationService {
     private String workerBaseDir;
 
     @Value("${worker.override-available-cpu-count}")
-    private int overrideAvailableCpuCount;
+    private Integer overrideAvailableCpuCount;
 
     @Value("${worker.gpu-enabled}")
     private boolean isGpuEnabled;
@@ -158,7 +158,14 @@ public class WorkerConfigurationService {
      */
     public int getNbCPU() {
         int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
-        return overrideAvailableCpuCount > 0 ? overrideAvailableCpuCount : defaultAvailableCpuCount;
+        if (overrideAvailableCpuCount == null) {
+            return defaultAvailableCpuCount;
+        }
+        if (overrideAvailableCpuCount <= 0) {
+            throw new IllegalArgumentException(
+                    "Override available CPU count must not be less or equal to 0");
+        }
+        return overrideAvailableCpuCount;
     }
 
     public int getMemorySize() {
