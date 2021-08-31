@@ -109,8 +109,7 @@ public class ComputeManagerService {
         }
 
         return PreComputeResponse.builder()
-                .isSuccessful(
-                        preComputeService.runStandardPreCompute(taskDescription))
+                .isSuccessful(true)
                 .build();
     }
 

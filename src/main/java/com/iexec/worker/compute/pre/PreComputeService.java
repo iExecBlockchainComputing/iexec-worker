@@ -62,22 +62,6 @@ public class PreComputeService {
         this.teeWorkflowConfig = teeWorkflowConfig;
     }
 
-    public boolean runStandardPreCompute(TaskDescription taskDescription) {
-        String chainTaskId = taskDescription.getChainTaskId();
-        boolean isDatasetDecryptionNeeded = dataService.isDatasetDecryptionNeeded(chainTaskId);
-        boolean isDatasetDecrypted = false;
-        if (isDatasetDecryptionNeeded) {
-            isDatasetDecrypted = dataService.decryptDataset(chainTaskId, taskDescription.getDatasetUri());
-        }
-
-        if (isDatasetDecryptionNeeded && !isDatasetDecrypted) {
-            log.error("Failed to decrypt dataset [chainTaskId:{}, uri:{}]",
-                    chainTaskId, taskDescription.getDatasetUri());
-            return false;
-        }
-        return true;
-    }
-
     /**
      * Check the heap size of the application enclave and create a new tee session.
      * If a user specific post-compute is specified it will be downloaded.
