@@ -22,6 +22,8 @@ import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+
 import java.io.File;
 
 import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
@@ -69,6 +71,14 @@ public class WorkerConfigurationService {
 
     public WorkerConfigurationService(CredentialsService credentialsService) {
         this.credentialsService = credentialsService;
+    }
+
+    @PostConstruct
+    private void postConstruct() {
+        if (overrideAvailableCpuCount != null && overrideAvailableCpuCount <= 0) {
+            throw new IllegalArgumentException(
+                    "Override available CPU count must not be less or equal to 0");
+        }
     }
 
     public String getWorkerName() {
@@ -160,10 +170,6 @@ public class WorkerConfigurationService {
         int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
         if (overrideAvailableCpuCount == null) {
             return defaultAvailableCpuCount;
-        }
-        if (overrideAvailableCpuCount <= 0) {
-            throw new IllegalArgumentException(
-                    "Override available CPU count must not be less or equal to 0");
         }
         return overrideAvailableCpuCount;
     }
