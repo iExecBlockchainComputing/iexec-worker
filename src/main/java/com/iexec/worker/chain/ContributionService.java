@@ -52,7 +52,7 @@ public class ContributionService {
     }
 
     public boolean isChainTaskInitialized(String chainTaskId) {
-        return iexecHubService.getChainTask(chainTaskId).isPresent();
+        return iexecHubService.getTaskDescription(chainTaskId) != null;
     }
 
     public Optional<ReplicateStatusCause> getCannotContributeStatusCause(String chainTaskId) {
