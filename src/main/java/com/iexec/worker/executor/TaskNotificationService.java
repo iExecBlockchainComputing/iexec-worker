@@ -95,7 +95,11 @@ public class TaskNotificationService {
         // and don't fetch it in each method.
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Failed to get task description [chainTaskId:{}]", chainTaskId);
+            log.error("Aborting task after notification since failed to retrieve" +
+                    " task description on-chain [chainTaskId:{}]", chainTaskId);
+            subscriptionService.unsubscribeFromTopic(chainTaskId);
+            updateStatusAndGetNextAction(chainTaskId, ABORTED, TASK_DESCRIPTION_NOT_FOUND);
+            return;
         }
         switch (action) {
             case PLEASE_START:

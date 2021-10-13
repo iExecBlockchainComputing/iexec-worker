@@ -39,6 +39,7 @@ import java.util.function.Function;
 import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
 import static com.iexec.common.utils.BytesUtils.stringToBytes;
+import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
 
 
 @Slf4j
@@ -54,7 +55,13 @@ public class IexecHubService extends IexecHubAbstractService {
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
                            PublicConfigurationService publicConfigurationService) {
-        super(credentialsService.getCredentials(), web3jService, publicConfigurationService.getIexecHubAddress());
+        //TODO Get block time from local configuration or third-party
+        super(credentialsService.getCredentials(),
+                web3jService,
+                publicConfigurationService.getIexecHubAddress(),
+                DEFAULT_BLOCK_TIME,
+                1,
+                5);
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
