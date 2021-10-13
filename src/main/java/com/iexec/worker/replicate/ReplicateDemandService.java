@@ -82,8 +82,9 @@ public class ReplicateDemandService {
      */
     private boolean isNewTaskInitialized(WorkerpoolAuthorization authorization) {
         String chainTaskId = authorization.getChainTaskId();
+        log.info("Received new task [chainTaskId:{}]", chainTaskId);
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
-            log.info("Received new task [chainTaskId:{}]", chainTaskId);
+            log.info("Incoming task exists on-chain [chainTaskId:{}]", chainTaskId);
             return true;
         }
         log.error("Received uninitialized task [chainTaskId:{}]", chainTaskId);
