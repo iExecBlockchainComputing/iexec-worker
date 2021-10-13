@@ -19,6 +19,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.TestUtils;
 import com.iexec.common.worker.result.ResultUtils;
@@ -57,7 +58,7 @@ public class ContributionServiceTests {
     @Test
     public void shouldChainTaskBeInitialized() {
         String chainTaskId = "0xabc";
-        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(new ChainTask()));
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(new TaskDescription());
 
         assertThat(contributionService.isChainTaskInitialized(chainTaskId)).isTrue();
     }
@@ -65,7 +66,7 @@ public class ContributionServiceTests {
     @Test
     public void shouldChainTaskNotBeInitialized() {
         String chainTaskId = "0xabc";
-        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(null);
 
         assertThat(contributionService.isChainTaskInitialized(chainTaskId)).isFalse();
     }
