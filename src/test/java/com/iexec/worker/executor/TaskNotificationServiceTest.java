@@ -17,9 +17,12 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
@@ -29,10 +32,8 @@ import com.iexec.worker.pubsub.SubscriptionService;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.api.Assertions;
+import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
@@ -54,9 +55,10 @@ public class TaskNotificationServiceTest {
     private ContributionService contributionService;
     @Mock
     private IexecHubService iexecHubService;
-
     @InjectMocks
     private TaskNotificationService taskNotificationService;
+    @Captor
+    private ArgumentCaptor<ReplicateStatusUpdate> replicateStatusUpdateCaptor;
     private TaskDescription taskDescription;
 
     @Before
@@ -104,6 +106,10 @@ public class TaskNotificationServiceTest {
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
+        verify(customCoreFeignClient).updateReplicateStatus(anyString(), replicateStatusUpdateCaptor.capture());
+        ReplicateStatusUpdate replicateStatusUpdate = replicateStatusUpdateCaptor.getValue();
+        Assertions.assertEquals(ReplicateStatus.ABORTED, replicateStatusUpdate.getStatus());
+        Assertions.assertEquals(ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND, replicateStatusUpdate.getDetails().getCause());
     }
 
     @Test

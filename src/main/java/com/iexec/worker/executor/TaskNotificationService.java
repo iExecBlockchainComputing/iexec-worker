@@ -98,7 +98,7 @@ public class TaskNotificationService {
             log.error("Aborting task after notification since failed to retrieve" +
                     " task description on-chain [chainTaskId:{}]", chainTaskId);
             subscriptionService.unsubscribeFromTopic(chainTaskId);
-            updateStatusAndGetNextAction(chainTaskId, ABORTED, CHAIN_UNREACHABLE);
+            updateStatusAndGetNextAction(chainTaskId, ABORTED, TASK_DESCRIPTION_NOT_FOUND);
             return;
         }
         switch (action) {
