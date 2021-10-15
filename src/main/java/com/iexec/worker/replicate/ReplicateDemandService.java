@@ -24,18 +24,22 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.utils.AsyncUtils;
+import com.iexec.worker.utils.ExecutorUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.concurrent.Executor;
 
 
 @Slf4j
 @Service
 public class ReplicateDemandService {
 
+    private final Executor executor;
     private final IexecHubService iexecHubService;
     private final CustomCoreFeignClient coreFeignClient;
     private final ContributionService contributionService;
@@ -47,6 +51,8 @@ public class ReplicateDemandService {
                                   ContributionService contributionService,
                                   SubscriptionService subscriptionService,
                                   ApplicationEventPublisher applicationEventPublisher) {
+        executor = ExecutorUtils
+                .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-");
         this.iexecHubService = iexecHubService;
         this.coreFeignClient = coreFeignClient;
         this.contributionService = contributionService;
@@ -55,16 +61,31 @@ public class ReplicateDemandService {
     }
 
     /**
-     * Asks for a new task every t seconds (e.g: t=30s)
-     * then if received one locally starts computing the task
+     * Trigger ask for replicate action every t seconds (e.g: t=30s).
+     * The method that asks for the replicate runs asynchronously inside a new
+     * thread to liberate the thread used for @Scheduled tasks.
+     * We use single thread executor to make sure the worker does not ask for more
+     * than one replicate at the same time. The executor's queue is of size 1 to
+     * avoid memory leak if the thread halts for any reason.
      */
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
-    public void askForReplicate() {
+    void triggerAskForReplicate() {
+        AsyncUtils.triggerAsyncTask("ask-for-replicate", () -> askForReplicate(), executor);
+    }
+
+    /**
+     * Ask for a new replicate. Check all conditions are satisfied before starting
+     * to execute the task.
+     */
+    void askForReplicate() {
+        log.debug("Asking for a new replicate");
+        // TODO check blocknumber only once a replicate is received.
         long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         if (lastAvailableBlockNumber == 0) {
             log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
             return;
         }
+        // TODO check gas only once a replicate is received.
         if (!iexecHubService.hasEnoughGas()) {
             log.error("Cannot ask for new tasks, your wallet is dry");
             return;
@@ -110,5 +131,4 @@ public class ReplicateDemandService {
         subscriptionService.subscribeToTopic(chainTaskId);
         applicationEventPublisher.publishEvent(taskNotification);
     }
-
 }
