@@ -18,6 +18,8 @@ package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
+import com.iexec.worker.TestUtils;
+import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -26,7 +28,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.*;
-import org.mockito.invocation.InvocationOnMock;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.*;
 
 public class ReplicateDemandServiceTests {
 
+    private final static String ASK_FOR_REPLICATE_THREAD_NAME = "ask-for-rep-1";
     private final static String CHAIN_TASK_ID = "chainTaskId";
     private final static long BLOCK_NUMBER = 5;
 
@@ -70,7 +72,7 @@ public class ReplicateDemandServiceTests {
     public void shouldRunAskForReplicateAsynchronouslyWhenTriggeredOneTime() throws InterruptedException {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
                 .when(replicateDemandService).askForReplicate();
         
         replicateDemandService.triggerAskForReplicate();
@@ -79,7 +81,7 @@ public class ReplicateDemandServiceTests {
         verify(replicateDemandService).askForReplicate();
         // Make sure askForReplicate method is executed 1 time
         verify(iexecHubService).getLatestBlockNumber();
-        assertThat(threadNameWrapper.value).isEqualTo("ask-for-rep-1");
+        assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
     }
 
@@ -94,7 +96,7 @@ public class ReplicateDemandServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> saveThreadNameThenCallRealMethodThenSleep(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleep(
                 threadNameWrapper, invocation, 100)) // sleep duration > test duration
                 .when(replicateDemandService).askForReplicate();
 
@@ -106,7 +108,7 @@ public class ReplicateDemandServiceTests {
         verify(replicateDemandService, times(1)).askForReplicate();
         // Make sure askForReplicate method is executed 1 time
         verify(iexecHubService, times(1)).getLatestBlockNumber();
-        assertThat(threadNameWrapper.value).isEqualTo("ask-for-rep-1");
+        assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
     }
 
@@ -115,7 +117,7 @@ public class ReplicateDemandServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> saveThreadNameThenCallRealMethod(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(
                 threadNameWrapper, invocation))
                 .when(replicateDemandService).askForReplicate();
 
@@ -126,7 +128,7 @@ public class ReplicateDemandServiceTests {
         verify(replicateDemandService, times(1)).askForReplicate();
         // Make sure askForReplicate method is executed 1st time
         verify(iexecHubService, times(1)).getLatestBlockNumber();
-        assertThat(threadNameWrapper.value).isEqualTo("ask-for-rep-1");
+        assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
 
         // Trigger 2nd time
@@ -137,7 +139,7 @@ public class ReplicateDemandServiceTests {
         verify(replicateDemandService, times(2)).askForReplicate();
         // Make sure askForReplicate method is executed 2nd time
         verify(iexecHubService, times(2)).getLatestBlockNumber();
-        assertThat(threadNameWrapper.value).isEqualTo("ask-for-rep-1");
+        assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
     }
 
@@ -155,7 +157,7 @@ public class ReplicateDemandServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> saveThreadNameThenCallRealMethodThenSleep(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleep(
                 threadNameWrapper, invocation, 10))
                 .when(replicateDemandService).askForReplicate();
 
@@ -169,7 +171,7 @@ public class ReplicateDemandServiceTests {
         verify(replicateDemandService, times(2)).askForReplicate();
         // Make sure askForReplicate method is executed only 2 times
         verify(iexecHubService, times(2)).getLatestBlockNumber();
-        assertThat(threadNameWrapper.value).isEqualTo("ask-for-rep-1");
+        assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
     }
 
@@ -250,26 +252,5 @@ public class ReplicateDemandServiceTests {
         return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
-    }
-
-    private Object saveThreadNameThenCallRealMethodThenSleep(
-            ThreadNameWrapper threadNameWrapper,
-            InvocationOnMock invocation, int sleepDuration) throws Throwable {
-        Object invocationResult = saveThreadNameThenCallRealMethod(threadNameWrapper, invocation);
-        Thread.sleep(sleepDuration);
-        return invocationResult;
-    }
-
-    private Object saveThreadNameThenCallRealMethod(
-            ThreadNameWrapper threadNameWrapper, InvocationOnMock invocation)
-            throws Throwable {
-        // Save the name of the current thread
-        threadNameWrapper.value = Thread.currentThread().getName();
-        // Then call real method
-        return invocation.callRealMethod();
-    }
-
-    private class ThreadNameWrapper {
-        String value;
     }
 }
