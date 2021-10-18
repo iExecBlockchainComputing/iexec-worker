@@ -69,8 +69,8 @@ public class PingService {
      * restarted, os the worker needs to restart also.
      */
     void pingScheduler() {
-        String sessionId = customCoreFeignClient.ping();
         log.debug("Sending ping to scheduler");
+        String sessionId = customCoreFeignClient.ping();
         // Log once in an hour, in the first ping of the first minute.
         if (LocalTime.now().getMinute() == 0
                 && LocalTime.now().getSecond() <= PING_RATE) {

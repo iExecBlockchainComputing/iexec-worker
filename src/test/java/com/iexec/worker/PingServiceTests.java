@@ -88,8 +88,8 @@ public class PingServiceTests {
                 .when(pingService).pingScheduler();
 
         // Trigger 2 times
-        pingService.pingScheduler();
-        pingService.pingScheduler();
+        pingService.triggerSchedulerPing();
+        pingService.triggerSchedulerPing();
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure pingScheduler() method is called 1 time
         verify(pingService, times(1)).pingScheduler();
