@@ -60,6 +60,7 @@ public class PingService {
      */
     @Scheduled(fixedRate = PING_RATE)
     void triggerSchedulerPing() {
+        log.debug("Triggering scheduler ping action");
         AsyncUtils.triggerAsyncTask("ping", () -> pingScheduler(), executor);
     }
 
