@@ -75,7 +75,7 @@ public class PingService {
         // Log once in an hour, in the first ping of the first minute.
         if (LocalTime.now().getMinute() == 0
                 && LocalTime.now().getSecond() <= PING_RATE) {
-            log.info("Sent ping to scheduler " + sessionId);
+            log.info("Sent ping to scheduler [sessionId:{}]", sessionId);
         }
         if (StringUtils.isEmpty(sessionId)) {
             log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
