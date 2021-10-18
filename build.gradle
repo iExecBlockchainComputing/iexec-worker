@@ -84,6 +84,13 @@ dependencies {
     deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"
 }
 
+test {
+    // Ignore slow tests when developping
+    if (project.hasProperty('dev')) {
+        exclude '**/StompClientTests.class'
+    }
+}
+
 jacoco {
     toolVersion = "0.8.3"
 }
