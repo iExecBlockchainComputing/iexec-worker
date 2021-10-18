@@ -26,7 +26,7 @@ public class AsyncUtils {
 
     private AsyncUtils() {}
 
-    public static void triggerAsyncTask(String context, Runnable runnable, Executor executor) {
+    public static void runAsyncTask(String context, Runnable runnable, Executor executor) {
         log.debug("Running async task [context:{}]", context);
         CompletableFuture
                 .runAsync(runnable, executor)
