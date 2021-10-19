@@ -77,6 +77,35 @@ public class StompClientTests {
     }
 
     @Test
+    public void shouldStartOnlyOneListenerThread() throws Exception {
+        stompClient.startSessionRequestListenerIfAbsent();
+        stompClient.startSessionRequestListenerIfAbsent();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure listenToSessionRequests() method is called only 1 time
+        verify(stompClient).listenToSessionRequests();
+    }
+
+    @Test
+    public void shouldRestartListenerThreadWhenNoOneIsFound() throws Exception {
+        stompClient.restartSessionRequestListenerIfStopped();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure listenToSessionRequests() method is called 1 time
+        verify(stompClient).listenToSessionRequests();
+    }
+
+    @Test
+    public void shouldNoRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
+        stompClient.startSessionRequestListenerIfAbsent();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure listenToSessionRequests() method is called only 1 time
+        verify(stompClient).listenToSessionRequests();
+        stompClient.restartSessionRequestListenerIfStopped();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure listenToSessionRequests() method is still called only 1 time
+        verify(stompClient).listenToSessionRequests();
+    }
+
+    @Test
     public void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived()
             throws Exception {
         // Start listener
