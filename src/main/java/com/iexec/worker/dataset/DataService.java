@@ -103,43 +103,25 @@ public class DataService {
             }
         }
     }
-    
+
+    /**
+     * This workflow is not supported anymore.
+     * @return
+     */
+    @Deprecated(forRemoval = true)
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {
-        String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
-
-        if (!new File(datasetSecretFilePath).exists()) {
-            log.info("No dataset secret file found, will continue without decrypting dataset [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        return true;
+        throw new UnsupportedOperationException(
+            "Dataset decryption is not supported for standard tasks");
     }
 
+    /**
+     * This workflow is not supported anymore.
+     * @return
+     */
     @Deprecated(forRemoval = true)
     public boolean decryptDataset(String chainTaskId, String datasetUri) {
-        String datasetFileName = Paths.get(datasetUri).getFileName().toString();
-        String datasetFilePath = workerConfigurationService.getTaskInputDir(chainTaskId) + File.separator + datasetFileName;
-        String datasetSecretFilePath = workerConfigurationService.getDatasetSecretFilePath(chainTaskId);
-
-        log.info("Decrypting dataset file [datasetFile:{}, secretFile:{}]", datasetFilePath, datasetSecretFilePath);
-
-        decryptFile(datasetFilePath, datasetSecretFilePath);
-
-        String decryptedDatasetFilePath = datasetFilePath + ".recovered";
-
-        if (!new File(decryptedDatasetFilePath).exists()) {
-            log.error("Decrypted dataset file not found [chainTaskId:{}, decryptedDatasetFilePath:{}]",
-                    chainTaskId, decryptedDatasetFilePath);
-            return false;
-        }
-
-        // replace original dataset file with decrypted one
-        return FileHelper.replaceFile(datasetFilePath, decryptedDatasetFilePath);
-    }
-
-    @Deprecated(forRemoval = true)
-    private void decryptFile(String dataFilePath, String secretFilePath) {
-        throw new UnsupportedOperationException("Cannot decrypt file with bash script");
+        throw new UnsupportedOperationException(
+            "Dataset decryption is not supported for standard tasks");
     }
 
     /**

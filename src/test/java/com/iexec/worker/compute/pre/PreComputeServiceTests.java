@@ -94,42 +94,6 @@ public class PreComputeServiceTests {
     }
 
     /**
-     * Standard pre compute
-     */
-
-    // Standard pre compute without secret
-    @Test
-    public void shouldRunStandardPreCompute() {
-        when(smsService.fetchTaskSecrets(workerpoolAuthorization)).thenReturn(Optional.empty());
-        when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(false);
-
-        Assertions.assertThat(preComputeService.runStandardPreCompute(taskDescription)).isTrue();
-        verify(dataService, times(0)).decryptDataset(chainTaskId, datasetUri);
-    }
-
-    @Test
-    public void shouldRunStandardPreComputeWithDatasetDecryption() {
-        when(smsService.fetchTaskSecrets(workerpoolAuthorization)).thenReturn(Optional.empty());
-        when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(true);
-        when(dataService.decryptDataset(chainTaskId,
-                taskDescription.getDatasetUri())).thenReturn(true);
-
-        Assertions.assertThat(preComputeService.runStandardPreCompute(taskDescription)).isTrue();
-        verify(dataService, times(1)).decryptDataset(chainTaskId, datasetUri);
-    }
-
-    @Test
-    public void shouldNotRunStandardPreComputeWithDatasetDecryptionSinceCantDecrypt() {
-        when(smsService.fetchTaskSecrets(workerpoolAuthorization)).thenReturn(Optional.empty());
-        when(dataService.isDatasetDecryptionNeeded(chainTaskId)).thenReturn(true);
-        when(dataService.decryptDataset(chainTaskId,
-                taskDescription.getDatasetUri())).thenReturn(false);
-
-        Assertions.assertThat(preComputeService.runStandardPreCompute(taskDescription)).isFalse();
-        verify(dataService, times(1)).decryptDataset(chainTaskId, datasetUri);
-    }
-
-    /**
      * Tee pre compute
      */
 
