@@ -18,41 +18,50 @@ package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
-import com.iexec.worker.chain.ContributionService;
+import com.iexec.common.notification.TaskNotificationExtra;
+import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.result.ComputedFile;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import org.assertj.core.api.Assertions;
+import com.iexec.worker.result.ResultService;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
-import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 
 public class ReplicateRecoveryServiceTests {
 
-    private final static String CHAIN_TASK_ID = "chainTaskId";
-    private final static long BLOCK_NUMBER = 5;
-
-    @Captor
-    ArgumentCaptor<TaskNotification> taskNotificationCaptor;
+    private final static String CHAIN_TASK_ID = "0xfoobar";
     @InjectMocks
-    private ReplicateDemandService replicateDemandService;
+    ReplicateRecoveryService replicateRecoveryService;
+    final long blockNumber = 5;
+    @Mock
+    private CustomCoreFeignClient customCoreFeignClient;
+    @Mock
+    private ResultService resultService;
     @Mock
     private IexecHubService iexecHubService;
-    @Mock
-    private CustomCoreFeignClient coreFeignClient;
-    @Mock
-    private ContributionService contributionService;
     @Mock
     private SubscriptionService subscriptionService;
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+    @Mock
+    private ComputeManagerService computeManagerService;
 
     @Before
     public void init() {
@@ -60,76 +69,107 @@ public class ReplicateRecoveryServiceTests {
     }
 
     @Test
-    public void shouldAskForReplicate() {
-        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(workerpoolAuthorization));
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+    public void shouldNotRecoverSinceNothingToRecover() {
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
+                .thenReturn(Collections.emptyList());
 
-        replicateDemandService.askForReplicate();
+        List<String> recovered =
+                replicateRecoveryService.recoverInterruptedReplicates();
 
-        verify(subscriptionService, times(1))
+        assertThat(recovered).isEmpty();
+    }
+
+    @Test
+    public void shouldNotRecoverSinceCannotGetTaskDescriptionFromChain() {
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif =
+                getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
+                .thenReturn(Collections.singletonList(notif));
+        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
+
+        List<String> recovered =
+                replicateRecoveryService.recoverInterruptedReplicates();
+
+        assertThat(recovered).isEmpty();
+
+        Mockito.verify(subscriptionService, Mockito.times(0))
                 .subscribeToTopic(CHAIN_TASK_ID);
-        verify(applicationEventPublisher).publishEvent(taskNotificationCaptor.capture());
-        Assertions.assertThat(taskNotificationCaptor.getValue().getChainTaskId())
-                .isEqualTo(CHAIN_TASK_ID);
-        Assertions.assertThat(taskNotificationCaptor.getValue().getWorkersAddress())
-                .isEmpty();
-        Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationType())
-                .isEqualTo(PLEASE_START);
-        Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationExtra()
-                .getWorkerpoolAuthorization()).isEqualTo(workerpoolAuthorization);
     }
 
     @Test
-    public void shouldNotAskForReplicateSinceLocalBlockchainNotSynchronized() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
+    public void shouldNotRecoverByRevealingWhenResultNotFound() {
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif =
+                getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
+                .thenReturn(Collections.singletonList(notif));
+        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
-        replicateDemandService.askForReplicate();
+        List<String> recovered =
+                replicateRecoveryService.recoverInterruptedReplicates();
 
-        verify(subscriptionService, never()).subscribeToTopic(anyString());
-        verify(applicationEventPublisher, never()).publishEvent(any());
+        assertThat(recovered).isEmpty();
+
+        Mockito.verify(subscriptionService, Mockito.times(0))
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
     @Test
-    public void shouldNotAskForReplicateSinceWalletIsDry() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
-        when(iexecHubService.hasEnoughGas()).thenReturn(false);
+    public void shouldNotRecoverByUploadingWhenResultNotFound() {
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif =
+                getStubInterruptedTask(TaskNotificationType.PLEASE_UPLOAD);
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
+                .thenReturn(Collections.singletonList(notif));
+        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
-        replicateDemandService.askForReplicate();
+        List<String> recovered =
+                replicateRecoveryService.recoverInterruptedReplicates();
 
-        verify(subscriptionService, never()).subscribeToTopic(anyString());
-        verify(applicationEventPublisher, never()).publishEvent(any());
+        assertThat(recovered).isEmpty();
+
+        Mockito.verify(subscriptionService, Mockito.times(0))
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
+    // The notification type does not matter here since it is handled on the
+    // subscription service
     @Test
-    public void shouldNotAskForReplicateSinceNoAvailableReplicate() {
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.empty());
+    public void shouldNotificationPassedToSubscriptionService() {
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
+        TaskNotification notif =
+                getStubInterruptedTask(TaskNotificationType.PLEASE_COMPLETE);
+        when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
+                .thenReturn(Collections.singletonList(notif));
+        when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        when(resultService.getComputedFile(CHAIN_TASK_ID))
+                .thenReturn(ComputedFile.builder().build());
 
-        replicateDemandService.askForReplicate();
+        List<String> recovered =
+                replicateRecoveryService.recoverInterruptedReplicates();
 
-        verify(subscriptionService, never()).subscribeToTopic(anyString());
-        verify(applicationEventPublisher, never()).publishEvent(any());
+        assertThat(recovered).isNotEmpty();
+        assertThat(recovered.get(0)).isEqualTo(CHAIN_TASK_ID);
+
+        Mockito.verify(subscriptionService, Mockito.times(1))
+                .subscribeToTopic(CHAIN_TASK_ID);
     }
 
-    @Test
-    public void shouldNotAskForReplicateSinceTaskIsNotInitialized() {
-        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(workerpoolAuthorization));
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(false);
+    private TaskNotification getStubInterruptedTask(TaskNotificationType notificationType) {
+        return TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(notificationType)
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                        .workerpoolAuthorization(getStubAuth())
+                        .build())
+                .build();
 
-        replicateDemandService.askForReplicate();
-
-        verify(subscriptionService, never()).subscribeToTopic(anyString());
-        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     private WorkerpoolAuthorization getStubAuth() {
@@ -138,4 +178,9 @@ public class ReplicateRecoveryServiceTests {
                 .build();
     }
 
+    private Optional<TaskDescription> getStubModel() {
+        return Optional.of(TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .build());
+    }
 }

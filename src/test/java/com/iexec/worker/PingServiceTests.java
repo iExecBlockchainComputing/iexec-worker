@@ -16,6 +16,7 @@
 
 package com.iexec.worker;
 
+import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.worker.WorkerService;
@@ -24,16 +25,19 @@ import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 public class PingServiceTests {
 
+    private final static String PING_THREAD_NAME = "ping-1";
     public static final String SESSION_ID = "SESSION_ID";
     public static final String OTHER_SESSION_ID = "OTHER_SESSION_ID";
 
-    @InjectMocks
-    private PingService pingService;
     @Mock
     private CustomCoreFeignClient customCoreFeignClient;
     @Mock
@@ -41,10 +45,121 @@ public class PingServiceTests {
     @Mock
     private WorkerService workerService;
 
+    @Spy
+    @InjectMocks
+    private PingService pingService;
+
     @Before
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
 
+    }
+
+    @Test
+    public void shouldRunPingAsynchronouslyWhenTriggeredOneTime() throws InterruptedException {
+        ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
+        String mainThreadName = Thread.currentThread().getName();
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
+                .when(pingService).pingScheduler();
+        
+        pingService.triggerSchedulerPing();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure pingScheduler() method is called 1 time
+        verify(pingService).pingScheduler();
+        // Make sure ping() method is called 1 time
+        verify(customCoreFeignClient).ping();
+        assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
+        assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
+    }
+
+    /**
+     * In this test the thread that runs "pingScheduler()" method will sleep after its
+     * execution to make sure that is considered busy. The second call to the method
+     * "pingScheduler()" should not be executed.
+     * @throws InterruptedException
+     */
+    @Test
+    public void shouldRunPingSchedulerOnlyOnceWhenTriggeredTwoTimesSimultaneously()
+            throws Exception {
+        ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
+        String mainThreadName = Thread.currentThread().getName();
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
+                threadNameWrapper, invocation, 100)) // sleep duration > test duration
+                .when(pingService).pingScheduler();
+
+        // Trigger 2 times
+        pingService.triggerSchedulerPing();
+        pingService.triggerSchedulerPing();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure pingScheduler() method is called 1 time
+        verify(pingService, times(1)).pingScheduler();
+        // Make sure ping() method is called 1 time
+        verify(customCoreFeignClient, times(1)).ping();
+        assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
+        assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
+    }
+
+    @Test
+    public void shouldRunPingSchedulerTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes()
+            throws Exception {
+        ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
+        String mainThreadName = Thread.currentThread().getName();
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(
+                threadNameWrapper, invocation))
+                .when(pingService).pingScheduler();
+
+        // Trigger 1st time
+        pingService.triggerSchedulerPing();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure pingScheduler() method is called 1st time
+        verify(pingService, times(1)).pingScheduler();
+        // Make sure ping() method is called 1st time
+        verify(customCoreFeignClient, times(1)).ping();
+        assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
+        assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
+
+        // Trigger 2nd time
+        threadNameWrapper.value = "";
+        pingService.triggerSchedulerPing();
+        TimeUnit.MILLISECONDS.sleep(10);
+        // Make sure pingScheduler() method is called 2nd time
+        verify(pingService, times(2)).pingScheduler();
+        // Make sure ping() method is called 2nd time
+        verify(customCoreFeignClient, times(2)).ping();
+        assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
+        assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
+    }
+
+    /**
+     * This test makes sure that the queue of the executor which runs "pingScheduler()"
+     * method is of size 1 and that it drops excessive incoming requests when an existing
+     * request is already in the queue.
+     * As you will notice, in the test we check that the method was called 2 times not
+     * 1 time. That's because the queue is instantly emptied the first time so the queue
+     * can accept the second request. So 2 is the least we can have.
+     * @throws Exception
+     */
+    @Test
+    public void shouldDropThirdAndForthPingRequestsWhenTriggeredMultipleTimes()
+            throws Exception {
+        ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
+        String mainThreadName = Thread.currentThread().getName();
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
+                threadNameWrapper, invocation, 10))
+                .when(pingService).pingScheduler();
+
+        // Trigger 4 times
+        pingService.triggerSchedulerPing();
+        pingService.triggerSchedulerPing();
+        pingService.triggerSchedulerPing();
+        pingService.triggerSchedulerPing();
+        TimeUnit.MILLISECONDS.sleep(100);
+        // Make sure pingScheduler() method is called only 2 times
+        verify(pingService, times(2)).pingScheduler();
+        // Make sure ping() method is called only 2 times
+        verify(customCoreFeignClient, times(2)).ping();
+        assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
+        assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
     }
 
     @Test
@@ -103,5 +218,4 @@ public class PingServiceTests {
         verify(workerService, times(1))
                 .restartGracefully();
     }
-
 }
