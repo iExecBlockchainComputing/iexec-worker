@@ -24,7 +24,7 @@ public class TestUtils {
         public String value;
     }
 
-    public static Object saveThreadNameThenCallRealMethodThenSleep(
+    public static Object saveThreadNameThenCallRealMethodThenSleepSomeMillis(
             ThreadNameWrapper threadNameWrapper,
             InvocationOnMock invocation, int sleepDuration) throws Throwable {
         Object invocationResult = saveThreadNameThenCallRealMethod(threadNameWrapper, invocation);

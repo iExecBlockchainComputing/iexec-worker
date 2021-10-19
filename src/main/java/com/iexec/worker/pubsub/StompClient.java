@@ -53,13 +53,14 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * This class handles STOMP websocket connections. First we create an instance of
+ * This component handles STOMP websocket connection. First we create an instance of
  * {@link WebSocketStompClient} then we start one and only one listener thread that
  * creates a STOMP session used to subscribe to topics. If an issue occurs with the
- * session the same thread refreshes it. The request of a new session is managed
- * with an AtomicBoolean flag to avoid creating multiple sessions at the same time.
+ * session the same thread is responsible of refreshing it. The detector of the issue
+ * instructs the listener thread to refresh the session by switching an AtomicBoolean
+ * flag. This avoids creating multiple sessions at the same time.
  * A scheduled task will periodically check if the watchdog thread is interrupted.
- * If it is the case it will start a new one.
+ * If it is the case it will be restarted.
  */
 @Slf4j
 @Component
@@ -203,7 +204,7 @@ public class StompClient {
                 Thread.currentThread().interrupt();
                 // The thread will stop
             } catch(Throwable t) {
-                // Handle all errors and continue
+                // Ignore all errors and continue
                 log.error("An error occurred while listening to STOMP session requests", t);
                 // The thread will continue
             }

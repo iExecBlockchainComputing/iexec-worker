@@ -26,6 +26,15 @@ public class AsyncUtils {
 
     private AsyncUtils() {}
 
+    /**
+     * The default {@link CompletableFuture#runAsync(Runnable)} fails silently when an exception
+     * is thrown in the running thread. This wrapper method adds an exception handler that logs
+     * a custom error message as well as the exception itself.
+     * 
+     * @param context custom identified logged in the error message
+     * @param runnable the task to run
+     * @param executor the executor used to run the task
+     */
     public static void runAsyncTask(String context, Runnable runnable, Executor executor) {
         log.debug("Running async task [context:{}]", context);
         CompletableFuture

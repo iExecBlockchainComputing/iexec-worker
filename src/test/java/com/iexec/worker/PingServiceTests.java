@@ -83,7 +83,7 @@ public class PingServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleep(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
                 threadNameWrapper, invocation, 100)) // sleep duration > test duration
                 .when(pingService).pingScheduler();
 
@@ -144,7 +144,7 @@ public class PingServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleep(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
                 threadNameWrapper, invocation, 10))
                 .when(pingService).pingScheduler();
 

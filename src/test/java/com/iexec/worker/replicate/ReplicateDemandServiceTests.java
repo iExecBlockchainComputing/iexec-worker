@@ -96,7 +96,7 @@ public class ReplicateDemandServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleep(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
                 threadNameWrapper, invocation, 100)) // sleep duration > test duration
                 .when(replicateDemandService).askForReplicate();
 
@@ -157,7 +157,7 @@ public class ReplicateDemandServiceTests {
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleep(
+        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
                 threadNameWrapper, invocation, 10))
                 .when(replicateDemandService).askForReplicate();
 
