@@ -85,7 +85,7 @@ dependencies {
 }
 
 test {
-    // Ignore slow tests in local development
+    // Ignore slow tests in development
     if (project.hasProperty('dev')) {
         exclude '**/StompClientTests.class'
     }
