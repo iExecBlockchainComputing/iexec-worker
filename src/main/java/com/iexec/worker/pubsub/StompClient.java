@@ -152,27 +152,24 @@ public class StompClient {
     void listenToSessionRequests() {
         log.info("Listening to incoming STOMP session requests");
         while (!Thread.interrupted()) {
-            // get the first request event or wait until available
             try {
+                // get the first request event or wait until available
                 this.sessionRequestQueue.take();
-            } catch (InterruptedException e) {
-                log.error("Interrupted while listening to incoming STOMP session requests", e);
-                Thread.currentThread().interrupt();
-                return;
-            }
-            // wait some time for the wave of request events coming
-            // from possibly different threads to finish
-            try {
+                // wait some time for the wave of request events coming
+                // from possibly different threads to finish
                 TimeUnit.SECONDS.sleep(SESSION_REFRESH_DELAY);
-            } catch (InterruptedException e) {
-                log.error("Interrupted while sleeping", e);
+                // purge redundant request events
+                this.sessionRequestQueue.clear();
+                // Only one attempt should pass through
+                createSession();
+            } catch(InterruptedException e) {
+                log.error("STOMP session request listener got interrupted", e);
                 Thread.currentThread().interrupt();
-                return;
+                // The thread will stop
+            } catch(Throwable t) {
+                log.error("An error occurred while listening to STOMP session requests", t);
+                // The thread will continue
             }
-            // purge redundant request events
-            this.sessionRequestQueue.clear();
-            // Only one attempt should pass through
-            createSession();
         }
     }
 
