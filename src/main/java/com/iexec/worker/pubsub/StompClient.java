@@ -140,12 +140,14 @@ public class StompClient {
      * thread executor to not block one thread of the default common pool.
      */
     void startSessionRequestListenerIfAbsent() {
-        if (listenerLock.isLocked()) {
-            // Another thread is already listening.
-            log.debug("Cannot start a second session request listener");
-            return;
+        synchronized(listenerLock) {
+            if (listenerLock.isLocked()) {
+                // Another thread is already listening.
+                log.debug("Cannot start a second session request listener");
+                return;
+            }
+            listenerLock.lock();
         }
-        listenerLock.lock();
         AsyncUtils.runAsyncTask("listen-to-stomp-session",
                 this::listenToSessionRequests, singleThreadExecutor);
     }
