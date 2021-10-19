@@ -66,7 +66,7 @@ public class PingServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure pingScheduler() method is called 1 time
         verify(pingService).pingScheduler();
-        // Make sure pingScheduler() method is executed 1 time
+        // Make sure ping() method is called 1 time
         verify(customCoreFeignClient).ping();
         assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -93,7 +93,7 @@ public class PingServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure pingScheduler() method is called 1 time
         verify(pingService, times(1)).pingScheduler();
-        // Make sure pingScheduler() method is executed 1 time
+        // Make sure ping() method is called 1 time
         verify(customCoreFeignClient, times(1)).ping();
         assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -113,7 +113,7 @@ public class PingServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure pingScheduler() method is called 1st time
         verify(pingService, times(1)).pingScheduler();
-        // Make sure pingScheduler() method is executed 1st time
+        // Make sure ping() method is called 1st time
         verify(customCoreFeignClient, times(1)).ping();
         assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -124,7 +124,7 @@ public class PingServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure pingScheduler() method is called 2nd time
         verify(pingService, times(2)).pingScheduler();
-        // Make sure pingScheduler() method is executed 2nd time
+        // Make sure ping() method is called 2nd time
         verify(customCoreFeignClient, times(2)).ping();
         assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -156,7 +156,7 @@ public class PingServiceTests {
         TimeUnit.MILLISECONDS.sleep(100);
         // Make sure pingScheduler() method is called only 2 times
         verify(pingService, times(2)).pingScheduler();
-        // Make sure pingScheduler() method is executed only 2 times
+        // Make sure ping() method is called only 2 times
         verify(customCoreFeignClient, times(2)).ping();
         assertThat(threadNameWrapper.value).isEqualTo(PING_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);

@@ -105,10 +105,8 @@ public class StompClient {
     void init() {
         // Start the thread that listens to session requests in a dedicated thread executor
         // to not block one thread of the default common pool
-        AsyncUtils.runAsyncTask(
-                "listen-to-stomp-session",
-                () -> listenToSessionRequests(),
-                singleThreadExecutor);
+        AsyncUtils.runAsyncTask("listen-to-stomp-session",
+                this::listenToSessionRequests, singleThreadExecutor);
         // Request a STOMP session for the first time
         requestNewSession();
     }

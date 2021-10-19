@@ -79,7 +79,7 @@ public class ReplicateDemandServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure askForReplicate method is called 1 time
         verify(replicateDemandService).askForReplicate();
-        // Make sure askForReplicate method is executed 1 time
+        // Make sure getLatestBlockNumber method is called 1 time
         verify(iexecHubService).getLatestBlockNumber();
         assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -106,7 +106,7 @@ public class ReplicateDemandServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure askForReplicate method is called 1 time
         verify(replicateDemandService, times(1)).askForReplicate();
-        // Make sure askForReplicate method is executed 1 time
+        // Make sure getLatestBlockNumber method is called 1 time
         verify(iexecHubService, times(1)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -126,7 +126,7 @@ public class ReplicateDemandServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure askForReplicate method is called 1st time
         verify(replicateDemandService, times(1)).askForReplicate();
-        // Make sure askForReplicate method is executed 1st time
+        // Make sure getLatestBlockNumber method is called 1st time
         verify(iexecHubService, times(1)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -137,7 +137,7 @@ public class ReplicateDemandServiceTests {
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure askForReplicate method is called 2nd time
         verify(replicateDemandService, times(2)).askForReplicate();
-        // Make sure askForReplicate method is executed 2nd time
+        // Make sure getLatestBlockNumber method is called 2nd time
         verify(iexecHubService, times(2)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
@@ -169,7 +169,7 @@ public class ReplicateDemandServiceTests {
         TimeUnit.MILLISECONDS.sleep(100);
         // Make sure askForReplicate method is called only 2 times
         verify(replicateDemandService, times(2)).askForReplicate();
-        // Make sure askForReplicate method is executed only 2 times
+        // Make sure getLatestBlockNumber method is called only 2 times
         verify(iexecHubService, times(2)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value).isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME);
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);

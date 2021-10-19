@@ -71,7 +71,7 @@ public class ReplicateDemandService {
     @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
     void triggerAskForReplicate() {
         log.debug("Triggering ask for replicate action");
-        AsyncUtils.runAsyncTask("ask-for-replicate", () -> askForReplicate(), executor);
+        AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
     }
 
     /**

@@ -61,13 +61,13 @@ public class PingService {
     @Scheduled(fixedRate = PING_RATE_IN_SECONDS * 1000)
     void triggerSchedulerPing() {
         log.debug("Triggering scheduler ping action");
-        AsyncUtils.runAsyncTask("ping", () -> pingScheduler(), executor);
+        AsyncUtils.runAsyncTask("ping", this::pingScheduler, executor);
     }
 
     /**
      * Send ping message to the scheduler and save the session id when pinging for
      * the first time. If the session id changes, it means that the scheduler has
-     * restarted, os the worker needs to restart also.
+     * restarted, so the worker needs to restart also.
      */
     void pingScheduler() {
         log.debug("Sending ping to scheduler");
