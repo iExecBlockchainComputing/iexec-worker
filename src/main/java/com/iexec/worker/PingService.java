@@ -33,7 +33,7 @@ import java.util.concurrent.Executor;
 @Service
 public class PingService {
 
-    private static final int PING_RATE = 10000; // 10s
+    private static final int PING_RATE_IN_SECONDS = 10;
 
     private final Executor executor;
     private final CustomCoreFeignClient customCoreFeignClient;
@@ -58,7 +58,7 @@ public class PingService {
      * than once at the same time. The executors queue is of size 1 to avoid memory
      * leak if the thread halts for any reason.
      */
-    @Scheduled(fixedRate = PING_RATE)
+    @Scheduled(fixedRate = PING_RATE_IN_SECONDS * 1000)
     void triggerSchedulerPing() {
         log.debug("Triggering scheduler ping action");
         AsyncUtils.runAsyncTask("ping", () -> pingScheduler(), executor);
@@ -73,8 +73,8 @@ public class PingService {
         log.debug("Sending ping to scheduler");
         String sessionId = customCoreFeignClient.ping();
         // Log once in an hour, in the first ping of the first minute.
-        if (LocalTime.now().getMinute() == 0
-                && LocalTime.now().getSecond() <= PING_RATE) {
+        LocalTime now = LocalTime.now();
+        if (now.getMinute() == 0 && now.getSecond() <= PING_RATE_IN_SECONDS) {
             log.info("Sent ping to scheduler [sessionId:{}]", sessionId);
         }
         if (StringUtils.isEmpty(sessionId)) {
