@@ -18,15 +18,15 @@ package com.iexec.worker.pubsub;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.PostConstruct;
 
 import com.iexec.worker.config.CoreConfigurationService;
-
+import com.iexec.worker.utils.AsyncUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -50,15 +50,33 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * This component handles STOMP websocket connection. First we create an instance of
+ * {@link WebSocketStompClient} then we start one and only one listener thread that
+ * creates a STOMP session used to subscribe to topics. If an issue occurs with the
+ * session the same thread is responsible of refreshing it. The detector of the issue
+ * instructs the listener thread to refresh the session by switching an AtomicBoolean
+ * flag. This avoids creating multiple sessions at the same time.
+ * A scheduled task will periodically check if the watchdog thread is interrupted.
+ * If it is the case it will be restarted.
+ */
 @Slf4j
 @Component
 public class StompClient {
 
+    // All session requests coming in this time interval
+    // will be treated together.
     private static final int SESSION_REFRESH_DELAY = 5;
-    private final BlockingQueue<SessionRequestEvent> sessionRequestQueue = new ArrayBlockingQueue<>(1);
+
+    // A lock used to guarantee that only one thread
+    // is listening to session requests.
+    private final Lock listenerLock = new Lock();
+    // A flag used to watch session requests.
+    private final AtomicBoolean isSessionRequested = new AtomicBoolean(false);
+    // A dedicated thread executor that handles STOMP session creation
+    private final Executor singleThreadExecutor = Executors.newSingleThreadExecutor();
     private final ApplicationEventPublisher eventPublisher;
     private final String webSocketServerUrl;
     private final WebSocketStompClient stompClient;
@@ -88,10 +106,12 @@ public class StompClient {
      * to handle received messages.
      * 
      * @param topic
-     * @param messageHandler an implementation of 
+     * @param messageHandler an implementation of {@link StompFrameHandler}
      * @return
      */
     Optional<Subscription> subscribeToTopic(String topic, StompFrameHandler messageHandler) {
+        Objects.requireNonNull(topic, "topic must not be null");
+        Objects.requireNonNull(messageHandler, "messageHandler must not be null");
         // Should not let other threads subscribe
         // when the session is not ready yet.
         return this.session != null
@@ -100,29 +120,47 @@ public class StompClient {
     }
 
     @PostConstruct
-    private void init() {
+    void init() {
+        // Start listener thread for the first time.
+        startSessionRequestListenerIfAbsent();
+        // Request a STOMP session for the first time
         requestNewSession();
     }
 
     /**
-     * Add new SessionRequestEvent to the queue. A queue listener
-     * will consume this event and create a new STOMP session.
-     * This does not raise an error if the queue is full.
+     * This scheduler will start the listener thread if it happens
+     * to be interrupted for whatever reason.
      */
-    private void requestNewSession() {
-        this.sessionRequestQueue.offer(new SessionRequestEvent());
+    @Scheduled(initialDelay = 30000, fixedRate = 30000) // 30s, 30s
+    void restartSessionRequestListenerIfStopped() {
+        startSessionRequestListenerIfAbsent();
+    }
+
+    /**
+     * Start the thread that listens to session requests in a dedicated
+     * thread executor to not block one thread of the default common pool.
+     */
+    void startSessionRequestListenerIfAbsent() {
+        synchronized(listenerLock) {
+            if (listenerLock.isLocked()) {
+                // Another thread is already listening.
+                log.debug("Cannot start a second session request listener");
+                return;
+            }
+            listenerLock.lock();
+        }
+        AsyncUtils.runAsyncTask("listen-to-stomp-session",
+                this::listenToSessionRequests, singleThreadExecutor);
     }
 
     /**
      * Listen to session request events and refresh the websocket
-     * connection by establishing a new STOMP session. Only one of 
-     * the received requests in a fixed time interval
-     * {@code SESSION_REFRESH_DELAY} will be processed. We use
-     * {@code @Scheduled} to start the watcher asynchronously and
-     * restart it in case a problem occurs.
+     * connection by establishing a new STOMP session. All received 
+     * requests in a fixed time interval {@code SESSION_REFRESH_DELAY}
+     * will be processed only once.
      * <br>
      * 
-     * <p><b>Note:</b> the reason we use a queue is because the
+     * <p><b>Note:</b> the reason we use an AtomicBoolean is because the
      * method {@link SessionHandler#handleTransportError()} is called
      * two times to handle connectivity issues when the websocket
      * connection is, for whatever reason, brutally terminated while
@@ -136,30 +174,58 @@ public class StompClient {
      * {@link SessionHandler#handleTransportError()} would result
      * in parallel zombie threads trying to establish a new session
      * each.
-     * Instead, each call to this method adds a
-     * {@link SessionRequestEvent} to the queue. We wait for a short
+     * Instead, each call to this method changes the flag
+     * {@code isSessionRequested} to true. We wait for a short
      * period of time to collect all these requests coming from
      * different calls (and possibly different threads), then we send
      * only one request to the server. This process is repeated until
      * the websocket connection is reestablished again.
-     * 
-     * @throws InterruptedException
      */
-    @Scheduled(fixedDelay = 1000)
-    private void listenToSessionRequestEventsInTheQueue() throws InterruptedException {
-        while (true) {
-            // get the first request event or wait until available
-            this.sessionRequestQueue.take();
-            // wait some time for the wave of request events coming
-            // from possibly different threads to finish
-            TimeUnit.SECONDS.sleep(SESSION_REFRESH_DELAY);
-            log.info("Creating new STOMP session");
-            // purge redundant request events
-            this.sessionRequestQueue.clear();
-            // Only one attempt should pass through
-            log.debug("Sending new STOMP connection request");
-            this.stompClient.connect(webSocketServerUrl, new SessionHandler());
+    void listenToSessionRequests() {
+        log.info("Listening to incoming STOMP session requests");
+        while (!Thread.interrupted()) {
+            try {
+                if (!isSessionRequested.get()) {
+                    // No requests
+                    continue;
+                }
+                // wait some time for the wave of request events coming
+                // from possibly different threads to finish
+                TimeUnit.SECONDS.sleep(SESSION_REFRESH_DELAY);
+                // Switch the flag back to mark requests as treated.
+                isSessionRequested.set(false);
+                // Send one request to the server.
+                createSession();
+            } catch(InterruptedException e) {
+                log.error("STOMP session request listener got interrupted", e);
+                // Unlock flag so another thread can be started.
+                listenerLock.unlock();
+                // Properly handle InterruptedException.
+                Thread.currentThread().interrupt();
+                // The thread will stop
+            } catch(Throwable t) {
+                // Ignore all errors and continue
+                log.error("An error occurred while listening to STOMP session requests", t);
+                // The thread will continue
+            }
         }
+    }
+
+    /**
+     * Change the flag {@code isSessionRequested} to true. A listener
+     * that is watching this flag will create a new STOMP session.
+     */
+    void requestNewSession() {
+        isSessionRequested.set(true);
+        log.info("Requested a new STOMP session");
+    }
+
+    /**
+     * Establish connection to the WebSocket Server.
+     */
+    void createSession() {
+        log.info("Creating new STOMP session");
+        this.stompClient.connect(webSocketServerUrl, new SessionHandler());
     }
 
     /**
@@ -216,12 +282,19 @@ public class StompClient {
         }
     }
 
-    /**
-     * Request a new STOMP session by adding
-     * this event to the queue.
-     */
-    @NoArgsConstructor
-    private class SessionRequestEvent {
-        
+    private class Lock {
+        private final AtomicBoolean value = new AtomicBoolean(false);
+
+        boolean isLocked() {
+            return value.get();
+        }
+
+        void lock() {
+            value.set(true);
+        }
+
+        void unlock() {
+            value.set(false);
+        }
     }
 }

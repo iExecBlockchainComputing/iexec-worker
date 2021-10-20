@@ -18,6 +18,8 @@ package com.iexec.worker;
 
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.utils.AsyncUtils;
+import com.iexec.worker.utils.ExecutorUtils;
 import com.iexec.worker.worker.WorkerService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -25,13 +27,15 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @Service
 public class PingService {
 
-    private static final int PING_RATE = 10; // seconds
+    private static final int PING_RATE_IN_SECONDS = 10;
 
+    private final Executor executor;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final CoreConfigurationService coreConfigurationService;
     private final WorkerService workerService;
@@ -39,18 +43,39 @@ public class PingService {
     public PingService(CustomCoreFeignClient customCoreFeignClient,
                        CoreConfigurationService coreConfigurationService,
                        WorkerService workerService) {
+        executor = ExecutorUtils
+                .newSingleThreadExecutorWithFixedSizeQueue(1, "ping-");
         this.customCoreFeignClient = customCoreFeignClient;
         this.coreConfigurationService = coreConfigurationService;
         this.workerService = workerService;
     }
 
-    @Scheduled(fixedRate = PING_RATE * 1000)
-    public void pingScheduler() {
+    /**
+     * Trigger the scheduler ping every t seconds. The method that pings the
+     * scheduler runs asynchronously inside a new thread to liberate the thread
+     * used for @Scheduled tasks.
+     * We use single thread executor to make sure the worker does not ping more
+     * than once at the same time. The executors queue is of size 1 to avoid memory
+     * leak if the thread halts for any reason.
+     */
+    @Scheduled(fixedRate = PING_RATE_IN_SECONDS * 1000)
+    void triggerSchedulerPing() {
+        log.debug("Triggering scheduler ping action");
+        AsyncUtils.runAsyncTask("ping", this::pingScheduler, executor);
+    }
+
+    /**
+     * Send ping message to the scheduler and save the session id when pinging for
+     * the first time. If the session id changes, it means that the scheduler has
+     * restarted, so the worker needs to restart also.
+     */
+    void pingScheduler() {
+        log.debug("Sending ping to scheduler");
         String sessionId = customCoreFeignClient.ping();
-        // log once an hour
-        if (LocalTime.now().getMinute() == 0 /* First minute of the hour */
-                && LocalTime.now().getSecond() <= PING_RATE /* Fist ping of the minute */ ) {
-            log.info("Sent ping to scheduler " + sessionId);
+        // Log once in an hour, in the first ping of the first minute.
+        LocalTime now = LocalTime.now();
+        if (now.getMinute() == 0 && now.getSecond() <= PING_RATE_IN_SECONDS) {
+            log.info("Sent ping to scheduler [sessionId:{}]", sessionId);
         }
         if (StringUtils.isEmpty(sessionId)) {
             log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
