@@ -63,7 +63,6 @@ public class ResultService {
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
     private final CustomResultFeignClient customResultFeignClient;
-    private final EncryptionService encryptionService;
     private final Map<String, ResultInfo> resultInfoMap;
 
     public ResultService(
@@ -71,15 +70,12 @@ public class ResultService {
             PublicConfigurationService publicConfigService,
             CredentialsService credentialsService,
             IexecHubService iexecHubService,
-            CustomResultFeignClient customResultFeignClient,
-            EncryptionService encryptionService
-    ) {
+            CustomResultFeignClient customResultFeignClient) {
         this.workerConfigService = workerConfigService;
         this.publicConfigService = publicConfigService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
-        this.encryptionService = encryptionService;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -326,21 +322,14 @@ public class ResultService {
         return isResultZipFound(chainTaskId);
     }
 
+    /**
+     * This workflow is not supported anymore.
+     * @return
+     */
+    @Deprecated(forRemoval = true)
     public boolean encryptResult(String chainTaskId) {
-        String beneficiarySecretFilePath = workerConfigService.getBeneficiarySecretFilePath(chainTaskId);
-        String resultZipFilePath = workerConfigService.getTaskOutputDir(chainTaskId);
-        String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
-        log.info("Encrypting result zip [resultZipFilePath:{}, beneficiarySecretFilePath:{}]",
-                resultZipFilePath, beneficiarySecretFilePath);
-        encryptionService.encryptFile(taskOutputDir, resultZipFilePath, beneficiarySecretFilePath);
-        String encryptedResultFilePath = workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_IEXEC_OUT + ".zip";
-        if (!new File(encryptedResultFilePath).exists()) {
-            log.error("Encrypted result file not found [chainTaskId:{}, encryptedResultFilePath:{}]",
-                    chainTaskId, encryptedResultFilePath);
-            return false;
-        }
-        // replace result file with the encypted one
-        return FileHelper.replaceFile(resultZipFilePath, encryptedResultFilePath);
+        throw new UnsupportedOperationException(
+            "Result encryption is not supported for standard tasks");
     }
 
     public ComputedFile getComputedFile(String chainTaskId) {

@@ -70,7 +70,7 @@ public class WorkerService {
     }
 
     public boolean registerWorker() {
-        log.info("Number of CPUs [CPUs:{}]", workerConfigService.getNbCPU());
+        log.info("Number of CPUs [CPUs:{}]", workerConfigService.getCpuCount());
         log.info("Core URL [url:{}]", coreConfigService.getUrl());
         log.info("Core version [version:{}]", customCoreFeignClient.getCoreVersion());
         log.info("Getting public configuration from the core...");
@@ -97,7 +97,7 @@ public class WorkerService {
                 .walletAddress(workerAddress)
                 .os(workerConfigService.getOS())
                 .cpu(workerConfigService.getCPU())
-                .cpuNb(workerConfigService.getNbCPU())
+                .cpuNb(workerConfigService.getCpuCount())
                 .memorySize(workerConfigService.getMemorySize())
                 .teeEnabled(teeSconeService.isTeeEnabled())
                 .gpuEnabled(workerConfigService.isGpuEnabled())
