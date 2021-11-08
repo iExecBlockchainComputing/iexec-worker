@@ -29,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
+import java.io.File;
 import java.util.Optional;
 
 import static com.iexec.common.docker.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
@@ -38,6 +39,8 @@ import static org.mockito.Mockito.*;
 
 
 public class DockerServiceTests {
+
+    private static final String CHAIN_TASK_ID = "chainTaskId";
 
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
@@ -283,9 +286,156 @@ public class DockerServiceTests {
         verify(dockerService, never()).removeFromRunningContainersRecord(containerName);
     }
 
-    /**
-     * addToRunningContainersRecord()
-     */
+    //#region getInputBind()
+
+    @Test
+    public void shouldGetInputBind() {
+        String taskInputDir = "/input/dir";
+        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(taskInputDir);
+        assertThat(dockerService.getInputBind(CHAIN_TASK_ID))
+                // "/input/dir:/iexec_in"
+                .isEqualTo(taskInputDir + ":" + File.separator + "iexec_in");
+    }
+
+    //#endregion
+
+    //#region getIexecOutBind()
+
+    @Test
+    public void shouldGetIexecOutBind() {
+        String taskIexecOutDir = "/iexec/out/dir";
+        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(taskIexecOutDir);
+        assertThat(dockerService.getIexecOutBind(CHAIN_TASK_ID))
+                // "/iexec/out/dir:/iexec_out"
+                .isEqualTo(taskIexecOutDir + ":" + File.separator + "iexec_out");
+    }
+
+    //#endregion
+
+    //#region stopAllRunningContainers
+
+    @Test
+    public void shouldStopAllRunningContainers() {
+        String container1 = "container1";
+        String container2 = "container2";
+        dockerService.addToRunningContainersRecord(container1);
+        dockerService.addToRunningContainersRecord(container2);
+
+        dockerService.stopAllRunningContainers();
+        // Verify all containers are removed
+        verify(dockerService, times(2)).stopRunningContainer(anyString());
+        verify(dockerService).stopRunningContainer(container1);
+        verify(dockerService).stopRunningContainer(container2);
+    }
+
+    @Test
+    public void shouldNotStopRunningContainers() {
+        // no running container
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        dockerService.stopAllRunningContainers();
+        verify(dockerClientInstanceMock, never()).stopContainer(anyString());
+    }
+
+    //#endregion
+
+    //#region stopTaskRunningContainers()
+
+    @Test
+    public void shouldStopTaskRunningContainers() {
+        String computeContainerName = "awesome-app-" + CHAIN_TASK_ID;
+        String preComputeContainerName = computeContainerName + "-tee-pre-compute";
+        String postComputeContainerName = computeContainerName + "-tee-post-compute";
+        // Add task related containers to record
+        dockerService.addToRunningContainersRecord(preComputeContainerName);
+        dockerService.addToRunningContainersRecord(computeContainerName);
+        dockerService.addToRunningContainersRecord(postComputeContainerName);
+        // Add some other tasks containers
+        dockerService.addToRunningContainersRecord("containerName1");
+        dockerService.addToRunningContainersRecord("containerName2");
+
+        dockerService.stopTaskRunningContainers(CHAIN_TASK_ID);
+        // verify we removed all containers
+        verify(dockerService, times(3)).stopRunningContainer(anyString());
+        // Verify we removed only task related containers
+        verify(dockerService).stopRunningContainer(preComputeContainerName);
+        verify(dockerService).stopRunningContainer(computeContainerName);
+        verify(dockerService).stopRunningContainer(postComputeContainerName);
+    }
+
+    //#endregion
+
+    //#region stopRunningContainer
+
+    @Test
+    public void shouldStopRunningContainer() {
+        String containerName = "containerName";
+        // Add container to record
+        dockerService.addToRunningContainersRecord(containerName);
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        when(dockerClientInstanceMock.isContainerPresent(containerName)).thenReturn(true);
+        when(dockerClientInstanceMock.isContainerActive(containerName)).thenReturn(true);
+        when(dockerClientInstanceMock.stopContainer(containerName)).thenReturn(true);
+
+        dockerService.stopRunningContainer(containerName);
+        verify(dockerClientInstanceMock).isContainerPresent(containerName);
+        verify(dockerClientInstanceMock).isContainerActive(containerName);
+        verify(dockerClientInstanceMock).stopContainer(containerName);
+        verify(dockerClientInstanceMock, never()).removeContainer(containerName);
+        verify(dockerService).removeFromRunningContainersRecord(containerName);
+    }
+
+    @Test
+    public void shouldNotStopRunningContainerSinceNotFound() {
+        String containerName = "containerName";
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        when(dockerClientInstanceMock.isContainerPresent(containerName)).thenReturn(false);
+
+        dockerService.stopRunningContainer(containerName);
+        verify(dockerClientInstanceMock).isContainerPresent(containerName);
+        verify(dockerClientInstanceMock, never()).isContainerActive(containerName);
+        verify(dockerClientInstanceMock, never()).stopContainer(containerName);
+        verify(dockerClientInstanceMock, never()).removeContainer(containerName);
+        verify(dockerService, never()).removeFromRunningContainersRecord(containerName);
+    }
+
+    @Test
+    public void shouldNotStopRunningContainerButRemoveRecordSinceNotActive() {
+        String containerName = "containerName";
+        // Add container to record
+        dockerService.addToRunningContainersRecord(containerName);
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        when(dockerClientInstanceMock.isContainerPresent(containerName)).thenReturn(true);
+        when(dockerClientInstanceMock.isContainerActive(containerName)).thenReturn(false);
+
+        dockerService.stopRunningContainer(containerName);
+        verify(dockerClientInstanceMock).isContainerPresent(containerName);
+        verify(dockerClientInstanceMock).isContainerActive(containerName);
+        verify(dockerClientInstanceMock, never()).stopContainer(containerName);
+        verify(dockerClientInstanceMock, never()).removeContainer(containerName);
+        verify(dockerService).removeFromRunningContainersRecord(containerName);
+    }
+
+    @Test
+    public void shouldTryToStopRunningContainerButNotRemoveRecordSinceStopFailed() {
+        String containerName = "containerName";
+        // Add container to record
+        dockerService.addToRunningContainersRecord(containerName);
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        when(dockerClientInstanceMock.isContainerPresent(containerName)).thenReturn(true);
+        when(dockerClientInstanceMock.isContainerActive(containerName)).thenReturn(true);
+        when(dockerClientInstanceMock.stopContainer(containerName)).thenReturn(false);
+
+        dockerService.stopRunningContainer(containerName);
+        verify(dockerClientInstanceMock).isContainerPresent(containerName);
+        verify(dockerClientInstanceMock).isContainerActive(containerName);
+        verify(dockerClientInstanceMock).stopContainer(containerName);
+        verify(dockerClientInstanceMock, never()).removeContainer(containerName);
+        verify(dockerService, never()).removeFromRunningContainersRecord(containerName);
+    }
+
+    //#endregion
+
+    //#region addToRunningContainersRecord()
 
     @Test
     public void shouldAddToRunningContainersRecord() {
@@ -303,9 +453,21 @@ public class DockerServiceTests {
                 .addToRunningContainersRecord(containerName)).isFalse();
     }
 
-    /**
-     * removeFromRunningContainersRecord()
-     */
+    //#endregion
+
+    //#region removeFromRunningContainersRecord()
+
+    @Test
+    public void shouldRemoveFromRunningContainersRecord() {
+        String containerName = "containerName";
+        // Add container to records
+        assertThat(dockerService.getRunningContainersRecord().size()).isZero();
+        dockerService.addToRunningContainersRecord(containerName);
+        assertThat(dockerService.getRunningContainersRecord().size()).isEqualTo(1);
+        boolean isRemoved = dockerService.removeFromRunningContainersRecord(containerName);
+        assertThat(isRemoved).isTrue();
+        assertThat(dockerService.getRunningContainersRecord().size()).isZero();
+    }
 
     @Test
     public void shouldNotRemoveFromRunningContainersRecord() {
@@ -315,31 +477,5 @@ public class DockerServiceTests {
                 .removeFromRunningContainersRecord(containerName)).isFalse();
     }
 
-    /**
-     * stopRunningContainers
-     */
-
-    @Test
-    public void shouldStopRunningContainers() {
-        String container1 = "container1";
-        String container2 = "container2";
-        dockerService.addToRunningContainersRecord(container1);
-        dockerService.addToRunningContainersRecord(container2);
-
-        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
-        when(dockerClientInstanceMock.stopContainer(container1)).thenReturn(true);
-        when(dockerClientInstanceMock.stopContainer(container2)).thenReturn(true);
-
-        dockerService.stopRunningContainers();
-        verify(dockerClientInstanceMock, times(1)).stopContainer(container1);
-        verify(dockerClientInstanceMock, times(1)).stopContainer(container2);
-    }
-
-    @Test
-    public void shouldNotStopRunningContainers() {
-        // no running container
-        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
-        dockerService.stopRunningContainers();
-        verify(dockerClientInstanceMock, never()).stopContainer(anyString());
-    }
+    //#endregion
 }

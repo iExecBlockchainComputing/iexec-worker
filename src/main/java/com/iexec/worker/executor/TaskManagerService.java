@@ -34,6 +34,8 @@ import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
+import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
@@ -61,6 +63,8 @@ public class TaskManagerService {
     private final TeeSconeService teeSconeService;
     private final DataService dataService;
     private final ResultService resultService;
+    private final DockerService dockerService;
+    private final SubscriptionService subscriptionService;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -70,8 +74,9 @@ public class TaskManagerService {
             ComputeManagerService computeManagerService,
             TeeSconeService teeSconeService,
             DataService dataService,
-            ResultService resultService
-    ) {
+            ResultService resultService,
+            DockerService dockerService,
+            SubscriptionService subscriptionService) {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
@@ -80,6 +85,8 @@ public class TaskManagerService {
         this.teeSconeService = teeSconeService;
         this.dataService = dataService;
         this.resultService = resultService;
+        this.dockerService = dockerService;
+        this.subscriptionService = subscriptionService;
     }
 
     ReplicateActionResponse start(String chainTaskId) {
@@ -382,8 +389,23 @@ public class TaskManagerService {
         return ReplicateActionResponse.success();
     }
 
+    /**
+     * To abort a task, the worker must, first, remove currently running containers
+     * related to the task in question, unsubscribe from the task's notifications,
+     * then remove result folders.
+     * 
+     * @param chainTaskId
+     * @return
+     */
     boolean abort(String chainTaskId) {
-        return resultService.removeResult(chainTaskId);
+        log.info("Aborting task [chainTaskId:{}]", chainTaskId);
+        dockerService.stopTaskRunningContainers(chainTaskId);
+        subscriptionService.unsubscribeFromTopic(chainTaskId);
+        boolean isSuccess = resultService.removeResult(chainTaskId);
+        if (!isSuccess) {
+            log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
+        }
+        return isSuccess;
     }
 
     boolean hasEnoughGas() {

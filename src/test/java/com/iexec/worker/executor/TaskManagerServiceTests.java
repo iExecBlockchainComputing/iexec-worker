@@ -34,6 +34,8 @@ import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
+import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.WorkflowException;
@@ -50,6 +52,7 @@ import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 
@@ -76,6 +79,10 @@ public class TaskManagerServiceTests {
     private DataService dataService;
     @Mock
     private ResultService resultService;
+    @Mock
+    private DockerService dockerService;
+    @Mock
+    private SubscriptionService subscriptionService;
 
     @Before
     public void init() {
@@ -1164,16 +1171,19 @@ public class TaskManagerServiceTests {
                 ReplicateActionResponse.failure());
     }
 
+    //#region abort()
+
     @Test
-    public void shouldAbort() {
+    public void shouldAbortTask() {
         when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
 
-        boolean isAborted = taskManagerService.abort(CHAIN_TASK_ID);
-
-        Assertions.assertThat(isAborted).isTrue();
-        verify(resultService, times(1))
-                .removeResult(CHAIN_TASK_ID);
+        assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isTrue();
+        verify(dockerService).stopTaskRunningContainers(CHAIN_TASK_ID);
+        verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
+        verify(resultService).removeResult(CHAIN_TASK_ID);
     }
+
+    //#endregion
 
     //TODO clean theses
     //misc
