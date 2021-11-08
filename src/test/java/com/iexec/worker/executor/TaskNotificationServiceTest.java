@@ -17,13 +17,14 @@
 package com.iexec.worker.executor;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
+import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
@@ -99,13 +100,12 @@ public class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
                 .build();
-        when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
+        verify(taskManagerService).abort(CHAIN_TASK_ID);
         verify(customCoreFeignClient).updateReplicateStatus(anyString(), replicateStatusUpdateCaptor.capture());
         ReplicateStatusUpdate replicateStatusUpdate = replicateStatusUpdateCaptor.getValue();
         Assertions.assertEquals(ReplicateStatus.ABORTED, replicateStatusUpdate.getStatus());
@@ -292,19 +292,21 @@ public class TaskNotificationServiceTest {
     @Test
     public void shouldAbort() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_ABORT_CONSENSUS_REACHED)
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(TaskNotificationType.PLEASE_ABORT)
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                        .taskAbortCause(TaskAbortCause.CONTRIBUTION_TIMEOUT)
+                        .build())
                 .build();
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
-                .thenReturn(PLEASE_WAIT);
+                .thenReturn(PLEASE_CONTINUE);
 
         taskNotificationService.onTaskNotification(currentNotification);
-
-        verify(taskManagerService, Mockito.times(1)).abort(CHAIN_TASK_ID);
-        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
-        verify(applicationEventPublisher, Mockito.times(0))
-                .publishEvent(any());
+        verify(taskManagerService).abort(CHAIN_TASK_ID);
+        verify(customCoreFeignClient).updateReplicateStatus(anyString(), any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 }
 
