@@ -218,7 +218,7 @@ public class DockerService {
     }
 
     /**
-     * Stop an running container with the provided containerName and remove it from
+     * Stop a running container with the provided containerName and remove it from
      * running containers record. The container itself is not stopped here as it is
      * removed by its watcher thread.
      * 
