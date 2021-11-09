@@ -44,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
@@ -399,7 +400,9 @@ public class TaskManagerService {
      */
     boolean abort(String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
-        dockerService.stopTaskRunningContainers(chainTaskId);
+        Predicate<String> containsChainTaskId = name -> name.contains(chainTaskId);
+        dockerService.stopRunningContainersWithNamePattern(containsChainTaskId);
+        log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
         boolean isSuccess = resultService.removeResult(chainTaskId);
         if (!isSuccess) {

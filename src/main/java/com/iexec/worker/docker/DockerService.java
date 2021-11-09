@@ -34,6 +34,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 @Slf4j
 @Service
@@ -200,17 +201,19 @@ public class DockerService {
     }
 
     /**
-     * Stop running containers related to a certain task and remove them from the
-     * running containers record. The container can be pre-compute, compute, or
-     * post-compute. This is needed when the worker aborts a task. The container itself
-     * is not removed here as it is removed by its watcher thread.
+     * Stop running containers with names that match the provided predicate and
+     * remove them from the running containers record. This is typically used when
+     * the worker aborts a task and needs to stop its pre-compute, compute, or
+     * post-compute containers. The container itself is not removed here as it is
+     * removed by its watcher thread.
      * 
-     * @param chainTaskId
+     * @param containerNamePredicate predicate that contains a condition on the
+     *                               container name.
      */
-    public void stopTaskRunningContainers(String chainTaskId) {
-        log.info("Cleaning task containers [chainTaskId:{}]", chainTaskId);
+    public void stopRunningContainersWithNamePattern(Predicate<String> containerNamePredicate) {
+        log.info("Stopping containers with names matching provided predicate");
         runningContainersRecord.stream()
-                .filter(containerName -> containerName.contains(chainTaskId))
+                .filter(containerNamePredicate)
                 .forEach(this::stopRunningContainer);
     }
 
