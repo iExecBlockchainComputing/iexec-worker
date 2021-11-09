@@ -42,13 +42,12 @@ import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,6 +82,9 @@ public class TaskManagerServiceTests {
     private DockerService dockerService;
     @Mock
     private SubscriptionService subscriptionService;
+
+    @Captor
+    private ArgumentCaptor<Predicate<String>> predicateCaptor;
 
     @Before
     public void init() {
@@ -1178,9 +1180,11 @@ public class TaskManagerServiceTests {
         when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
 
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isTrue();
-        verify(dockerService).stopTaskRunningContainers(CHAIN_TASK_ID);
+        verify(dockerService).stopRunningContainersWithNamePredicate(predicateCaptor.capture());
         verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(resultService).removeResult(CHAIN_TASK_ID);
+        // Check the predicate
+        assertThat(predicateCaptor.getValue().test(CHAIN_TASK_ID)).isTrue();
     }
 
     //#endregion
