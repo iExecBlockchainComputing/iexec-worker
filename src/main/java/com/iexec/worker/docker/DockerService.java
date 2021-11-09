@@ -211,7 +211,7 @@ public class DockerService {
         log.info("Cleaning task containers [chainTaskId:{}]", chainTaskId);
         runningContainersRecord.stream()
                 .filter(containerName -> containerName.contains(chainTaskId))
-                .forEach(containerName -> stopRunningContainer(containerName));
+                .forEach(this::stopRunningContainer);
     }
 
     /**
