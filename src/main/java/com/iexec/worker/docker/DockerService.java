@@ -210,8 +210,8 @@ public class DockerService {
      * @param containerNamePredicate predicate that contains a condition on the
      *                               container name.
      */
-    public void stopRunningContainersWithNamePattern(Predicate<String> containerNamePredicate) {
-        log.info("Stopping containers with names matching provided predicate");
+    public void stopRunningContainersWithNamePredicate(Predicate<String> containerNamePredicate) {
+        log.info("Stopping containers with names matching the provided predicate");
         runningContainersRecord.stream()
                 .filter(containerNamePredicate)
                 .forEach(this::stopRunningContainer);

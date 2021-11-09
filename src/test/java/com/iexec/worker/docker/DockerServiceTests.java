@@ -31,6 +31,7 @@ import org.mockito.Spy;
 
 import java.io.File;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import static com.iexec.common.docker.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -338,10 +339,10 @@ public class DockerServiceTests {
 
     //#endregion
 
-    //#region stopTaskRunningContainers()
+    //#region stopRunningContainersWithNamePattern()
 
     @Test
-    public void shouldStopTaskRunningContainers() {
+    public void shouldStopRunningContainersWithNamePattern() {
         String computeContainerName = "awesome-app-" + CHAIN_TASK_ID;
         String preComputeContainerName = computeContainerName + "-tee-pre-compute";
         String postComputeContainerName = computeContainerName + "-tee-post-compute";
@@ -353,10 +354,11 @@ public class DockerServiceTests {
         dockerService.addToRunningContainersRecord("containerName1");
         dockerService.addToRunningContainersRecord("containerName2");
 
-        dockerService.stopTaskRunningContainers(CHAIN_TASK_ID);
-        // verify we removed all containers
+        Predicate<String> containsChainTaskId = name -> name.contains(CHAIN_TASK_ID);
+        dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
+        // Verify we removed all containers matching the predicate
         verify(dockerService, times(3)).stopRunningContainer(anyString());
-        // Verify we removed only task related containers
+        // Verify we removed only containers matching the predicate
         verify(dockerService).stopRunningContainer(preComputeContainerName);
         verify(dockerService).stopRunningContainer(computeContainerName);
         verify(dockerService).stopRunningContainer(postComputeContainerName);

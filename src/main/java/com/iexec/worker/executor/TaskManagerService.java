@@ -401,7 +401,7 @@ public class TaskManagerService {
     boolean abort(String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
         Predicate<String> containsChainTaskId = name -> name.contains(chainTaskId);
-        dockerService.stopRunningContainersWithNamePattern(containsChainTaskId);
+        dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
         log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
         boolean isSuccess = resultService.removeResult(chainTaskId);
