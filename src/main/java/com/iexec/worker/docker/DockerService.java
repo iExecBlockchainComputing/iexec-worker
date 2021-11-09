@@ -250,9 +250,13 @@ public class DockerService {
      * Add a container to the running containers record
      *
      * @param containerName name of the container to be added to the record
-     * @return true if container is added to the record
+     * @return true if container is added to the record, false otherwise
      */
     boolean addToRunningContainersRecord(String containerName) {
+        if (StringUtils.isEmpty(containerName)) {
+            log.error("Cannot add empty container name to record");
+            return false;
+        }
         if (runningContainersRecord.contains(containerName)) {
             log.error("Failed to add running container to record, container is " +
                     "already on the record [containerName:{}]", containerName);
