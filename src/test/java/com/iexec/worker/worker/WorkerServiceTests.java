@@ -134,7 +134,7 @@ public class WorkerServiceTests {
         workerService.restartGracefully();
 
         verify(dockerService, times(1))
-                .stopRunningContainers();
+                .stopAllRunningContainers();
         verify(restartEndpoint, times(1)).restart();
     }
 
@@ -146,7 +146,7 @@ public class WorkerServiceTests {
         workerService.restartGracefully();
 
         verify(dockerService, times(0))
-                .stopRunningContainers();
+                .stopAllRunningContainers();
         verify(restartEndpoint, times(0)).restart();
     }
 

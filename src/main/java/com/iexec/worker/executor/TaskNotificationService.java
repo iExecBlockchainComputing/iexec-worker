@@ -24,6 +24,7 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
@@ -95,9 +96,8 @@ public class TaskNotificationService {
         // and don't fetch it in each method.
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
-            log.error("Aborting task after notification since failed to retrieve" +
-                    " task description on-chain [chainTaskId:{}]", chainTaskId);
-            subscriptionService.unsubscribeFromTopic(chainTaskId);
+            log.error("Failed to get task description [chainTaskId:{}]", chainTaskId);
+            taskManagerService.abort(chainTaskId);
             updateStatusAndGetNextAction(chainTaskId, ABORTED, TASK_DESCRIPTION_NOT_FOUND);
             return;
         }
@@ -178,25 +178,14 @@ public class TaskNotificationService {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
                 }
                 break;
-            case PLEASE_ABORT_CONTRIBUTION_TIMEOUT:
-                boolean isAborted = taskManagerService.abort(chainTaskId);
-                subscriptionService.unsubscribeFromTopic(chainTaskId);
-                if (!isAborted) {
-                    return;
-                }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED, CONTRIBUTION_TIMEOUT);
-                break;
-            case PLEASE_ABORT_CONSENSUS_REACHED:
-                boolean isAbortedAfterConsensusReached = taskManagerService.abort(chainTaskId);
-                subscriptionService.unsubscribeFromTopic(chainTaskId);
-                if (!isAbortedAfterConsensusReached) {
-                    return;
-                }
-                updateStatusAndGetNextAction(chainTaskId, ABORTED, CONSENSUS_REACHED);
-                break;
-            // TODO merge abort actions
             case PLEASE_ABORT:
-                subscriptionService.unsubscribeFromTopic(chainTaskId);
+                if (!taskManagerService.abort(chainTaskId)) {
+                    log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
+                    return;
+                }
+                TaskAbortCause taskAbortCause = notification.getTaskAbortCause();
+                ReplicateStatusCause replicateAbortCause = ReplicateStatusCause.getReplicateAbortCause(taskAbortCause);
+                updateStatusAndGetNextAction(chainTaskId, ABORTED, replicateAbortCause);
                 break;
             default:
                 break;
