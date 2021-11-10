@@ -49,6 +49,10 @@ public class PublicConfigurationService {
         return publicConfiguration.isSidechain();
     }
 
+    public String getBlockchainAdapterUrl() {
+        return publicConfiguration.getBlockchainAdapterUrl();
+    }
+
     public String getWorkerPoolAddress() {
         return publicConfiguration.getWorkerPoolAddress();
     }
