@@ -17,6 +17,7 @@
 package com.iexec.worker.worker;
 
 import com.iexec.common.config.WorkerModel;
+import com.iexec.common.utils.WaitUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
@@ -128,7 +129,10 @@ public class WorkerService {
                     "tasks are in progress [computingTasks:{}]", computingTasks);
             return;
         }
-        dockerService.stopRunningContainers();
+        dockerService.stopAllRunningContainers();
+        // give 1 second to threads watching stopped containers
+        // to remove them.
+        WaitUtils.sleep(1);
         log.warn("The worker is about to restart");
         restartEndpoint.restart();
     }

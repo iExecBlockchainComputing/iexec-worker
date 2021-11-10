@@ -34,6 +34,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 @Slf4j
 @Service
@@ -123,7 +124,7 @@ public class DockerService {
      * All docker run requests initiated through this method will get their
      * yet-launched container kept in a local record.
      * <p>
-     * If a container stops by itself (or receives a stop signal from this
+     * If a container stops by itself (or receives a stop signal from the
      * outside), the container will be automatically docker removed (unless if
      * started with maxExecutionTime = 0) in addition to be removed from the local
      * record.
@@ -160,21 +161,6 @@ public class DockerService {
     }
 
     /**
-     * Add a container to the running containers record
-     *
-     * @param containerName name of the container to be added to the record
-     * @return true if container is added to the record
-     */
-    boolean addToRunningContainersRecord(String containerName) {
-        if (runningContainersRecord.contains(containerName)) {
-            log.error("Failed to add running container to record, container is " +
-                    "already on the record [containerName:{}]", containerName);
-            return false;
-        }
-        return runningContainersRecord.add(containerName);
-    }
-
-    /**
      * Get docker volume bind shared between the host and
      * the container for input.
      * <p>
@@ -203,6 +189,86 @@ public class DockerService {
     }
 
     /**
+     * Stop all running containers launched by the worker via this current service
+     * and remove them from running containers record. The container itself is not
+     * removed here as it is removed by its watcher thread.
+     */
+    public void stopAllRunningContainers() {
+        log.info("About to stop all running containers [runningContainers:{}]",
+                runningContainersRecord);
+        List.copyOf(runningContainersRecord)
+                .forEach(containerName -> stopRunningContainer(containerName));
+    }
+
+    /**
+     * Stop running containers with names that match the provided predicate and
+     * remove them from the running containers record. This is typically used when
+     * the worker aborts a task and needs to stop its pre-compute, compute, or
+     * post-compute containers. The container itself is not removed here as it is
+     * removed by its watcher thread.
+     * 
+     * @param containerNamePredicate predicate that contains a condition on the
+     *                               container name.
+     */
+    public void stopRunningContainersWithNamePredicate(Predicate<String> containerNamePredicate) {
+        log.info("Stopping containers with names matching the provided predicate");
+        runningContainersRecord.stream()
+                .filter(containerNamePredicate)
+                .forEach(this::stopRunningContainer);
+    }
+
+    /**
+     * Stop a running container with the provided containerName and remove it from
+     * running containers record. The container itself is not stopped here as it is
+     * removed by its watcher thread.
+     * 
+     * @param containerName
+     */
+    void stopRunningContainer(String containerName) {
+        if (!getClient().isContainerPresent(containerName)) {
+            log.error("No running container to be removed [containerName:{}]", containerName);
+            return;
+        }
+        if (!getClient().isContainerActive(containerName)) {
+            log.info("Container is not active it will be removed by its watcher thread"
+                    + "[containerName:{}]", containerName);
+        } else if (!getClient().stopContainer(containerName)) {
+            log.error("Failed to stop running container [containerName:{}]", containerName);
+            // Don't remove from record.
+            return;
+        }
+        removeFromRunningContainersRecord(containerName);
+    }
+
+    /**
+     * Get the record of running containers. Added originally for testing purposes.
+     * 
+     * @return
+     */
+    HashSet<String> getRunningContainersRecord() {
+        return runningContainersRecord;
+    }
+
+    /**
+     * Add a container to the running containers record
+     *
+     * @param containerName name of the container to be added to the record
+     * @return true if container is added to the record, false otherwise
+     */
+    boolean addToRunningContainersRecord(String containerName) {
+        if (StringUtils.isEmpty(containerName)) {
+            log.error("Cannot add empty container name to record");
+            return false;
+        }
+        if (runningContainersRecord.contains(containerName)) {
+            log.error("Failed to add running container to record, container is " +
+                    "already on the record [containerName:{}]", containerName);
+            return false;
+        }
+        return runningContainersRecord.add(containerName);
+    }
+
+    /**
      * Remove a container from the running containers record
      *
      * @param containerName name of the container to be removed from the record
@@ -215,23 +281,6 @@ public class DockerService {
             return false;
         }
         return runningContainersRecord.remove(containerName);
-    }
-
-    /**
-     * This method will stop all running containers launched by the worker via
-     * this current service.
-     */
-    public void stopRunningContainers() {
-        log.info("About to stop all running containers [runningContainers:{}]",
-                runningContainersRecord);
-        List.copyOf(runningContainersRecord).forEach(containerName -> {
-            if (!getClient().stopContainer(containerName)) {
-                log.error("Failed to stop one container among all running " +
-                        "[unstoppedContainer:{}]", containerName);
-                return;
-            }
-            removeFromRunningContainersRecord(containerName);
-        });
     }
 
     /**
