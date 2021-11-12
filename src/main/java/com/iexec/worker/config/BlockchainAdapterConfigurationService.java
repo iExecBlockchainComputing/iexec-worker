@@ -20,18 +20,19 @@ import com.iexec.worker.feign.CustomBlockchainAdapterClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+
 @Slf4j
 @Service
 public class BlockchainAdapterConfigurationService {
-    private final Integer blockTime;
+    private final Duration blockTime;
 
     public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
-        // blockchain adapter uses seconds for block time whereas we want millis
-        this.blockTime = customBlockchainAdapterClient.getBlockTime() * 1000;
-        log.info("Received block time [{}]", this.blockTime);
+        this.blockTime = Duration.ofSeconds(customBlockchainAdapterClient.getBlockTime());
+        log.info("Received block time [{}s]", this.blockTime.toSeconds());
     }
 
-    public Integer getBlockTime() {
+    public Duration getBlockTime() {
         return blockTime;
     }
 }
