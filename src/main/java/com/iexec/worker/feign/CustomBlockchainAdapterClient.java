@@ -16,6 +16,7 @@
 
 package com.iexec.worker.feign;
 
+import com.iexec.common.config.PublicChainConfig;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.feign.client.BlockchainAdapterClient;
 import lombok.extern.slf4j.Slf4j;
@@ -52,9 +53,9 @@ public class CustomBlockchainAdapterClient extends BaseFeignClient {
         return null;
     }
 
-    public Integer getBlockTime() {
-        HttpCall<Integer> httpCall = args -> blockchainAdapterClient.getBlockTime(blockchainAdapterUri);
-        ResponseEntity<Integer> response = makeHttpCall(httpCall, null, "getBlockTime");
+    public PublicChainConfig getPublicChainConfig() {
+        HttpCall<PublicChainConfig> httpCall = args -> blockchainAdapterClient.getPublicChainConfig(blockchainAdapterUri);
+        ResponseEntity<PublicChainConfig> response = makeHttpCall(httpCall, null, "getPublicChainConfig");
         return is2xxSuccess(response) ? response.getBody() : null;
     }
 

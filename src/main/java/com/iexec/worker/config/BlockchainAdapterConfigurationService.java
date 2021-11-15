@@ -16,6 +16,7 @@
 
 package com.iexec.worker.config;
 
+import com.iexec.common.config.PublicChainConfig;
 import com.iexec.worker.feign.CustomBlockchainAdapterClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,11 +26,11 @@ import java.time.Duration;
 @Slf4j
 @Service
 public class BlockchainAdapterConfigurationService {
-    private final Duration blockTime;
+    private final PublicChainConfig publicChainConfig;
 
     public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
-        this.blockTime = Duration.ofSeconds(customBlockchainAdapterClient.getBlockTime());
-        log.info("Received block time [{}s]", this.blockTime.toSeconds());
+        this.publicChainConfig = customBlockchainAdapterClient.getPublicChainConfig();
+        log.info("Received public chain config [{}]", this.publicChainConfig);
     }
 
     /**
@@ -38,6 +39,6 @@ public class BlockchainAdapterConfigurationService {
      * @return A {@link Duration} representing the block time of the blockchain.
      */
     public Duration getBlockTime() {
-        return blockTime;
+        return publicChainConfig.getBlockTime();
     }
 }

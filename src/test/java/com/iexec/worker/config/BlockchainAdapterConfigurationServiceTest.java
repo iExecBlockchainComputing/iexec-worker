@@ -1,5 +1,6 @@
 package com.iexec.worker.config;
 
+import com.iexec.common.config.PublicChainConfig;
 import com.iexec.worker.feign.CustomBlockchainAdapterClient;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,7 +23,9 @@ public class BlockchainAdapterConfigurationServiceTest {
 
     @Test
     public void shouldGetBlockTime() {
-        when(customBlockchainAdapterClient.getBlockTime()).thenReturn(1);
+        when(customBlockchainAdapterClient.getPublicChainConfig()).thenReturn(
+                PublicChainConfig.builder().blockTime(Duration.ofSeconds(1)).build()
+        );
 
         BlockchainAdapterConfigurationService blockchainAdapterConfigurationService =
                 new BlockchainAdapterConfigurationService(customBlockchainAdapterClient);

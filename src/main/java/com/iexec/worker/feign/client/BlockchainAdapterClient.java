@@ -16,6 +16,7 @@
 
 package com.iexec.worker.feign.client;
 
+import com.iexec.common.config.PublicChainConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,6 @@ import java.net.URI;
 // give a placeholder to `@FeignClient` annotation and send the url as a parameter in each request.
 @FeignClient(name = "BlockchainAdapterClient", url = "http://placeholder.iex.ec")
 public interface BlockchainAdapterClient {
-    @GetMapping("/config/blocktime")
-    ResponseEntity<Integer> getBlockTime(URI baseUrl);
+    @GetMapping("/config/chain")
+    ResponseEntity<PublicChainConfig> getPublicChainConfig(URI baseUrl);
 }
