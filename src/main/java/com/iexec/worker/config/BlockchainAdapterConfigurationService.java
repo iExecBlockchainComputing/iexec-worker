@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 
+import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
+
 @Slf4j
 @Service
 public class BlockchainAdapterConfigurationService {
@@ -31,6 +33,11 @@ public class BlockchainAdapterConfigurationService {
     public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
         this.publicChainConfig = customBlockchainAdapterClient.getPublicChainConfig();
         log.info("Received public chain config [{}]", this.publicChainConfig);
+
+        if (publicChainConfig.getBlockTime() == null) {
+            log.warn("Incorrect block time, using default [{}ms]", DEFAULT_BLOCK_TIME);
+            publicChainConfig.setBlockTime(Duration.ofMillis(DEFAULT_BLOCK_TIME));
+        }
     }
 
     /**
