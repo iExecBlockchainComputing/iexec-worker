@@ -32,6 +32,11 @@ public class BlockchainAdapterConfigurationService {
         log.info("Received block time [{}s]", this.blockTime.toSeconds());
     }
 
+    /**
+     * This value is retrieved when the {@link BlockchainAdapterConfigurationService} is built
+     * so that it should be constant over time.
+     * @return A {@link Duration} representing the block time of the blockchain.
+     */
     public Duration getBlockTime() {
         return blockTime;
     }
