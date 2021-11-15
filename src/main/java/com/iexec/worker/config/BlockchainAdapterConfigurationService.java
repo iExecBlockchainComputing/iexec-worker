@@ -32,7 +32,7 @@ public class BlockchainAdapterConfigurationService {
 
     public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
         this.publicChainConfig = customBlockchainAdapterClient.getPublicChainConfig();
-        log.info("Received public chain config [{}]", this.publicChainConfig);
+        log.info("Received public chain config [config:{}]", this.publicChainConfig);
 
         if (publicChainConfig.getBlockTime() == null) {
             log.warn("Incorrect block time, using default [{}ms]", DEFAULT_BLOCK_TIME);
