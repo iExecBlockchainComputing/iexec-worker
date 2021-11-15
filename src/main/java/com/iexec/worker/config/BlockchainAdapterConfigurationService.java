@@ -41,8 +41,11 @@ public class BlockchainAdapterConfigurationService {
     }
 
     /**
-     * This value is retrieved when the {@link BlockchainAdapterConfigurationService} is built
+     * Retrieved when the {@link BlockchainAdapterConfigurationService} is built
      * so that it should be constant over time.
+     * <br>
+     * A restart is required to retrieve a fresh remote value.
+     *
      * @return A {@link Duration} representing the block time of the blockchain.
      */
     public Duration getBlockTime() {
