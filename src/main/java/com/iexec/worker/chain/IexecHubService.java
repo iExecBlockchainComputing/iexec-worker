@@ -54,18 +54,17 @@ public class IexecHubService extends IexecHubAbstractService {
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           PublicConfigurationService publicConfigurationService,
                            BlockchainAdapterConfigurationService blockchainAdapterConfigurationService) {
         super(credentialsService.getCredentials(),
                 web3jService,
-                publicConfigurationService.getIexecHubAddress(),
+                blockchainAdapterConfigurationService.getHubAddress(),
                 blockchainAdapterConfigurationService.getBlockTime(),
                 1,
                 5);
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
-        this.chainId = publicConfigurationService.getChainId();
+        this.chainId = blockchainAdapterConfigurationService.getChainId();
     }
 
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {

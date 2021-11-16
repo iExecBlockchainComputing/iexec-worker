@@ -17,20 +17,20 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.chain.Web3jAbstractService;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.springframework.stereotype.Service;
 
 @Service
 public class Web3jService extends Web3jAbstractService {
 
-    public Web3jService(PublicConfigurationService publicConfService,
+    public Web3jService(BlockchainAdapterConfigurationService blockchainAdapterConfigurationService,
                         WorkerConfigurationService workerConfService) {
         super(!workerConfService.getOverrideBlockchainNodeAddress().isEmpty() ?
                         workerConfService.getOverrideBlockchainNodeAddress() :
-                        publicConfService.getDefaultBlockchainNodeAddress(),
+                        blockchainAdapterConfigurationService.getNodeAddress(),
                 workerConfService.getGasPriceMultiplier(), workerConfService.getGasPriceCap(),
-                publicConfService.isSidechain());
+                blockchainAdapterConfigurationService.isSidechain());
     }
 
 }

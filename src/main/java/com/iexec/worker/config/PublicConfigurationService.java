@@ -33,22 +33,6 @@ public class PublicConfigurationService {
         return publicConfiguration;
     }
 
-    public Integer getChainId() {
-        return publicConfiguration.getChainId();
-    }
-
-    public String getDefaultBlockchainNodeAddress() {
-        return publicConfiguration.getBlockchainURL();
-    }
-
-    public String getIexecHubAddress() {
-        return publicConfiguration.getIexecHubAddress();
-    }
-
-    public boolean isSidechain() {
-        return publicConfiguration.isSidechain();
-    }
-
     public String getBlockchainAdapterUrl() {
         return publicConfiguration.getBlockchainAdapterUrl();
     }

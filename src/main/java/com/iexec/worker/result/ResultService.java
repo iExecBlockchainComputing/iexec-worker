@@ -33,7 +33,7 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +59,7 @@ public class ResultService {
     public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
-    private final PublicConfigurationService publicConfigService;
+    private final BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
     private final CustomResultFeignClient customResultFeignClient;
@@ -67,12 +67,12 @@ public class ResultService {
 
     public ResultService(
             WorkerConfigurationService workerConfigService,
-            PublicConfigurationService publicConfigService,
+            BlockchainAdapterConfigurationService blockchainAdapterConfigurationService,
             CredentialsService credentialsService,
             IexecHubService iexecHubService,
             CustomResultFeignClient customResultFeignClient) {
         this.workerConfigService = workerConfigService;
-        this.publicConfigService = publicConfigService;
+        this.blockchainAdapterConfigurationService = blockchainAdapterConfigurationService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.customResultFeignClient = customResultFeignClient;
@@ -296,7 +296,7 @@ public class ResultService {
 
     public String getIexecUploadToken() {
         // get challenge
-        Integer chainId = publicConfigService.getChainId();
+        Integer chainId = blockchainAdapterConfigurationService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
         if (!oEip712Challenge.isPresent()) {

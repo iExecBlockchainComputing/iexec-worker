@@ -25,6 +25,11 @@ import java.time.Duration;
 
 import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
 
+/**
+ * This service retrieves a bunch of configuration values related to the chain.
+ * They are retrieved only when the instance is built and never updated.
+ * A restart is then needed to get fresh remote values.
+ */
 @Slf4j
 @Service
 public class BlockchainAdapterConfigurationService {
@@ -40,15 +45,35 @@ public class BlockchainAdapterConfigurationService {
         }
     }
 
-    /**
-     * Retrieved when the {@link BlockchainAdapterConfigurationService} is built
-     * so that it should be constant over time.
-     * <br>
-     * A restart is required to retrieve a fresh remote value.
-     *
-     * @return A {@link Duration} representing the block time of the blockchain.
-     */
+    public Integer getChainId() {
+        return publicChainConfig.getChainId();
+    }
+
+    public boolean isSidechain() {
+        return publicChainConfig.isSidechain();
+    }
+
+    public String getNodeAddress() {
+        return publicChainConfig.getNodeAddress();
+    }
+
+    public String getHubAddress() {
+        return publicChainConfig.getHubAddress();
+    }
+
     public Duration getBlockTime() {
         return publicChainConfig.getBlockTime();
+    }
+
+    public long getStartBlockNumber() {
+        return publicChainConfig.getStartBlockNumber();
+    }
+
+    public float getGasPriceMultiplier() {
+        return publicChainConfig.getGasPriceMultiplier();
+    }
+
+    public long getGasPriceCap() {
+        return publicChainConfig.getGasPriceCap();
     }
 }
