@@ -44,7 +44,7 @@ dependencyManagement {
 dependencies {
     // iexec
     compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    //compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
 
     // spring
     compile("org.springframework.boot:spring-boot-starter") {
@@ -82,6 +82,16 @@ dependencies {
 
     // package cloud
     deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"
+
+    // Dependencies needed when working with local `iexec-common` dependency
+/*    // web3j dependency
+    compile "org.web3j:core:4.7.0"
+
+    // apache commons.lang3
+    compile "org.apache.commons:commons-lang3:3.9"
+
+    // zip
+    compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
 test {

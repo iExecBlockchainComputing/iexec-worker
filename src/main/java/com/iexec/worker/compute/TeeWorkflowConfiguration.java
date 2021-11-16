@@ -75,7 +75,7 @@ public class TeeWorkflowConfiguration {
         }
         TeeWorkflowSharedConfiguration config =
                 smsService.getTeeWorkflowConfiguration();
-        log.info("Received tee workflow configuration [{}]", config);
+        log.info("Received tee workflow configuration [config:{}]", config);
         if (config == null) {
             throw new RuntimeException("Missing tee workflow configuration");
         }

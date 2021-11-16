@@ -20,6 +20,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
+import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +40,6 @@ import java.util.function.Function;
 import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
 import static com.iexec.common.utils.BytesUtils.stringToBytes;
-import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
 
 
 @Slf4j
@@ -54,12 +54,12 @@ public class IexecHubService extends IexecHubAbstractService {
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           PublicConfigurationService publicConfigurationService) {
-        //TODO Get block time from local configuration or third-party
+                           PublicConfigurationService publicConfigurationService,
+                           BlockchainAdapterConfigurationService blockchainAdapterConfigurationService) {
         super(credentialsService.getCredentials(),
                 web3jService,
                 publicConfigurationService.getIexecHubAddress(),
-                DEFAULT_BLOCK_TIME,
+                blockchainAdapterConfigurationService.getBlockTime(),
                 1,
                 5);
         this.credentialsService = credentialsService;
