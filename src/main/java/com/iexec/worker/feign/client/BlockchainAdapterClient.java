@@ -21,13 +21,8 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import java.net.URI;
-
-// Blockchain adapter URL is dynamic, so it can't be known at compile-time.
-// We have to use a trick to make this work:
-// give a placeholder to `@FeignClient` annotation and send the url as a parameter in each request.
-@FeignClient(name = "BlockchainAdapterClient", url = "http://placeholder.iex.ec")
+@FeignClient(name = "BlockchainAdapterClient", url = "#{publicConfigurationService.blockchainAdapterUrl}")
 public interface BlockchainAdapterClient {
     @GetMapping("/config/chain")
-    ResponseEntity<PublicChainConfig> getPublicChainConfig(URI baseUrl);
+    ResponseEntity<PublicChainConfig> getPublicChainConfig();
 }

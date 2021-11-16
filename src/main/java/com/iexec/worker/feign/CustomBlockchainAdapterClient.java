@@ -23,28 +23,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
 import java.net.URISyntaxException;
 
 @Slf4j
 @Service
 public class CustomBlockchainAdapterClient extends BaseFeignClient {
-    private final URI blockchainAdapterUri;
     private final BlockchainAdapterClient blockchainAdapterClient;
 
     /**
      * If the blockchain adapter url is malformed, this object won't be built.
      */
-    public CustomBlockchainAdapterClient(PublicConfigurationService publicConfigurationService,
-                                         BlockchainAdapterClient blockchainAdapterClient) throws URISyntaxException {
+    public CustomBlockchainAdapterClient(BlockchainAdapterClient blockchainAdapterClient) {
         this.blockchainAdapterClient = blockchainAdapterClient;
-        try {
-            this.blockchainAdapterUri = new URI(publicConfigurationService.getBlockchainAdapterUrl());
-        } catch (URISyntaxException e) {
-            log.error("Wrong blockchain adapter URL [blockchainAdapterUrl:{}]",
-                    publicConfigurationService.getBlockchainAdapterUrl());
-            throw e;
-        }
     }
 
     @Override
@@ -54,7 +44,7 @@ public class CustomBlockchainAdapterClient extends BaseFeignClient {
     }
 
     public PublicChainConfig getPublicChainConfig() {
-        HttpCall<PublicChainConfig> httpCall = args -> blockchainAdapterClient.getPublicChainConfig(blockchainAdapterUri);
+        HttpCall<PublicChainConfig> httpCall = args -> blockchainAdapterClient.getPublicChainConfig();
         ResponseEntity<PublicChainConfig> response = makeHttpCall(httpCall, null, "getPublicChainConfig");
         return is2xxSuccess(response) ? response.getBody() : null;
     }
