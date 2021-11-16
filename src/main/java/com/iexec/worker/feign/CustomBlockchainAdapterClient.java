@@ -17,13 +17,10 @@
 package com.iexec.worker.feign;
 
 import com.iexec.common.config.PublicChainConfig;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.feign.client.BlockchainAdapterClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
-import java.net.URISyntaxException;
 
 @Slf4j
 @Service
