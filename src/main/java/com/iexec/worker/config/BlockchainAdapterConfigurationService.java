@@ -64,16 +64,4 @@ public class BlockchainAdapterConfigurationService {
     public Duration getBlockTime() {
         return publicChainConfig.getBlockTime();
     }
-
-    public long getStartBlockNumber() {
-        return publicChainConfig.getStartBlockNumber();
-    }
-
-    public float getGasPriceMultiplier() {
-        return publicChainConfig.getGasPriceMultiplier();
-    }
-
-    public long getGasPriceCap() {
-        return publicChainConfig.getGasPriceCap();
-    }
 }

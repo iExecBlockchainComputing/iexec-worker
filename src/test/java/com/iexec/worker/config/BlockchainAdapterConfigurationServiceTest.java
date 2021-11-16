@@ -18,10 +18,6 @@ public class BlockchainAdapterConfigurationServiceTest {
     private static final String NODE_ADDRESS = "0x1";
     private static final String HUB_ADDRESS = "0x2";
     private static final Duration BLOCK_TIME = Duration.ofSeconds(1);
-    private static final long START_BLOCK_NUMBER = 3;
-    private static final float GAS_PRICE_MULTIPLIER = 0.4f;
-    private static final long GAS_PRICE_CAP = 5;
-
 
     @Mock
     private CustomBlockchainAdapterClient customBlockchainAdapterClient;
@@ -40,9 +36,6 @@ public class BlockchainAdapterConfigurationServiceTest {
                         .nodeAddress       (NODE_ADDRESS)
                         .hubAddress        (HUB_ADDRESS)
                         .blockTime         (BLOCK_TIME)
-                        .startBlockNumber  (START_BLOCK_NUMBER)
-                        .gasPriceMultiplier(GAS_PRICE_MULTIPLIER)
-                        .gasPriceCap       (GAS_PRICE_CAP)
                         .build()
         );
 
@@ -59,11 +52,5 @@ public class BlockchainAdapterConfigurationServiceTest {
                 .isEqualTo(HUB_ADDRESS);
         assertThat(blockchainAdapterConfigurationService.getBlockTime())
                 .isEqualTo(BLOCK_TIME);
-        assertThat(blockchainAdapterConfigurationService.getStartBlockNumber())
-                .isEqualTo(START_BLOCK_NUMBER);
-        assertThat(blockchainAdapterConfigurationService.getGasPriceMultiplier())
-                .isEqualTo(GAS_PRICE_MULTIPLIER);
-        assertThat(blockchainAdapterConfigurationService.getGasPriceCap())
-                .isEqualTo(GAS_PRICE_CAP);
     }
 }
