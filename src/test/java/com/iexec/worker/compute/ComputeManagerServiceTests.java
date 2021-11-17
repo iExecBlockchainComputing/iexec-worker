@@ -18,6 +18,8 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.docker.DockerLogs;
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
@@ -28,22 +30,22 @@ import com.iexec.worker.compute.post.PostComputeService;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.common.docker.DockerLogs;
-import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 public class ComputeManagerServiceTests {
@@ -74,8 +76,8 @@ public class ComputeManagerServiceTests {
     private final DockerLogs dockerLogs =
             DockerLogs.builder().stdout("stdout").stderr("stderr").build();
 
-    @Rule
-    public final TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
+    @TempDir
+    public File jUnitTemporaryFolder;
 
     @InjectMocks
     private ComputeManagerService computeManagerService;
@@ -96,7 +98,7 @@ public class ComputeManagerServiceTests {
     @Mock
     private ResultService resultService;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
 
@@ -202,7 +204,7 @@ public class ComputeManagerServiceTests {
         when(appComputeService.runCompute(taskDescription, ""))
                 .thenReturn(expectedDockerRunResponse);
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
-                .thenReturn(jUnitTemporaryFolder.newFolder().getAbsolutePath());
+                .thenReturn(jUnitTemporaryFolder.getAbsolutePath());
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription, "");
@@ -249,7 +251,7 @@ public class ComputeManagerServiceTests {
         when(appComputeService.runCompute(taskDescription,
                 SECURE_SESSION_ID)).thenReturn(expectedDockerRunResponse);
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
-                .thenReturn(jUnitTemporaryFolder.newFolder().getAbsolutePath());
+                .thenReturn(jUnitTemporaryFolder.getAbsolutePath());
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription,

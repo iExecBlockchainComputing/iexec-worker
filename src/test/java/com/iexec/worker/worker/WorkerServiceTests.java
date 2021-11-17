@@ -25,8 +25,8 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.version.VersionService;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -65,7 +65,7 @@ public class WorkerServiceTests {
     @Mock
     private DockerService dockerService;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
 

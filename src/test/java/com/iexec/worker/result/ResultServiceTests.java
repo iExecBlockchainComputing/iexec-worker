@@ -30,16 +30,15 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.feign.CustomResultFeignClient;
-
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -58,8 +57,8 @@ public class ResultServiceTests {
             "/resources/tmp/test-worker";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
 
-    @Rule
-    public TemporaryFolder folderRule = new TemporaryFolder();
+    @TempDir
+    public File folderRule;
     @Mock
     private IexecHubService iexecHubService;
     @Mock
@@ -71,10 +70,10 @@ public class ResultServiceTests {
     private ResultService resultService;
     private String tmp;
 
-    @Before
+    @BeforeEach
     public void init() throws IOException {
         MockitoAnnotations.openMocks(this);
-        tmp = folderRule.newFolder().getAbsolutePath();
+        tmp = folderRule.getAbsolutePath();
     }
 
     @Test

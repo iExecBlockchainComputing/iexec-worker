@@ -27,6 +27,11 @@ repositories {
 }
 
 configurations {
+    all {
+        // Exclude JUnit 4. Only JUnit 5 is used
+        exclude group: 'junit', module: 'junit'
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
     deployerJars
 }
 

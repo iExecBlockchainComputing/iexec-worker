@@ -40,8 +40,8 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.*;
 
 import java.util.Collections;
@@ -86,7 +86,7 @@ public class TaskManagerServiceTests {
     @Captor
     private ArgumentCaptor<Predicate<String>> predicateCaptor;
 
-    @Before
+    @BeforeEach
     public void init() {
         MockitoAnnotations.openMocks(this);
     }
