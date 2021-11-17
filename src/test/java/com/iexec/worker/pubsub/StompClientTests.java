@@ -4,7 +4,6 @@ import com.iexec.worker.TestUtils;
 import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.config.CoreConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -21,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-@Tag("slow")
 public class StompClientTests {
 
     @Mock
@@ -64,10 +62,13 @@ public class StompClientTests {
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(
                 threadNameWrapper, invocation))
                 .when(stompClient).listenToSessionRequests();
+        // Reduce session refresh back off duration to make test faster.
+        doAnswer((invocation) -> backOffBriefly()).when(stompClient).backOff();
+        // Don't execute session creation with remote server.
         doNothing().when(stompClient).createSession();
         
         stompClient.init();
-        TimeUnit.SECONDS.sleep(6); // should be greater than StompClient#SESSION_REFRESH_DELAY
+        waitSessionRequestExecution();
         // Make sure listenToSessionRequests() runs asynchronously
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
         // Make sure listenToSessionRequests() method is called only 1 time
@@ -110,16 +111,35 @@ public class StompClientTests {
     @Test
     public void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived()
             throws Exception {
+        // Reduce session refresh back off duration to make test faster.
+        doAnswer((invocation) -> backOffBriefly()).when(stompClient).backOff();
+        // Don't execute session creation with remote server.
+        doNothing().when(stompClient).createSession();
         // Start listener
         CompletableFuture.runAsync(() -> stompClient.listenToSessionRequests());
-        doNothing().when(stompClient).createSession();
+        waitForListener();
 
         // Request multiple times
         stompClient.requestNewSession();
         stompClient.requestNewSession();
         stompClient.requestNewSession();
-        TimeUnit.SECONDS.sleep(6); // should be greater than StompClient#SESSION_REFRESH_DELAY
+        waitSessionRequestExecution();
         // Make sure createSession() method is called only 1 time
         verify(stompClient).createSession();
+    }
+
+    private void waitForListener() throws InterruptedException {
+        TimeUnit.MILLISECONDS.sleep(10);
+    }
+
+    private Void backOffBriefly() throws InterruptedException {
+        TimeUnit.SECONDS.sleep(1);
+        return null;
+    }
+
+    private void waitSessionRequestExecution() throws InterruptedException {
+        // should wait more than StompClient#SESSION_REFRESH_DELAY
+        // which is changed to 1 second in backOffBriefly().
+        TimeUnit.SECONDS.sleep(2);
     }
 }
