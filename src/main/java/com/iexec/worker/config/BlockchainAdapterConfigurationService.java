@@ -37,6 +37,12 @@ public class BlockchainAdapterConfigurationService {
 
     public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
         this.publicChainConfig = customBlockchainAdapterClient.getPublicChainConfig();
+        if (publicChainConfig == null) {
+            throw new MissingConfigurationException(
+                    "Received public chain config is null; "
+                            + "can't create BlockchainAdapterConfigurationService");
+        }
+
         log.info("Received public chain config [config:{}]", this.publicChainConfig);
 
         if (publicChainConfig.getBlockTime() == null) {
