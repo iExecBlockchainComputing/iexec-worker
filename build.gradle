@@ -99,10 +99,8 @@ dependencies {
     compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
-ext {
-    // ./gradlew build -Pdev
-    isDev = project.hasProperty('dev')
-}
+// ./gradlew build -Pdev
+def isDev = project.hasProperty('dev')
 
 test {
     useJUnitPlatform {
