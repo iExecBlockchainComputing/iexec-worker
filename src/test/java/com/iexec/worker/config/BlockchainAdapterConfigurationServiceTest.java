@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 public class BlockchainAdapterConfigurationServiceTest {
     private static final Integer CHAIN_ID = 0;
     private static final boolean IS_SIDECHAIN = true;
-    private static final String NODE_ADDRESS = "0x1";
+    private static final String NODE_ADDRESS = "https://node";
     private static final String HUB_ADDRESS = "0x2";
     private static final Duration BLOCK_TIME = Duration.ofSeconds(1);
 
