@@ -99,10 +99,17 @@ dependencies {
     compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
+ext {
+    // ./gradlew build -Pdev
+    isDev = project.hasProperty('dev')
+}
+
 test {
-    // Ignore slow tests in development
-    if (project.hasProperty('dev')) {
-        exclude '**/StompClientTests.class'
+    useJUnitPlatform {
+        // Ignore slow tests in development
+        if (isDev) {
+            excludeTags 'slow'
+        }
     }
 }
 
