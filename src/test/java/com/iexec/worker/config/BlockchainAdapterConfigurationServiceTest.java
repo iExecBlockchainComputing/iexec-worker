@@ -31,11 +31,11 @@ public class BlockchainAdapterConfigurationServiceTest {
     public void shouldGetBlockTime() {
         when(customBlockchainAdapterClient.getPublicChainConfig()).thenReturn(
                 PublicChainConfig.builder()
-                        .chainId           (CHAIN_ID)
-                        .isSidechain       (IS_SIDECHAIN)
-                        .nodeAddress       (NODE_ADDRESS)
-                        .hubAddress        (HUB_ADDRESS)
-                        .blockTime         (BLOCK_TIME)
+                        .chainId(CHAIN_ID)
+                        .isSidechain(IS_SIDECHAIN)
+                        .nodeAddress(NODE_ADDRESS)
+                        .hubAddress(HUB_ADDRESS)
+                        .blockTime(BLOCK_TIME)
                         .build()
         );
 
