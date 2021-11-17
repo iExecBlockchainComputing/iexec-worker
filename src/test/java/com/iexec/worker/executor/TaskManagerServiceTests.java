@@ -51,7 +51,6 @@ import java.util.function.Predicate;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 

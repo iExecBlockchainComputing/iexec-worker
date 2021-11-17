@@ -35,7 +35,6 @@ import java.util.function.Predicate;
 
 import static com.iexec.common.docker.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 

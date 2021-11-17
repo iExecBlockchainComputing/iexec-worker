@@ -35,8 +35,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 
