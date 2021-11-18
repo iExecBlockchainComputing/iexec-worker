@@ -28,8 +28,8 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -82,7 +82,7 @@ public class AppComputeServiceTests {
     @Mock
     private SconeConfiguration sconeConfig;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);

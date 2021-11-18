@@ -2,8 +2,8 @@ package com.iexec.worker.config;
 
 import com.iexec.common.config.PublicChainConfig;
 import com.iexec.worker.feign.CustomBlockchainAdapterClient;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -16,7 +16,7 @@ public class BlockchainAdapterConfigurationServiceTest {
     @Mock
     private CustomBlockchainAdapterClient customBlockchainAdapterClient;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }

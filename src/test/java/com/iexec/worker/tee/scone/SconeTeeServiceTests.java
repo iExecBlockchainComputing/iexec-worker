@@ -24,8 +24,8 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.*;
 
 import java.util.List;
@@ -65,7 +65,7 @@ public class SconeTeeServiceTests {
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
-    @Before
+    @BeforeEach
     public void init() throws Exception {
         MockitoAnnotations.openMocks(this);
         when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
