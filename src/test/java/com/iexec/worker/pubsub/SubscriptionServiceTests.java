@@ -28,8 +28,8 @@ import static org.mockito.Mockito.when;
 
 import com.iexec.worker.config.WorkerConfigurationService;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -55,7 +55,7 @@ public class SubscriptionServiceTests {
     private static final Optional<Subscription> SUBSCRIPTION =
             Optional.of(mock(Subscription.class));
 
-    @Before
+    @BeforeEach
     public void init() {
         MockitoAnnotations.openMocks(this);
         when(workerConfigurationService.getWorkerWalletAddress())

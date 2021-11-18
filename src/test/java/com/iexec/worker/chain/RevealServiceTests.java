@@ -22,8 +22,8 @@ import com.iexec.common.chain.ChainTask;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.utils.HashUtils;
 import org.apache.commons.lang.time.DateUtils;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -36,6 +36,7 @@ import java.util.Date;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 public class RevealServiceTests {
@@ -47,7 +48,7 @@ public class RevealServiceTests {
     @InjectMocks
     private RevealService revealService;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
@@ -328,13 +329,13 @@ public class RevealServiceTests {
         assertThat(revealService.reveal(chainTaskId, "")).isEqualTo(Optional.empty());
     }
 
-    @Test(expected = Exception.class)
+    @Test
     public void shouldTriggerExceptionIfTransactionFails() throws Exception {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new Exception());
-        revealService.reveal(chainTaskId, deterministHash);
+        when(iexecHubService.reveal(chainTaskId, deterministHash)).thenThrow(new RuntimeException());
+        assertThrows(RuntimeException.class, () -> revealService.reveal(chainTaskId, deterministHash));
     }
 
     @Test

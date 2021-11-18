@@ -27,6 +27,11 @@ repositories {
 }
 
 configurations {
+    all {
+        // Exclude JUnit 4. Only JUnit 5 is used
+        exclude group: 'junit', module: 'junit'
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
     deployerJars
 }
 
@@ -94,10 +99,15 @@ dependencies {
     compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
+// ./gradlew build -Pdev
+def isDev = project.hasProperty('dev')
+
 test {
-    // Ignore slow tests in development
-    if (project.hasProperty('dev')) {
-        exclude '**/StompClientTests.class'
+    useJUnitPlatform {
+        // Ignore slow tests in development
+        if (isDev) {
+            excludeTags 'slow'
+        }
     }
 }
 

@@ -16,24 +16,23 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
-import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -60,8 +59,8 @@ public class PostComputeServiceTests {
     private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
     private final static long MAX_EXECUTION_TIME = 1000;
 
-    @Rule
-    public final TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
+    @TempDir
+    public File jUnitTemporaryFolder;
     private TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .datasetUri(DATASET_URI)
@@ -89,12 +88,12 @@ public class PostComputeServiceTests {
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
-        output = jUnitTemporaryFolder.newFolder().getAbsolutePath();
+        output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
     }
