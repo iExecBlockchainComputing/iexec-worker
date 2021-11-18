@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 @Slf4j
@@ -49,7 +50,7 @@ public class DockerService {
     public DockerService(WorkerConfigurationService workerConfigService,
                          DockerRegistryConfiguration dockerRegistryConfiguration) {
         this.dockerRegistryConfiguration = dockerRegistryConfiguration;
-        this.runningContainersRecord = new HashSet<>();
+        this.runningContainersRecord = ConcurrentHashMap.newKeySet();
         this.workerConfigService = workerConfigService;
     }
 
