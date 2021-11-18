@@ -76,7 +76,7 @@ public class EnclaveAuthorizationServiceTests {
     }
 
     @Test
-    public void isNotVerifiedEnclaveSignatureSinceNoResultSeal() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    public void isNotVerifiedEnclaveSignatureSinceWrongResultSeal() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x3";
