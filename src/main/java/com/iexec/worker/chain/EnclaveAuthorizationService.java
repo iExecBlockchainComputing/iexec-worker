@@ -38,12 +38,12 @@ public class EnclaveAuthorizationService {
                                               String enclaveChallenge) {
         String baseErrorMessage =
                 "Cannot verify enclave signature [chainTaskId:{}, ";
-        if (!BytesUtils.isByte32(resultHash)) {
+        if (!BytesUtils.isNonEmptyBytes32(resultHash)) {
             log.error(baseErrorMessage + "resultHash:{}]", chainTaskId,
                     resultHash);
             return false;
         }
-        if (!BytesUtils.isByte32(resultSeal)) {
+        if (!BytesUtils.isNonEmptyBytes32(resultSeal)) {
             log.error(baseErrorMessage + "resultSeal:{}]", chainTaskId,
                     resultSeal);
             return false;

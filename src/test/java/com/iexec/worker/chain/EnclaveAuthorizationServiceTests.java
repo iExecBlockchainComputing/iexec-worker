@@ -72,7 +72,7 @@ public class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
-        Assert.assertFalse(isVerifiedEnclaveSignature);
+        Assertions.assertFalse(isVerifiedEnclaveSignature);
     }
 
     @Test
@@ -88,7 +88,7 @@ public class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
-        Assert.assertFalse(isVerifiedEnclaveSignature);
+        Assertions.assertFalse(isVerifiedEnclaveSignature);
     }
 
     @Test
@@ -104,7 +104,7 @@ public class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), "0x1");
-        Assert.assertFalse(isVerifiedEnclaveSignature);
+        Assertions.assertFalse(isVerifiedEnclaveSignature);
     }
 
     @Test
@@ -116,6 +116,6 @@ public class EnclaveAuthorizationServiceTests {
         Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, "0x1", credentials.getAddress());
-        Assert.assertFalse(isVerifiedEnclaveSignature);
+        Assertions.assertFalse(isVerifiedEnclaveSignature);
     }
 }
