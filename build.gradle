@@ -16,6 +16,7 @@ sourceCompatibility = 11
 targetCompatibility = 11
 
 repositories {
+    mavenLocal()
     mavenCentral()
     jcenter()
     maven {
