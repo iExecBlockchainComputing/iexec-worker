@@ -59,7 +59,7 @@ public class IexecHubService extends IexecHubAbstractService {
                            @Value("${chain.final-deadline-ratio}") Integer expectedFinalDeadlineRatio) {
         super(credentialsService.getCredentials(),
                 web3jService,
-                blockchainAdapterConfigurationService.getHubAddress(),
+                blockchainAdapterConfigurationService.getIExecHubContractAddress(),
                 blockchainAdapterConfigurationService.getBlockTime(),
                 1,
                 5,

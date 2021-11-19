@@ -28,7 +28,7 @@ public class Web3jService extends Web3jAbstractService {
                         WorkerConfigurationService workerConfService) {
         super(!workerConfService.getOverrideBlockchainNodeAddress().isEmpty() ?
                         workerConfService.getOverrideBlockchainNodeAddress() :
-                        blockchainAdapterConfigurationService.getNodeAddress(),
+                        blockchainAdapterConfigurationService.getChainNodeUrl(),
                 workerConfService.getGasPriceMultiplier(), workerConfService.getGasPriceCap(),
                 blockchainAdapterConfigurationService.isSidechain());
     }
