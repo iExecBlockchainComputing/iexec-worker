@@ -20,10 +20,9 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -33,7 +32,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 public class DataServiceTest {
@@ -45,8 +44,8 @@ public class DataServiceTest {
     public static final String CHECKSUM =
             "0x240987ee1480e8e0b1b26fa806810fea04021191a8e6d8ab6325c15fa61fa9b6";
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @TempDir
+    public File temporaryFolder;
 
     @InjectMocks
     private DataService dataService;
@@ -64,10 +63,10 @@ public class DataServiceTest {
             .isTeeTask(false)
             .build();
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        iexecIn = temporaryFolder.newFolder().getAbsolutePath();
+        iexecIn = temporaryFolder.getAbsolutePath();
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
                 .thenReturn(iexecIn);
     }

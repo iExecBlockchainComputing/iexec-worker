@@ -16,6 +16,7 @@ sourceCompatibility = 11
 targetCompatibility = 11
 
 repositories {
+    mavenLocal()
     mavenCentral()
     jcenter()
     maven {
@@ -27,6 +28,11 @@ repositories {
 }
 
 configurations {
+    all {
+        // Exclude JUnit 4. Only JUnit 5 is used
+        exclude group: 'junit', module: 'junit'
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
     deployerJars
 }
 
@@ -43,20 +49,20 @@ dependencyManagement {
 
 dependencies {
     // iexec
-    compile "com.iexec.common:iexec-common:$iexecCommonVersion"
-    // compile files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}.jar")
+    implementation "com.iexec.common:iexec-common:$iexecCommonVersion"
+    //implementation files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}-all.jar")
 
     // spring
-    compile("org.springframework.boot:spring-boot-starter") {
+    implementation("org.springframework.boot:spring-boot-starter") {
         exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging' //required for Graylog
     }
-    compile "org.springframework.boot:spring-boot-starter-web"
-    compile "org.springframework.boot:spring-boot-starter-websocket"
-    compile "org.springframework.boot:spring-boot-starter-actuator"
-    compile "org.springframework.cloud:spring-cloud-starter"
-    compile "org.springframework.cloud:spring-cloud-starter-openfeign"
-    compile "org.springframework.retry:spring-retry"
-    testCompile "org.springframework.boot:spring-boot-starter-test"
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter-websocket"
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    implementation  "org.springframework.cloud:spring-cloud-starter"
+    implementation  "org.springframework.cloud:spring-cloud-starter-openfeign"
+    implementation  "org.springframework.retry:spring-retry"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
 
     // Web3j issues, see core build.gradle
     implementation 'com.squareup.okhttp3:okhttp:4.3.1'
@@ -66,15 +72,15 @@ dependencies {
     implementation 'com.github.docker-java:docker-java:3.2.5'
     implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.2.5'
 
-    compile 'org.glassfish.jersey.inject:jersey-hk2:2.26'
-    compile 'org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1'
-    compile 'javax.activation:activation:1.1.1'
+    implementation 'org.glassfish.jersey.inject:jersey-hk2:2.26'
+    implementation 'org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1'
+    implementation 'javax.activation:activation:1.1.1'
 
     // Removes 'warning: unknown enum constant When.MAYBE'
-    compile 'com.google.code.findbugs:annotations:3.0.1'
+    implementation 'com.google.code.findbugs:annotations:3.0.1'
 
     //graylog
-    compile 'biz.paluch.logging:logstash-gelf:1.5.1'
+    implementation 'biz.paluch.logging:logstash-gelf:1.5.1'
 
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
@@ -94,10 +100,15 @@ dependencies {
     compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
+// ./gradlew build -Pdev
+def isDev = project.hasProperty('dev')
+
 test {
-    // Ignore slow tests in development
-    if (project.hasProperty('dev')) {
-        exclude '**/StompClientTests.class'
+    useJUnitPlatform {
+        // Ignore slow tests in development
+        if (isDev) {
+            excludeTags 'slow'
+        }
     }
 }
 

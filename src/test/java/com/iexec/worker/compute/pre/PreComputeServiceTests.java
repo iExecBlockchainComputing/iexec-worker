@@ -31,14 +31,13 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.mockito.Mockito.*;
 
@@ -86,7 +85,7 @@ public class PreComputeServiceTests {
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);

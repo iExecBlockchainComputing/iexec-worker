@@ -34,13 +34,15 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 @Slf4j
 @Service
 public class DockerService {
 
-    private final HashSet<String> runningContainersRecord;
+    private final Set<String> runningContainersRecord;
     private final WorkerConfigurationService workerConfigService;
     private final DockerRegistryConfiguration dockerRegistryConfiguration;
     private DockerClientInstance dockerClientInstance;
@@ -48,7 +50,7 @@ public class DockerService {
     public DockerService(WorkerConfigurationService workerConfigService,
                          DockerRegistryConfiguration dockerRegistryConfiguration) {
         this.dockerRegistryConfiguration = dockerRegistryConfiguration;
-        this.runningContainersRecord = new HashSet<>();
+        this.runningContainersRecord = ConcurrentHashMap.newKeySet();
         this.workerConfigService = workerConfigService;
     }
 
@@ -197,7 +199,7 @@ public class DockerService {
         log.info("About to stop all running containers [runningContainers:{}]",
                 runningContainersRecord);
         List.copyOf(runningContainersRecord)
-                .forEach(containerName -> stopRunningContainer(containerName));
+                .forEach(this::stopRunningContainer);
     }
 
     /**
@@ -212,7 +214,7 @@ public class DockerService {
      */
     public void stopRunningContainersWithNamePredicate(Predicate<String> containerNamePredicate) {
         log.info("Stopping containers with names matching the provided predicate");
-        runningContainersRecord.stream()
+        List.copyOf(runningContainersRecord).stream()
                 .filter(containerNamePredicate)
                 .forEach(this::stopRunningContainer);
     }
@@ -245,7 +247,7 @@ public class DockerService {
      * 
      * @return
      */
-    HashSet<String> getRunningContainersRecord() {
+    Set<String> getRunningContainersRecord() {
         return runningContainersRecord;
     }
 
