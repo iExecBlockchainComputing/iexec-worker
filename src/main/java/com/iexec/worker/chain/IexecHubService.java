@@ -21,9 +21,9 @@ import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
-import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.BaseEventResponse;
@@ -54,13 +54,15 @@ public class IexecHubService extends IexecHubAbstractService {
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           BlockchainAdapterConfigurationService blockchainAdapterConfigurationService) {
+                           BlockchainAdapterConfigurationService blockchainAdapterConfigurationService,
+                           @Value("${chain.final-deadline-ratio}") Integer expectedFinalDeadlineRatio) {
         super(credentialsService.getCredentials(),
                 web3jService,
                 blockchainAdapterConfigurationService.getHubAddress(),
                 blockchainAdapterConfigurationService.getBlockTime(),
                 1,
-                5);
+                5,
+                expectedFinalDeadlineRatio);
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
