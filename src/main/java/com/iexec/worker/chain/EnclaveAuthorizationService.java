@@ -37,25 +37,25 @@ public class EnclaveAuthorizationService {
                                               String enclaveSignature,
                                               String enclaveChallenge) {
         String baseErrorMessage =
-                "Cannot verify enclave signature [chainTaskId:{}, ";
-        if (!BytesUtils.isNonEmptyBytes32(resultHash)) {
-            log.error(baseErrorMessage + "resultHash:{}]", chainTaskId,
-                    resultHash);
+                "Cannot verify enclave signature with invalid ";
+        if (!BytesUtils.isNonZeroedBytes32(resultHash)) {
+            log.error(baseErrorMessage + "result hash [chainTaskId:{}, " +
+                    "resultHash:{}]", chainTaskId, resultHash);
             return false;
         }
-        if (!BytesUtils.isNonEmptyBytes32(resultSeal)) {
-            log.error(baseErrorMessage + "resultSeal:{}]", chainTaskId,
-                    resultSeal);
+        if (!BytesUtils.isNonZeroedBytes32(resultSeal)) {
+            log.error(baseErrorMessage + "result seal [chainTaskId:{}, " +
+                    "resultSeal:{}]", chainTaskId, resultSeal);
             return false;
         }
         if (!SignatureUtils.isSignature(enclaveSignature)) {
-            log.error(baseErrorMessage + "enclaveSignature:{}]", chainTaskId,
-                    enclaveSignature);
+            log.error(baseErrorMessage + "enclave signature [chainTaskId:{}, " +
+                    "enclaveSignature:{}]", chainTaskId, enclaveSignature);
             return false;
         }
         if (!EthAddress.validate(enclaveChallenge)) {
-            log.error(baseErrorMessage + "enclaveChallenge:{}]", chainTaskId,
-                    enclaveChallenge);
+            log.error(baseErrorMessage + "enclave challenge [chainTaskId:{}, " +
+                    "enclaveChallenge:{}]", chainTaskId, enclaveChallenge);
             return false;
         }
 
