@@ -19,9 +19,9 @@ package com.iexec.worker.chain;
 import com.iexec.common.security.Signature;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
 import com.iexec.common.utils.SignatureUtils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
@@ -37,7 +37,7 @@ public class EnclaveAuthorizationServiceTests {
     @InjectMocks
     private EnclaveAuthorizationService enclaveAuthorizationService;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
@@ -55,6 +55,6 @@ public class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
-        Assert.assertTrue(isVerifiedEnclaveSignature);
+        Assertions.assertTrue(isVerifiedEnclaveSignature);
     }
 }

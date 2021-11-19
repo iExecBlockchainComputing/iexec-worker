@@ -23,9 +23,9 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.TestUtils;
 import com.iexec.common.worker.result.ResultUtils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -50,7 +50,7 @@ public class ContributionServiceTests {
     @InjectMocks
     private ContributionService contributionService;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
@@ -223,9 +223,9 @@ public class ContributionServiceTests {
 
         System.out.println(contribution);
 
-        Assert.assertNotNull(contribution);
+        Assertions.assertNotNull(contribution);
 
-        Assert.assertEquals(contribution,
+        Assertions.assertEquals(contribution,
                 Contribution.builder()
                         .chainTaskId(chainTaskId)
                         .resultDigest(resultDigest)
@@ -262,13 +262,13 @@ public class ContributionServiceTests {
                 .build();
         Contribution contribution = contributionService.getContribution(computedFile);
 
-        Assert.assertNotNull(contribution);
-        Assert.assertEquals(contribution.getChainTaskId(), chainTaskId);
-        Assert.assertEquals(contribution.getResultDigest(), resultDigest);
-        Assert.assertEquals(contribution.getResultSeal(), resultSeal);
-        Assert.assertEquals(contribution.getEnclaveChallenge(), TestUtils.ENCLAVE_ADDRESS);
-        Assert.assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
-        Assert.assertEquals(contribution.getWorkerPoolSignature(), teeWorkerpoolAuth.getSignature().getValue());
+        Assertions.assertNotNull(contribution);
+        Assertions.assertEquals(contribution.getChainTaskId(), chainTaskId);
+        Assertions.assertEquals(contribution.getResultDigest(), resultDigest);
+        Assertions.assertEquals(contribution.getResultSeal(), resultSeal);
+        Assertions.assertEquals(contribution.getEnclaveChallenge(), TestUtils.ENCLAVE_ADDRESS);
+        Assertions.assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
+        Assertions.assertEquals(contribution.getWorkerPoolSignature(), teeWorkerpoolAuth.getSignature().getValue());
 
         Contribution expectedContribution = Contribution.builder()
                 .chainTaskId(chainTaskId)
@@ -279,7 +279,7 @@ public class ContributionServiceTests {
                 .enclaveSignature("0xenclaveSignature")
                 .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
                 .build();
-        Assert.assertEquals(contribution, expectedContribution);
+        Assertions.assertEquals(contribution, expectedContribution);
 
     }
 

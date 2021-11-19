@@ -25,8 +25,8 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -35,8 +35,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 
@@ -63,7 +61,7 @@ public class ReplicateDemandServiceTests {
     @InjectMocks
     private ReplicateDemandService replicateDemandService;
 
-    @Before
+    @BeforeEach
     public void init() {
         MockitoAnnotations.openMocks(this);
     }

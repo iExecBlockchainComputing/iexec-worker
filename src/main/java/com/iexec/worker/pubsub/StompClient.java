@@ -68,7 +68,7 @@ public class StompClient {
 
     // All session requests coming in this time interval
     // will be treated together.
-    private static final int SESSION_REFRESH_DELAY = 5;
+    private static final int SESSION_REFRESH_BACK_OFF_DELAY = 5;
 
     // A lock used to guarantee that only one thread
     // is listening to session requests.
@@ -191,7 +191,7 @@ public class StompClient {
                 }
                 // wait some time for the wave of request events coming
                 // from possibly different threads to finish
-                TimeUnit.SECONDS.sleep(SESSION_REFRESH_DELAY);
+                backOff();
                 // Switch the flag back to mark requests as treated.
                 isSessionRequested.set(false);
                 // Send one request to the server.
@@ -226,6 +226,15 @@ public class StompClient {
     void createSession() {
         log.info("Creating new STOMP session");
         this.stompClient.connect(webSocketServerUrl, new SessionHandler());
+    }
+
+    /**
+     * Sleep {@link StompClient#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
+     * 
+     * @throws InterruptedException
+     */
+    void backOff() throws InterruptedException {
+        TimeUnit.SECONDS.sleep(SESSION_REFRESH_BACK_OFF_DELAY);
     }
 
     /**
