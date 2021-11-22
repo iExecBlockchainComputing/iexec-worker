@@ -18,6 +18,9 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.security.Signature;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
+import com.iexec.common.utils.BytesUtils;
+import com.iexec.common.utils.EthAddress;
+import com.iexec.common.utils.SignatureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -28,21 +31,40 @@ import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMess
 @Service
 public class EnclaveAuthorizationService {
 
-    public boolean isVerifiedEnclaveSignature(String chainTaskId, String resultHash, String resultSeal,
-                                              String enclaveSignature, String enclaveChallenge) {
-        if (enclaveChallenge == null || enclaveChallenge.isEmpty()) {
-            log.error("Cant verify enclave signature (enclave challenge not found) [chainTaskId:{}]", chainTaskId);
+    public boolean isVerifiedEnclaveSignature(String chainTaskId,
+                                              String resultHash,
+                                              String resultSeal,
+                                              String enclaveSignature,
+                                              String enclaveChallenge) {
+        String baseErrorMessage =
+                "Cannot verify enclave signature with invalid ";
+        if (!BytesUtils.isNonZeroedBytes32(resultHash)) {
+            log.error(baseErrorMessage + "result hash [chainTaskId:{}, " +
+                    "resultHash:{}]", chainTaskId, resultHash);
+            return false;
+        }
+        if (!BytesUtils.isNonZeroedBytes32(resultSeal)) {
+            log.error(baseErrorMessage + "result seal [chainTaskId:{}, " +
+                    "resultSeal:{}]", chainTaskId, resultSeal);
+            return false;
+        }
+        if (!SignatureUtils.isSignature(enclaveSignature)) {
+            log.error(baseErrorMessage + "enclave signature [chainTaskId:{}, " +
+                    "enclaveSignature:{}]", chainTaskId, enclaveSignature);
+            return false;
+        }
+        if (!EthAddress.validate(enclaveChallenge)) {
+            log.error(baseErrorMessage + "enclave challenge [chainTaskId:{}, " +
+                    "enclaveChallenge:{}]", chainTaskId, enclaveChallenge);
             return false;
         }
 
-        if (enclaveSignature == null || enclaveSignature.isEmpty()) {
-            log.error("Cant verify enclave signature (enclave signature not found) [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
+        String messageHash =
+                TeeEnclaveChallengeSignature.getMessageHash(resultHash,
+                        resultSeal);
 
         return isExpectedSignerOnSignedMessageHash(messageHash,
                 new Signature(enclaveSignature), enclaveChallenge);
     }
+
 }
