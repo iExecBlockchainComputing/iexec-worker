@@ -18,7 +18,7 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.chain.*;
-import com.iexec.common.contract.IexecSmartContractValidator;
+import com.iexec.common.contract.IexecHubSmartContractValidator;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
@@ -63,7 +63,7 @@ public class IexecHubService extends IexecHubAbstractService {
                 blockchainAdapterConfigurationService.getBlockTime(),
                 1,
                 5,
-                new IexecSmartContractValidator(expectedFinalDeadlineRatio));
+                new IexecHubSmartContractValidator(expectedFinalDeadlineRatio));
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
