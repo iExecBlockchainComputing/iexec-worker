@@ -3,7 +3,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 plugins {
     id 'java'
     id 'eclipse'
-    id 'maven'
+    id 'maven-publish'
     id 'jacoco'
     id 'org.springframework.boot' version '2.4.3'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
@@ -50,7 +50,6 @@ dependencyManagement {
 dependencies {
     // iexec
     implementation "com.iexec.common:iexec-common:$iexecCommonVersion"
-    //implementation files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}-all.jar")
 
     // spring
     implementation("org.springframework.boot:spring-boot-starter") {
@@ -102,6 +101,11 @@ dependencies {
 
 // ./gradlew build -Pdev
 def isDev = project.hasProperty('dev')
+
+jar {
+    enabled true
+    archiveClassifier.set('library')
+}
 
 test {
     useJUnitPlatform {
@@ -155,15 +159,25 @@ project.ext.getNexusMaven = {
     }
 }
 
-uploadArchives {
-    enabled canPush
-    repositories.mavenDeployer {
-        configuration = configurations.deployerJars
-        repository(url: getNexusMaven()) {
-            authentication(userName: project.nexusUser, password: project.nexusPassword)
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact bootJar
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            credentials {
+                username nexusUser
+                password nexusPassword
+            }
+            url getNexusMaven
         }
     }
 }
+
+publish.enabled canPush
 
 def canBuildImage = (isMasterBranch || isDevelopBranch ) ||
         project.hasProperty("forceDockerBuild")
