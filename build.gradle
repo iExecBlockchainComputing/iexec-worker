@@ -3,7 +3,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 plugins {
     id 'java'
     id 'eclipse'
-    id 'maven'
+    id 'maven-publish'
     id 'jacoco'
     id 'org.springframework.boot' version '2.4.3'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
@@ -33,7 +33,6 @@ configurations {
         exclude group: 'junit', module: 'junit'
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
     }
-    deployerJars
 }
 
 
@@ -50,7 +49,6 @@ dependencyManagement {
 dependencies {
     // iexec
     implementation "com.iexec.common:iexec-common:$iexecCommonVersion"
-    //implementation files("../iexec-common/build/libs/iexec-common-${iexecCommonVersion}-all.jar")
 
     // spring
     implementation("org.springframework.boot:spring-boot-starter") {
@@ -85,23 +83,15 @@ dependencies {
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
     annotationProcessor "org.projectlombok:lombok:1.18.2"
-
-    // package cloud
-    deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"
-
-    // Dependencies needed when working with local `iexec-common` dependency
-/*    // web3j dependency
-    compile "org.web3j:core:4.7.0"
-
-    // apache commons.lang3
-    compile "org.apache.commons:commons-lang3:3.9"
-
-    // zip
-    compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
 // ./gradlew build -Pdev
 def isDev = project.hasProperty('dev')
+
+jar {
+    enabled true
+    archiveClassifier.set('library')
+}
 
 test {
     useJUnitPlatform {
@@ -155,15 +145,25 @@ project.ext.getNexusMaven = {
     }
 }
 
-uploadArchives {
-    enabled canPush
-    repositories.mavenDeployer {
-        configuration = configurations.deployerJars
-        repository(url: getNexusMaven()) {
-            authentication(userName: project.nexusUser, password: project.nexusPassword)
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact bootJar
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            credentials {
+                username nexusUser
+                password nexusPassword
+            }
+            url getNexusMaven
         }
     }
 }
+
+publish.enabled canPush
 
 def canBuildImage = (isMasterBranch || isDevelopBranch ) ||
         project.hasProperty("forceDockerBuild")
