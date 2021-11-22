@@ -173,6 +173,7 @@ def jarName = 'iexec-worker.jar'
 def jarPath = buildDir + jarName
 
 task copyJar(type: Copy) {
+    dependsOn jar
     from(buildDir + tasks.jar.archiveFile.get().asFile.getName())
     into(buildDir)
     rename { filename ->
