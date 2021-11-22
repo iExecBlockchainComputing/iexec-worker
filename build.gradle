@@ -33,7 +33,6 @@ configurations {
         exclude group: 'junit', module: 'junit'
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
     }
-    deployerJars
 }
 
 
@@ -84,19 +83,6 @@ dependencies {
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
     annotationProcessor "org.projectlombok:lombok:1.18.2"
-
-    // package cloud
-    deployerJars "io.packagecloud.maven.wagon:maven-packagecloud-wagon:0.0.6"
-
-    // Dependencies needed when working with local `iexec-common` dependency
-/*    // web3j dependency
-    compile "org.web3j:core:4.7.0"
-
-    // apache commons.lang3
-    compile "org.apache.commons:commons-lang3:3.9"
-
-    // zip
-    compile 'net.lingala.zip4j:zip4j:2.3.1'*/
 }
 
 // ./gradlew build -Pdev
