@@ -34,7 +34,7 @@ public class BlockchainAdapterConfigurationServiceTest {
                         .chainId(CHAIN_ID)
                         .isSidechain(IS_SIDECHAIN)
                         .chainNodeUrl(NODE_ADDRESS)
-                        .iExecHubContractAddress(HUB_ADDRESS)
+                        .iexecHubContractAddress(HUB_ADDRESS)
                         .blockTime(BLOCK_TIME)
                         .build()
         );
@@ -48,7 +48,7 @@ public class BlockchainAdapterConfigurationServiceTest {
                 .isEqualTo(IS_SIDECHAIN);
         assertThat(blockchainAdapterConfigurationService.getChainNodeUrl())
                 .isEqualTo(NODE_ADDRESS);
-        assertThat(blockchainAdapterConfigurationService.getIExecHubContractAddress())
+        assertThat(blockchainAdapterConfigurationService.getIexecHubContractAddress())
                 .isEqualTo(HUB_ADDRESS);
         assertThat(blockchainAdapterConfigurationService.getBlockTime())
                 .isEqualTo(BLOCK_TIME);

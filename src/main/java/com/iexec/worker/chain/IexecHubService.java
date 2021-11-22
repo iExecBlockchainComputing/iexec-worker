@@ -56,7 +56,7 @@ public class IexecHubService extends IexecHubAbstractService {
                            BlockchainAdapterConfigurationService blockchainAdapterConfigurationService) {
         super(credentialsService.getCredentials(),
                 web3jService,
-                blockchainAdapterConfigurationService.getIExecHubContractAddress(),
+                blockchainAdapterConfigurationService.getIexecHubContractAddress(),
                 blockchainAdapterConfigurationService.getBlockTime(),
                 1,
                 5);

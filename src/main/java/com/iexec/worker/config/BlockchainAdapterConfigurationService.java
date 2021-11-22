@@ -63,8 +63,8 @@ public class BlockchainAdapterConfigurationService {
         return publicChainConfig.getChainNodeUrl();
     }
 
-    public String getIExecHubContractAddress() {
-        return publicChainConfig.getIExecHubContractAddress();
+    public String getIexecHubContractAddress() {
+        return publicChainConfig.getIexecHubContractAddress();
     }
 
     public Duration getBlockTime() {
