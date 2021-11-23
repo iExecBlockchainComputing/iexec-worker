@@ -27,9 +27,6 @@ import org.springframework.stereotype.Service;
 public class CustomBlockchainAdapterClient extends BaseFeignClient {
     private final BlockchainAdapterClient blockchainAdapterClient;
 
-    /**
-     * If the blockchain adapter url is malformed, this object won't be built.
-     */
     public CustomBlockchainAdapterClient(BlockchainAdapterClient blockchainAdapterClient) {
         this.blockchainAdapterClient = blockchainAdapterClient;
     }

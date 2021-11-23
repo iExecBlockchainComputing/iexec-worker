@@ -25,6 +25,11 @@ import java.time.Duration;
 
 import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
 
+/**
+ * This service retrieves a bunch of configuration values related to the chain.
+ * They are retrieved only when the instance is built and never updated.
+ * A restart is then needed to get fresh remote values.
+ */
 @Slf4j
 @Service
 public class BlockchainAdapterConfigurationService {
@@ -32,6 +37,12 @@ public class BlockchainAdapterConfigurationService {
 
     public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
         this.publicChainConfig = customBlockchainAdapterClient.getPublicChainConfig();
+        if (publicChainConfig == null) {
+            throw new MissingConfigurationException(
+                    "Received public chain config is null; "
+                            + "can't create BlockchainAdapterConfigurationService");
+        }
+
         log.info("Received public chain config [config:{}]", this.publicChainConfig);
 
         if (publicChainConfig.getBlockTime() == null) {
@@ -40,14 +51,22 @@ public class BlockchainAdapterConfigurationService {
         }
     }
 
-    /**
-     * Retrieved when the {@link BlockchainAdapterConfigurationService} is built
-     * so that it should be constant over time.
-     * <br>
-     * A restart is required to retrieve a fresh remote value.
-     *
-     * @return A {@link Duration} representing the block time of the blockchain.
-     */
+    public Integer getChainId() {
+        return publicChainConfig.getChainId();
+    }
+
+    public boolean isSidechain() {
+        return publicChainConfig.isSidechain();
+    }
+
+    public String getChainNodeUrl() {
+        return publicChainConfig.getChainNodeUrl();
+    }
+
+    public String getIexecHubContractAddress() {
+        return publicChainConfig.getIexecHubContractAddress();
+    }
+
     public Duration getBlockTime() {
         return publicChainConfig.getBlockTime();
     }

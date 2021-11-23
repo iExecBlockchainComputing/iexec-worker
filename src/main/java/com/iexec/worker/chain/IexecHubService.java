@@ -21,7 +21,6 @@ import com.iexec.common.chain.*;
 import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
-import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -54,18 +53,17 @@ public class IexecHubService extends IexecHubAbstractService {
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           PublicConfigurationService publicConfigurationService,
                            BlockchainAdapterConfigurationService blockchainAdapterConfigurationService) {
         super(credentialsService.getCredentials(),
                 web3jService,
-                publicConfigurationService.getIexecHubAddress(),
+                blockchainAdapterConfigurationService.getIexecHubContractAddress(),
                 blockchainAdapterConfigurationService.getBlockTime(),
                 1,
                 5);
         this.credentialsService = credentialsService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
-        this.chainId = publicConfigurationService.getChainId();
+        this.chainId = blockchainAdapterConfigurationService.getChainId();
     }
 
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
