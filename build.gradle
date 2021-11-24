@@ -178,7 +178,6 @@ task copyBootJar(type: Copy) {
     into(buildDir)
     rename(tasks.bootJar.outputs.files.singleFile.name, jarName)
 }
-build.dependsOn copyBootJar
 
 // ##################
 // #     docker     #
@@ -196,6 +195,7 @@ project.ext.getDockerImageNameShortCommit = {
 }
 
 docker {
+    dependsOn copyBootJar
     name getDockerImageNameFull()
     tags 'dev'
     dockerfile file('Dockerfile')
