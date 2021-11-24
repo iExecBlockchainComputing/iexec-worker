@@ -172,15 +172,12 @@ def buildDir = 'build/libs/'
 def jarName = 'iexec-worker.jar'
 def jarPath = buildDir + jarName
 
-task copyJar(type: Copy) {
-    dependsOn jar
-    from(buildDir + tasks.jar.archiveFile.get().asFile.getName())
+task copyBootJar(type: Copy) {
+    dependsOn bootJar
+    from(tasks.bootJar.outputs.files.singleFile)
     into(buildDir)
-    rename { filename ->
-        filename.replace tasks.jar.archiveFile.get().asFile.getName(), jarName
-    }
+    rename(tasks.bootJar.outputs.files.singleFile.name, jarName)
 }
-build.dependsOn copyJar
 
 // ##################
 // #     docker     #
@@ -198,6 +195,7 @@ project.ext.getDockerImageNameShortCommit = {
 }
 
 docker {
+    dependsOn copyBootJar
     name getDockerImageNameFull()
     tags 'dev'
     dockerfile file('Dockerfile')
