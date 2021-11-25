@@ -16,31 +16,26 @@
 
 package com.iexec.worker.sms;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.worker.chain.CredentialsService;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public class SmsServiceTests {
 
     public static final String CHAIN_TASK_ID = "0xabc";
     public static final String SESSION_ID = "randomSessionId";
-
-    @Rule
-    public TemporaryFolder jUnitTemporaryFolder = new TemporaryFolder();
 
     @Mock
     private CredentialsService credentialsService;
@@ -50,7 +45,7 @@ public class SmsServiceTests {
     @InjectMocks
     private SmsService smsService;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }

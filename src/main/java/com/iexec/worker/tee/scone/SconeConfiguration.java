@@ -82,7 +82,7 @@ public class SconeConfiguration {
         lasContainerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
         // Get cas url from sms
         casUrl = smsService.getSconeCasUrl();
-        log.info("Received cas url [{}]", casUrl);
+        log.info("Received cas url [casUrl:{}]", casUrl);
         if (StringUtils.isEmpty(casUrl)) {
             throw new BeanInstantiationException(this.getClass(), "Missing cas url");
         }

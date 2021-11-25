@@ -170,8 +170,12 @@ public class ContributionService {
         boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
         if (isTeeTask) {
             if (!enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId,
-                    resultHash, resultSeal, enclaveSignature, enclaveChallenge)){
-                log.error("Cant getContribution (isVerifiedEnclaveSignature false) [chainTaskId:{}]", chainTaskId);
+                    resultHash, resultSeal, enclaveSignature, enclaveChallenge)) {
+                log.error("Cannot get contribution with invalid enclave " +
+                                "signature [chainTaskId:{}, resultHash:{}, " +
+                                "resultSeal:{}, enclaveSignature:{}, " +
+                                "enclaveChallenge:{}]", chainTaskId, resultHash,
+                        resultSeal, enclaveSignature, enclaveChallenge);
                 return null;
             }
         } else {
