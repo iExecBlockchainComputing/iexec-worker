@@ -2,12 +2,12 @@ import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
     id 'java'
-    id 'eclipse'
-    id 'maven-publish'
-    id 'jacoco'
     id 'org.springframework.boot' version '2.4.3'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
-    id 'org.sonarqube' version '2.7'
+    id 'eclipse'
+    id 'jacoco'
+    id 'org.sonarqube' version '3.3'
+    id 'maven-publish'
     id 'com.palantir.docker' version '0.25.0'
 }
 
@@ -103,10 +103,16 @@ test {
 }
 
 jacoco {
-    toolVersion = "0.8.3"
+    toolVersion = "0.8.7"
 }
-// the test coverage report will be created just before the build
-build.dependsOn jacocoTestReport
+// sonarqube code coverage requires jacoco XML report
+jacocoTestReport {
+    reports {
+        xml.enabled true
+    }
+}
+tasks.test.finalizedBy    tasks.jacocoTestReport
+tasks.sonarqube.dependsOn tasks.jacocoTestReport
 
 task createVersion(type: Copy) {
     // delete old one
