@@ -8,7 +8,6 @@ plugins {
     id 'jacoco'
     id 'org.sonarqube' version '3.3'
     id 'maven-publish'
-    id 'com.palantir.docker' version '0.25.0'
 }
 
 group = 'com.iexec.worker'
@@ -134,13 +133,12 @@ compileJava.dependsOn createVersion
 // #    artifact    #
 // ##################
 
-def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
+def gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+def gitShortCommit = 'git rev-parse --short=8 HEAD'.execute().text.trim()
 def isMasterBranch = gitBranch == "master"
 def isDevelopBranch = gitBranch == "develop"
-def canPush = (isMasterBranch || isDevelopBranch ) &&
-        project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
-def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
-def isSnapshotVersion = project.version.contains("SNAPSHOT")
+def canPush = (isMasterBranch || isDevelopBranch) && project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
+def isSnapshotVersion = project.version.endsWith('-SNAPSHOT')
 
 project.ext.getNexusMaven = {
     def nexusMavenBase = "https://nexus.iex.ec/repository"
@@ -171,60 +169,38 @@ publishing {
 
 publish.enabled canPush
 
-def canBuildImage = (isMasterBranch || isDevelopBranch ) ||
-        project.hasProperty("forceDockerBuild")
-def imageName = "nexus.iex.ec/iexec-worker"
-def buildDir = 'build/libs/'
-def jarName = 'iexec-worker.jar'
-def jarPath = buildDir + jarName
+String imageName   = 'nexus.iex.ec/iexec-worker'
 
-task copyBootJar(type: Copy) {
-    dependsOn bootJar
-    from(tasks.bootJar.outputs.files.singleFile)
-    into(buildDir)
-    rename(tasks.bootJar.outputs.files.singleFile.name, jarName)
+ext.bootJarPath = relativePath(tasks.bootJar.outputs.files.singleFile)
+ext.ociImageNameFull = ""
+
+if (gitBranch.equals('master') || gitBranch.startsWith('release/') || gitBranch.startsWith('hotfix/')) {
+    ext.ociImageNameFull = imageName + ':' + version
+}
+if (gitBranch.equals('develop')) {
+    ext.ociImageNameFull = imageName + ':dev-' + gitShortCommit
+}
+if (gitBranch.startsWith('feature/') || gitBranch.startsWith('bugfix/')) {
+    ext.ociImageNameFull = imageName + ':feature-' + gitShortCommit
 }
 
-// ##################
-// #     docker     #
-// ##################
+ext.ociImageNameDev         = imageName + ':dev'
+ext.ociImageNameShortCommit = imageName + ":" + gitShortCommit
 
-project.ext.getDockerImageNameFull = {
-    def imageNameWithVersion = imageName + ":${version}"
-    return isSnapshotVersion
-            ? imageNameWithVersion + "-" + gitShortCommit
-            : imageNameWithVersion
-}
-
-project.ext.getDockerImageNameShortCommit = {
-    return imageName + ":" + gitShortCommit
-}
-
-docker {
-    dependsOn copyBootJar
-    name getDockerImageNameFull()
-    tags 'dev'
-    dockerfile file('Dockerfile')
-    files jarPath
-    // buildArgs([JAR_PATH: jarPath ])
-}
-tasks.docker.enabled = canBuildImage
-
-task buildImage {
-    enabled = canBuildImage
-    dependsOn tasks.docker
-    dependsOn tasks.dockerTag
+task buildImage(type: Exec) {
+    dependsOn tasks.bootJar
+    description 'Build OCI image'
+    commandLine("sh", "-c", "docker build --build-arg spring_boot_jar=$bootJarPath -t $ociImageNameFull ."
+            + " && docker tag $ociImageNameFull $ociImageNameDev")
 }
 
 task pushImage(type: Exec) {
-    enabled canPush
-    commandLine "sh", "-c",
-            "docker login -u $project.nexusUser -p $project.nexusPassword nexus.iex.ec && " +
-            "docker push ${getDockerImageNameFull()} && " +
-            "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && " +
-            "docker push ${getDockerImageNameShortCommit()} && " +
-            "docker logout"
     dependsOn tasks.buildImage
+    commandLine("sh", "-c", "docker login -u $nexusUser -p $nexusPassword nexus.iex.ec"
+            + " && docker tag  $ociImageNameFull $ociImageNameShortCommit"
+            + " && docker push $ociImageNameShortCommit"
+            + " && docker push $ociImageNameFull"
+            + " && docker logout")
 }
 
 // ##################
