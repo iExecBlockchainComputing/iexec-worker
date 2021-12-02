@@ -194,15 +194,6 @@ task buildImage(type: Exec) {
             + " && docker tag $ociImageNameFull $ociImageNameDev")
 }
 
-task pushImage(type: Exec) {
-    dependsOn tasks.buildImage
-    commandLine("sh", "-c", "docker login -u $nexusUser -p $nexusPassword nexus.iex.ec"
-            + " && docker tag  $ociImageNameFull $ociImageNameShortCommit"
-            + " && docker push $ociImageNameShortCommit"
-            + " && docker push $ociImageNameFull"
-            + " && docker logout")
-}
-
 // ##################
 // #     proxy     #
 // ##################
