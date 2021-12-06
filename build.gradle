@@ -189,6 +189,8 @@ task copyBootJar(type: Copy) {
 // #     docker     #
 // ##################
 
+ext.bootJarPath = relativePath(tasks.bootJar.outputs.files.singleFile)
+
 project.ext.getDockerImageNameFull = {
     def imageNameWithVersion = imageName + ":${version}"
     return isSnapshotVersion
