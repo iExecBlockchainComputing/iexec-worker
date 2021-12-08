@@ -8,7 +8,6 @@ plugins {
     id 'jacoco'
     id 'org.sonarqube' version '3.3'
     id 'maven-publish'
-    id 'com.palantir.docker' version '0.25.0'
 }
 
 group = 'com.iexec.worker'
@@ -139,7 +138,6 @@ def isMasterBranch = gitBranch == "master"
 def isDevelopBranch = gitBranch == "develop"
 def canPush = (isMasterBranch || isDevelopBranch ) &&
         project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
-def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
 def isSnapshotVersion = project.version.contains("SNAPSHOT")
 
 project.ext.getNexusMaven = {
@@ -171,62 +169,16 @@ publishing {
 
 publish.enabled canPush
 
-def canBuildImage = (isMasterBranch || isDevelopBranch ) ||
-        project.hasProperty("forceDockerBuild")
-def imageName = "nexus.iex.ec/iexec-worker"
-def buildDir = 'build/libs/'
-def jarName = 'iexec-worker.jar'
-def jarPath = buildDir + jarName
+ext.bootJarPath    = relativePath(tasks.bootJar.outputs.files.singleFile)
+ext.gitShortCommit = 'git rev-parse --short=8 HEAD'.execute().text.trim()
+ext.ociImageName   = "local/${rootProject.name}"
 
-task copyBootJar(type: Copy) {
-    dependsOn bootJar
-    from(tasks.bootJar.outputs.files.singleFile)
-    into(buildDir)
-    rename(tasks.bootJar.outputs.files.singleFile.name, jarName)
-}
-
-// ##################
-// #     docker     #
-// ##################
-
-ext.bootJarPath = relativePath(tasks.bootJar.outputs.files.singleFile)
-
-project.ext.getDockerImageNameFull = {
-    def imageNameWithVersion = imageName + ":${version}"
-    return isSnapshotVersion
-            ? imageNameWithVersion + "-" + gitShortCommit
-            : imageNameWithVersion
-}
-
-project.ext.getDockerImageNameShortCommit = {
-    return imageName + ":" + gitShortCommit
-}
-
-docker {
-    dependsOn copyBootJar
-    name getDockerImageNameFull()
-    tags 'dev'
-    dockerfile file('Dockerfile')
-    files jarPath
-    // buildArgs([JAR_PATH: jarPath ])
-}
-tasks.docker.enabled = canBuildImage
-
-task buildImage {
-    enabled = canBuildImage
-    dependsOn tasks.docker
-    dependsOn tasks.dockerTag
-}
-
-task pushImage(type: Exec) {
-    enabled canPush
-    commandLine "sh", "-c",
-            "docker login -u $project.nexusUser -p $project.nexusPassword nexus.iex.ec && " +
-            "docker push ${getDockerImageNameFull()} && " +
-            "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && " +
-            "docker push ${getDockerImageNameShortCommit()} && " +
-            "docker logout"
-    dependsOn tasks.buildImage
+task buildImage(type: Exec) {
+    group       'Build'
+    description 'Builds an OCI image from a Dockerfile.'
+    dependsOn    bootJar
+    commandLine ("sh", "-c", "docker build --build-arg spring_boot_jar=$bootJarPath -t $ociImageName:$gitShortCommit ."
+            + " && docker tag $ociImageName:$gitShortCommit $ociImageName:dev")
 }
 
 // ##################
