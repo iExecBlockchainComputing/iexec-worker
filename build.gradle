@@ -101,6 +101,11 @@ test {
     }
 }
 
+task itest {
+    group 'Verification'
+    description 'Runs the integration tests.'
+}
+
 jacoco {
     toolVersion = "0.8.7"
 }
