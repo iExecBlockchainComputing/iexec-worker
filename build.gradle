@@ -8,7 +8,6 @@ plugins {
     id 'jacoco'
     id 'org.sonarqube' version '3.3'
     id 'maven-publish'
-    id 'com.palantir.docker' version '0.25.0'
 }
 
 group = 'com.iexec.worker'
@@ -102,6 +101,11 @@ test {
     }
 }
 
+task itest {
+    group 'Verification'
+    description 'Runs the integration tests.'
+}
+
 jacoco {
     toolVersion = "0.8.7"
 }
@@ -130,27 +134,6 @@ task createVersion(type: Copy) {
 // the createVersion task should be called before compileJava or the version service will not work
 compileJava.dependsOn createVersion
 
-// ##################
-// #    artifact    #
-// ##################
-
-def gitBranch = 'git name-rev --name-only HEAD'.execute().text.trim()
-def isMasterBranch = gitBranch == "master"
-def isDevelopBranch = gitBranch == "develop"
-def canPush = (isMasterBranch || isDevelopBranch ) &&
-        project.hasProperty("nexusUser") && project.hasProperty("nexusPassword")
-def gitShortCommit = 'git rev-parse --short HEAD'.execute().text.trim()
-def isSnapshotVersion = project.version.contains("SNAPSHOT")
-
-project.ext.getNexusMaven = {
-    def nexusMavenBase = "https://nexus.iex.ec/repository"
-    if (isSnapshotVersion) {
-        return nexusMavenBase + "/maven-snapshots/"
-    } else {
-        return nexusMavenBase + "/maven-releases/"
-    }
-}
-
 publishing {
     publications {
         maven(MavenPublication) {
@@ -161,70 +144,24 @@ publishing {
     repositories {
         maven {
             credentials {
-                username nexusUser
-                password nexusPassword
+                username project.hasProperty('nexusUser') ? nexusUser : ''
+                password project.hasProperty('nexusPassword') ? nexusPassword : ''
             }
-            url getNexusMaven
+            url project.hasProperty('nexusUrl') ? nexusUrl : ''
         }
     }
 }
 
-publish.enabled canPush
+ext.bootJarPath    = relativePath(tasks.bootJar.outputs.files.singleFile)
+ext.gitShortCommit = 'git rev-parse --short=8 HEAD'.execute().text.trim()
+ext.ociImageName   = 'local/' + ['bash', '-c', 'basename $(git config --get remote.origin.url) .git'].execute().text.trim()
 
-def canBuildImage = (isMasterBranch || isDevelopBranch ) ||
-        project.hasProperty("forceDockerBuild")
-def imageName = "nexus.iex.ec/iexec-worker"
-def buildDir = 'build/libs/'
-def jarName = 'iexec-worker.jar'
-def jarPath = buildDir + jarName
-
-task copyBootJar(type: Copy) {
-    dependsOn bootJar
-    from(tasks.bootJar.outputs.files.singleFile)
-    into(buildDir)
-    rename(tasks.bootJar.outputs.files.singleFile.name, jarName)
-}
-
-// ##################
-// #     docker     #
-// ##################
-
-project.ext.getDockerImageNameFull = {
-    def imageNameWithVersion = imageName + ":${version}"
-    return isSnapshotVersion
-            ? imageNameWithVersion + "-" + gitShortCommit
-            : imageNameWithVersion
-}
-
-project.ext.getDockerImageNameShortCommit = {
-    return imageName + ":" + gitShortCommit
-}
-
-docker {
-    dependsOn copyBootJar
-    name getDockerImageNameFull()
-    tags 'dev'
-    dockerfile file('Dockerfile')
-    files jarPath
-    // buildArgs([JAR_PATH: jarPath ])
-}
-tasks.docker.enabled = canBuildImage
-
-task buildImage {
-    enabled = canBuildImage
-    dependsOn tasks.docker
-    dependsOn tasks.dockerTag
-}
-
-task pushImage(type: Exec) {
-    enabled canPush
-    commandLine "sh", "-c",
-            "docker login -u $project.nexusUser -p $project.nexusPassword nexus.iex.ec && " +
-            "docker push ${getDockerImageNameFull()} && " +
-            "docker tag ${getDockerImageNameFull()} ${getDockerImageNameShortCommit()} && " +
-            "docker push ${getDockerImageNameShortCommit()} && " +
-            "docker logout"
-    dependsOn tasks.buildImage
+task buildImage(type: Exec) {
+    group       'Build'
+    description 'Builds an OCI image from a Dockerfile.'
+    dependsOn    bootJar
+    commandLine ("sh", "-c", "docker build --build-arg spring_boot_jar=$bootJarPath -t $ociImageName:$gitShortCommit ."
+            + " && docker tag $ociImageName:$gitShortCommit $ociImageName:dev")
 }
 
 // ##################
