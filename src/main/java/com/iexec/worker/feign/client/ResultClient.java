@@ -32,7 +32,7 @@ public interface ResultClient {
     @GetMapping("/results/challenge")
     ResponseEntity<Eip712Challenge> getChallenge(@RequestParam(name = "chainId") Integer chainId) throws FeignException;
 
-    @GetMapping("/results/login")
+    @PostMapping("/results/login")
     ResponseEntity<String> login(@RequestParam(name = "chainId") Integer chainId,
                                           @RequestBody String signedEip712Challenge) throws FeignException;
 
