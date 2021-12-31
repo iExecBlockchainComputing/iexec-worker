@@ -22,6 +22,8 @@
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
     <logger name="org.springframework.web" level="${LOG_LEVEL}"/>
 
+    <logger name="com.github.dockerjava" level="DEBUG"/>
+
     <!-- Graylog -->
     <springProperty name="graylogHost" source="graylog.host"/>
     <springProperty name="graylogPort" source="graylog.port"/>
