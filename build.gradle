@@ -14,6 +14,15 @@ group = 'com.iexec.worker'
 sourceCompatibility = 11
 targetCompatibility = 11
 
+ext {
+    springCloudVersion = '2021.0.0'
+    gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+}
+
+if (gitBranch != 'main' && gitBranch != 'master' && ! (gitBranch ==~ '(release|hotfix|support)/.*')) {
+    version += '-NEXT-SNAPSHOT'
+}
+
 repositories {
     mavenLocal()
     mavenCentral()
@@ -32,11 +41,6 @@ configurations {
         exclude group: 'junit', module: 'junit'
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
     }
-}
-
-
-ext {
-    springCloudVersion = '2021.0.0'
 }
 
 dependencyManagement {
