@@ -16,10 +16,10 @@
 
 package com.iexec.worker.docker;
 
-import com.github.dockerjava.api.exception.DockerException;
 import com.iexec.common.docker.DockerLogs;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
@@ -64,7 +64,7 @@ public class DockerServiceTests {
     @Test
     public void shouldGetUnauthenticatedClient() {
         DockerClientInstance dockerClientInstance = dockerService.getClient();
-        assertThat(dockerClientInstance.getClient().authConfig().getPassword()).isNull();
+        assertThat(dockerClientInstance).isEqualTo(DockerClientFactory.getDockerClientInstance());
     }
 
     /**
@@ -163,10 +163,10 @@ public class DockerServiceTests {
         String imageName = registry + "/name:tag";
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.empty());
+
         DockerClientInstance instance = dockerService.getClient(imageName);
-        assertThat(instance.getClient().authConfig().getRegistryAddress()).isEqualTo(registry);
-        assertThat(instance.getClient().authConfig().getPassword()).isNull();
         verify(dockerService, never()).getClient(anyString(), anyString(), anyString());
+        assertThat(instance).isEqualTo(DockerClientFactory.getDockerClientInstance(registry));
     }
 
     @Test
@@ -179,12 +179,13 @@ public class DockerServiceTests {
                 .build();
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
-        doThrow(DockerException.class)
+        doThrow(Exception.class)
                 .when(dockerService)
                 .getClient(registry, credentials.getUsername(), credentials.getPassword());
+
         DockerClientInstance instance = dockerService.getClient(imageName);
-        assertThat(instance.getClient().authConfig().getRegistryAddress()).isEqualTo(registry);
         verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
+        assertThat(instance).isEqualTo(DockerClientFactory.getDockerClientInstance(registry));
     }
 
     /**

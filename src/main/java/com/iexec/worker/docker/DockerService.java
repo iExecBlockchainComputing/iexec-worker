@@ -16,8 +16,6 @@
 
 package com.iexec.worker.docker;
 
-import com.github.dockerjava.api.model.AuthConfig;
-import com.github.dockerjava.core.NameParser;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
@@ -31,12 +29,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
+
+import static com.iexec.common.docker.client.DockerClientInstance.parseRegistryAddress;
 
 @Slf4j
 @Service
@@ -283,29 +282,6 @@ public class DockerService {
             return false;
         }
         return runningContainersRecord.remove(containerName);
-    }
-
-    /**
-     * Parse Docker image name and its registry address. If no registry is specified
-     * the default Docker registry {@link DockerClientInstance#DEFAULT_DOCKER_REGISTRY}
-     * is returned.
-     * <p>
-     * e.g. host.xyz/image:tag => host.xyz,
-     * username/image:tag => docker.io
-     * docker.io/username/image:tag => docker.io
-     * 
-     * @param imageName
-     * @return
-     */
-    private static String parseRegistryAddress(String imageName) {
-        NameParser.ReposTag reposTag = NameParser.parseRepositoryTag(imageName);
-        NameParser.HostnameReposName hostnameReposName = NameParser.resolveRepositoryName(reposTag.repos);
-        String registry = hostnameReposName.hostname;
-        return registry == AuthConfig.DEFAULT_SERVER_ADDRESS
-                // to be consistent, we use common default address
-                // everywhere for the default DockerHub registry
-                ? DockerClientInstance.DEFAULT_DOCKER_REGISTRY
-                : registry;
     }
 
     private boolean shouldPrintDeveloperLogs(DockerRunRequest dockerRunRequest) {
