@@ -350,7 +350,7 @@ public class ResultServiceTests {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("")
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                 .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
@@ -373,7 +373,7 @@ public class ResultServiceTests {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("0x01")
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                 .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))

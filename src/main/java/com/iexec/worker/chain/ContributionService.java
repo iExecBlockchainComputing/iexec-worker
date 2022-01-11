@@ -179,7 +179,7 @@ public class ContributionService {
                 return null;
             }
         } else {
-            enclaveSignature = BytesUtils.EMPTY_HEXASTRING_64;
+            enclaveSignature = BytesUtils.EMPTY_HEX_STRING_32;
         }
 
         return Contribution.builder()

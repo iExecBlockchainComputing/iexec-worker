@@ -71,8 +71,9 @@ public class PostComputeService {
             return false;
         }
         // encrypt result if needed
-        if (taskDescription.isResultEncryption() && !resultService.encryptResult(chainTaskId)) {
-            log.error("Failed to encrypt result [chainTaskId:{}]", chainTaskId);
+        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
+            log.error("Result encryption is not supported for standard tasks" +
+                    " [chainTaskId:{}]", chainTaskId);
             return false;
         }
 

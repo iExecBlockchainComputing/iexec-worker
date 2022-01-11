@@ -232,7 +232,7 @@ public class ContributionServiceTests {
                         .resultHash(resultHash)
                         .resultSeal(resultSeal)
                         .enclaveChallenge(teeWorkerpoolAuth.getEnclaveChallenge())
-                        .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                        .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                         .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
                         .build()
         );

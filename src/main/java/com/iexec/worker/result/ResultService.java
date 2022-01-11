@@ -389,7 +389,7 @@ public class ResultService {
             return false;
         }
         if (StringUtils.isEmpty(computedFile.getResultDigest())
-                || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
+                || !BytesUtils.isBytes32(computedFile.getResultDigest())) {
             log.error("Cannot write computed file if result digest is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
