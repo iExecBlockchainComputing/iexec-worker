@@ -348,7 +348,7 @@ class RevealServiceTests {
         // 0x200 in hexa = 512 in decimal
         response.log =
                 new Log(false, "logIndex", "transactionIndex", "transactionHash",
-                        "blockHash", "0x200", "address", "data", "type", new ArrayList<String>());
+                        "blockHash", "0x200", "address", "data", "type", new ArrayList<>());
 
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(response);
         assertThat(revealService.reveal(chainTaskId, deterministHash).get().getBlockNumber()).isEqualTo(512);
