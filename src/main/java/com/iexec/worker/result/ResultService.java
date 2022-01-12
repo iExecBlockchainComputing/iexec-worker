@@ -299,7 +299,7 @@ public class ResultService {
         Integer chainId = blockchainAdapterConfigurationService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
-        if (!oEip712Challenge.isPresent()) {
+        if (oEip712Challenge.isEmpty()) {
             return "";
         }
 

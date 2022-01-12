@@ -57,7 +57,7 @@ public class ContributionService {
 
     public Optional<ReplicateStatusCause> getCannotContributeStatusCause(String chainTaskId) {
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
-        if (!optionalChainTask.isPresent()) {
+        if (optionalChainTask.isEmpty()) {
             return Optional.of(CHAIN_UNREACHABLE);
         }
 
@@ -99,7 +99,7 @@ public class ContributionService {
     private boolean hasEnoughStakeToContribute(ChainTask chainTask) {
         Optional<ChainAccount> optionalChainAccount = iexecHubService.getChainAccount();
         Optional<ChainDeal> optionalChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
-        if (!optionalChainAccount.isPresent() || !optionalChainDeal.isPresent()) {
+        if (optionalChainAccount.isEmpty() || optionalChainDeal.isEmpty()) {
             return false;
         }
         return optionalChainAccount.get().getDeposit() >= optionalChainDeal.get().getWorkerStake().longValue();
@@ -115,7 +115,7 @@ public class ContributionService {
 
     private boolean isContributionUnsetToContribute(ChainTask chainTask) {
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTask.getChainTaskId());
-        if (!optionalContribution.isPresent()) return false;
+        if (optionalContribution.isEmpty()) return false;
 
         ChainContribution chainContribution = optionalContribution.get();
         return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
