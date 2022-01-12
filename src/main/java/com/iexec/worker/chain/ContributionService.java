@@ -123,9 +123,8 @@ public class ContributionService {
 
     public boolean isContributionDeadlineReached(String chainTaskId) {
         Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-        if (!oTask.isPresent()) return true;
 
-        return !isBeforeContributionDeadlineToContribute(oTask.get());
+        return oTask.isEmpty() || !isBeforeContributionDeadlineToContribute(oTask.get());
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
