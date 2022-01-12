@@ -18,7 +18,6 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.security.Signature;
 import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.SignatureUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
