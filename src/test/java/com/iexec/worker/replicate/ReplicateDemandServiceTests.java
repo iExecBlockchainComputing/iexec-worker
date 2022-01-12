@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 
-public class ReplicateDemandServiceTests {
+class ReplicateDemandServiceTests {
 
     private final static String ASK_FOR_REPLICATE_THREAD_NAME = "ask-for-rep-1";
     private final static String CHAIN_TASK_ID = "chainTaskId";
@@ -62,12 +62,12 @@ public class ReplicateDemandServiceTests {
     private ReplicateDemandService replicateDemandService;
 
     @BeforeEach
-    public void init() {
+    void init() {
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    public void shouldRunAskForReplicateAsynchronouslyWhenTriggeredOneTime() throws InterruptedException {
+    void shouldRunAskForReplicateAsynchronouslyWhenTriggeredOneTime() throws InterruptedException {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
@@ -90,7 +90,7 @@ public class ReplicateDemandServiceTests {
      * @throws InterruptedException
      */
     @Test
-    public void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously()
+    void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -111,7 +111,7 @@ public class ReplicateDemandServiceTests {
     }
 
     @Test
-    public void shouldRunAskForReplicateTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes()
+    void shouldRunAskForReplicateTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -151,7 +151,7 @@ public class ReplicateDemandServiceTests {
      * @throws Exception
      */
     @Test
-    public void shouldDropThirdAndForthAskForReplicateRequestsWhenTriggeredMultipleTimes()
+    void shouldDropThirdAndForthAskForReplicateRequestsWhenTriggeredMultipleTimes()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -174,7 +174,7 @@ public class ReplicateDemandServiceTests {
     }
 
     @Test
-    public void shouldAskForReplicate() {
+    void shouldAskForReplicate() {
         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -198,7 +198,7 @@ public class ReplicateDemandServiceTests {
     }
 
     @Test
-    public void shouldNotAskForReplicateSinceLocalBlockchainNotSynchronized() {
+    void shouldNotAskForReplicateSinceLocalBlockchainNotSynchronized() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
 
         replicateDemandService.askForReplicate();
@@ -208,7 +208,7 @@ public class ReplicateDemandServiceTests {
     }
 
     @Test
-    public void shouldNotAskForReplicateSinceWalletIsDry() {
+    void shouldNotAskForReplicateSinceWalletIsDry() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
 
@@ -219,7 +219,7 @@ public class ReplicateDemandServiceTests {
     }
 
     @Test
-    public void shouldNotAskForReplicateSinceNoAvailableReplicate() {
+    void shouldNotAskForReplicateSinceNoAvailableReplicate() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
@@ -232,7 +232,7 @@ public class ReplicateDemandServiceTests {
     }
 
     @Test
-    public void shouldNotAskForReplicateSinceTaskIsNotInitialized() {
+    void shouldNotAskForReplicateSinceTaskIsNotInitialized() {
         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);

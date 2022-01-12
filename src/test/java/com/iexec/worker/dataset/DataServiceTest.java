@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-public class DataServiceTest {
+class DataServiceTest {
 
     public static final String CHAIN_TASK_ID = "chainTaskId";
     public static final String URI =
@@ -64,7 +64,7 @@ public class DataServiceTest {
             .build();
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         iexecIn = temporaryFolder.getAbsolutePath();
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
@@ -72,14 +72,14 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldDownloadStandardTaskDataset() throws Exception {
+    void shouldDownloadStandardTaskDataset() throws Exception {
         String filepath = dataService.downloadStandardDataset(taskDescription);
         assertThat(filepath).isEqualTo(iexecIn + "/" + FILENAME);
     }
 
 
     @Test
-    public void shouldNotDownloadDatasetSinceEmptyChainTaskId() throws Exception {
+    void shouldNotDownloadDatasetSinceEmptyChainTaskId() throws Exception {
         taskDescription.setChainTaskId("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
@@ -89,7 +89,7 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldNotDownloadDatasetSinceEmptyUri() throws Exception {
+    void shouldNotDownloadDatasetSinceEmptyUri() throws Exception {
         taskDescription.setDatasetUri("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
@@ -99,7 +99,7 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldNotDownloadDatasetSinceEmptyFilename() throws Exception {
+    void shouldNotDownloadDatasetSinceEmptyFilename() throws Exception {
         taskDescription.setDatasetName("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
@@ -109,7 +109,7 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldNotDownloadDatasetSinceEmptyParentDirectory() throws Exception {
+    void shouldNotDownloadDatasetSinceEmptyParentDirectory() throws Exception {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
@@ -119,7 +119,7 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldNotDownloadDatasetSinceBadChecksum() throws Exception {
+    void shouldNotDownloadDatasetSinceBadChecksum() throws Exception {
         taskDescription.setDatasetChecksum("badChecksum");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
@@ -129,14 +129,14 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldDownloadDatasetSinceEmptyOnchainChecksum() throws Exception {
+    void shouldDownloadDatasetSinceEmptyOnchainChecksum() throws Exception {
         taskDescription.setDatasetChecksum("");
         assertThat(dataService.downloadStandardDataset(taskDescription))
                 .isEqualTo(iexecIn + "/" + FILENAME);
     }
 
     @Test
-    public void shouldDownloadInputFiles() throws Exception {
+    void shouldDownloadInputFiles() throws Exception {
         List<String> uris = List.of(URI);
         dataService.downloadStandardInputFiles(CHAIN_TASK_ID, uris);
         File inputFile = new File(iexecIn, "iExec-RLC-RLC-icon.png");
@@ -144,7 +144,7 @@ public class DataServiceTest {
     }
 
     @Test
-    public void shouldNotDownloadInputFilesSinceNoUriList() throws Exception {
+    void shouldNotDownloadInputFilesSinceNoUriList() throws Exception {
         WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardInputFiles(CHAIN_TASK_ID, null));

@@ -33,18 +33,18 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 
-public class EnclaveAuthorizationServiceTests {
+class EnclaveAuthorizationServiceTests {
 
     @InjectMocks
     private EnclaveAuthorizationService enclaveAuthorizationService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    public void isVerifiedEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    void isVerifiedEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
@@ -60,7 +60,7 @@ public class EnclaveAuthorizationServiceTests {
     }
 
     @Test
-    public void isNotVerifiedEnclaveSignatureSinceWrongResultHash() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    void isNotVerifiedEnclaveSignatureSinceWrongResultHash() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultHash = "0x1";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
@@ -76,7 +76,7 @@ public class EnclaveAuthorizationServiceTests {
     }
 
     @Test
-    public void isNotVerifiedEnclaveSignatureSinceWrongResultSeal() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    void isNotVerifiedEnclaveSignatureSinceWrongResultSeal() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x3";
@@ -92,7 +92,7 @@ public class EnclaveAuthorizationServiceTests {
     }
 
     @Test
-    public void isNotVerifiedEnclaveSignatureSinceWrongEnclaveChallenge() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    void isNotVerifiedEnclaveSignatureSinceWrongEnclaveChallenge() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
@@ -108,7 +108,7 @@ public class EnclaveAuthorizationServiceTests {
     }
 
     @Test
-    public void isNotVerifiedEnclaveSignatureSinceWrongEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    void isNotVerifiedEnclaveSignatureSinceWrongEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";

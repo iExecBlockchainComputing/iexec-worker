@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-public class DockerRegistryConfigurationTests {
+class DockerRegistryConfigurationTests {
 
     // Get a valid instance of the class under test
     DockerRegistryConfiguration getValidConfiguration() {
@@ -43,7 +43,7 @@ public class DockerRegistryConfigurationTests {
     }
 
     @Test
-    public void shouldNotThrowWhenRegistryListIsEmpty() {
+    void shouldNotThrowWhenRegistryListIsEmpty() {
         DockerRegistryConfiguration configuration1 = getValidConfiguration();
         configuration1.setRegistries(null);
         assertDoesNotThrow(() -> configuration1.validateRegistries());
@@ -54,13 +54,13 @@ public class DockerRegistryConfigurationTests {
     }
 
     @Test
-    public void shouldNotThrowWhenRegistryListIsValid() {
+    void shouldNotThrowWhenRegistryListIsValid() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         assertDoesNotThrow(() -> configuration.validateRegistries());
     }
 
     @Test
-    public void shouldThrowWhenRegistryIsMissingPassword() {
+    void shouldThrowWhenRegistryIsMissingPassword() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         configuration.getRegistries().get(0).setPassword(null);
         assertThrows(Exception.class, () -> configuration.validateRegistries());
@@ -69,7 +69,7 @@ public class DockerRegistryConfigurationTests {
     // getRegistryCredentials
 
     @Test
-    public void shouldGetAuthForRegistry() {
+    void shouldGetAuthForRegistry() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         RegistryCredentials credentials = configuration.getRegistries().get(0);
 
@@ -82,20 +82,20 @@ public class DockerRegistryConfigurationTests {
     }
 
     @Test
-    public void shouldNotGetAuthForRegistrySinceNoRegistries() {
+    void shouldNotGetAuthForRegistrySinceNoRegistries() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         configuration.setRegistries(null); // no list
         assertThat(configuration.getRegistryCredentials("whatever")).isEmpty();
     }
 
     @Test
-    public void shouldNotGetAuthForRegistrySinceUnknownRegistry() {
+    void shouldNotGetAuthForRegistrySinceUnknownRegistry() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         assertThat(configuration.getRegistryCredentials("unknownRegistry")).isEmpty();
     }
 
     @Test
-    public void shouldNotGetAuthForRegistrySinceMissingUsernameInConfig() {
+    void shouldNotGetAuthForRegistrySinceMissingUsernameInConfig() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         RegistryCredentials credentials = configuration.getRegistries().get(0);
         credentials.setUsername(null); // no username
@@ -103,7 +103,7 @@ public class DockerRegistryConfigurationTests {
     }
 
     @Test
-    public void shouldNotGetAuthForRegistrySinceMissingPasswordInConfig() {
+    void shouldNotGetAuthForRegistrySinceMissingPasswordInConfig() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         RegistryCredentials credentials = configuration.getRegistries().get(0);
         credentials.setPassword(null); // no password

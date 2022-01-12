@@ -47,7 +47,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-public class PostComputeServiceTests {
+class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
@@ -89,7 +89,7 @@ public class PostComputeServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
@@ -103,7 +103,7 @@ public class PostComputeServiceTests {
      */
 
     @Test
-    public void shouldRunStandardPostCompute() throws IOException {
+    void shouldRunStandardPostCompute() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
@@ -117,7 +117,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
+    void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
@@ -129,7 +129,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
+    void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         //don't create iexec_out.zip
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
@@ -147,7 +147,7 @@ public class PostComputeServiceTests {
      */
 
     @Test
-    public void shouldRunTeePostComputeAndConnectToLasNetwork() {
+    void shouldRunTeePostComputeAndConnectToLasNetwork() {
         String lasNetworkName = "networkName";
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
@@ -202,7 +202,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunTeePostComputeSinceDockerImageNotFoundLocally() {
+    void shouldNotRunTeePostComputeSinceDockerImageNotFoundLocally() {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
@@ -223,7 +223,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldRunTeePostComputeWithFailDockerResponse() {
+    void shouldRunTeePostComputeWithFailDockerResponse() {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)

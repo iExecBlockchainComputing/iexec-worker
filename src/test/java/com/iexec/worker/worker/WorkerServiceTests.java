@@ -39,7 +39,7 @@ import java.util.Collections;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-public class WorkerServiceTests {
+class WorkerServiceTests {
 
     public static final String SESSION_ID = "SESSION_ID";
     public static final String OTHER_SESSION_ID = "OTHER_SESSION_ID";
@@ -66,13 +66,13 @@ public class WorkerServiceTests {
     private DockerService dockerService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
 
     }
 
     @Test
-    public void shouldRegisterWorker() {
+    void shouldRegisterWorker() {
         String version = "version";
         String walletAddress = "walletAddress";
         String name = "name";
@@ -115,7 +115,7 @@ public class WorkerServiceTests {
     }
 
     @Test
-    public void shouldNotRegisterWorkerSinceBadVersion() {
+    void shouldNotRegisterWorkerSinceBadVersion() {
         String version = "version";
         when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
         when(versionService.getVersion()).thenReturn("someOtherVersion");
@@ -127,7 +127,7 @@ public class WorkerServiceTests {
     }
 
     @Test
-    public void shouldRestartGracefully() {
+    void shouldRestartGracefully() {
         when(customCoreFeignClient.getComputingTasks())
                 .thenReturn(Collections.emptyList());
 
@@ -139,7 +139,7 @@ public class WorkerServiceTests {
     }
 
     @Test
-    public void shouldNotRestartGracefullySinceComputingTasksInProgress() {
+    void shouldNotRestartGracefullySinceComputingTasksInProgress() {
         when(customCoreFeignClient.getComputingTasks())
                 .thenReturn(Collections.singletonList("chainTaskId"));
 

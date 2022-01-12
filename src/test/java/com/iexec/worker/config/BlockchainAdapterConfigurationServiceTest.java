@@ -12,7 +12,7 @@ import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-public class BlockchainAdapterConfigurationServiceTest {
+class BlockchainAdapterConfigurationServiceTest {
     private static final Integer CHAIN_ID = 0;
     private static final boolean IS_SIDECHAIN = true;
     private static final String NODE_ADDRESS = "https://node";
@@ -23,12 +23,12 @@ public class BlockchainAdapterConfigurationServiceTest {
     private CustomBlockchainAdapterClient customBlockchainAdapterClient;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    public void shouldGetBlockTime() {
+    void shouldGetBlockTime() {
         when(customBlockchainAdapterClient.getPublicChainConfig()).thenReturn(
                 PublicChainConfig.builder()
                         .chainId(CHAIN_ID)

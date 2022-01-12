@@ -43,7 +43,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-public class AppComputeServiceTests {
+class AppComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
@@ -83,13 +83,13 @@ public class AppComputeServiceTests {
     private SconeConfiguration sconeConfig;
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
-    public void shouldRunCompute() {
+    void shouldRunCompute() {
         taskDescription.setTeeTask(false);
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
@@ -126,7 +126,7 @@ public class AppComputeServiceTests {
     }
 
     @Test
-    public void shouldRunComputeWithTeeAndConnectAppToLas() {
+    void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
         taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
                 .builder().heapSize(heapSize).build());
@@ -174,7 +174,7 @@ public class AppComputeServiceTests {
     }
 
     @Test
-    public void shouldRunComputeWithFailDockerResponse() {
+    void shouldRunComputeWithFailDockerResponse() {
         taskDescription.setTeeTask(false);
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);

@@ -40,7 +40,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import static com.iexec.common.notification.TaskNotificationType.*;
 import static org.mockito.Mockito.*;
 
-public class TaskNotificationServiceTest {
+class TaskNotificationServiceTest {
 
     private static final String CHAIN_TASK_ID = "0xfoobar";
 
@@ -63,13 +63,13 @@ public class TaskNotificationServiceTest {
     private TaskDescription taskDescription;
 
     @BeforeEach
-    public void init() {
+    void init() {
         MockitoAnnotations.openMocks(this);
         taskDescription = mock(TaskDescription.class);
     }
 
     @Test
-    public void shouldNotDoAnything() {
+    void shouldNotDoAnything() {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(null)
                 .build();
@@ -82,7 +82,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldStoreWorkerpoolAuthorizationIfPresent() {
+    void shouldStoreWorkerpoolAuthorizationIfPresent() {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTINUE)
                 .taskNotificationExtra(TaskNotificationExtra.builder().workerpoolAuthorization(new WorkerpoolAuthorization()).build())
@@ -95,7 +95,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldAbortSinceNoTaskDescription() {
+    void shouldAbortSinceNoTaskDescription() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
@@ -113,7 +113,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldStart() {
+    void shouldStart() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
@@ -134,7 +134,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldDownloadApp() {
+    void shouldDownloadApp() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
@@ -155,7 +155,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldDownloadData() {
+    void shouldDownloadData() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_DATA)
@@ -182,7 +182,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldCompute() {
+    void shouldCompute() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPUTE)
@@ -203,7 +203,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldContribute() {
+    void shouldContribute() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTRIBUTE)
@@ -225,7 +225,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldReveal() {
+    void shouldReveal() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_REVEAL)
@@ -248,7 +248,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldUpload() {
+    void shouldUpload() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_UPLOAD)
@@ -272,7 +272,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldComplete() {
+    void shouldComplete() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPLETE)
@@ -290,7 +290,7 @@ public class TaskNotificationServiceTest {
     }
 
     @Test
-    public void shouldAbort() {
+    void shouldAbort() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
