@@ -76,7 +76,6 @@ class PingServiceTests {
      * In this test the thread that runs "pingScheduler()" method will sleep after its
      * execution to make sure that is considered busy. The second call to the method
      * "pingScheduler()" should not be executed.
-     * @throws InterruptedException
      */
     @Test
     void shouldRunPingSchedulerOnlyOnceWhenTriggeredTwoTimesSimultaneously()
@@ -137,7 +136,6 @@ class PingServiceTests {
      * As you will notice, in the test we check that the method was called 2 times not
      * 1 time. That's because the queue is instantly emptied the first time so the queue
      * can accept the second request. So 2 is the least we can have.
-     * @throws Exception
      */
     @Test
     void shouldDropThirdAndForthPingRequestsWhenTriggeredMultipleTimes()

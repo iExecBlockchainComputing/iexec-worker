@@ -44,9 +44,6 @@ public class AsyncUtils {
 
     /**
      * Print custom error message when a problem occurs in an async task.
-     * 
-     * @param e
-     * @return
      */
     private static Void handleAsyncTaskError(String context, Throwable e) {
         if (e != null) {

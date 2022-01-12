@@ -107,9 +107,7 @@ public class StompClient {
      * Subscribe to a topic and provide a {@link StompFrameHandler}
      * to handle received messages.
      * 
-     * @param topic
      * @param messageHandler an implementation of {@link StompFrameHandler}
-     * @return
      */
     Optional<Subscription> subscribeToTopic(String topic, StompFrameHandler messageHandler) {
         Objects.requireNonNull(topic, "topic must not be null");
@@ -232,8 +230,6 @@ public class StompClient {
 
     /**
      * Sleep {@link StompClient#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
-     * 
-     * @throws InterruptedException
      */
     void backOff() throws InterruptedException {
         TimeUnit.SECONDS.sleep(SESSION_REFRESH_BACK_OFF_DELAY);

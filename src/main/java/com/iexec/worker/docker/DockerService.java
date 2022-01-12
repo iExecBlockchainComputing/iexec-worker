@@ -74,7 +74,6 @@ public class DockerService {
      * e.g. for the image "registry.xyz/image:tag" we try to connect to
      * "registry.xyz" and for "iexechub/image:tag" we try to connect to docker.io.
      * 
-     * @param imageName
      * @return an authenticated Docker client if credentials for the image's registry are
      * to be found, an unauthenticated client otherwise.
      */
@@ -99,10 +98,6 @@ public class DockerService {
     /**
      * Get a Docker client that is authenticated to the specified registry.
      * 
-     * @param registryAddress
-     * @param registryUsername
-     * @param registryPassword
-     * @return
      * @throws Exception when on of the arguments is blank or when authentication fails
      */
     public DockerClientInstance getClient(String registryAddress,
@@ -167,8 +162,6 @@ public class DockerService {
      * <p>
      * Expected: taskBaseDir/input:/iexec_in
      *
-     * @param chainTaskId
-     * @return
      */
     public String getInputBind(String chainTaskId) {
         return workerConfigService.getTaskInputDir(chainTaskId) + ":" +
@@ -181,8 +174,6 @@ public class DockerService {
      * <p>
      * Expected: taskBaseDir/output/iexec_out:/iexec_out
      *
-     * @param chainTaskId
-     * @return
      */
     public String getIexecOutBind(String chainTaskId) {
         return workerConfigService.getTaskIexecOutDir(chainTaskId) + ":" +
@@ -222,8 +213,6 @@ public class DockerService {
      * Stop a running container with the provided containerName and remove it from
      * running containers record. The container itself is not stopped here as it is
      * removed by its watcher thread.
-     * 
-     * @param containerName
      */
     void stopRunningContainer(String containerName) {
         if (!getClient().isContainerPresent(containerName)) {
@@ -243,8 +232,6 @@ public class DockerService {
 
     /**
      * Get the record of running containers. Added originally for testing purposes.
-     * 
-     * @return
      */
     Set<String> getRunningContainersRecord() {
         return runningContainersRecord;

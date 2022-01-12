@@ -87,10 +87,6 @@ public class ComputeManagerService {
      * <p>
      * TEE tasks: download pre-compute and post-compute images,
      * create SCONE secure session, and run pre-compute container.
-     * 
-     * @param taskDescription
-     * @param workerpoolAuth
-     * @return
      */
     public PreComputeResponse runPreCompute(TaskDescription taskDescription,
                                             WorkerpoolAuthorization workerpoolAuth) {

@@ -48,7 +48,6 @@ public class DataService {
      * Download dataset file for the given standard task and save
      * it in {@link IexecFileHelper#SLASH_IEXEC_IN}.
      * 
-     * @param taskDescription
      * @return downloaded dataset file path
      * @throws WorkflowException if download fails or bad checksum.
      */
@@ -82,10 +81,6 @@ public class DataService {
     /**
      * Download input files for the given standard task and save them
      * in the input folder.
-     * 
-     * @param chainTaskId
-     * @param uriList
-     * @throws WorkflowException
      */
     public void downloadStandardInputFiles(String chainTaskId, @Nonnull List<String> uriList)
             throws WorkflowException {
@@ -106,7 +101,6 @@ public class DataService {
 
     /**
      * This workflow is not supported anymore.
-     * @return
      */
     @Deprecated(forRemoval = true)
     public boolean isDatasetDecryptionNeeded(String chainTaskId) {
@@ -116,7 +110,6 @@ public class DataService {
 
     /**
      * This workflow is not supported anymore.
-     * @return
      */
     @Deprecated(forRemoval = true)
     public boolean decryptDataset(String chainTaskId, String datasetUri) {
@@ -128,10 +121,6 @@ public class DataService {
      * Download a file from a URI in the provided parent
      * directory and save it with the provided filename.
      * 
-     * @param chainTaskId
-     * @param uri
-     * @param parentDirectoryPath
-     * @param filename
      * @return absolute path of the saved file
      */
     private String downloadFile(String chainTaskId, String uri,
