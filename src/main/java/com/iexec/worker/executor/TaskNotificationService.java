@@ -77,7 +77,7 @@ public class TaskNotificationService {
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
-        ReplicateActionResponse actionResponse = null;
+        ReplicateActionResponse actionResponse;
         TaskNotificationType nextAction = null;
         log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
