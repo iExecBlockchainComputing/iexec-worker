@@ -153,7 +153,6 @@ public class TaskManagerService {
     /**
      * Download dataset file and input files if needed.
      * 
-     * @param chainTaskId
      * @return ReplicateActionResponse containing success
      * or error statuses.
      */
