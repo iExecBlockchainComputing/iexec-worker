@@ -18,7 +18,6 @@ package com.iexec.worker.docker;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
