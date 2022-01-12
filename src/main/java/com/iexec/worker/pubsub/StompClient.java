@@ -291,7 +291,7 @@ public class StompClient {
         }
     }
 
-    private class Lock {
+    private static class Lock {
         private final AtomicBoolean value = new AtomicBoolean(false);
 
         boolean isLocked() {
