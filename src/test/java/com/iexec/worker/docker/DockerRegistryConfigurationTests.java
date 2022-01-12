@@ -35,8 +35,6 @@ class DockerRegistryConfigurationTests {
                 .username("username1")
                 .password("password1")
                 .build();
-        List<RegistryCredentials> registries = new ArrayList<>();
-        registries.add(credentials);
         DockerRegistryConfiguration configuration = new DockerRegistryConfiguration();
         configuration.setRegistries(List.of(credentials));
         return configuration;
