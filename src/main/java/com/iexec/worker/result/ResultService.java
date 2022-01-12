@@ -322,16 +322,6 @@ public class ResultService {
         return isResultZipFound(chainTaskId);
     }
 
-    /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean encryptResult(String chainTaskId) {
-        throw new UnsupportedOperationException(
-            "Result encryption is not supported for standard tasks");
-    }
-
     public ComputedFile getComputedFile(String chainTaskId) {
         ComputedFile computedFile =
                 IexecFileHelper.readComputedFile(chainTaskId,
@@ -388,8 +378,7 @@ public class ResultService {
                     chainTaskId, computedFile);
             return false;
         }
-        if (StringUtils.isEmpty(computedFile.getResultDigest())
-                || !BytesUtils.isBytes32(computedFile.getResultDigest())) {
+        if (!BytesUtils.isNonZeroedBytes32(computedFile.getResultDigest())) {
             log.error("Cannot write computed file if result digest is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);

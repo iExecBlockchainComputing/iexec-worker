@@ -59,6 +59,13 @@ public class PostComputeService {
 
     public boolean runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
+        // result encryption is no more supported for standard tasks
+        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
+            log.error("Result encryption is not supported for standard tasks" +
+                    " [chainTaskId:{}]", chainTaskId);
+            return false;
+        }
+
         // create /output/iexec_out.zip
         ResultUtils.zipIexecOut(workerConfigService.getTaskIexecOutDir(chainTaskId)
                 , workerConfigService.getTaskOutputDir(chainTaskId));
@@ -68,12 +75,6 @@ public class PostComputeService {
                 workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON);
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
-        // encrypt result if needed
-        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
-            log.error("Result encryption is not supported for standard tasks" +
-                    " [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
