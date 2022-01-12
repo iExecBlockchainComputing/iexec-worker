@@ -25,7 +25,6 @@ import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
