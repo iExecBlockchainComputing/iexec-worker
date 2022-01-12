@@ -102,9 +102,10 @@ class SconeTeeServiceTests {
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(sconeConfig.getRegistryName()).thenReturn("unknownRegistry");
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            teeSconeService.startLasService();
-        });
+        Exception exception = assertThrows(
+                RuntimeException.class,
+                () -> teeSconeService.startLasService()
+        );
 
         Assertions.assertThat(exception.getMessage().contains("not from a known registry"))
                 .isTrue();

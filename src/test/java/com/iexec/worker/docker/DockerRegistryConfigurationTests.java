@@ -43,24 +43,24 @@ class DockerRegistryConfigurationTests {
     void shouldNotThrowWhenRegistryListIsEmpty() {
         DockerRegistryConfiguration configuration1 = getValidConfiguration();
         configuration1.setRegistries(null);
-        assertDoesNotThrow(() -> configuration1.validateRegistries());
+        assertDoesNotThrow(configuration1::validateRegistries);
 
         DockerRegistryConfiguration configuration2 = getValidConfiguration();
         configuration2.setRegistries(List.of());
-        assertDoesNotThrow(() -> configuration2.validateRegistries());
+        assertDoesNotThrow(configuration2::validateRegistries);
     }
 
     @Test
     void shouldNotThrowWhenRegistryListIsValid() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
-        assertDoesNotThrow(() -> configuration.validateRegistries());
+        assertDoesNotThrow(configuration::validateRegistries);
     }
 
     @Test
     void shouldThrowWhenRegistryIsMissingPassword() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         configuration.getRegistries().get(0).setPassword(null);
-        assertThrows(Exception.class, () -> configuration.validateRegistries());
+        assertThrows(Exception.class, configuration::validateRegistries);
     }
 
     // getRegistryCredentials
