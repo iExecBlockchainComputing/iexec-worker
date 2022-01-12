@@ -73,7 +73,7 @@ class DockerRegistryConfigurationTests {
 
         Optional<RegistryCredentials> authForRegistry =
                 configuration.getRegistryCredentials(credentials.getAddress());
-        assertThat(authForRegistry.isPresent());
+        assertThat(authForRegistry).isPresent();
         assertThat(authForRegistry.get().getAddress()).isEqualTo(credentials.getAddress());
         assertThat(authForRegistry.get().getUsername()).isEqualTo(credentials.getUsername());
         assertThat(authForRegistry.get().getPassword()).isEqualTo(credentials.getPassword());
