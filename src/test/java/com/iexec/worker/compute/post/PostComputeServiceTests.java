@@ -76,10 +76,6 @@ class PostComputeServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
-    private PublicConfigurationService publicConfigService;
-    @Mock
-    private ResultService resultService;
-    @Mock
     private TeeSconeService teeSconeService;
     @Mock
     private SconeConfiguration sconeConfig;

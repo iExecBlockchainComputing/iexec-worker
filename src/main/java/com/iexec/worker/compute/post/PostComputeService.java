@@ -40,19 +40,16 @@ public class PostComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final ResultService resultService;
     private final TeeSconeService teeSconeService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            ResultService resultService,
             TeeSconeService teeSconeService,
             TeeWorkflowConfiguration teeWorkflowConfig) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.resultService = resultService;
         this.teeSconeService = teeSconeService;
         this.teeWorkflowConfig = teeWorkflowConfig;
     }
