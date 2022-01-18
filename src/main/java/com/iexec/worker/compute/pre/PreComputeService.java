@@ -68,6 +68,8 @@ public class PreComputeService {
      * If the task contains a dataset or some input files, the pre-compute enclave
      * is started to handle them.
      * 
+     * @param taskDescription
+     * @param workerpoolAuth
      * @return created tee session id if success, empty string otherwise
      */
     public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
@@ -128,6 +130,8 @@ public class PreComputeService {
      * the dataset and decrypts it for the compute stage. It also downloads input
      * files if requested.
      *
+     * @param taskDescription
+     * @param secureSessionId
      * @return true if input data was successfully prepared, false if a
      * problem occurs.
      */

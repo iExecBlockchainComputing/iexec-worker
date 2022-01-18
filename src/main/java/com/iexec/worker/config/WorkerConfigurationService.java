@@ -105,6 +105,9 @@ public class WorkerConfigurationService {
      * Get path to input folder on the host side.
      * <p>
      * Expected: workerBaseDir/chainTaskId/input
+     * 
+     * @param chainTaskId
+     * @return
      */
     public String getTaskInputDir(String chainTaskId) {
         return getTaskBaseDir(chainTaskId) + IexecFileHelper.SLASH_INPUT;
@@ -114,6 +117,9 @@ public class WorkerConfigurationService {
      * Get path to output folder on the host side.
      * <p>
      * Expected: workerBaseDir/chainTaskId/output
+     * 
+     * @param chainTaskId
+     * @return
      */
     public String getTaskOutputDir(String chainTaskId) {
         return getTaskBaseDir(chainTaskId) + IexecFileHelper.SLASH_OUTPUT;
@@ -123,6 +129,9 @@ public class WorkerConfigurationService {
      * Get path to output folder inside the container.
      * <p>
      * Expected: workerBaseDir/chainTaskId/output/iexec_in
+     * 
+     * @param chainTaskId
+     * @return
      */
     public String getTaskIexecOutDir(String chainTaskId) {
         return getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_IEXEC_OUT;

@@ -73,6 +73,8 @@ public class SubscriptionService {
 
     /**
      * Unsubscribe from topic if already subscribed.
+     * 
+     * @param chainTaskId
      */
     public void unsubscribeFromTopic(String chainTaskId) {
         if (!isSubscribedToTopic(chainTaskId)) {

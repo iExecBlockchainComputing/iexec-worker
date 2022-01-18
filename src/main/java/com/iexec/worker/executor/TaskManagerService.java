@@ -393,6 +393,9 @@ public class TaskManagerService {
      * To abort a task, the worker must, first, remove currently running containers
      * related to the task in question, unsubscribe from the task's notifications,
      * then remove result folders.
+     * 
+     * @param chainTaskId
+     * @return
      */
     boolean abort(String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
