@@ -41,7 +41,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-public class PreComputeServiceTests {
+class PreComputeServiceTests {
 
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP = 1024;
@@ -86,7 +86,7 @@ public class PreComputeServiceTests {
     private ArgumentCaptor<DockerRunRequest> captor;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
@@ -97,7 +97,7 @@ public class PreComputeServiceTests {
      */
 
     @Test
-    public void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() {
+    void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() {
         taskDescription.setInputFiles(List.of("input-file1"));
 
         String secureSessionId = "secureSessionId";
@@ -133,7 +133,7 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() {
+    void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() {
         // taskDescription.setInputFiles(List.of("input-file1")); <--
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
@@ -172,7 +172,7 @@ public class PreComputeServiceTests {
 
 
     @Test
-    public void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() {
+    void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() {
         taskDescription.setDatasetAddress("");
         taskDescription.setInputFiles(List.of("input-file1"));
 
@@ -211,7 +211,7 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
+    void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
         TeeEnclaveConfiguration enclaveConfig = mock(TeeEnclaveConfiguration.class);
         taskDescription.setAppEnclaveConfiguration(enclaveConfig);
         TeeEnclaveConfigurationValidator validator = mock(TeeEnclaveConfigurationValidator.class);
@@ -225,7 +225,7 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
+    void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
         taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(8).toBytes() + 1);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
@@ -234,7 +234,7 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() {
+    void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -247,7 +247,7 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() {
+    void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -265,7 +265,7 @@ public class PreComputeServiceTests {
     }
 
     @Test
-    public void shouldFailToRunTeePreComputeSinceDockerRunFailed() {
+    void shouldFailToRunTeePreComputeSinceDockerRunFailed() {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);

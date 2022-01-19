@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class SmsServiceTests {
+class SmsServiceTests {
 
     public static final String CHAIN_TASK_ID = "0xabc";
     public static final String SESSION_ID = "randomSessionId";
@@ -46,12 +46,12 @@ public class SmsServiceTests {
     private SmsService smsService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    public void shouldCreateTeeSession() throws IOException {
+    void shouldCreateTeeSession() throws IOException {
         Signature signatureStub = new Signature("random-signature");
         WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))

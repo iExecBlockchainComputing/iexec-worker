@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-public class ContributionServiceTests {
+class ContributionServiceTests {
 
     @Mock private IexecHubService iexecHubService;
     @Mock private WorkerpoolAuthorizationService workerpoolAuthorizationService;
@@ -51,12 +51,12 @@ public class ContributionServiceTests {
     private ContributionService contributionService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    public void shouldChainTaskBeInitialized() {
+    void shouldChainTaskBeInitialized() {
         String chainTaskId = "0xabc";
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(new TaskDescription());
 
@@ -64,7 +64,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void shouldChainTaskNotBeInitialized() {
+    void shouldChainTaskNotBeInitialized() {
         String chainTaskId = "0xabc";
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(null);
 
@@ -76,7 +76,7 @@ public class ContributionServiceTests {
      */
 
     @Test
-    public void getCannotContributeStatusShouldReturnStatusSinceChainTaskMissing() {
+    void getCannotContributeStatusShouldReturnStatusSinceChainTaskMissing() {
         String chainTaskId = "chainTaskId";
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
@@ -86,7 +86,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void getCannotContributeStatusShouldReturnStakeTooLoww() {
+    void getCannotContributeStatusShouldReturnStakeTooLoww() {
         String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
 
         ChainTask chainTask = ChainTask.builder()
@@ -106,7 +106,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void getCannotContributeStatusShouldReturnTaskNotActive() {
+    void getCannotContributeStatusShouldReturnTaskNotActive() {
         String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
 
         ChainTask chainTask = ChainTask.builder()
@@ -127,7 +127,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void getCannotContributeStatusShouldReturnAfterDeadline() {
+    void getCannotContributeStatusShouldReturnAfterDeadline() {
         String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
 
         ChainTask chainTask = ChainTask.builder()
@@ -150,7 +150,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void getCannotContributeStatusShouldReturnContributionAlreadySet() {
+    void getCannotContributeStatusShouldReturnContributionAlreadySet() {
         String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
 
         ChainTask chainTask = ChainTask.builder()
@@ -175,7 +175,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void getCannotContributeStatusShouldReturnEmpty() {
+    void getCannotContributeStatusShouldReturnEmpty() {
         String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
 
         ChainTask chainTask = ChainTask.builder()
@@ -203,7 +203,7 @@ public class ContributionServiceTests {
     }
 
     @Test
-    public void getContribution() {
+    void getContribution() {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000002";
 
@@ -232,14 +232,14 @@ public class ContributionServiceTests {
                         .resultHash(resultHash)
                         .resultSeal(resultSeal)
                         .enclaveChallenge(teeWorkerpoolAuth.getEnclaveChallenge())
-                        .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                        .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                         .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
                         .build()
         );
     }
 
     @Test
-    public void getContributionWithTee() {
+    void getContributionWithTee() {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000001";
 

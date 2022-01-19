@@ -44,7 +44,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 
-public class ReplicateRecoveryServiceTests {
+class ReplicateRecoveryServiceTests {
 
     private final static String CHAIN_TASK_ID = "0xfoobar";
     @InjectMocks
@@ -64,12 +64,12 @@ public class ReplicateRecoveryServiceTests {
     private ComputeManagerService computeManagerService;
 
     @BeforeEach
-    public void init() {
+    void init() {
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    public void shouldNotRecoverSinceNothingToRecover() {
+    void shouldNotRecoverSinceNothingToRecover() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.emptyList());
@@ -81,7 +81,7 @@ public class ReplicateRecoveryServiceTests {
     }
 
     @Test
-    public void shouldNotRecoverSinceCannotGetTaskDescriptionFromChain() {
+    void shouldNotRecoverSinceCannotGetTaskDescriptionFromChain() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif =
                 getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
@@ -100,7 +100,7 @@ public class ReplicateRecoveryServiceTests {
     }
 
     @Test
-    public void shouldNotRecoverByRevealingWhenResultNotFound() {
+    void shouldNotRecoverByRevealingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif =
                 getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
@@ -119,7 +119,7 @@ public class ReplicateRecoveryServiceTests {
     }
 
     @Test
-    public void shouldNotRecoverByUploadingWhenResultNotFound() {
+    void shouldNotRecoverByUploadingWhenResultNotFound() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif =
                 getStubInterruptedTask(TaskNotificationType.PLEASE_UPLOAD);
@@ -140,7 +140,7 @@ public class ReplicateRecoveryServiceTests {
     // The notification type does not matter here since it is handled on the
     // subscription service
     @Test
-    public void shouldNotificationPassedToSubscriptionService() {
+    void shouldNotificationPassedToSubscriptionService() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(blockNumber);
         TaskNotification notif =
                 getStubInterruptedTask(TaskNotificationType.PLEASE_COMPLETE);

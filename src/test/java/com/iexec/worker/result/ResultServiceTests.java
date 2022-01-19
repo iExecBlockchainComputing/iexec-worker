@@ -47,7 +47,7 @@ import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-public class ResultServiceTests {
+class ResultServiceTests {
 
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
     // 32 + 32 + 1 = 65 bytes
@@ -71,13 +71,13 @@ public class ResultServiceTests {
     private String tmp;
 
     @BeforeEach
-    public void init() throws IOException {
+    void init() throws IOException {
         MockitoAnnotations.openMocks(this);
         tmp = folderRule.getAbsolutePath();
     }
 
     @Test
-    public void shouldWriteErrorToIexecOut() {
+    void shouldWriteErrorToIexecOut() {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(tmp);
 
@@ -102,7 +102,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteErrorToIexecOutSince() {
+    void shouldNotWriteErrorToIexecOutSince() {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn("/null");
 
@@ -114,7 +114,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetTeeWeb2ResultLinkSinceIpfs() {
+    void shouldGetTeeWeb2ResultLinkSinceIpfs() {
         String storage = IPFS_RESULT_STORAGE_PROVIDER;
         String ipfsHash = "QmcipfsHash";
 
@@ -128,7 +128,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetTeeWeb2ResultLinkSinceDropbox() {
+    void shouldGetTeeWeb2ResultLinkSinceDropbox() {
         String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
@@ -140,7 +140,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
+    void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
         String storage = "some-unsupported-third-party-storage";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
@@ -153,7 +153,7 @@ public class ResultServiceTests {
 
 
     @Test
-    public void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
+    void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
@@ -164,7 +164,7 @@ public class ResultServiceTests {
     // get computed file
 
     @Test
-    public void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
+    void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
         String chainTaskId = "deterministic-output-file";
 
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
@@ -185,7 +185,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree() {
+    void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree() {
         String chainTaskId = "deterministic-output-directory";
 
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
@@ -207,7 +207,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetComputedFileWithWeb3ResultDigest() {
+    void shouldGetComputedFileWithWeb3ResultDigest() {
         String chainTaskId = "callback-directory";
 
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
@@ -226,7 +226,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldWriteComputedFile() throws JsonProcessingException {
+    void shouldWriteComputedFile() throws JsonProcessingException {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -251,7 +251,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceNothingToWrite() {
+    void shouldNotWriteComputedFileSinceNothingToWrite() {
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(ChainTask.builder()
                         .status(ChainTaskStatus.ACTIVE).build()));
@@ -268,7 +268,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceNoChainTaskId() {
+    void shouldNotWriteComputedFileSinceNoChainTaskId() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId("")
                 .resultDigest(RESULT_DIGEST)
@@ -291,7 +291,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceNotActive() {
+    void shouldNotWriteComputedFileSinceNotActive() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -314,7 +314,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceAlreadyWritten() throws JsonProcessingException {
+    void shouldNotWriteComputedFileSinceAlreadyWritten() throws JsonProcessingException {
         ComputedFile newComputedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("0x0000000000000000000000000000000000000000000000000000000000000003")
@@ -346,11 +346,11 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceResultDigestIsEmpty() {
+    void shouldNotWriteComputedFileSinceResultDigestIsEmpty() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("")
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                 .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
@@ -369,11 +369,11 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceResultDigestIsInvalid() {
+    void shouldNotWriteComputedFileSinceResultDigestIsInvalid() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("0x01")
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                 .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
@@ -392,7 +392,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceSignatureIsRequiredAndEmpty() {
+    void shouldNotWriteComputedFileSinceSignatureIsRequiredAndEmpty() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -415,7 +415,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceSignatureIsRequiredAndInvalid() {
+    void shouldNotWriteComputedFileSinceSignatureIsRequiredAndInvalid() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -438,7 +438,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceWriteFailed() {
+    void shouldNotWriteComputedFileSinceWriteFailed() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)

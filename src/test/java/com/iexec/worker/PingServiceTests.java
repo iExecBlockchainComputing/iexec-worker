@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-public class PingServiceTests {
+class PingServiceTests {
 
     private final static String PING_THREAD_NAME = "ping-1";
     public static final String SESSION_ID = "SESSION_ID";
@@ -50,13 +50,13 @@ public class PingServiceTests {
     private PingService pingService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
 
     }
 
     @Test
-    public void shouldRunPingAsynchronouslyWhenTriggeredOneTime() throws InterruptedException {
+    void shouldRunPingAsynchronouslyWhenTriggeredOneTime() throws InterruptedException {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
@@ -79,7 +79,7 @@ public class PingServiceTests {
      * @throws InterruptedException
      */
     @Test
-    public void shouldRunPingSchedulerOnlyOnceWhenTriggeredTwoTimesSimultaneously()
+    void shouldRunPingSchedulerOnlyOnceWhenTriggeredTwoTimesSimultaneously()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -100,7 +100,7 @@ public class PingServiceTests {
     }
 
     @Test
-    public void shouldRunPingSchedulerTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes()
+    void shouldRunPingSchedulerTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -140,7 +140,7 @@ public class PingServiceTests {
      * @throws Exception
      */
     @Test
-    public void shouldDropThirdAndForthPingRequestsWhenTriggeredMultipleTimes()
+    void shouldDropThirdAndForthPingRequestsWhenTriggeredMultipleTimes()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -163,7 +163,7 @@ public class PingServiceTests {
     }
 
     @Test
-    public void shouldPingAndDoNothingElseSincePongIsEmpty() {
+    void shouldPingAndDoNothingElseSincePongIsEmpty() {
         when(customCoreFeignClient.ping()).thenReturn("");
 
         pingService.pingScheduler();
@@ -175,7 +175,7 @@ public class PingServiceTests {
     }
 
     @Test
-    public void shouldPingAndDoNothingElseSincePongIsNull() {
+    void shouldPingAndDoNothingElseSincePongIsNull() {
         when(customCoreFeignClient.ping()).thenReturn(null);
 
         pingService.pingScheduler();
@@ -187,7 +187,7 @@ public class PingServiceTests {
     }
 
     @Test
-    public void shouldPingAndSetNewSessionSincePreviousSessionIsEmpty() {
+    void shouldPingAndSetNewSessionSincePreviousSessionIsEmpty() {
         when(customCoreFeignClient.ping()).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn("");
 
@@ -198,7 +198,7 @@ public class PingServiceTests {
     }
 
     @Test
-    public void shouldPingAndSetNewSessionSincePreviousSessionIsNull() {
+    void shouldPingAndSetNewSessionSincePreviousSessionIsNull() {
         when(customCoreFeignClient.ping()).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn(null);
 
@@ -209,7 +209,7 @@ public class PingServiceTests {
     }
 
     @Test
-    public void shouldPingAndRestart() {
+    void shouldPingAndRestart() {
         when(customCoreFeignClient.ping()).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn(OTHER_SESSION_ID);
 

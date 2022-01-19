@@ -23,10 +23,8 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
@@ -47,7 +45,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-public class PostComputeServiceTests {
+class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
@@ -76,10 +74,6 @@ public class PostComputeServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
-    private PublicConfigurationService publicConfigService;
-    @Mock
-    private ResultService resultService;
-    @Mock
     private TeeSconeService teeSconeService;
     @Mock
     private SconeConfiguration sconeConfig;
@@ -89,7 +83,7 @@ public class PostComputeServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
@@ -103,7 +97,7 @@ public class PostComputeServiceTests {
      */
 
     @Test
-    public void shouldRunStandardPostCompute() throws IOException {
+    void shouldRunStandardPostCompute() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
@@ -114,11 +108,10 @@ public class PostComputeServiceTests {
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
-        verify(resultService, times(0)).encryptResult(CHAIN_TASK_ID);
     }
 
     @Test
-    public void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
+    void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
@@ -130,7 +123,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
+    void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         //don't create iexec_out.zip
         System.out.println(FileHelper.printDirectoryTree(new File(output)));
@@ -143,44 +136,12 @@ public class PostComputeServiceTests {
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON).exists()).isFalse();
     }
 
-    @Test
-    public void shouldRunStandardPostComputeWithResultEncryption() throws IOException {
-        taskDescription.setResultEncryption(true);
-        Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
-        Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
-        when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
-        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(true);
-
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
-        Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
-        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
-        verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
-    }
-
-    @Test
-    public void shouldNotRunStandardPostComputeWithResultEncryptionSinceCantEncrypt() throws IOException {
-        taskDescription.setResultEncryption(true);
-        Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
-        Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
-        when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
-        when(resultService.encryptResult(CHAIN_TASK_ID)).thenReturn(false);
-
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
-        verify(resultService, times(1)).encryptResult(CHAIN_TASK_ID);
-    }
-
     /**
      * Tee post compute
      */
 
     @Test
-    public void shouldRunTeePostComputeAndConnectToLasNetwork() {
+    void shouldRunTeePostComputeAndConnectToLasNetwork() {
         String lasNetworkName = "networkName";
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
@@ -235,7 +196,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldNotRunTeePostComputeSinceDockerImageNotFoundLocally() {
+    void shouldNotRunTeePostComputeSinceDockerImageNotFoundLocally() {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
@@ -256,7 +217,7 @@ public class PostComputeServiceTests {
     }
 
     @Test
-    public void shouldRunTeePostComputeWithFailDockerResponse() {
+    void shouldRunTeePostComputeWithFailDockerResponse() {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)

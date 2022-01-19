@@ -87,7 +87,7 @@ public class ReplicateRecoveryService {
 
             Optional<TaskDescription> optionalTaskDescription = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
 
-            if (!optionalTaskDescription.isPresent()) {
+            if (optionalTaskDescription.isEmpty()) {
                 log.error("Could not recover task, no TaskDescription retrieved [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;

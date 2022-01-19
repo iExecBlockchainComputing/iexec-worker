@@ -38,7 +38,7 @@ import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 
 import java.util.Optional;
 
-public class SubscriptionServiceTests {
+class SubscriptionServiceTests {
 
     @Mock
     private WorkerConfigurationService workerConfigurationService;
@@ -56,14 +56,14 @@ public class SubscriptionServiceTests {
             Optional.of(mock(Subscription.class));
 
     @BeforeEach
-    public void init() {
+    void init() {
         MockitoAnnotations.openMocks(this);
         when(workerConfigurationService.getWorkerWalletAddress())
                 .thenReturn(WORKER_WALLET_ADDRESS);
     }
 
     @Test
-    public void shouldSubscribeToTopic() {
+    void shouldSubscribeToTopic() {
         when(stompClient.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
 
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
@@ -73,7 +73,7 @@ public class SubscriptionServiceTests {
     }
 
     @Test
-    public void shouldNotSubscribeToExistingTopic() {
+    void shouldNotSubscribeToExistingTopic() {
         when(stompClient.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
         
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
@@ -83,7 +83,7 @@ public class SubscriptionServiceTests {
     }
 
     @Test
-    public void shouldUnsubscribeFromTopic() {
+    void shouldUnsubscribeFromTopic() {
         when(stompClient.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
 
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
@@ -94,7 +94,7 @@ public class SubscriptionServiceTests {
     }
 
     @Test
-    public void shouldNotUnsubscribeFromInexistentTopic() {
+    void shouldNotUnsubscribeFromInexistentTopic() {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(SUBSCRIPTION.get(), never()).unsubscribe();

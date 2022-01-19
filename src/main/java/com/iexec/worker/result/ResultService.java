@@ -299,7 +299,7 @@ public class ResultService {
         Integer chainId = blockchainAdapterConfigurationService.getChainId();
         Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
 
-        if (!oEip712Challenge.isPresent()) {
+        if (oEip712Challenge.isEmpty()) {
             return "";
         }
 
@@ -320,16 +320,6 @@ public class ResultService {
 
     public boolean isResultAvailable(String chainTaskId) {
         return isResultZipFound(chainTaskId);
-    }
-
-    /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean encryptResult(String chainTaskId) {
-        throw new UnsupportedOperationException(
-            "Result encryption is not supported for standard tasks");
     }
 
     public ComputedFile getComputedFile(String chainTaskId) {
@@ -388,8 +378,7 @@ public class ResultService {
                     chainTaskId, computedFile);
             return false;
         }
-        if (StringUtils.isEmpty(computedFile.getResultDigest())
-                || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
+        if (!BytesUtils.isNonZeroedBytes32(computedFile.getResultDigest())) {
             log.error("Cannot write computed file if result digest is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
