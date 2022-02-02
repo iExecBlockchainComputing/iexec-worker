@@ -51,5 +51,6 @@ graylog:
   host: ${IEXEC_CORE_GRAYLOG_HOST:localhost}
   port: ${IEXEC_CORE_GRAYLOG_PORT:12201}
 
-debug:
-  forceTeeDisabled: ${IEXEC_DEBUG_FORCE_TEE_DISABLED:false} # this for dev mode only
+tee:
+  sgx:
+    mode: ${IEXEC_WORKER_SGX_MODE:OFF}
