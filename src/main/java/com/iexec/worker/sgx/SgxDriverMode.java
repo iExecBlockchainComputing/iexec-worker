@@ -16,7 +16,7 @@
 
 package com.iexec.worker.sgx;
 
-public enum SgxMode {
-    OFF,
+public enum SgxDriverMode {
+    NONE,
     LEGACY
 }

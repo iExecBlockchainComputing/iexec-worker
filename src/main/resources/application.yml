@@ -53,4 +53,4 @@ graylog:
 
 tee:
   sgx:
-    mode: ${IEXEC_WORKER_SGX_MODE:OFF}
+    driver-mode: ${IEXEC_WORKER_SGX_DRIVER_MODE:NONE}
