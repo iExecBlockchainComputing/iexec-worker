@@ -27,7 +27,6 @@ import com.iexec.worker.pubsub.SubscriptionService;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
@@ -70,7 +69,7 @@ class ReplicateDemandServiceTests {
     }
 
     // region triggerAskForReplicate()
-    @RepeatedTest(100)
+    @Test
     void shouldRunAskForReplicateAsynchronouslyWhenTriggeredOneTime() {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -93,7 +92,7 @@ class ReplicateDemandServiceTests {
      * "askForReplicate" should not be executed.
      * @throws InterruptedException if thread is interrupted while waiting.
      */
-    @RepeatedTest(100)
+    @Test
     void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously()
             throws Exception {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
@@ -115,7 +114,7 @@ class ReplicateDemandServiceTests {
                 .isNotEqualTo(mainThreadName);
     }
 
-    @RepeatedTest(100)
+    @Test
     void shouldRunAskForReplicateTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes() {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
@@ -153,7 +152,7 @@ class ReplicateDemandServiceTests {
      * 1 time. That's because the queue is instantly emptied the first time so the queue
      * can accept the second request. So 2 is the least we can have.
      */
-    @RepeatedTest(100)
+    @Test
     void shouldDropThirdAndForthAskForReplicateRequestsWhenTriggeredMultipleTimes() {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
