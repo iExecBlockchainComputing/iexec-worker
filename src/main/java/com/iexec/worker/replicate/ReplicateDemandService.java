@@ -32,6 +32,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 
@@ -67,11 +68,12 @@ public class ReplicateDemandService {
      * We use single thread executor to make sure the worker does not ask for more
      * than one replicate at the same time. The executor's queue is of size 1 to
      * avoid memory leak if the thread halts for any reason.
+     * @return A {@link CompletableFuture} representing the executing task.
      */
-    @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
-    void triggerAskForReplicate() {
+    @Scheduled(fixedDelayString = "#{publicConfigurationService.askForReplicatePeriod}")
+    CompletableFuture<Void> triggerAskForReplicate() {
         log.debug("Triggering ask for replicate action");
-        AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
+        return AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
     }
 
     /**
