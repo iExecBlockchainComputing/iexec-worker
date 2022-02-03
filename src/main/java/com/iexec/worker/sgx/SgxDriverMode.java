@@ -18,5 +18,17 @@ package com.iexec.worker.sgx;
 
 public enum SgxDriverMode {
     NONE,
-    LEGACY
+    LEGACY;
+
+    /**
+     * Returns {@literal false} if given {@link SgxDriverMode} is {@literal null}
+     * or {@link SgxDriverMode#NONE}, {@literal true} otherwise.
+     *
+     * @param driverMode {@link SgxDriverMode} object to check.
+     * @return {@literal false} if given {@link SgxDriverMode} is {@literal null}
+     * or {@link SgxDriverMode#NONE}, {@literal true} otherwise.
+     */
+    static boolean isDriverModeNotNone(SgxDriverMode driverMode) {
+        return driverMode != null && !driverMode.equals(NONE);
+    }
 }

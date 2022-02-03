@@ -22,7 +22,11 @@ import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -31,11 +35,13 @@ import java.util.Collections;
 
 @Slf4j
 @Service
-public class SgxService {
+public class SgxService implements ApplicationContextAware {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final boolean sgxEnabled;
+
+    private ApplicationContext context;
 
     public SgxService(
             WorkerConfigurationService workerConfigService,
@@ -44,7 +50,17 @@ public class SgxService {
     ) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.sgxEnabled = !SgxDriverMode.NONE.equals(sgxDriverMode) && isSgxSupported();
+
+        boolean sgxSupported = isSgxSupported();
+        if (!sgxSupported && SgxDriverMode.isDriverModeNotNone(sgxDriverMode)) {
+            this.sgxEnabled = false;
+            log.error("SGX required but not supported by worker. Shutting down. " +
+                    "[sgxDriverMode: {}]", sgxDriverMode);
+            SpringApplication.exit(context, () -> 1);
+            return;
+        }
+
+        this.sgxEnabled = SgxDriverMode.isDriverModeNotNone(sgxDriverMode) && sgxSupported;
     }
 
     public boolean isSgxEnabled() {
@@ -96,5 +112,10 @@ public class SgxService {
 
         String stdout = dockerRunResponse.getDockerLogs() != null ? dockerRunResponse.getDockerLogs().getStdout() : "";
         return stdout.replace("\n", "").equals("true");
+    }
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.context = applicationContext;
     }
 }
