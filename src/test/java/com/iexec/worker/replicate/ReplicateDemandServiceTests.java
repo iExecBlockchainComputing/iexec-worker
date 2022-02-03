@@ -25,7 +25,6 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import org.assertj.core.api.Assertions;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -176,12 +175,9 @@ class ReplicateDemandServiceTests {
     }
 
     private void waitForTriggerAskForReplicateEnd(CompletableFuture<Void> firstRequest) {
-        Awaitility.await()
-                .timeout(1, TimeUnit.SECONDS)
-                .until(() -> {
-                    firstRequest.join();
-                    return true;
-                });
+        firstRequest
+                .completeOnTimeout(null, 1, TimeUnit.SECONDS)
+                .join();
     }
     // endregion
 

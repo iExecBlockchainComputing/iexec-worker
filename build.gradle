@@ -85,9 +85,6 @@ dependencies {
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
     annotationProcessor "org.projectlombok:lombok:1.18.2"
-
-    // awaitility
-    testImplementation 'org.awaitility:awaitility:4.1.1'
 }
 
 // ./gradlew build -Pdev
