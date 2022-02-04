@@ -28,7 +28,7 @@ cd iexec-worker
 
 You can configure the worker with the following properties:
 
-| Property                                      | Description                                                                                                                      | Values           | Default value                                             |
+| Environment variables                         | Description                                                                                                                      | Values           | Default value                                             |
 |-----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|------------------|-----------------------------------------------------------|
 | IEXEC_WORKER_PORT                             | Port the worker's server will use.                                                                                               | Positive integer | 13100                                                     |
 | IEXEC_CORE_PROTOCOL                           | Protocol to connect to the Scheduler.                                                                                            | String           | http                                                      |
