@@ -18,7 +18,8 @@ package com.iexec.worker.sgx;
 
 public enum SgxDriverMode {
     NONE,
-    LEGACY;
+    LEGACY,
+    NATIVE;
 
     /**
      * Returns {@literal false} if given {@link SgxDriverMode} is {@literal null}
