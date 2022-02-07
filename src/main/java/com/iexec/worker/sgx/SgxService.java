@@ -35,20 +35,20 @@ public class SgxService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final boolean isSgxSupported;
+    private final boolean sgxEnabled;
 
     public SgxService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            @Value("${debug.forceTeeDisabled}") boolean forceTeeDisabled
+            @Value("${tee.sgx.driver-mode}") SgxDriverMode sgxDriverMode
     ) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.isSgxSupported = !forceTeeDisabled && isSgxSupported();
+        this.sgxEnabled = !SgxDriverMode.NONE.equals(sgxDriverMode) && isSgxSupported();
     }
 
     public boolean isSgxEnabled() {
-        return isSgxSupported;
+        return sgxEnabled;
     }
 
     private boolean isSgxSupported() {
