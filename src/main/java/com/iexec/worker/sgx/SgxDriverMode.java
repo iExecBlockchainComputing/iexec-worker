@@ -17,9 +17,19 @@
 package com.iexec.worker.sgx;
 
 public enum SgxDriverMode {
-    NONE,
-    LEGACY,
-    NATIVE;
+    NONE(new String[]{}),
+    LEGACY(new String[]{ "isgx" }),
+    NATIVE(new String[] { "sgx_enclave", "sgx_provision" });
+
+    private final String[] devices;
+
+    SgxDriverMode(String[] driverNames) {
+        this.devices = driverNames;
+    }
+
+    public String[] getDevices() {
+        return devices;
+    }
 
     /**
      * Returns {@literal false} if given {@link SgxDriverMode} is {@literal null}

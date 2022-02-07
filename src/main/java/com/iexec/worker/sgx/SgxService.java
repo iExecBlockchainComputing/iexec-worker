@@ -29,8 +29,12 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -39,7 +43,8 @@ public class SgxService implements ApplicationContextAware {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final boolean sgxEnabled;
+    private final SgxDriverMode sgxDriverMode;
+    private boolean sgxEnabled;
 
     private ApplicationContext context;
 
@@ -50,9 +55,14 @@ public class SgxService implements ApplicationContextAware {
     ) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
+        this.sgxDriverMode = sgxDriverMode;
+    }
 
-        boolean sgxSupported = isSgxSupported();
-        if (!sgxSupported && SgxDriverMode.isDriverModeNotNone(sgxDriverMode)) {
+    @PostConstruct
+    void init() {
+        boolean sgxSupported = isSgxSupported(sgxDriverMode);
+        final boolean driverModeNotNone = SgxDriverMode.isDriverModeNotNone(sgxDriverMode);
+        if (!sgxSupported && driverModeNotNone) {
             this.sgxEnabled = false;
             log.error("SGX required but not supported by worker. Shutting down. " +
                     "[sgxDriverMode: {}]", sgxDriverMode);
@@ -60,21 +70,21 @@ public class SgxService implements ApplicationContextAware {
             return;
         }
 
-        this.sgxEnabled = SgxDriverMode.isDriverModeNotNone(sgxDriverMode) && sgxSupported;
+        this.sgxEnabled = driverModeNotNone;
     }
 
     public boolean isSgxEnabled() {
         return sgxEnabled;
     }
 
-    private boolean isSgxSupported() {
+    private boolean isSgxSupported(SgxDriverMode sgxDriverMode) {
         log.info("Checking SGX support");
         boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
         if (!isSgxDriverFound) {
             log.error("SGX driver not found");
             return false;
         }
-        if (!isSgxDevicePresent()) {
+        if (!isSgxDevicePresent(sgxDriverMode)) {
             log.error("SGX driver is installed but no SGX device was found " +
                     "(SGX not enabled?)");
             return false;
@@ -83,12 +93,19 @@ public class SgxService implements ApplicationContextAware {
         return true;
     }
 
-    private boolean isSgxDevicePresent() {
+    private boolean isSgxDevicePresent(SgxDriverMode sgxDriverMode) {
         // "wallet-address-sgx-check" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
         String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
         String alpineLatest = "alpine:latest";
-        String cmd = "find /dev -name isgx -exec echo true ;";
+
+        final String[] devices = sgxDriverMode.getDevices();
+        // The following will find SGX devices
+        // related to selected SGX driver mode in `/dev`.
+        final String cmd = String.format("/bin/sh -c 'echo $(ls /dev | grep -w %s)'",
+                Arrays.stream(devices)
+                        .map(device -> "-e \"" + device + "\"")
+                        .collect(Collectors.joining(" ")));
 
         if (!dockerService.getClient().pullImage(alpineLatest)) {
             log.error("Failed to pull image for sgx check");
@@ -106,12 +123,14 @@ public class SgxService implements ApplicationContextAware {
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
         if (!dockerRunResponse.isSuccessful()) {
-            log.error("Failed to check SGX device, will continue without TEE support");
+            log.error("Failed to check SGX device.");
             return false;
         }
 
-        String stdout = dockerRunResponse.getDockerLogs() != null ? dockerRunResponse.getDockerLogs().getStdout() : "";
-        return stdout.replace("\n", "").equals("true");
+        // Check retrieved devices are those we were looking for.
+        String stdout = dockerRunResponse.getStdout().trim();
+        return Set.of(stdout.split("\\s"))
+                .equals(Set.of(devices));
     }
 
     @Override
