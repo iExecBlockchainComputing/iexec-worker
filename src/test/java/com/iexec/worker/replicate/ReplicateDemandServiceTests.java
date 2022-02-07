@@ -75,39 +75,11 @@ class ReplicateDemandServiceTests {
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
                 .when(replicateDemandService).askForReplicate();
 
-        waitForTriggerAskForReplicateEnd(replicateDemandService.triggerAskForReplicate());
+        wait1SecondForCompletion(replicateDemandService.triggerAskForReplicate());
         // Make sure askForReplicate method is called 1 time
         verify(replicateDemandService).askForReplicate();
         // Make sure getLatestBlockNumber method is called 1 time
         verify(iexecHubService).getLatestBlockNumber();
-        assertThat(threadNameWrapper.value)
-                .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
-                .isNotEqualTo(mainThreadName);
-    }
-
-    /**
-     * In this test the thread that runs "askForReplicate" method will sleep after its
-     * execution to make sure that is considered busy. The second call to the method
-     * "askForReplicate" should not be executed.
-     * @throws InterruptedException if thread is interrupted while waiting.
-     */
-    @Test
-    void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously()
-            throws Exception {
-        ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
-        String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
-                threadNameWrapper, invocation, 100)) // sleep duration > test duration
-                .when(replicateDemandService).askForReplicate();
-
-        // Trigger 2 times
-        replicateDemandService.triggerAskForReplicate();
-        replicateDemandService.triggerAskForReplicate();
-        TimeUnit.MILLISECONDS.sleep(10);
-        // Make sure askForReplicate method is called 1 time
-        verify(replicateDemandService, times(1)).askForReplicate();
-        // Make sure getLatestBlockNumber method is called 1 time
-        verify(iexecHubService, times(1)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -122,7 +94,7 @@ class ReplicateDemandServiceTests {
                 .when(replicateDemandService).askForReplicate();
 
         // Trigger 1st time
-        waitForTriggerAskForReplicateEnd(replicateDemandService.triggerAskForReplicate());
+        wait1SecondForCompletion(replicateDemandService.triggerAskForReplicate());
         // Make sure askForReplicate method is called 1st time
         verify(replicateDemandService, times(1)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 1st time
@@ -133,7 +105,7 @@ class ReplicateDemandServiceTests {
 
         // Trigger 2nd time
         threadNameWrapper.value = "";
-        waitForTriggerAskForReplicateEnd(replicateDemandService.triggerAskForReplicate());
+        wait1SecondForCompletion(replicateDemandService.triggerAskForReplicate());
         // Make sure askForReplicate method is called 2nd time
         verify(replicateDemandService, times(2)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 2nd time
@@ -164,7 +136,7 @@ class ReplicateDemandServiceTests {
         replicateDemandService.triggerAskForReplicate();
         replicateDemandService.triggerAskForReplicate();
         replicateDemandService.triggerAskForReplicate();
-        waitForTriggerAskForReplicateEnd(firstRequest);
+        wait1SecondForCompletion(firstRequest);
         // Make sure askForReplicate method is called only 2 times
         verify(replicateDemandService, times(2)).askForReplicate();
         // Make sure getLatestBlockNumber method is called only 2 times
@@ -172,12 +144,6 @@ class ReplicateDemandServiceTests {
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
-    }
-
-    private void waitForTriggerAskForReplicateEnd(CompletableFuture<Void> firstRequest) {
-        firstRequest
-                .completeOnTimeout(null, 1, TimeUnit.SECONDS)
-                .join();
     }
     // endregion
 
@@ -255,10 +221,53 @@ class ReplicateDemandServiceTests {
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
+    /**
+     * In this test the thread that runs "{@link ReplicateDemandService#startTask(WorkerpoolAuthorization)}"
+     * method will sleep after its execution to make sure that is considered busy.
+     * The second call to the method "askForReplicate" should not be executed.
+     */
+    @Test
+    void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously() {
+        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
+        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
+                .thenReturn(Optional.of(workerpoolAuthorization));
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+
+        doAnswer(invocation -> {
+            TimeUnit.MILLISECONDS.sleep(100); // sleep duration > test duration
+            return invocation.callRealMethod();
+        }).when(replicateDemandService).startTask(any());
+
+        // Trigger 2 times
+        final CompletableFuture<Void> firstRequest = CompletableFuture.runAsync(replicateDemandService::askForReplicate);
+        final CompletableFuture<Void> secondRequest = CompletableFuture.runAsync(replicateDemandService::askForReplicate);
+        waitForCompletion(secondRequest, 100, TimeUnit.MILLISECONDS);
+        waitForCompletion(firstRequest, 100, TimeUnit.MILLISECONDS);
+
+        // Make sure askForReplicate method is called 1 time
+        verify(replicateDemandService, times(1)).startTask(any());
+        // Make sure getLatestBlockNumber method is called 1 time
+        verify(iexecHubService, times(1)).getLatestBlockNumber();
+    }
+
     private WorkerpoolAuthorization getStubAuth() {
         return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
     }
     // endregion
+
+    private void wait1SecondForCompletion(CompletableFuture<Void> completable) {
+        waitForCompletion(completable, 1, TimeUnit.SECONDS);
+    }
+
+    private void waitForCompletion(CompletableFuture<Void> completable,
+                                   long duration,
+                                   TimeUnit timeUnit) {
+        completable
+                .completeOnTimeout(null, duration, timeUnit)
+                .join();
+    }
 }

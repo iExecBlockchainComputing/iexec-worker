@@ -80,20 +80,19 @@ class StompClientTests {
     }
 
     @Test
-    void shouldStartOnlyOneListenerThread() throws Exception {
-        stompClient.startSessionRequestListenerIfAbsent();
-        stompClient.startSessionRequestListenerIfAbsent();
-        TimeUnit.MILLISECONDS.sleep(10);
-        // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClient).listenToSessionRequests();
+    void shouldStartOnlyOneListenerThread() {
+        final CompletableFuture<Void> firstListener =
+                stompClient.startSessionRequestListenerIfAbsent();
+        final CompletableFuture<Void> secondListener =
+                stompClient.startSessionRequestListenerIfAbsent();
+
+        assertThat(secondListener).isNull();
+        assertThat(firstListener).isNotNull();
     }
 
     @Test
-    void shouldRestartListenerThreadWhenNoOneIsFound() throws Exception {
-        stompClient.restartSessionRequestListenerIfStopped();
-        TimeUnit.MILLISECONDS.sleep(10);
-        // Make sure listenToSessionRequests() method is called 1 time
-        verify(stompClient).listenToSessionRequests();
+    void shouldRestartListenerThreadWhenNoOneIsFound() {
+        assertThat(stompClient.restartSessionRequestListenerIfStopped()).isNotNull();
     }
 
     @Test
