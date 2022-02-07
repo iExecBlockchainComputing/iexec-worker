@@ -18,6 +18,7 @@ package com.iexec.worker.sgx;
 
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -44,8 +45,8 @@ public class SgxService implements ApplicationContextAware {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final SgxDriverMode sgxDriverMode;
-    private boolean sgxEnabled;
 
+    private boolean sgxEnabled;
     private ApplicationContext context;
 
     public SgxService(
@@ -71,6 +72,10 @@ public class SgxService implements ApplicationContextAware {
         }
 
         this.sgxEnabled = driverModeNotNone;
+    }
+
+    public SgxDriverMode getSgxDriverMode() {
+        return sgxDriverMode;
     }
 
     public boolean isSgxEnabled() {

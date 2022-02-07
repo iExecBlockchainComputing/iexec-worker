@@ -26,6 +26,7 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,7 @@ public class PreComputeService {
     private final TeeSconeService teeSconeService;
     private final WorkerConfigurationService workerConfigService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
+    private final SgxService sgxService;
 
     public PreComputeService(
             SmsService smsService,
@@ -53,13 +55,15 @@ public class PreComputeService {
             DockerService dockerService,
             TeeSconeService teeSconeService,
             WorkerConfigurationService workerConfigService,
-            TeeWorkflowConfiguration teeWorkflowConfig) {
+            TeeWorkflowConfiguration teeWorkflowConfig,
+            SgxService sgxService) {
         this.smsService = smsService;
         this.dataService = dataService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
         this.workerConfigService = workerConfigService;
         this.teeWorkflowConfig = teeWorkflowConfig;
+        this.sgxService = sgxService;
     }
 
     /**
@@ -157,7 +161,7 @@ public class PreComputeService {
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)
-                .isSgx(true)
+                .sgxDriverMode(sgxService.getSgxDriverMode())
                 .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();

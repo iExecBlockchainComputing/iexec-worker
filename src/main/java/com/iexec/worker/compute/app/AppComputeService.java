@@ -23,6 +23,7 @@ import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.springframework.stereotype.Service;
 
@@ -35,14 +36,17 @@ public class AppComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final TeeSconeService teeSconeService;
+    private final SgxService sgxService;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            TeeSconeService teeSconeService) {
+            TeeSconeService teeSconeService,
+            SgxService sgxService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
+        this.sgxService = sgxService;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -70,7 +74,7 @@ public class AppComputeService {
                 .env(env)
                 .binds(binds)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
-                .isSgx(taskDescription.isTeeTask())
+                .sgxDriverMode(sgxService.getSgxDriverMode())
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         // Enclave should be able to connect to the LAS
