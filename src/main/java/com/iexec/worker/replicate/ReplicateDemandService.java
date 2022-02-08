@@ -84,26 +84,28 @@ public class ReplicateDemandService {
      * to execute the task.
      */
     void askForReplicate() {
-        if (askForReplicateLock.tryLock()) {
-            try {
-                log.debug("Asking for a new replicate");
-                // TODO check blocknumber only once a replicate is received.
-                long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
-                if (lastAvailableBlockNumber == 0) {
-                    log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
-                    return;
-                }
-                // TODO check gas only once a replicate is received.
-                if (!iexecHubService.hasEnoughGas()) {
-                    log.error("Cannot ask for new tasks, your wallet is dry");
-                    return;
-                }
-                coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
-                        .filter(this::isNewTaskInitialized)
-                        .ifPresent(this::startTask);
-            } finally {
-                askForReplicateLock.unlock();
+        if (!askForReplicateLock.tryLock()) {
+            return;
+        }
+
+        try {
+            log.debug("Asking for a new replicate");
+            // TODO check blocknumber only once a replicate is received.
+            long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
+            if (lastAvailableBlockNumber == 0) {
+                log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
+                return;
             }
+            // TODO check gas only once a replicate is received.
+            if (!iexecHubService.hasEnoughGas()) {
+                log.error("Cannot ask for new tasks, your wallet is dry");
+                return;
+            }
+            coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
+                    .filter(this::isNewTaskInitialized)
+                    .ifPresent(this::startTask);
+        } finally {
+            askForReplicateLock.unlock();
         }
     }
 
