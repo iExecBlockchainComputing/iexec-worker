@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -119,12 +119,16 @@ public class SgxService implements ApplicationContextAware {
             return false;
         }
 
+        final List<String> devicesBind = Arrays.stream(devices)
+                .map(deviceName -> "/dev/" + deviceName + ":/dev/" + deviceName)
+                .collect(Collectors.toList());
+
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
                 .imageUri(alpineLatest)
                 .cmd(cmd)
                 .maxExecutionTime(60000) // 1 min
-                .binds(Collections.singletonList("/dev:/dev"))
+                .binds(devicesBind)
                 .build();
 
 
