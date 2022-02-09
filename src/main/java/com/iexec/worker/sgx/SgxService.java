@@ -30,9 +30,9 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -106,12 +106,12 @@ public class SgxService {
         String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
         String alpineLatest = "alpine:latest";
 
-        final String[] devices = sgxDriverMode.getDevices();
-        // The following will find SGX devices
+        final Path[] devices = sgxDriverMode.getDevices();
+        // The following will count SGX devices
         // related to selected SGX driver mode in `/dev`.
         final String cmd = String.format("/bin/sh -c 'echo $(ls /dev | grep -w %s)'",
                 Arrays.stream(devices)
-                        .map(device -> "-e \"" + device + "\"")
+                        .map(devicePath -> "-e \"" + devicePath.getFileName() + "\"")
                         .collect(Collectors.joining(" ")));
 
         if (!dockerService.getClient().pullImage(alpineLatest)) {
@@ -120,7 +120,7 @@ public class SgxService {
         }
 
         final List<String> devicesBind = Arrays.stream(devices)
-                .map(deviceName -> "/dev/" + deviceName + ":/dev/" + deviceName)
+                .map(devicePath -> devicePath + ":" + devicePath)
                 .collect(Collectors.toList());
 
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
