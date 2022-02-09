@@ -109,7 +109,7 @@ public class SgxService {
         final Path[] devices = sgxDriverMode.getDevices();
         // The following will count SGX devices
         // related to selected SGX driver mode in `/dev`.
-        final String cmd = String.format("/bin/sh -c 'echo $(ls /dev | grep -w %s)'",
+        final String cmd = String.format("/bin/sh -c 'echo $(ls /dev | grep -c -w %s)'",
                 Arrays.stream(devices)
                         .map(devicePath -> "-e \"" + devicePath.getFileName() + "\"")
                         .collect(Collectors.joining(" ")));
@@ -140,7 +140,6 @@ public class SgxService {
 
         // Check retrieved devices are those we were looking for.
         String stdout = dockerRunResponse.getStdout().trim();
-        return Set.of(stdout.split("\\s"))
-                .equals(Set.of(devices));
+        return Integer.parseInt(stdout) == devices.length;
     }
 }
