@@ -18,6 +18,7 @@ package com.iexec.worker.compute.app;
 
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
@@ -74,7 +75,11 @@ public class AppComputeService {
                 .env(env)
                 .binds(binds)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
-                .sgxDriverMode(sgxService.getSgxDriverMode())
+                .sgxDriverMode(
+                        taskDescription.isTeeTask()
+                                ? sgxService.getSgxDriverMode()
+                                : SgxDriverMode.NONE
+                )
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         // Enclave should be able to connect to the LAS
