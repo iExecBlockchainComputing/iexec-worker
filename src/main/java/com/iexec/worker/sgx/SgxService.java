@@ -84,10 +84,12 @@ public class SgxService implements ApplicationContextAware {
 
     private boolean isSgxSupported(SgxDriverMode sgxDriverMode) {
         log.info("Checking SGX support");
-        boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
-        if (!isSgxDriverFound) {
-            log.error("SGX driver not found");
-            return false;
+        if (sgxDriverMode == SgxDriverMode.LEGACY) {
+            boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
+            if (!isSgxDriverFound) {
+                log.error("SGX driver not found");
+                return false;
+            }
         }
         if (!isSgxDevicePresent(sgxDriverMode)) {
             log.error("SGX driver is installed but no SGX device was found " +
