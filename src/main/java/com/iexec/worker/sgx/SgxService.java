@@ -85,9 +85,9 @@ public class SgxService {
     private boolean isSgxSupported(SgxDriverMode sgxDriverMode) {
         log.info("Checking SGX support");
         if (sgxDriverMode == SgxDriverMode.LEGACY) {
-            boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
+            boolean isSgxDriverFound = new File(SgxUtils.LEGACY_SGX_DRIVER_PATH).exists();
             if (!isSgxDriverFound) {
-                log.error("SGX driver not found");
+                log.error("Legacy SGX driver not found");
                 return false;
             }
         }
