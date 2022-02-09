@@ -23,11 +23,9 @@ import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -40,21 +38,23 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class SgxService implements ApplicationContextAware {
+public class SgxService {
 
     private final WorkerConfigurationService workerConfigService;
+    private final ApplicationContext context;
     private final DockerService dockerService;
     private final SgxDriverMode sgxDriverMode;
 
     private boolean sgxEnabled;
-    private ApplicationContext context;
 
     public SgxService(
             WorkerConfigurationService workerConfigService,
+            ApplicationContext context,
             DockerService dockerService,
             @Value("${tee.sgx.driver-mode}") SgxDriverMode sgxDriverMode
     ) {
         this.workerConfigService = workerConfigService;
+        this.context = context;
         this.dockerService = dockerService;
         this.sgxDriverMode = sgxDriverMode;
     }
@@ -142,10 +142,5 @@ public class SgxService implements ApplicationContextAware {
         String stdout = dockerRunResponse.getStdout().trim();
         return Set.of(stdout.split("\\s"))
                 .equals(Set.of(devices));
-    }
-
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.context = applicationContext;
     }
 }
