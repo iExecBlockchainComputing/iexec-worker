@@ -107,12 +107,11 @@ public class SgxService {
         String alpineLatest = "alpine:latest";
 
         final Path[] devices = sgxDriverMode.getDevices();
-        // The following will count SGX devices
-        // related to selected SGX driver mode in `/dev`.
-        final String cmd = String.format("/bin/sh -c 'echo $(ls /dev | grep -c -w %s)'",
+        // Check all required devices exists
+        final String cmd = String.format("/bin/sh -c '%s; echo $?;'",
                 Arrays.stream(devices)
-                        .map(devicePath -> "-e \"" + devicePath.getFileName() + "\"")
-                        .collect(Collectors.joining(" ")));
+                        .map(devicePath -> "test -e \"" + devicePath + "\"")
+                        .collect(Collectors.joining(" && ")));
 
         if (!dockerService.getClient().pullImage(alpineLatest)) {
             log.error("Failed to pull image for sgx check");
@@ -138,8 +137,8 @@ public class SgxService {
             return false;
         }
 
-        // Check retrieved devices are those we were looking for.
-        String stdout = dockerRunResponse.getStdout().trim();
-        return Integer.parseInt(stdout) == devices.length;
+        // Check test returned a 0 exit code.
+        String testResult = dockerRunResponse.getStdout().trim();
+        return Integer.parseInt(testResult) == 0;
     }
 }
