@@ -30,7 +30,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -106,7 +105,7 @@ public class SgxService {
         String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
         String alpineLatest = "alpine:latest";
 
-        final Path[] devices = sgxDriverMode.getDevices();
+        final String[] devices = sgxDriverMode.getDevices();
         // Check all required devices exists
         final String cmd = String.format("/bin/sh -c '%s; echo $?;'",
                 Arrays.stream(devices)
