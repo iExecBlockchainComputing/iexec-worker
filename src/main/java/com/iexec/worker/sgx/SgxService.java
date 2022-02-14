@@ -16,6 +16,7 @@
 
 package com.iexec.worker.sgx;
 
+import com.github.dockerjava.api.model.Device;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.sgx.SgxDriverMode;
@@ -117,8 +118,8 @@ public class SgxService {
             return false;
         }
 
-        final List<String> devicesBind = Arrays.stream(devices)
-                .map(devicePath -> devicePath + ":" + devicePath)
+        final List<Device> devicesBind = Arrays.stream(devices)
+                .map(Device::parse)
                 .collect(Collectors.toList());
 
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
@@ -126,7 +127,7 @@ public class SgxService {
                 .imageUri(alpineLatest)
                 .cmd(cmd)
                 .maxExecutionTime(60000) // 1 min
-                .binds(devicesBind)
+                .devices(devicesBind)
                 .build();
 
 
