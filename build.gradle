@@ -17,6 +17,7 @@ targetCompatibility = 11
 ext {
     springCloudVersion = '2021.0.0'
     gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+    dockerJavaVersion = '3.2.12'
 }
 
 if (gitBranch != 'main' && gitBranch != 'master' && ! (gitBranch ==~ '(release|hotfix|support)/.*')) {
@@ -85,6 +86,9 @@ dependencies {
     // lombok
     compileOnly "org.projectlombok:lombok:1.18.2"
     annotationProcessor "org.projectlombok:lombok:1.18.2"
+
+    // docker
+    implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 }
 
 // ./gradlew build -Pdev
