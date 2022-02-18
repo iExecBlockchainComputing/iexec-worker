@@ -98,6 +98,10 @@ jar {
     archiveClassifier.set('library')
 }
 
+springBoot {
+    buildInfo()
+}
+
 test {
     useJUnitPlatform {
         // Ignore slow tests in development
