@@ -1,5 +1,3 @@
-import org.apache.tools.ant.filters.ReplaceTokens
-
 plugins {
     id 'java'
     id 'org.springframework.boot' version '2.6.2'
@@ -127,22 +125,6 @@ jacocoTestReport {
 }
 tasks.test.finalizedBy    tasks.jacocoTestReport
 tasks.sonarqube.dependsOn tasks.jacocoTestReport
-
-task createVersion(type: Copy) {
-    // delete old one
-    delete 'src/main/java/com/iexec/worker/utils/version/Version.java'
-    // use and copy template to the new location
-    from 'src/main/resources/Version.java.template'
-    into 'src/main/java/com/iexec/worker/utils/version/'
-
-    rename { String fileName ->
-        fileName.replace('.template', '')
-    }
-    // replace tokens in the template file
-    filter(ReplaceTokens, tokens: [projectversion: "${version}".toString()])
-}
-// the createVersion task should be called before compileJava or the version service will not work
-compileJava.dependsOn createVersion
 
 publishing {
     publications {
