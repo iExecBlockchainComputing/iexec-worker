@@ -19,12 +19,14 @@ package com.iexec.worker.compute.post;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
@@ -81,6 +83,8 @@ class PostComputeServiceTests {
     private TeeWorkflowConfiguration teeWorkflowConfig;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
+    @Mock
+    private SgxService sgxService;
 
     @BeforeEach
     void beforeEach() throws IOException {
@@ -167,6 +171,7 @@ class PostComputeServiceTests {
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(true).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
@@ -188,7 +193,7 @@ class PostComputeServiceTests {
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
                         .binds(Collections.singletonList(iexecOutBind))
-                        .isSgx(true)
+                        .sgxDriverMode(SgxDriverMode.LEGACY)
                         .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)
                         .build()
@@ -240,6 +245,7 @@ class PostComputeServiceTests {
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().isSuccessful(false).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);

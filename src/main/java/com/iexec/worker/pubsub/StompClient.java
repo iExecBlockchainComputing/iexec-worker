@@ -132,26 +132,28 @@ public class StompClient {
     /**
      * This scheduler will start the listener thread if it happens
      * to be interrupted for whatever reason.
+     * @return A {@link CompletableFuture} representing the listener task.
      */
     @Scheduled(initialDelay = 30000, fixedRate = 30000) // 30s, 30s
-    void restartSessionRequestListenerIfStopped() {
-        startSessionRequestListenerIfAbsent();
+    CompletableFuture<Void> restartSessionRequestListenerIfStopped() {
+        return startSessionRequestListenerIfAbsent();
     }
 
     /**
      * Start the thread that listens to session requests in a dedicated
      * thread executor to not block one thread of the default common pool.
+     * @return A {@link CompletableFuture} representing the listener task.
      */
-    void startSessionRequestListenerIfAbsent() {
+    CompletableFuture<Void> startSessionRequestListenerIfAbsent() {
         synchronized(listenerLock) {
             if (listenerLock.isLocked()) {
                 // Another thread is already listening.
                 log.debug("Cannot start a second session request listener");
-                return;
+                return null;
             }
             listenerLock.lock();
         }
-        AsyncUtils.runAsyncTask("listen-to-stomp-session",
+        return AsyncUtils.runAsyncTask("listen-to-stomp-session",
                 this::listenToSessionRequests, singleThreadExecutor);
     }
 
