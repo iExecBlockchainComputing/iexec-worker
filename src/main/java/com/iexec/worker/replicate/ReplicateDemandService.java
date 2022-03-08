@@ -32,7 +32,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 @Slf4j
@@ -45,6 +48,7 @@ public class ReplicateDemandService {
     private final ContributionService contributionService;
     private final SubscriptionService subscriptionService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final Lock askForReplicateLock = new ReentrantLock();
 
     public ReplicateDemandService(IexecHubService iexecHubService,
                                   CustomCoreFeignClient coreFeignClient,
@@ -67,11 +71,12 @@ public class ReplicateDemandService {
      * We use single thread executor to make sure the worker does not ask for more
      * than one replicate at the same time. The executor's queue is of size 1 to
      * avoid memory leak if the thread halts for any reason.
+     * @return A {@link CompletableFuture} representing the executing task.
      */
-    @Scheduled(fixedRateString = "#{publicConfigurationService.askForReplicatePeriod}")
-    void triggerAskForReplicate() {
+    @Scheduled(fixedDelayString = "#{publicConfigurationService.askForReplicatePeriod}")
+    CompletableFuture<Void> triggerAskForReplicate() {
         log.debug("Triggering ask for replicate action");
-        AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
+        return AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
     }
 
     /**
@@ -79,21 +84,29 @@ public class ReplicateDemandService {
      * to execute the task.
      */
     void askForReplicate() {
-        log.debug("Asking for a new replicate");
-        // TODO check blocknumber only once a replicate is received.
-        long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
-        if (lastAvailableBlockNumber == 0) {
-            log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
+        if (!askForReplicateLock.tryLock()) {
             return;
         }
-        // TODO check gas only once a replicate is received.
-        if (!iexecHubService.hasEnoughGas()) {
-            log.error("Cannot ask for new tasks, your wallet is dry");
-            return;
+
+        try {
+            log.debug("Asking for a new replicate");
+            // TODO check blocknumber only once a replicate is received.
+            long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
+            if (lastAvailableBlockNumber == 0) {
+                log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
+                return;
+            }
+            // TODO check gas only once a replicate is received.
+            if (!iexecHubService.hasEnoughGas()) {
+                log.error("Cannot ask for new tasks, your wallet is dry");
+                return;
+            }
+            coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
+                    .filter(this::isNewTaskInitialized)
+                    .ifPresent(this::startTask);
+        } finally {
+            askForReplicateLock.unlock();
         }
-        coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
-                .filter(this::isNewTaskInitialized)
-                .ifPresent(this::startTask);
     }
 
     /**
@@ -118,7 +131,7 @@ public class ReplicateDemandService {
      *
      * @param authorization required authorization for later contribution
      */
-    private void startTask(WorkerpoolAuthorization authorization) {
+    void startTask(WorkerpoolAuthorization authorization) {
         String chainTaskId = authorization.getChainTaskId();
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
                 .workerpoolAuthorization(authorization)

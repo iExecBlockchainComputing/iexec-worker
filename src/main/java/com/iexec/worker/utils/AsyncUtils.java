@@ -34,10 +34,11 @@ public class AsyncUtils {
      * @param context custom identified logged in the error message
      * @param runnable the task to run
      * @param executor the executor used to run the task
+     * @return A {@link CompletableFuture} representing the executing task.
      */
-    public static void runAsyncTask(String context, Runnable runnable, Executor executor) {
+    public static CompletableFuture<Void> runAsyncTask(String context, Runnable runnable, Executor executor) {
         log.debug("Running async task [context:{}]", context);
-        CompletableFuture
+        return CompletableFuture
                 .runAsync(runnable, executor)
                 .exceptionally(error -> handleAsyncTaskError(context, error));
     }
