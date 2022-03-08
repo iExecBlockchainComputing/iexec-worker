@@ -46,6 +46,7 @@ public class TeeSconeService {
     private final SconeConfiguration sconeConfig;
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
+    private final SgxService sgxService;
     private final boolean isLasStarted;
 
     public TeeSconeService(
@@ -56,6 +57,7 @@ public class TeeSconeService {
         this.sconeConfig = sconeConfig;
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
+        this.sgxService = sgxService;
         this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
         if (this.isLasStarted) {
             log.info("Worker can run TEE tasks");
@@ -76,7 +78,7 @@ public class TeeSconeService {
                 // application & post-compose enclaves will be
                 // able to talk to the LAS via this network
                 .dockerNetwork(workerConfigService.getDockerNetworkName())
-                .isSgx(true)
+                .sgxDriverMode(sgxService.getSgxDriverMode())
                 .maxExecutionTime(0)
                 .build();
         if (!lasImage.contains(sconeConfig.getRegistryName())) {

@@ -19,6 +19,7 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -83,6 +84,7 @@ class SconeTeeServiceTests {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(teeSconeService.startLasService()).isTrue();
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
@@ -91,7 +93,7 @@ class SconeTeeServiceTests {
                 DockerRunRequest.builder()
                         .containerName("containerName")
                         .imageUri(IMAGE_URI)
-                        .isSgx(true)
+                        .sgxDriverMode(SgxDriverMode.LEGACY)
                         .maxExecutionTime(0)
                         .build()
         );

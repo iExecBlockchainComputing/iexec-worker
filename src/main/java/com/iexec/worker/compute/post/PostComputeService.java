@@ -25,6 +25,7 @@ import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,16 +42,19 @@ public class PostComputeService {
     private final DockerService dockerService;
     private final TeeSconeService teeSconeService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
+    private final SgxService sgxService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             TeeSconeService teeSconeService,
-            TeeWorkflowConfiguration teeWorkflowConfig) {
+            TeeWorkflowConfiguration teeWorkflowConfig,
+            SgxService sgxService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
         this.teeWorkflowConfig = teeWorkflowConfig;
+        this.sgxService = sgxService;
     }
 
     public boolean runStandardPostCompute(TaskDescription taskDescription) {
@@ -111,7 +115,7 @@ public class PostComputeService {
                         .maxExecutionTime(taskDescription.getMaxExecutionTime())
                         .env(env)
                         .binds(binds)
-                        .isSgx(true)
+                        .sgxDriverMode(sgxService.getSgxDriverMode())
                         .dockerNetwork(workerConfigService.getDockerNetworkName())
                         .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());

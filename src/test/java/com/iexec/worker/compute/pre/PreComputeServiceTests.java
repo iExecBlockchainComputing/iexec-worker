@@ -20,6 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
@@ -27,6 +28,7 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
@@ -82,6 +84,8 @@ class PreComputeServiceTests {
     private TeeWorkflowConfiguration teeWorkflowConfig;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
+    @Mock
+    private SgxService sgxService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -117,6 +121,7 @@ class PreComputeServiceTests {
                 .containerExitCode(0)
                 .isSuccessful(true)
                 .build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
@@ -127,7 +132,7 @@ class PreComputeServiceTests {
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
-        Assertions.assertThat(capturedRequest.isSgx()).isTrue();
+        Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
     }
@@ -155,6 +160,7 @@ class PreComputeServiceTests {
                 .containerExitCode(0)
                 .isSuccessful(true)
                 .build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
         Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();        
@@ -165,7 +171,7 @@ class PreComputeServiceTests {
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
-        Assertions.assertThat(capturedRequest.isSgx()).isTrue();
+        Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
     }
@@ -195,6 +201,7 @@ class PreComputeServiceTests {
                 .containerExitCode(0)
                 .isSuccessful(true)
                 .build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isFalse();
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
@@ -205,7 +212,7 @@ class PreComputeServiceTests {
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
-        Assertions.assertThat(capturedRequest.isSgx()).isTrue();
+        Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
         Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
         Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
     }
@@ -282,6 +289,7 @@ class PreComputeServiceTests {
                 .containerExitCode(70)
                 .isSuccessful(false)
                 .build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEmpty();

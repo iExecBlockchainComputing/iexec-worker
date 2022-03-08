@@ -17,19 +17,24 @@
 package com.iexec.worker.utils.version;
 
 import com.iexec.common.utils.VersionUtils;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Service;
 
 @Service
 public class VersionService {
 
-    private final String version = Version.PROJECT_VERSION;
+    private final BuildProperties buildProperties;
+
+    VersionService(BuildProperties buildProperties) {
+        this.buildProperties = buildProperties;
+    }
 
     public String getVersion() {
-        return version;
+        return buildProperties.getVersion();
     }
 
     public boolean isSnapshot() {
-        return VersionUtils.isSnapshot(version);
+        return VersionUtils.isSnapshot(buildProperties.getVersion());
     }
 
 }
