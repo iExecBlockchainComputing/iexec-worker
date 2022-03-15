@@ -18,15 +18,14 @@ package com.iexec.worker.sms;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
+import com.iexec.sms.api.SmsClient;
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.config.PublicConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.ResponseEntity;
-
-import java.io.IOException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -40,24 +39,28 @@ class SmsServiceTests {
     @Mock
     private CredentialsService credentialsService;
     @Mock
+    private PublicConfigurationService configurationService;
+    @Mock
     private SmsClient smsClient;
 
-    @InjectMocks
     private SmsService smsService;
 
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
+        when(configurationService.getSmsURL()).thenReturn("http://localhost");
+        smsService = new SmsService(credentialsService, configurationService);
+        ReflectionTestUtils.setField(smsService, "smsClient", smsClient);
     }
 
     @Test
-    void shouldCreateTeeSession() throws IOException {
+    void shouldCreateTeeSession() {
         Signature signatureStub = new Signature("random-signature");
         WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
-        when(smsClient.createTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
+                .thenReturn(SESSION_ID);
 
         String returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
         assertThat(returnedSessionId).isEqualTo(SESSION_ID);
