@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.mockito.Mockito.*;
 
@@ -102,11 +101,12 @@ class SmsServiceTests {
     }
 
     @Test
-    void shouldGetTeeWorkflowConfigurationWhenAlreadyDefined() {
+    void shouldCallGetTeeWorkflowConfigurationApiOnlyOnce() {
         TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
-        ReflectionTestUtils.setField(smsService, "teeWorkflowConfiguration", teeWorkflowConfiguration);
+        when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
         Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
-        verify(smsClient, never()).getTeeWorkflowConfiguration();
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
+        verify(smsClient).getTeeWorkflowConfiguration();
     }
 
     @Test
