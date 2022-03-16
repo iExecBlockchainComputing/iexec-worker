@@ -35,7 +35,6 @@ import static org.mockito.Mockito.*;
 class SmsServiceTests {
 
     private static final String CAS_URL = "http://cas";
-    private static final String CHAIN_TASK_ID = "0xabc";
     private static final String SESSION_ID = "randomSessionId";
     private static final String SIGNATURE = "random-signature";
 
