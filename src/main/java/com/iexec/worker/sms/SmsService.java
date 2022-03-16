@@ -157,10 +157,6 @@ public class SmsService {
                     chainTaskId, sessionId);
             return sessionId;
         } catch(FeignException e) {
-            log.error("SMS failed to create TEE session [chainTaskId:{}, " +
-                    "httpStatus:{}]", chainTaskId, e.status());
-            return "";
-        } catch (Exception e) {
             log.error("SMS failed to create TEE session [chainTaskId:{}]",
                     chainTaskId, e);
             return "";

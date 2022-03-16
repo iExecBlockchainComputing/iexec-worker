@@ -69,12 +69,9 @@ class SmsServiceTests {
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
         when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenThrow(FeignException.class)
-                .thenThrow(RuntimeException.class);
+                .thenThrow(FeignException.class);
         Assertions.assertThat(smsService.createTeeSession(workerpoolAuthorization)).isEmpty();
-        Assertions.assertThat(smsService.createTeeSession(workerpoolAuthorization)).isEmpty();
-        verify(smsClient, times(2))
-                .generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
+        verify(smsClient).generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
     }
 
     @Test
