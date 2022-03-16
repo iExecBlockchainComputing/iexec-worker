@@ -66,7 +66,7 @@ public class PublicConfigurationService {
     }
 
     @Bean
-    public SmsClient SmsClient() {
+    public SmsClient smsClient() {
         return SmsClientBuilder.getInstance(Logger.Level.NONE, getSmsURL());
     }
 }
