@@ -23,11 +23,8 @@ import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientBuilder;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.config.PublicConfigurationService;
 import feign.FeignException;
-import feign.Logger;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -45,9 +42,9 @@ public class SmsService {
     private TeeWorkflowSharedConfiguration teeWorkflowConfiguration;
 
     public SmsService(CredentialsService credentialsService,
-                      PublicConfigurationService configurationService) {
+                      SmsClient smsClient) {
         this.credentialsService = credentialsService;
-        this.smsClient = SmsClientBuilder.getInstance(Logger.Level.NONE, configurationService.getSmsURL());
+        this.smsClient = smsClient;
     }
 
     @Retryable(value = FeignException.class)

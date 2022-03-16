@@ -21,11 +21,11 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.config.PublicConfigurationService;
 import feign.FeignException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -42,18 +42,13 @@ class SmsServiceTests {
     @Mock
     private CredentialsService credentialsService;
     @Mock
-    private PublicConfigurationService configurationService;
-    @Mock
     private SmsClient smsClient;
-
+    @InjectMocks
     private SmsService smsService;
 
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
-        when(configurationService.getSmsURL()).thenReturn("http://localhost");
-        smsService = new SmsService(credentialsService, configurationService);
-        ReflectionTestUtils.setField(smsService, "smsClient", smsClient);
     }
 
     @Test
