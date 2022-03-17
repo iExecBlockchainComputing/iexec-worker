@@ -52,11 +52,8 @@ public class SmsService {
         String chainTaskId = workerpoolAuthorization.getChainTaskId();
         String authorization = getAuthorizationString(workerpoolAuthorization);
         SmsSecretResponse smsResponse;
-        try {
-            smsResponse = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
-        } catch (FeignException e) {
-            return Optional.empty();
-        }
+
+        smsResponse = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
 
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
@@ -81,8 +78,8 @@ public class SmsService {
 
     @Recover
     private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
-                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
+                workerpoolAuthorization.getChainTaskId(), e);
         return Optional.empty();
     }
 
