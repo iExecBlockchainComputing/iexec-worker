@@ -22,10 +22,10 @@ import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.sms.api.SmsClient;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,8 @@ public class SmsService {
     private final SmsClient smsClient;
     private TeeWorkflowSharedConfiguration teeWorkflowConfiguration;
 
-    public SmsService(CredentialsService credentialsService, SmsClient smsClient) {
+    public SmsService(CredentialsService credentialsService,
+                      SmsClient smsClient) {
         this.credentialsService = credentialsService;
         this.smsClient = smsClient;
     }
@@ -50,12 +51,10 @@ public class SmsService {
     public Optional<TaskSecrets> fetchTaskSecrets(WorkerpoolAuthorization workerpoolAuthorization) {
         String chainTaskId = workerpoolAuthorization.getChainTaskId();
         String authorization = getAuthorizationString(workerpoolAuthorization);
-        ResponseEntity<SmsSecretResponse> response = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            return Optional.empty();
-        }
+        SmsSecretResponse smsResponse;
 
-        SmsSecretResponse smsResponse = response.getBody();
+        smsResponse = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
+
         if (smsResponse == null) {
             log.error("Received null response from SMS [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
@@ -79,8 +78,8 @@ public class SmsService {
 
     @Recover
     private Optional<TaskSecrets> fetchTaskSecrets(FeignException e, WorkerpoolAuthorization workerpoolAuthorization) {
-        log.error("Failed to get task secrets from SMS [chainTaskId:{}, httpStatus:{}, exception:{}, attempts:3]",
-                workerpoolAuthorization.getChainTaskId(), e.status(), e.getMessage());
+        log.error("Failed to get task secrets from SMS [chainTaskId:{}, attempts:3]",
+                workerpoolAuthorization.getChainTaskId(), e);
         return Optional.empty();
     }
 
@@ -124,15 +123,12 @@ public class SmsService {
      * @return configuration if success, null otherwise
      */
     public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration() {
-        if (teeWorkflowConfiguration == null){
+        if (teeWorkflowConfiguration == null) {
             try {
-                ResponseEntity<TeeWorkflowSharedConfiguration> response =
-                        smsClient.getTeeWorkflowConfiguration();
-                teeWorkflowConfiguration = response.getStatusCode().is2xxSuccessful()
-                        ? response.getBody()
-                        : null;
-            } catch (Exception e) {
+                teeWorkflowConfiguration = smsClient.getTeeWorkflowConfiguration();
+            } catch (FeignException e) {
                 log.error("Failed to get tee workflow configuration from sms", e);
+                teeWorkflowConfiguration = null;
             }
         }
         return teeWorkflowConfiguration;
@@ -140,11 +136,8 @@ public class SmsService {
 
     public String getSconeCasUrl() {
         try {
-            ResponseEntity<String> response = smsClient.getSconeCasUrl();
-            return response.getStatusCode().is2xxSuccessful()
-                    ? response.getBody()
-                    : "";
-        } catch (Exception e) {
+            return smsClient.getSconeCasUrl();
+        } catch(FeignException e) {
             log.error("Failed to get scone cas configuration from sms", e);
             return "";
         }
@@ -156,18 +149,11 @@ public class SmsService {
         log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
         String authorization = getAuthorizationString(workerpoolAuthorization);
         try {
-            ResponseEntity<String> response = smsClient
-                    .createTeeSession(authorization, workerpoolAuthorization);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                log.error("SMS failed to create TEE session [chainTaskId:{}, " +
-                        "httpStatus:{}]", chainTaskId, response.getStatusCode());
-                return "";
-            }
-            String sessionId = response.getBody();
+            String sessionId = smsClient.generateTeeSession(authorization, workerpoolAuthorization);
             log.info("Created TEE session [chainTaskId:{}, sessionId:{}]",
                     chainTaskId, sessionId);
             return sessionId;
-        } catch (Exception e) {
+        } catch(FeignException e) {
             log.error("SMS failed to create TEE session [chainTaskId:{}]",
                     chainTaskId, e);
             return "";
@@ -180,10 +166,10 @@ public class SmsService {
     // @Retryable(value = FeignException.class)
     // public String createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) {
     //     String authorization = getAuthorizationString(workerpoolAuthorization);
-    //     ResponseEntity<String> response = smsClient.createTeeSession(authorization, workerpoolAuthorization);
-    //     log.info("Response of createTeeSession [chainTaskId:{}, httpStatus:{}, httpBody:{}]",
-    //             workerpoolAuthorization.getChainTaskId(), response.getStatusCode(), response.getBody());
-    //     return response.getStatusCode().is2xxSuccessful() ? response.getBody() : "";
+    //     String response = smsClient.generateTeeSession(authorization, workerpoolAuthorization);
+    //     log.info("Response of createTeeSession [chainTaskId:{}, httpBody:{}]",
+    //             workerpoolAuthorization.getChainTaskId(), response);
+    //     return response;
     // }
 
     // @Recover

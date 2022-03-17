@@ -17,7 +17,11 @@
 package com.iexec.worker.config;
 
 import com.iexec.common.config.PublicConfiguration;
+import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.SmsClientBuilder;
 import com.iexec.worker.feign.CustomCoreFeignClient;
+import feign.Logger;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -59,5 +63,10 @@ public class PublicConfigurationService {
 
     public String getRequiredWorkerVersion() {
         return publicConfiguration.getRequiredWorkerVersion();
+    }
+
+    @Bean
+    public SmsClient smsClient() {
+        return SmsClientBuilder.getInstance(Logger.Level.NONE, getSmsURL());
     }
 }
