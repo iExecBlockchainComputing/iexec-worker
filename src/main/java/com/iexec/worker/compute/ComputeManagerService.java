@@ -52,10 +52,17 @@ public class ComputeManagerService {
      *     <li>L : 1800 * 0.02 = 36 minutes</li>
      *     <li>XL: 6000 * 0.02 = 120 minutes</li>
      * </ul>
+     * If computed timeout duration is lower than {@link ComputeManagerService#MIN_PULL_TIMEOUT},
+     * then final timeout duration is {@link ComputeManagerService#MIN_PULL_TIMEOUT}.
+     * <br>
      * If computed timeout duration is greater than {@link ComputeManagerService#MAX_PULL_TIMEOUT},
      * then final timeout duration is {@link ComputeManagerService#MAX_PULL_TIMEOUT}.
      */
     private static final double PULL_TIMEOUT_FACTOR = 0.02;
+    /**
+     * 1 minute in milliseconds (= 60 000 ms)
+     */
+    private static final long MIN_PULL_TIMEOUT = 1L * 60L * 1000L;
     /**
      * 10 minutes in milliseconds (= 600 000 ms)
      */
@@ -95,9 +102,12 @@ public class ComputeManagerService {
         }
 
         final long maxExecutionTime = taskDescription.getMaxExecutionTime();
-        final long pullTimeout = Math.min(
-                (long)(PULL_TIMEOUT_FACTOR * maxExecutionTime),
-                MAX_PULL_TIMEOUT
+        final long pullTimeout = Math.max(
+                Math.min(
+                        (long) (PULL_TIMEOUT_FACTOR * maxExecutionTime),
+                        MAX_PULL_TIMEOUT
+                ),
+                MIN_PULL_TIMEOUT
         );
 
         return dockerService.getClient(taskDescription.getAppUri())
