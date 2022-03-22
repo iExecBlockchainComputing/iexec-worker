@@ -4,6 +4,7 @@ buildJavaProject(
         integrationTestsEnvVars: [],
         shouldPublishJars: true,
         shouldPublishDockerImages: true,
+        buildContext: '.',
         preDevelopVisibility: 'iex.ec',
         developVisibility: 'iex.ec',
         preProductionVisibility: 'docker.io',
