@@ -53,8 +53,8 @@ public class ComputeManagerService {
      *     <li>L : 1800 * 0.02 = 36 minutes</li>
      *     <li>XL: 6000 * 0.02 = 120 minutes</li>
      * </ul>
-     * If computed timeout duration is lower than {@link ComputeManagerService#MIN_PULL_TIMEOUT},
-     * then final timeout duration is {@link ComputeManagerService#MIN_PULL_TIMEOUT}.
+     * If computed timeout duration is lower than {@link ComputeManagerService#minPullTimeout},
+     * then final timeout duration is {@link ComputeManagerService#minPullTimeout}.
      * <br>
      * If computed timeout duration is greater than {@link ComputeManagerService#maxPullTimeout},
      * then final timeout duration is {@link ComputeManagerService#maxPullTimeout}.
