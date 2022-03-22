@@ -34,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 
 @Slf4j
@@ -41,6 +43,23 @@ import java.io.File;
 public class ComputeManagerService {
 
     private static final String STDOUT_FILENAME = "stdout.txt";
+    /**
+     * Examples of timeout depending on category:
+     * <ul>
+     *     <li>XS:   50 * 0.02 = 1 minute</li>
+     *     <li>S :  200 * 0.02 = 4 minutes</li>
+     *     <li>M :  600 * 0.02 = 12 minutes</li>
+     *     <li>L : 1800 * 0.02 = 36 minutes</li>
+     *     <li>XL: 6000 * 0.02 = 120 minutes</li>
+     * </ul>
+     * If computed timeout duration is greater than {@link ComputeManagerService#MAX_PULL_TIMEOUT},
+     * then final timeout duration is {@link ComputeManagerService#MAX_PULL_TIMEOUT}.
+     */
+    private static final double PULL_TIMEOUT_FACTOR = 0.02;
+    /**
+     * 10 minutes in milliseconds (= 600 000 ms)
+     */
+    private static final long MAX_PULL_TIMEOUT = 10L * 60L * 1000L;
 
     private final DockerService dockerService;
     private final PreComputeService preComputeService;
@@ -74,8 +93,15 @@ public class ComputeManagerService {
         if (!isDockerType || taskDescription.getAppUri() == null) {
             return false;
         }
+
+        final long maxExecutionTime = taskDescription.getMaxExecutionTime();
+        final long pullTimeout = Math.min(
+                (long)(PULL_TIMEOUT_FACTOR * maxExecutionTime),
+                MAX_PULL_TIMEOUT
+        );
+
         return dockerService.getClient(taskDescription.getAppUri())
-                .pullImage(taskDescription.getAppUri());
+                .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.MILLIS));
     }
 
     public boolean isAppDownloaded(String imageUri) {
