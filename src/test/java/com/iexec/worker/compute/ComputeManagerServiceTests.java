@@ -42,6 +42,8 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 
 import static org.mockito.Mockito.*;
@@ -105,7 +107,7 @@ public class ComputeManagerServiceTests {
     @Test
     public void shouldDownloadApp() {
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
-        when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(true);
+        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(20, ChronoUnit.MILLIS))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
