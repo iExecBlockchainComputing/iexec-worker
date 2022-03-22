@@ -67,8 +67,10 @@ public class ComputeManagerService {
     private final PostComputeService postComputeService;
     private final WorkerConfigurationService workerConfigService;
     private final ResultService resultService;
-    private final long minPullTimeout;
-    private final long maxPullTimeout;
+    @Value("${docker.image.min-pull-timeout:60}")
+    long minPullTimeout;
+    @Value("${docker.image.max-pull-timeout:600}")
+    long maxPullTimeout;
 
     public ComputeManagerService(
             DockerService dockerService,
@@ -76,17 +78,13 @@ public class ComputeManagerService {
             AppComputeService appComputeService,
             PostComputeService postComputeService,
             WorkerConfigurationService workerConfigService,
-            ResultService resultService,
-            @Value("${docker.image.min-pull-timeout}") long minPullTimeout,
-            @Value("${docker.image.max-pull-timeout}") long maxPullTimeout) {
+            ResultService resultService) {
         this.dockerService = dockerService;
         this.preComputeService = preComputeService;
         this.appComputeService = appComputeService;
         this.postComputeService = postComputeService;
         this.workerConfigService = workerConfigService;
         this.resultService = resultService;
-        this.minPullTimeout = minPullTimeout;
-        this.maxPullTimeout = maxPullTimeout;
     }
 
     public boolean downloadApp(TaskDescription taskDescription) {
@@ -99,17 +97,20 @@ public class ComputeManagerService {
             return false;
         }
 
+        final long pullTimeout = computeImagePullTimeout(taskDescription);
+        return dockerService.getClient(taskDescription.getAppUri())
+                .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.SECONDS));
+    }
+
+    long computeImagePullTimeout(TaskDescription taskDescription) {
         final long maxExecutionTime = taskDescription.getMaxExecutionTime();
-        final long pullTimeout = Math.max(
+        return Math.max(
                 Math.min(
                         (long) (PULL_TIMEOUT_FACTOR * maxExecutionTime),
                         maxPullTimeout
                 ),
                 minPullTimeout
         );
-
-        return dockerService.getClient(taskDescription.getAppUri())
-                .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.MILLIS));
     }
 
     public boolean isAppDownloaded(String imageUri) {

@@ -101,13 +101,14 @@ public class ComputeManagerServiceTests {
     @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.openMocks(this);
-
+        computeManagerService.minPullTimeout = 60;
+        computeManagerService.maxPullTimeout = 600;
     }
 
     @Test
     public void shouldDownloadApp() {
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
-        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(20, ChronoUnit.MILLIS))).thenReturn(true);
+        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(1, ChronoUnit.MINUTES))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
@@ -371,4 +372,54 @@ public class ComputeManagerServiceTests {
                 "stderr");
     }
 
+    // computeImagePullTimeout
+    @Test
+    void computeImagePullTimeoutForXSCategory() {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .maxExecutionTime(3000)
+                .build();
+        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+                .isEqualTo(60);
+    }
+
+    @Test
+    void computeImagePullTimeoutForSCategory() {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .maxExecutionTime(12000)
+                .build();
+        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+                .isEqualTo(240);
+    }
+
+    @Test
+    void computeImagePullTimeoutForMCategory() {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .maxExecutionTime(36000)
+                .build();
+        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+                .isEqualTo(600);
+    }
+
+    @Test
+    void computeImagePullTimeoutForLCategory() {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .maxExecutionTime(108000)
+                .build();
+        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+                .isEqualTo(600);
+    }
+
+    @Test
+    void computeImagePullTimeoutForXLCategory() {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .maxExecutionTime(360000)
+                .build();
+        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+                .isEqualTo(600);
+    }
 }
