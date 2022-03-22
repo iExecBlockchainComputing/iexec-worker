@@ -62,7 +62,7 @@ public class ComputeManagerService {
     /**
      * 1 minute in milliseconds (= 60 000 ms)
      */
-    private static final long MIN_PULL_TIMEOUT = 1L * 60L * 1000L;
+    private static final long MIN_PULL_TIMEOUT = Duration.ofMinutes(1).toMillis();
     /**
      * 10 minutes in milliseconds (= 600 000 ms)
      */
