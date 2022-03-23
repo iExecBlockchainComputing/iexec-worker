@@ -19,6 +19,7 @@ package com.iexec.worker.docker;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,11 +32,16 @@ import java.util.stream.Collectors;
 @Slf4j
 @Configuration
 @ConfigurationProperties(prefix = "docker")
+@Getter
+@Setter
 public class DockerRegistryConfiguration {
 
-    @Setter
-    @Getter
     private List<RegistryCredentials> registries;
+
+    @Value("${docker.image.pull-timeout-min:60}")
+    private long minPullTimeout;
+    @Value("${docker.image.pull-timeout-max:600}")
+    private long maxPullTimeout;
 
     /**
      * Check that if a Docker registry's username is present, then its password is also

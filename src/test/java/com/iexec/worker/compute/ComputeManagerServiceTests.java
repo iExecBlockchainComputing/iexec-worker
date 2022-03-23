@@ -30,6 +30,7 @@ import com.iexec.worker.compute.post.PostComputeService;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import org.assertj.core.api.Assertions;
@@ -84,6 +85,8 @@ class ComputeManagerServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
+    private DockerRegistryConfiguration dockerRegistryConfiguration;
+    @Mock
     private DockerClientInstance dockerClient;
     @Mock
     private PreComputeService preComputeService;
@@ -101,12 +104,12 @@ class ComputeManagerServiceTests {
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
-        computeManagerService.minPullTimeout = 60;
-        computeManagerService.maxPullTimeout = 600;
     }
 
     @Test
     void shouldDownloadApp() {
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(1, ChronoUnit.MINUTES))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
@@ -379,6 +382,10 @@ class ComputeManagerServiceTests {
                 .builder()
                 .maxExecutionTime(3000)
                 .build();
+
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(60);
     }
@@ -389,6 +396,10 @@ class ComputeManagerServiceTests {
                 .builder()
                 .maxExecutionTime(12000)
                 .build();
+
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(240);
     }
@@ -399,6 +410,10 @@ class ComputeManagerServiceTests {
                 .builder()
                 .maxExecutionTime(36000)
                 .build();
+
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(600);
     }
@@ -409,6 +424,10 @@ class ComputeManagerServiceTests {
                 .builder()
                 .maxExecutionTime(108000)
                 .build();
+
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(600);
     }
@@ -419,6 +438,10 @@ class ComputeManagerServiceTests {
                 .builder()
                 .maxExecutionTime(360000)
                 .build();
+
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(600);
     }
