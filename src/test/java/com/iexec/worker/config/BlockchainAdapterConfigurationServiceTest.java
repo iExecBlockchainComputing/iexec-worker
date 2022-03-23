@@ -1,7 +1,7 @@
 package com.iexec.worker.config;
 
+import com.iexec.blockchain.api.BlockchainAdapterApiClient;
 import com.iexec.common.config.PublicChainConfig;
-import com.iexec.worker.feign.CustomBlockchainAdapterClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -20,7 +20,7 @@ class BlockchainAdapterConfigurationServiceTest {
     private static final Duration BLOCK_TIME = Duration.ofSeconds(1);
 
     @Mock
-    private CustomBlockchainAdapterClient customBlockchainAdapterClient;
+    private BlockchainAdapterApiClient blockchainAdapterClient;
 
     @BeforeEach
     void beforeEach() {
@@ -29,7 +29,7 @@ class BlockchainAdapterConfigurationServiceTest {
 
     @Test
     void shouldGetBlockTime() {
-        when(customBlockchainAdapterClient.getPublicChainConfig()).thenReturn(
+        when(blockchainAdapterClient.getPublicChainConfig()).thenReturn(
                 PublicChainConfig.builder()
                         .chainId(CHAIN_ID)
                         .isSidechain(IS_SIDECHAIN)
@@ -40,7 +40,7 @@ class BlockchainAdapterConfigurationServiceTest {
         );
 
         BlockchainAdapterConfigurationService blockchainAdapterConfigurationService =
-                new BlockchainAdapterConfigurationService(customBlockchainAdapterClient);
+                new BlockchainAdapterConfigurationService(blockchainAdapterClient);
 
         assertThat(blockchainAdapterConfigurationService.getChainId())
                 .isEqualTo(CHAIN_ID);
