@@ -29,8 +29,9 @@ docker:
       username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_1:}
       password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_1:}
   image:
-    min-pull-timeout: ${IEXEC_WORKER_DOCKER_IMAGE_MIN_PULL_TIMEOUT:60}   # image min pull timeout in seconds
-    max-pull-timeout: ${IEXEC_WORKER_DOCKER_IMAGE_MAX_PULL_TIMEOUT:600}  # image max pull timeout in seconds
+    pull-timeout:
+      min: ${IEXEC_WORKER_DOCKER_IMAGE_MIN_PULL_TIMEOUT:60}   # image min pull timeout in seconds
+      max: ${IEXEC_WORKER_DOCKER_IMAGE_MAX_PULL_TIMEOUT:600}  # image max pull timeout in seconds
 
 wallet:
   encrypted-file-path: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}

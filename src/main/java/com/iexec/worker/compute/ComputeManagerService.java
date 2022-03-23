@@ -28,10 +28,10 @@ import com.iexec.worker.compute.post.PostComputeService;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -53,33 +53,32 @@ public class ComputeManagerService {
      *     <li>L : 1800 * 0.02 = 36 minutes</li>
      *     <li>XL: 6000 * 0.02 = 120 minutes</li>
      * </ul>
-     * If computed timeout duration is lower than {@link ComputeManagerService#minPullTimeout},
-     * then final timeout duration is {@link ComputeManagerService#minPullTimeout}.
+     * If computed timeout duration is lower than {@link DockerRegistryConfiguration#getMinPullTimeout()},
+     * then final timeout duration is {@link DockerRegistryConfiguration#getMinPullTimeout()}.
      * <br>
-     * If computed timeout duration is greater than {@link ComputeManagerService#maxPullTimeout},
-     * then final timeout duration is {@link ComputeManagerService#maxPullTimeout}.
+     * If computed timeout duration is greater than {@link DockerRegistryConfiguration#getMaxPullTimeout()},
+     * then final timeout duration is {@link DockerRegistryConfiguration#getMaxPullTimeout()}.
      */
     private static final double PULL_TIMEOUT_FACTOR = 0.02;
 
     private final DockerService dockerService;
+    private final DockerRegistryConfiguration dockerRegistryConfiguration;
     private final PreComputeService preComputeService;
     private final AppComputeService appComputeService;
     private final PostComputeService postComputeService;
     private final WorkerConfigurationService workerConfigService;
     private final ResultService resultService;
-    @Value("${docker.image.min-pull-timeout:60}")
-    long minPullTimeout;
-    @Value("${docker.image.max-pull-timeout:600}")
-    long maxPullTimeout;
 
     public ComputeManagerService(
             DockerService dockerService,
+            DockerRegistryConfiguration dockerRegistryConfiguration,
             PreComputeService preComputeService,
             AppComputeService appComputeService,
             PostComputeService postComputeService,
             WorkerConfigurationService workerConfigService,
             ResultService resultService) {
         this.dockerService = dockerService;
+        this.dockerRegistryConfiguration = dockerRegistryConfiguration;
         this.preComputeService = preComputeService;
         this.appComputeService = appComputeService;
         this.postComputeService = postComputeService;
@@ -107,9 +106,9 @@ public class ComputeManagerService {
         return Math.max(
                 Math.min(
                         (long) (PULL_TIMEOUT_FACTOR * maxExecutionTime),
-                        maxPullTimeout
+                        dockerRegistryConfiguration.getMaxPullTimeout()
                 ),
-                minPullTimeout
+                dockerRegistryConfiguration.getMinPullTimeout()
         );
     }
 
