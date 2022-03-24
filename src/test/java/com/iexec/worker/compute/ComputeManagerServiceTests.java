@@ -37,6 +37,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -46,6 +49,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import static org.mockito.Mockito.*;
 
@@ -69,6 +73,7 @@ public class ComputeManagerServiceTests {
             .developerLoggerEnabled(true)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true)
+            .maxExecutionTime(3000)
             .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder()
@@ -108,10 +113,10 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldDownloadApp() {
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(300L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(1800L);
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
-        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(1, ChronoUnit.MINUTES))).thenReturn(true);
+        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(419, ChronoUnit.SECONDS))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
@@ -376,73 +381,28 @@ public class ComputeManagerServiceTests {
     }
 
     // computeImagePullTimeout
-    @Test
-    void computeImagePullTimeoutForXSCategory() {
-        final TaskDescription taskDescription = TaskDescription
-                .builder()
-                .maxExecutionTime(3000)
-                .build();
-
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
-
-        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
-                .isEqualTo(60);
+    static Stream<Arguments> computeImagePullTimeoutValues() {
+        return Stream.of(
+                Arguments.of(3000, 419),        // XS category
+                Arguments.of(12000, 780),       // S category
+                Arguments.of(36000, 1066),      // M category
+                Arguments.of(108000, 1353),     // L category
+                Arguments.of(360000, 1666)      // XL category
+        );
     }
 
-    @Test
-    void computeImagePullTimeoutForSCategory() {
+    @ParameterizedTest
+    @MethodSource("computeImagePullTimeoutValues")
+    void computeImagePullTimeout(long maxExecutionTime, long expectedTimeout) {
         final TaskDescription taskDescription = TaskDescription
                 .builder()
-                .maxExecutionTime(12000)
+                .maxExecutionTime(maxExecutionTime)
                 .build();
 
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(300L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(1800L);
 
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
-                .isEqualTo(240);
-    }
-
-    @Test
-    void computeImagePullTimeoutForMCategory() {
-        final TaskDescription taskDescription = TaskDescription
-                .builder()
-                .maxExecutionTime(36000)
-                .build();
-
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
-
-        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
-                .isEqualTo(600);
-    }
-
-    @Test
-    void computeImagePullTimeoutForLCategory() {
-        final TaskDescription taskDescription = TaskDescription
-                .builder()
-                .maxExecutionTime(108000)
-                .build();
-
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
-
-        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
-                .isEqualTo(600);
-    }
-
-    @Test
-    void computeImagePullTimeoutForXLCategory() {
-        final TaskDescription taskDescription = TaskDescription
-                .builder()
-                .maxExecutionTime(360000)
-                .build();
-
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(60L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(600L);
-
-        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
-                .isEqualTo(600);
+                .isEqualTo(expectedTimeout);
     }
 }
