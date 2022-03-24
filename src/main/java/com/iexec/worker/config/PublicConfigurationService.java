@@ -16,6 +16,8 @@
 
 package com.iexec.worker.config;
 
+import com.iexec.blockchain.api.BlockchainAdapterApiClient;
+import com.iexec.blockchain.api.BlockchainAdapterApiClientBuilder;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientBuilder;
@@ -63,6 +65,11 @@ public class PublicConfigurationService {
 
     public String getRequiredWorkerVersion() {
         return publicConfiguration.getRequiredWorkerVersion();
+    }
+
+    @Bean
+    public BlockchainAdapterApiClient blockchainAdapterApiClient() {
+        return BlockchainAdapterApiClientBuilder.getInstance(Logger.Level.NONE, getBlockchainAdapterUrl());
     }
 
     @Bean
