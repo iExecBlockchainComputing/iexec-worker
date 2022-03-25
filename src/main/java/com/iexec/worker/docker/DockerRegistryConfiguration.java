@@ -38,9 +38,15 @@ public class DockerRegistryConfiguration {
 
     private List<RegistryCredentials> registries;
 
-    @Value("${docker.image.pull-timeout.min:60}")
+    /**
+     * Min pull timeout expressed in minutes
+     */
+    @Value("${docker.image.pull-timeout.min:5}")
     private long minPullTimeout;
-    @Value("${docker.image.pull-timeout.max:600}")
+    /**
+     * Max pull timeout expressed in minutes
+     */
+    @Value("${docker.image.pull-timeout.max:30}")
     private long maxPullTimeout;
 
     /**

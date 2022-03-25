@@ -82,17 +82,27 @@ public class ComputeManagerService {
 
         final long pullTimeout = computeImagePullTimeout(taskDescription);
         return dockerService.getClient(taskDescription.getAppUri())
-                .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.SECONDS));
+                .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.MINUTES));
     }
 
     /**
-     * Examples of timeout depending on category:
+     * Computes image pull timeout depending on task max time execution.
+     * This should depend on task category (XS, S, M, L, XL).
+     * <p>
+     * Current formula is: {@literal 10 * log(maxExecutionTime * 10)},
+     * with {@literal maxExecutionTime} being expressed in minutes.
+     * The result is rounded to the nearest integer.
+     * <p>
+     * Examples of timeout depending on category
+     * - with default values of 5 for min and 30 for max:
      * <ul>
-     *     <li>XS:   50 * 0.02 = 7 minute</li>
-     *     <li>S :  200 * 0.02 = 13 minutes</li>
-     *     <li>M :  600 * 0.02 = 18 minutes</li>
-     *     <li>L : 1800 * 0.02 = 23 minutes</li>
-     *     <li>XL: 6000 * 0.02 = 28 minutes</li>
+     *     <li>XXS: 10 * log(    20 / 10) =  3 minutes => 5 minutes because of min</li>
+     *     <li>XS : 10 * log(    50 / 10) =  7 minutes</li>
+     *     <li>S  : 10 * log(   200 / 10) = 13 minutes</li>
+     *     <li>M  : 10 * log(   600 / 10) = 18 minutes</li>
+     *     <li>L  : 10 * log(  1800 / 10) = 23 minutes</li>
+     *     <li>XL : 10 * log(  6000 / 10) = 28 minutes</li>
+     *     <li>XXL: 10 * log(100000 / 10) = 40 minutes => 30 minutes because of max</li>
      * </ul>
      * If computed timeout duration is lower than {@link DockerRegistryConfiguration#getMinPullTimeout()},
      * then final timeout duration is {@link DockerRegistryConfiguration#getMinPullTimeout()}.
@@ -101,10 +111,10 @@ public class ComputeManagerService {
      * then final timeout duration is {@link DockerRegistryConfiguration#getMaxPullTimeout()}.
      */
     long computeImagePullTimeout(TaskDescription taskDescription) {
-        final long maxExecutionTime = taskDescription.getMaxExecutionTime();
+        final long maxExecutionTime = taskDescription.getMaxExecutionTime() / 60;
         return Math.max(
                 Math.min(
-                        (long) (600 * Math.log10(maxExecutionTime / 600.0)),
+                        Math.round(10.0 * Math.log10(maxExecutionTime / 10.0)),
                         dockerRegistryConfiguration.getMaxPullTimeout()
                 ),
                 dockerRegistryConfiguration.getMinPullTimeout()

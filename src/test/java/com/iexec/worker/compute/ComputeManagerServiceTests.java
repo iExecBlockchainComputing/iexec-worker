@@ -113,10 +113,10 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldDownloadApp() {
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(300L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(1800L);
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(5L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(30L);
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
-        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(419, ChronoUnit.SECONDS))).thenReturn(true);
+        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(7, ChronoUnit.MINUTES))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
@@ -383,11 +383,13 @@ public class ComputeManagerServiceTests {
     // computeImagePullTimeout
     static Stream<Arguments> computeImagePullTimeoutValues() {
         return Stream.of(
-                Arguments.of(3000, 419),        // XS category
-                Arguments.of(12000, 780),       // S category
-                Arguments.of(36000, 1066),      // M category
-                Arguments.of(108000, 1353),     // L category
-                Arguments.of(360000, 1666)      // XL category
+                Arguments.of(1200, 5),        // Fictive XXS category
+                Arguments.of(3000, 7),        // XS category
+                Arguments.of(12000, 13),      // S category
+                Arguments.of(36000, 18),      // M category
+                Arguments.of(108000, 23),     // L category
+                Arguments.of(360000, 28),     // XL category
+                Arguments.of(6000000, 30)     // Fictive XXL category
         );
     }
 
@@ -399,8 +401,8 @@ public class ComputeManagerServiceTests {
                 .maxExecutionTime(maxExecutionTime)
                 .build();
 
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(300L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(1800L);
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(5L);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(30L);
 
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(expectedTimeout);
