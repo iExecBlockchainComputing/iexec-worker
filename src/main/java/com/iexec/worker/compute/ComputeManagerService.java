@@ -37,6 +37,8 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Slf4j
@@ -85,6 +87,8 @@ public class ComputeManagerService {
                 .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.MINUTES));
     }
 
+    private final Map<Long, Long> alreadyComputedTimeouts = new HashMap<>(5);
+
     /**
      * Computes image pull timeout depending on task max time execution.
      * This should depend on task category (XS, S, M, L, XL).
@@ -112,13 +116,18 @@ public class ComputeManagerService {
      */
     long computeImagePullTimeout(TaskDescription taskDescription) {
         final long maxExecutionTime = taskDescription.getMaxExecutionTime() / 60;
-        return Math.max(
+        if (alreadyComputedTimeouts.containsKey(maxExecutionTime)) {
+            return alreadyComputedTimeouts.get(maxExecutionTime);
+        }
+        final long imagePullTimeout = Math.max(
                 Math.min(
                         Math.round(10.0 * Math.log10(maxExecutionTime / 10.0)),
                         dockerRegistryConfiguration.getMaxPullTimeout()
                 ),
                 dockerRegistryConfiguration.getMinPullTimeout()
         );
+        alreadyComputedTimeouts.put(maxExecutionTime, imagePullTimeout);
+        return imagePullTimeout;
     }
 
     public boolean isAppDownloaded(String imageUri) {
