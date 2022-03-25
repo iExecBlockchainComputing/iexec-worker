@@ -24,6 +24,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
+import javax.validation.constraints.Positive;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,12 +42,14 @@ public class DockerRegistryConfiguration {
     /**
      * Min pull timeout expressed in minutes
      */
-    @Value("${docker.image.pull-timeout.min:5}")
+    @Positive
+    @Value("${docker.image.pull-timeout.min}")
     private long minPullTimeout;
     /**
      * Max pull timeout expressed in minutes
      */
-    @Value("${docker.image.pull-timeout.max:30}")
+    @Positive
+    @Value("${docker.image.pull-timeout.max}")
     private long maxPullTimeout;
 
     /**
