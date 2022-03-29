@@ -113,18 +113,21 @@ public class ComputeManagerService {
      * <br>
      * If computed timeout duration is greater than {@link DockerRegistryConfiguration#getMaxPullTimeout()},
      * then final timeout duration is {@link DockerRegistryConfiguration#getMaxPullTimeout()}.
+     * <br>
+     * If {@link DockerRegistryConfiguration#getMinPullTimeout()} is less than {@link DockerRegistryConfiguration#getMaxPullTimeout()},
+     * then {@link DockerRegistryConfiguration#getMaxPullTimeout()} is the one used.
      */
     long computeImagePullTimeout(TaskDescription taskDescription) {
         final long maxExecutionTime = taskDescription.getMaxExecutionTime() / 60;
         if (alreadyComputedTimeouts.containsKey(maxExecutionTime)) {
             return alreadyComputedTimeouts.get(maxExecutionTime);
         }
-        final long imagePullTimeout = Math.max(
-                Math.min(
+        final long imagePullTimeout = Math.min(
+                Math.max(
                         Math.round(10.0 * Math.log10(maxExecutionTime / 10.0)),
-                        dockerRegistryConfiguration.getMaxPullTimeout()
+                        dockerRegistryConfiguration.getMinPullTimeout()
                 ),
-                dockerRegistryConfiguration.getMinPullTimeout()
+                dockerRegistryConfiguration.getMaxPullTimeout()
         );
         alreadyComputedTimeouts.put(maxExecutionTime, imagePullTimeout);
         return imagePullTimeout;

@@ -383,26 +383,35 @@ public class ComputeManagerServiceTests {
     // computeImagePullTimeout
     static Stream<Arguments> computeImagePullTimeoutValues() {
         return Stream.of(
-                Arguments.of(1200, 5),        // Fictive XXS category
-                Arguments.of(3000, 7),        // XS category
-                Arguments.of(12000, 13),      // S category
-                Arguments.of(36000, 18),      // M category
-                Arguments.of(108000, 23),     // L category
-                Arguments.of(360000, 28),     // XL category
-                Arguments.of(6000000, 30)     // Fictive XXL category
+                // maxExecutionTime, minPullTimeout, maxPullTimeout, expectedTimeout
+
+                // Default values
+                Arguments.of(3000, 5, 30, 7),        // XS category
+                Arguments.of(12000, 5, 30, 13),      // S category
+                Arguments.of(36000, 5, 30, 18),      // M category
+                Arguments.of(108000, 5, 30, 23),     // L category
+                Arguments.of(360000, 5, 30, 28),     // XL category
+
+                // Unusual timeouts
+                Arguments.of(3000, 1, 5, 5),        // Computed timeout is greater than maxPullTimeout
+                Arguments.of(3000, 10, 30, 10),     // Computed timeout is less than minPullTimeout
+                Arguments.of(3000, 10, 5, 5)        // Limits are reversed; maxPullTimeout is the one selected
         );
     }
 
     @ParameterizedTest
     @MethodSource("computeImagePullTimeoutValues")
-    void computeImagePullTimeout(long maxExecutionTime, long expectedTimeout) {
+    void computeImagePullTimeout(long maxExecutionTime,
+                                 long minPullTimeout,
+                                 long maxPullTimeout,
+                                 long expectedTimeout) {
         final TaskDescription taskDescription = TaskDescription
                 .builder()
                 .maxExecutionTime(maxExecutionTime)
                 .build();
 
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(5L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(30L);
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(minPullTimeout);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(maxPullTimeout);
 
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(expectedTimeout);
