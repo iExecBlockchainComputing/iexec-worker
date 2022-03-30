@@ -114,7 +114,7 @@ public class ComputeManagerService {
      * If computed timeout duration is greater than {@link DockerRegistryConfiguration#getMaxPullTimeout()},
      * then final timeout duration is {@link DockerRegistryConfiguration#getMaxPullTimeout()}.
      * <br>
-     * If {@link DockerRegistryConfiguration#getMinPullTimeout()} is less than {@link DockerRegistryConfiguration#getMaxPullTimeout()},
+     * If {@link DockerRegistryConfiguration#getMinPullTimeout()} is greater than {@link DockerRegistryConfiguration#getMaxPullTimeout()},
      * then {@link DockerRegistryConfiguration#getMaxPullTimeout()} is the one used.
      */
     long computeImagePullTimeout(TaskDescription taskDescription) {
