@@ -27,9 +27,9 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.CustomResultFeignClient;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Optional;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
@@ -62,7 +61,7 @@ class ResultServiceTests {
     @Mock
     private IexecHubService iexecHubService;
     @Mock
-    private CustomResultFeignClient customResultFeignClient;
+    private ResultProxyClient resultProxyClient;
     @Mock
     private WorkerConfigurationService workerConfigurationService;
 
@@ -71,7 +70,7 @@ class ResultServiceTests {
     private String tmp;
 
     @BeforeEach
-    void init() throws IOException {
+    void init() {
         MockitoAnnotations.openMocks(this);
         tmp = folderRule.getAbsolutePath();
     }
@@ -120,7 +119,7 @@ class ResultServiceTests {
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().resultStorageProvider(storage).build());
-        when(customResultFeignClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
+        when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
