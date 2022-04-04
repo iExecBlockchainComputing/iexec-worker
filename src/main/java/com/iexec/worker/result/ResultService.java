@@ -316,6 +316,7 @@ public class ResultService {
             // login
             return resultProxyClient.login(chainId, signedEip712Challenge);
         } catch (RuntimeException e) {
+            log.error("Failed to get upload token", e);
             return "";
         }
     }
