@@ -100,13 +100,11 @@ public class ComputeManagerService {
      * Examples of timeout depending on category
      * - with default values of 5 for min and 30 for max:
      * <ul>
-     *     <li>XXS: 10 * log(    20 / 10) =  3 minutes => 5 minutes because of min</li>
      *     <li>XS : 10 * log(    50 / 10) =  7 minutes</li>
      *     <li>S  : 10 * log(   200 / 10) = 13 minutes</li>
      *     <li>M  : 10 * log(   600 / 10) = 18 minutes</li>
      *     <li>L  : 10 * log(  1800 / 10) = 23 minutes</li>
      *     <li>XL : 10 * log(  6000 / 10) = 28 minutes</li>
-     *     <li>XXL: 10 * log(100000 / 10) = 40 minutes => 30 minutes because of max</li>
      * </ul>
      * If computed timeout duration is lower than {@link DockerRegistryConfiguration#getMinPullTimeout()},
      * then final timeout duration is {@link DockerRegistryConfiguration#getMinPullTimeout()}.
