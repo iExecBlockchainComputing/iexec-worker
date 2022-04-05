@@ -122,8 +122,7 @@ public class ResultService {
         try {
             computedFileJsonAsString = new ObjectMapper().writeValueAsString(computedFile);
         } catch (JsonProcessingException e) {
-            log.error("Failed to prepare computed file [chainTaskId:{}]",
-                    chainTaskId, e);
+            log.error("Failed to prepare computed file [chainTaskId:{}]", chainTaskId, e);
             return false;
         }
         String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
@@ -153,7 +152,7 @@ public class ResultService {
         try {
             zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
         } catch (IOException e) {
-            log.error("Failed to get zip result [chainTaskId:{}, zipLocation:{}]", chainTaskId, zipLocation);
+            log.error("Failed to get zip result [chainTaskId:{}, zipLocation:{}]", chainTaskId, zipLocation, e);
         }
 
         return ResultModel.builder()
@@ -247,7 +246,7 @@ public class ResultService {
             resultProxyClient.addResult(authorizationToken, getResultModelWithZip(chainTaskId));
             return true;
         } catch (RuntimeException e) {
-            log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId);
+            log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId, e);
             return false;
         }
     }
@@ -280,7 +279,7 @@ public class ResultService {
                     String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
                     location = "/ipfs/" + ipfsHash;
                 } catch (RuntimeException e) {
-                    log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId);
+                    log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId, e);
                     return "";
                 }
                 break;
