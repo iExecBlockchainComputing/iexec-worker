@@ -47,6 +47,8 @@ public class ComputeManagerService {
 
     private static final String STDOUT_FILENAME = "stdout.txt";
 
+    private final Map<Long, Long> categoryTimeoutMap = new HashMap<>(5);
+
     private final DockerService dockerService;
     private final DockerRegistryConfiguration dockerRegistryConfiguration;
     private final PreComputeService preComputeService;
@@ -87,8 +89,6 @@ public class ComputeManagerService {
                 .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.MINUTES));
     }
 
-    private final Map<Long, Long> alreadyComputedTimeouts = new HashMap<>(5);
-
     /**
      * Computes image pull timeout depending on task max time execution.
      * This should depend on task category (XS, S, M, L, XL).
@@ -119,8 +119,8 @@ public class ComputeManagerService {
      */
     long computeImagePullTimeout(TaskDescription taskDescription) {
         final long maxExecutionTime = taskDescription.getMaxExecutionTime() / 60;
-        if (alreadyComputedTimeouts.containsKey(maxExecutionTime)) {
-            return alreadyComputedTimeouts.get(maxExecutionTime);
+        if (categoryTimeoutMap.containsKey(maxExecutionTime)) {
+            return categoryTimeoutMap.get(maxExecutionTime);
         }
         final long imagePullTimeout = Math.min(
                 Math.max(
@@ -129,7 +129,7 @@ public class ComputeManagerService {
                 ),
                 dockerRegistryConfiguration.getMaxPullTimeout()
         );
-        alreadyComputedTimeouts.put(maxExecutionTime, imagePullTimeout);
+        categoryTimeoutMap.put(maxExecutionTime, imagePullTimeout);
         return imagePullTimeout;
     }
 
