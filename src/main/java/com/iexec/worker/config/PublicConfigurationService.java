@@ -19,6 +19,8 @@ package com.iexec.worker.config;
 import com.iexec.blockchain.api.BlockchainAdapterApiClient;
 import com.iexec.blockchain.api.BlockchainAdapterApiClientBuilder;
 import com.iexec.common.config.PublicConfiguration;
+import com.iexec.resultproxy.api.ResultProxyClient;
+import com.iexec.resultproxy.api.ResultProxyClientBuilder;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientBuilder;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -70,6 +72,11 @@ public class PublicConfigurationService {
     @Bean
     public BlockchainAdapterApiClient blockchainAdapterApiClient() {
         return BlockchainAdapterApiClientBuilder.getInstance(Logger.Level.NONE, getBlockchainAdapterUrl());
+    }
+
+    @Bean
+    public ResultProxyClient resultProxyClient() {
+        return ResultProxyClientBuilder.getInstance(Logger.Level.NONE, getResultRepositoryURL());
     }
 
     @Bean
