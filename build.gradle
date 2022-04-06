@@ -61,6 +61,7 @@ dependencies {
     implementation  "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation  "org.springframework.retry:spring-retry"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // Web3j issues, see core build.gradle
     implementation 'com.squareup.okhttp3:okhttp:4.3.1'

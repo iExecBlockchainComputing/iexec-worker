@@ -28,6 +28,10 @@ docker:
       address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_1:}
       username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_1:}
       password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_1:}
+  image:
+    pull-timeout:
+      min: ${IEXEC_WORKER_DOCKER_IMAGE_MIN_PULL_TIMEOUT:PT5M}   # image min pull timeout
+      max: ${IEXEC_WORKER_DOCKER_IMAGE_MAX_PULL_TIMEOUT:PT30M}  # image max pull timeout
 
 wallet:
   encrypted-file-path: ${IEXEC_WORKER_WALLET_PATH:./src/main/resources/wallet/encrypted-wallet_worker1.json}
