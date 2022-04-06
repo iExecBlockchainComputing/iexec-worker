@@ -93,7 +93,7 @@ public class ComputeManagerService {
      * Computes image pull timeout depending on task max time execution.
      * This should depend on task category (XS, S, M, L, XL).
      * <p>
-     * Current formula is: {@literal 10 * log(maxExecutionTime * 10)},
+     * Current formula is: {@literal 10 * log(maxExecutionTime / 10)},
      * with {@literal maxExecutionTime} being expressed in minutes.
      * The result is rounded to the nearest integer.
      * <p>
@@ -116,18 +116,18 @@ public class ComputeManagerService {
      * then {@link DockerRegistryConfiguration#getMaxPullTimeout()} is the one used.
      */
     long computeImagePullTimeout(TaskDescription taskDescription) {
-        final long maxExecutionTime = taskDescription.getMaxExecutionTime() / 60;
-        if (categoryTimeoutMap.containsKey(maxExecutionTime)) {
-            return categoryTimeoutMap.get(maxExecutionTime);
+        final long maxExecutionTimeInMinutes = taskDescription.getMaxExecutionTime() / 60;
+        if (categoryTimeoutMap.containsKey(maxExecutionTimeInMinutes)) {
+            return categoryTimeoutMap.get(maxExecutionTimeInMinutes);
         }
         final long imagePullTimeout = Math.min(
                 Math.max(
-                        Math.round(10.0 * Math.log10(maxExecutionTime / 10.0)),
-                        dockerRegistryConfiguration.getMinPullTimeout()
+                        Math.round(10.0 * Math.log10(maxExecutionTimeInMinutes / 10.0)),
+                        dockerRegistryConfiguration.getMinPullTimeout().toMinutes()
                 ),
-                dockerRegistryConfiguration.getMaxPullTimeout()
+                dockerRegistryConfiguration.getMaxPullTimeout().toMinutes()
         );
-        categoryTimeoutMap.put(maxExecutionTime, imagePullTimeout);
+        categoryTimeoutMap.put(maxExecutionTimeInMinutes, imagePullTimeout);
         return imagePullTimeout;
     }
 

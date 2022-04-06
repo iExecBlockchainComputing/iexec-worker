@@ -113,8 +113,8 @@ public class ComputeManagerServiceTests {
 
     @Test
     public void shouldDownloadApp() {
-        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(5L);
-        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(30L);
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(Duration.of(5, ChronoUnit.MINUTES));
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(Duration.of(30, ChronoUnit.MINUTES));
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(7, ChronoUnit.MINUTES))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
@@ -386,24 +386,24 @@ public class ComputeManagerServiceTests {
                 // maxExecutionTime, minPullTimeout, maxPullTimeout, expectedTimeout
 
                 // Default values
-                Arguments.of(3000, 5, 30, 7),        // XS category
-                Arguments.of(12000, 5, 30, 13),      // S category
-                Arguments.of(36000, 5, 30, 18),      // M category
-                Arguments.of(108000, 5, 30, 23),     // L category
-                Arguments.of(360000, 5, 30, 28),     // XL category
+                Arguments.of(3000  , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 7),        // XS category
+                Arguments.of(12000 , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 13),      // S category
+                Arguments.of(36000 , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 18),      // M category
+                Arguments.of(108000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 23),     // L category
+                Arguments.of(360000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 28),     // XL category
 
                 // Unusual timeouts
-                Arguments.of(3000, 1, 5, 5),        // Computed timeout is greater than maxPullTimeout
-                Arguments.of(3000, 10, 30, 10),     // Computed timeout is less than minPullTimeout
-                Arguments.of(3000, 10, 5, 5)        // Limits are reversed; maxPullTimeout is the one selected
+                Arguments.of(3000, Duration.of(1, ChronoUnit.MINUTES), Duration.of(5, ChronoUnit.MINUTES), 5),        // Computed timeout is greater than maxPullTimeout
+                Arguments.of(3000, Duration.of(10, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 10),     // Computed timeout is less than minPullTimeout
+                Arguments.of(3000, Duration.of(10, ChronoUnit.MINUTES), Duration.of(5, ChronoUnit.MINUTES), 5)        // Limits are reversed; maxPullTimeout is the one selected
         );
     }
 
     @ParameterizedTest
     @MethodSource("computeImagePullTimeoutValues")
     void computeImagePullTimeout(long maxExecutionTime,
-                                 long minPullTimeout,
-                                 long maxPullTimeout,
+                                 Duration minPullTimeout,
+                                 Duration maxPullTimeout,
                                  long expectedTimeout) {
         final TaskDescription taskDescription = TaskDescription
                 .builder()

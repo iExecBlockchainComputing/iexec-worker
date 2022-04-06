@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 import javax.validation.constraints.Positive;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -44,13 +45,13 @@ public class DockerRegistryConfiguration {
      */
     @Positive
     @Value("${docker.image.pull-timeout.min}")
-    private long minPullTimeout;
+    private Duration minPullTimeout;
     /**
      * Max pull timeout expressed in minutes
      */
     @Positive
     @Value("${docker.image.pull-timeout.max}")
-    private long maxPullTimeout;
+    private Duration maxPullTimeout;
 
     /**
      * Check that if a Docker registry's username is present, then its password is also
