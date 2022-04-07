@@ -30,19 +30,26 @@ import com.iexec.worker.compute.post.PostComputeService;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import static org.mockito.Mockito.*;
 
@@ -66,6 +73,7 @@ class ComputeManagerServiceTests {
             .developerLoggerEnabled(true)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true)
+            .maxExecutionTime(3000)
             .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder()
@@ -81,6 +89,8 @@ class ComputeManagerServiceTests {
     private ComputeManagerService computeManagerService;
     @Mock
     private DockerService dockerService;
+    @Mock
+    private DockerRegistryConfiguration dockerRegistryConfiguration;
     @Mock
     private DockerClientInstance dockerClient;
     @Mock
@@ -99,13 +109,14 @@ class ComputeManagerServiceTests {
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
-
     }
 
     @Test
     void shouldDownloadApp() {
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(Duration.of(5, ChronoUnit.MINUTES));
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(Duration.of(30, ChronoUnit.MINUTES));
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
-        when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(true);
+        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(7, ChronoUnit.MINUTES))).thenReturn(true);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
@@ -369,4 +380,40 @@ class ComputeManagerServiceTests {
                 "stderr");
     }
 
+    // computeImagePullTimeout
+    static Stream<Arguments> computeImagePullTimeoutValues() {
+        return Stream.of(
+                // maxExecutionTime, minPullTimeout, maxPullTimeout, expectedTimeout
+
+                // Default values
+                Arguments.of(3000  , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 7),        // XS category
+                Arguments.of(12000 , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 13),      // S category
+                Arguments.of(36000 , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 18),      // M category
+                Arguments.of(108000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 23),     // L category
+                Arguments.of(360000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 28),     // XL category
+
+                // Unusual timeouts
+                Arguments.of(3000, Duration.of(1, ChronoUnit.MINUTES), Duration.of(5, ChronoUnit.MINUTES), 5),        // Computed timeout is greater than maxPullTimeout
+                Arguments.of(3000, Duration.of(10, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 10),     // Computed timeout is less than minPullTimeout
+                Arguments.of(3000, Duration.of(10, ChronoUnit.MINUTES), Duration.of(5, ChronoUnit.MINUTES), 5)        // Limits are reversed; maxPullTimeout is the one selected
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("computeImagePullTimeoutValues")
+    void computeImagePullTimeout(long maxExecutionTime,
+                                 Duration minPullTimeout,
+                                 Duration maxPullTimeout,
+                                 long expectedTimeout) {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .maxExecutionTime(maxExecutionTime)
+                .build();
+
+        when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(minPullTimeout);
+        when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(maxPullTimeout);
+
+        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+                .isEqualTo(expectedTimeout);
+    }
 }
