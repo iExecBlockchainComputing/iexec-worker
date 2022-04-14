@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute.app;
+package com.iexec.worker.compute;
 
-import com.iexec.worker.compute.ComputeResponse;
-import lombok.*;
+import org.apache.commons.lang3.StringUtils;
 
-@Data
-@Builder
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-public class AppComputeResponse implements ComputeResponse {
+public class ComputeStage {
 
-    private boolean isSuccessful;
-    private String stdout;
-    private String stderr;
-    private int exitCode;
-    
+    public static final String PRE = "pre";
+    public static final String POST = "post";
+
+    private ComputeStage() {
+        throw new UnsupportedOperationException();
+    }
+
+    public static boolean isValid(String input) {
+        return StringUtils.isNotEmpty(input)
+                & (input.equals(PRE) || input.equals(POST));
+    }
 }

@@ -56,6 +56,7 @@ public class ComputeManagerService {
     private final PostComputeService postComputeService;
     private final WorkerConfigurationService workerConfigService;
     private final ResultService resultService;
+    private final ComputeExitCauseService computeStageExitService;
 
     public ComputeManagerService(
             DockerService dockerService,
@@ -64,7 +65,9 @@ public class ComputeManagerService {
             AppComputeService appComputeService,
             PostComputeService postComputeService,
             WorkerConfigurationService workerConfigService,
-            ResultService resultService) {
+            ResultService resultService,
+            ComputeExitCauseService computeStageExitService
+    ) {
         this.dockerService = dockerService;
         this.dockerRegistryConfiguration = dockerRegistryConfiguration;
         this.preComputeService = preComputeService;
@@ -72,6 +75,7 @@ public class ComputeManagerService {
         this.postComputeService = postComputeService;
         this.workerConfigService = workerConfigService;
         this.resultService = resultService;
+        this.computeStageExitService = computeStageExitService;
     }
 
     public boolean downloadApp(TaskDescription taskDescription) {
@@ -140,7 +144,7 @@ public class ComputeManagerService {
      * <p>
      * TEE tasks: download pre-compute and post-compute images,
      * create SCONE secure session, and run pre-compute container.
-     * 
+     *
      * @param taskDescription
      * @param workerpoolAuth
      * @return
@@ -155,10 +159,14 @@ public class ComputeManagerService {
             String secureSessionId =
                     preComputeService.runTeePreCompute(taskDescription,
                             workerpoolAuth);
-            return PreComputeResponse.builder()
+            PreComputeResponse preComputeResponse = PreComputeResponse.builder()
                     .isTeeTask(true)
                     .secureSessionId(secureSessionId)
                     .build();
+            if (!preComputeResponse.isSuccessful()) {
+                preComputeResponse.setExitCause(computeStageExitService
+                        .getPreComputeExitCause(taskDescription.getChainTaskId()));
+            }
         }
 
         return PreComputeResponse.builder()
@@ -185,7 +193,6 @@ public class ComputeManagerService {
                     stdoutFile.getAbsolutePath());
             //TODO Make sure stdout is properly written
         }
-
         return appComputeResponse;
     }
 
@@ -211,9 +218,11 @@ public class ComputeManagerService {
             postComputeResponse.setSuccessful(isSuccessful);
         } else if (!secureSessionId.isEmpty()) {
             postComputeResponse = postComputeService
-                        .runTeePostCompute(taskDescription, secureSessionId);
+                    .runTeePostCompute(taskDescription, secureSessionId);
         }
         if (!postComputeResponse.isSuccessful()) {
+            postComputeResponse.setExitCause(computeStageExitService
+                    .getPostComputeExitCause(taskDescription.getChainTaskId()));
             return postComputeResponse;
         }
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);

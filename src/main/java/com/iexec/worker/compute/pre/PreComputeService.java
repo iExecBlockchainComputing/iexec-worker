@@ -22,6 +22,7 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.precompute.PreComputeExitCode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -48,6 +49,7 @@ public class PreComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
+    private final ComputeExitCauseService computeStageExitService;
 
     public PreComputeService(
             SmsService smsService,
@@ -56,7 +58,9 @@ public class PreComputeService {
             TeeSconeService teeSconeService,
             WorkerConfigurationService workerConfigService,
             TeeWorkflowConfiguration teeWorkflowConfig,
-            SgxService sgxService) {
+            SgxService sgxService,
+            ComputeExitCauseService computeStageExitService
+    ) {
         this.smsService = smsService;
         this.dataService = dataService;
         this.dockerService = dockerService;
@@ -64,6 +68,7 @@ public class PreComputeService {
         this.workerConfigService = workerConfigService;
         this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
+        this.computeStageExitService = computeStageExitService;
     }
 
     /**
@@ -71,7 +76,7 @@ public class PreComputeService {
      * If a user specific post-compute is specified it will be downloaded.
      * If the task contains a dataset or some input files, the pre-compute enclave
      * is started to handle them.
-     * 
+     *
      * @param taskDescription
      * @param workerpoolAuth
      * @return created tee session id if success, empty string otherwise
@@ -80,7 +85,7 @@ public class PreComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         // verify enclave configuration for compute stage
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
-        if (!enclaveConfig.getValidator().isValid()){
+        if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
             return "";

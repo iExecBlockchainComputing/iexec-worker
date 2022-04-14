@@ -51,7 +51,7 @@ public class AppComputeService {
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
-                                      String secureSessionId) {
+                                         String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
@@ -91,6 +91,7 @@ public class AppComputeService {
                 .isSuccessful(dockerResponse.isSuccessful())
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
+                .exitCode(dockerResponse.getContainerExitCode())
                 .build();
     }
 
