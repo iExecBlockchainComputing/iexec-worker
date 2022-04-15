@@ -167,6 +167,7 @@ public class ComputeManagerService {
                 preComputeResponse.setExitCause(computeStageExitService
                         .getPreComputeExitCause(taskDescription.getChainTaskId()));
             }
+            return preComputeResponse;
         }
 
         return PreComputeResponse.builder()

@@ -17,8 +17,8 @@
 package com.iexec.worker.compute;
 
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
+import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.result.ResultService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,15 +45,15 @@ public class ComputeController {
     public ResponseEntity sendExitCauseForGivenComputeStage(
             @PathVariable String stage,
             @PathVariable String chainTaskId,
-            @RequestBody ReplicateStatusCause replicateStatusCause) {
-        if (!ComputeStage.isValid(stage)) {
+            @RequestBody ExitMessage exitMessage) {
+        if (!ComputeStage.isValid(stage) || exitMessage.getCause() == null) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
         }
         if (computeStageExitService.setExitCause(stage,
                 chainTaskId,
-                replicateStatusCause)) {
+                exitMessage.getCause())) {
             return ResponseEntity
                     .status(HttpStatus.ALREADY_REPORTED.value())
                     .build();

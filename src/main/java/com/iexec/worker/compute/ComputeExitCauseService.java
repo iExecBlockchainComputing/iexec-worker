@@ -40,6 +40,8 @@ public class ComputeExitCauseService {
             return false;
         }
         exitCauseMap.put(key, exitCause);
+        log.info("Added exit cause [computeStage:{}, chainTaskId:{}, exitCause:{}]",
+                computeStage, chainTaskId, exitCause);
         return true;
     }
 

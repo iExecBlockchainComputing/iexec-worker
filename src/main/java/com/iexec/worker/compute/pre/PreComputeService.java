@@ -19,10 +19,11 @@ package com.iexec.worker.compute.pre;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
-import com.iexec.common.precompute.PreComputeExitCode;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.worker.compute.ComputeExitCauseService;
+import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -171,16 +172,31 @@ public class PreComputeService {
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);
-        int exitCodeValue = dockerResponse.getContainerExitCode();
-        PreComputeExitCode exitCodeName = PreComputeExitCode.nameOf(exitCodeValue); // can be null
         if (!dockerResponse.isSuccessful()) {
-            // TODO report exit error
+            int exitCode = dockerResponse.getContainerExitCode();
+            reportExitCause(chainTaskId, exitCode);
             log.error("Tee pre-compute container failed [chainTaskId:{}, " +
-                    "exitCode:{}, error:{}]", chainTaskId, exitCodeValue, exitCodeName);
+                    "exitCode:{}]", chainTaskId, exitCode);
             return false;
         }
         log.info("Prepared tee input data successfully [chainTaskId:{}]", chainTaskId);
         return true;
+    }
+
+    private void reportExitCause(String chainTaskId, int exitCode) {
+        if (exitCode > 1) {
+            ReplicateStatusCause cause = null;
+            switch (exitCode) {
+                case 2:
+                    cause = ReplicateStatusCause.PRE_COMPUTE_NO_REPORT_FAILED;
+                    break;
+                case 3:
+                    cause = ReplicateStatusCause.PRE_COMPUTE_NO_CONTEXT_FAILED;
+                    break;
+            }
+            computeStageExitService
+                    .setExitCause(ComputeStage.PRE, chainTaskId, cause);
+        }
     }
 
     private String getTeePreComputeContainerName(String chainTaskId) {
