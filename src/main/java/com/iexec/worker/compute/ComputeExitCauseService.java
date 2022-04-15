@@ -36,7 +36,7 @@ public class ComputeExitCauseService {
             return false;
         }
         String key = buildKey(computeStage, chainTaskId);
-        if (!exitCauseMap.containsKey(key)) {
+        if (exitCauseMap.containsKey(key)) {
             return false;
         }
         exitCauseMap.put(key, exitCause);
