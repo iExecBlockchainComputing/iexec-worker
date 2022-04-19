@@ -32,6 +32,7 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -82,14 +83,17 @@ public class PreComputeService {
      * @param workerpoolAuth
      * @return created tee session id if success, empty string otherwise
      */
-    public String runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
+    public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
+        PreComputeResponse preComputeResponse = PreComputeResponse.builder()
+                .isTeeTask(taskDescription.isTeeTask())
+                .build();
         // verify enclave configuration for compute stage
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
         if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
-            return "";
+            return preComputeResponse;
         }
         long teeComputeMaxHeapSize = DataSize
                 .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGb())
@@ -98,7 +102,7 @@ public class PreComputeService {
             log.error("Enclave configuration should define a proper heap " +
                             "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
-            return "";
+            return preComputeResponse;
         }
         // ###############################################################################
         // TODO: activate this when user specific post-compute is properly
@@ -119,7 +123,7 @@ public class PreComputeService {
         String secureSessionId = smsService.createTeeSession(workerpoolAuth);
         if (secureSessionId.isEmpty()) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId);
-            return "";
+            return preComputeResponse;
         }
         // run TEE pre-compute container if needed
         if (taskDescription.containsDataset() ||
@@ -127,12 +131,37 @@ public class PreComputeService {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
                             "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
-            if (!prepareTeeInputData(taskDescription, secureSessionId)) {
-                log.error("Failed to prepare TEE input data [chainTaskId:{}]", chainTaskId);
-                return "";
+            Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
+            if (exitCode == null || exitCode != 0){
+                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+                log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
+                        "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+                preComputeResponse.setExitCause(exitCause);
+                return preComputeResponse;
             }
         }
-        return secureSessionId;
+        preComputeResponse.setSecureSessionId(secureSessionId);
+        return preComputeResponse;
+    }
+
+    private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
+        ReplicateStatusCause cause = null;
+        if (exitCode != null && exitCode != 0) {
+            switch (exitCode) {
+                case 1:
+                    cause = computeStageExitService.getPreComputeExitCause(chainTaskId);
+                    break;
+                case 2:
+                    cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;
+                    break;
+                case 3:
+                    cause = ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING;
+                    break;
+                default:
+                    break;
+            }
+        }
+        return cause;
     }
 
     /**
@@ -145,7 +174,7 @@ public class PreComputeService {
      * @return true if input data was successfully prepared, false if a
      * problem occurs.
      */
-    private boolean prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
+    private Integer prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
         // check that docker image is present
@@ -153,7 +182,7 @@ public class PreComputeService {
         long preComputeHeapSize = teeWorkflowConfig.getPreComputeHeapSize();
         if (!dockerService.getClient().isImagePresent(preComputeImage)) {
             log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
-            return false;
+            return null;
         }
         // run container
         List<String> env = teeSconeService.buildPreComputeDockerEnv(secureSessionId,
@@ -174,29 +203,12 @@ public class PreComputeService {
         DockerRunResponse dockerResponse = dockerService.run(request);
         if (!dockerResponse.isSuccessful()) {
             int exitCode = dockerResponse.getContainerExitCode();
-            reportExitCause(chainTaskId, exitCode);
             log.error("Tee pre-compute container failed [chainTaskId:{}, " +
                     "exitCode:{}]", chainTaskId, exitCode);
-            return false;
+            return dockerResponse.getContainerExitCode();
         }
         log.info("Prepared tee input data successfully [chainTaskId:{}]", chainTaskId);
-        return true;
-    }
-
-    private void reportExitCause(String chainTaskId, int exitCode) {
-        if (exitCode > 1) {
-            ReplicateStatusCause cause = null;
-            switch (exitCode) {
-                case 2:
-                    cause = ReplicateStatusCause.PRE_COMPUTE_NO_REPORT_FAILED;
-                    break;
-                case 3:
-                    cause = ReplicateStatusCause.PRE_COMPUTE_NO_CONTEXT_FAILED;
-                    break;
-            }
-            computeStageExitService
-                    .setExitCause(ComputeStage.PRE, chainTaskId, cause);
-        }
+        return 0;
     }
 
     private String getTeePreComputeContainerName(String chainTaskId) {

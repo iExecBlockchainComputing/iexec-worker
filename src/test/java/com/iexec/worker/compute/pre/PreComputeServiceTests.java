@@ -20,10 +20,12 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
+import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
@@ -35,11 +37,15 @@ import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.mockito.Mockito.*;
 
@@ -86,6 +92,8 @@ class PreComputeServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
     @Mock
     private SgxService sgxService;
+    @Mock
+    private ComputeExitCauseService computeExitCauseService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -127,7 +135,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(secureSessionId);
+                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -166,7 +174,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(secureSessionId);
+                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -207,7 +215,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(secureSessionId);
+                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -226,8 +234,8 @@ class PreComputeServiceTests {
         when(validator.isValid()).thenReturn(false);
         when(validator.validate()).thenReturn(Collections.singletonList("validation error"));
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
+                .isFalse();
         verify(smsService, never()).createTeeSession(workerpoolAuthorization);
     }
 
@@ -235,8 +243,8 @@ class PreComputeServiceTests {
     void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
         taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(8).toBytes() + 1);
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
+                .isFalse();
         verify(smsService, never()).createTeeSession(workerpoolAuthorization);
     }
 
@@ -247,8 +255,8 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn("");
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
+                .isFalse();
         verify(smsService).createTeeSession(workerpoolAuthorization);
         verify(teeSconeService, never()).buildPreComputeDockerEnv(anyString(), anyLong());
     }
@@ -266,13 +274,14 @@ class PreComputeServiceTests {
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(false);
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
+        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
+                .isFalse();
         verify(dockerService, never()).run(any());
     }
 
-    @Test
-    void shouldFailToRunTeePreComputeSinceDockerRunFailed() {
+    @ParameterizedTest
+    @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
+    void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -286,13 +295,29 @@ class PreComputeServiceTests {
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
-                .containerExitCode(70)
+                .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
                 .isSuccessful(false)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        when(computeExitCauseService.getPreComputeExitCause(chainTaskId))
+                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEmpty();
+        PreComputeResponse preComputeResponse =
+                preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+
+        Assertions.assertThat(preComputeResponse.isSuccessful())
+                .isFalse();
+        Assertions.assertThat(preComputeResponse.getExitCause())
+                .isEqualTo(exitCodeKeyToExpectedCauseValue.getValue());
         verify(dockerService).run(any());
+    }
+
+
+    private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldFailToRunTeePreComputeSinceDockerRunFailedArgs() {
+        return Map.of(
+                1, ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
+                2, ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED,
+                3, ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING
+        ).entrySet().stream();
     }
 }
