@@ -29,14 +29,28 @@ public class ComputeExitCauseService {
 
     private final HashMap<String, ReplicateStatusCause> exitCauseMap = new HashMap<>();
 
-    public boolean setExitCause(String computeStage,
-                                String chainTaskId,
-                                ReplicateStatusCause exitCause) {
+    /**
+     * Report failure exit cause from pre-compute or post-compute enclave.
+     *
+     * @param computeStage pre-compute or post-compute-stage label
+     * @param chainTaskId  task ID
+     * @param exitCause    root cause of the failure
+     * @return true if exit cause is reported
+     */
+    boolean setExitCause(String computeStage,
+                         String chainTaskId,
+                         ReplicateStatusCause exitCause) {
         if (!ComputeStage.isValid(computeStage)) {
+            log.info("Cannot set exit cause with invalid stage " +
+                            "[computeStage:{}, chainTaskId:{}, exitCause:{}]",
+                    computeStage, chainTaskId, exitCause);
             return false;
         }
         String key = buildKey(computeStage, chainTaskId);
         if (exitCauseMap.containsKey(key)) {
+            log.info("Cannot set exit cause since already set " +
+                            "[computeStage:{}, chainTaskId:{}, exitCause:{}]",
+                    computeStage, chainTaskId, exitCause);
             return false;
         }
         exitCauseMap.put(key, exitCause);
@@ -45,20 +59,45 @@ public class ComputeExitCauseService {
         return true;
     }
 
+    /**
+     * Get exit cause for pre-compute or post-compute enclave.
+     *
+     * @param chainTaskId task ID
+     * @return exit cause
+     */
     private ReplicateStatusCause getReplicateStatusCause(String computeStage,
                                                          String chainTaskId) {
         return exitCauseMap.get(buildKey(computeStage, chainTaskId));
     }
 
+    /**
+     * Get pre-compute exit cause.
+     *
+     * @param chainTaskId task ID
+     * @return exit cause
+     */
     public ReplicateStatusCause getPreComputeExitCause(String chainTaskId) {
         return getReplicateStatusCause(ComputeStage.PRE, chainTaskId);
     }
 
+    /**
+     * Get post-compute exit cause.
+     *
+     * @param chainTaskId task ID
+     * @return exit cause
+     */
     public ReplicateStatusCause getPostComputeExitCause(String chainTaskId) {
         return getReplicateStatusCause(ComputeStage.POST, chainTaskId);
     }
 
+    /**
+     * Build key for storing or retrieving an exit cause
+     *
+     * @param prefix      compute stage prefix
+     * @param chainTaskId task ID
+     * @return exit cause storage key
+     */
     private String buildKey(String prefix, String chainTaskId) {
-        return prefix + chainTaskId;
+        return prefix + "_" + chainTaskId;
     }
 }

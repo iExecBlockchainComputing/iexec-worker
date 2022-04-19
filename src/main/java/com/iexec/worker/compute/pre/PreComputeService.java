@@ -74,7 +74,7 @@ public class PreComputeService {
      *
      * @param taskDescription
      * @param workerpoolAuth
-     * @return created tee session id if success, empty string otherwise
+     * @return PreComputeResponse
      */
     public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
@@ -164,8 +164,7 @@ public class PreComputeService {
      *
      * @param taskDescription
      * @param secureSessionId
-     * @return true if input data was successfully prepared, false if a
-     * problem occurs.
+     * @return pre-compute exit code
      */
     private Integer prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
