@@ -18,10 +18,12 @@ package com.iexec.worker.compute.post;
 
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -43,18 +45,21 @@ public class PostComputeService {
     private final TeeSconeService teeSconeService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
+    private final ComputeExitCauseService computeExitCauseService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             TeeSconeService teeSconeService,
             TeeWorkflowConfiguration teeWorkflowConfig,
-            SgxService sgxService) {
+            SgxService sgxService,
+            ComputeExitCauseService computeExitCauseService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
         this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
+        this.computeExitCauseService = computeExitCauseService;
     }
 
     public boolean runStandardPostCompute(TaskDescription taskDescription) {
@@ -119,11 +124,38 @@ public class PostComputeService {
                         .dockerNetwork(workerConfigService.getDockerNetworkName())
                         .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
+        if (!dockerResponse.isSuccessful()) {
+            int exitCode = dockerResponse.getContainerExitCode();
+            ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+            log.error("Failed to run tee post-compute [chainTaskId:{}, " +
+                    "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+            return PostComputeResponse.builder().exitCause(exitCause).build();
+        }
         return PostComputeResponse.builder()
                 .isSuccessful(dockerResponse.isSuccessful())
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .build();
+    }
+
+    private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
+        ReplicateStatusCause cause = null;
+        if (exitCode != null && exitCode != 0) {
+            switch (exitCode) {
+                case 1:
+                    cause = computeExitCauseService.getPostComputeExitCause(chainTaskId);
+                    break;
+                case 2:
+                    cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;//TODO Update with POST prefix
+                    break;
+                case 3:
+                    cause = ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING;//TODO Update with POST prefix
+                    break;
+                default:
+                    break;
+            }
+        }
+        return cause;
     }
 
     private String getTaskTeePostComputeContainerName(String chainTaskId) {

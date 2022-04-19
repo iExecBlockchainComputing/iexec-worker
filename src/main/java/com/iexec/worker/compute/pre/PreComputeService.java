@@ -23,16 +23,13 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -45,32 +42,28 @@ import java.util.List;
 public class PreComputeService {
 
     private final SmsService smsService;
-    private final DataService dataService;
     private final DockerService dockerService;
     private final TeeSconeService teeSconeService;
     private final WorkerConfigurationService workerConfigService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
-    private final ComputeExitCauseService computeStageExitService;
+    private final ComputeExitCauseService computeExitCauseService;
 
     public PreComputeService(
             SmsService smsService,
-            DataService dataService,
             DockerService dockerService,
             TeeSconeService teeSconeService,
             WorkerConfigurationService workerConfigService,
             TeeWorkflowConfiguration teeWorkflowConfig,
             SgxService sgxService,
-            ComputeExitCauseService computeStageExitService
-    ) {
+            ComputeExitCauseService computeExitCauseService) {
         this.smsService = smsService;
-        this.dataService = dataService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
         this.workerConfigService = workerConfigService;
         this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
-        this.computeStageExitService = computeStageExitService;
+        this.computeExitCauseService = computeExitCauseService;
     }
 
     /**
@@ -132,7 +125,7 @@ public class PreComputeService {
                             "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
             Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
-            if (exitCode == null || exitCode != 0){
+            if (exitCode == null || exitCode != 0) {
                 ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
                 log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
                         "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
@@ -149,7 +142,7 @@ public class PreComputeService {
         if (exitCode != null && exitCode != 0) {
             switch (exitCode) {
                 case 1:
-                    cause = computeStageExitService.getPreComputeExitCause(chainTaskId);
+                    cause = computeExitCauseService.getPreComputeExitCause(chainTaskId);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;

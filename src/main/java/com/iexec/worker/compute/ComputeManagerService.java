@@ -207,11 +207,6 @@ public class ComputeManagerService {
                     .runTeePostCompute(taskDescription, secureSessionId);
         }
         if (!postComputeResponse.isSuccessful()) {
-            /*
-            postComputeResponse.setExitCause(computeStageExitService
-                    .getPostComputeExitCause(taskDescription.getChainTaskId()));
-
-             */
             return postComputeResponse;
         }
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);

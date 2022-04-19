@@ -19,10 +19,12 @@ package com.iexec.worker.compute.post;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -33,6 +35,8 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -43,6 +47,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -85,6 +91,8 @@ class PostComputeServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
     @Mock
     private SgxService sgxService;
+    @Mock
+    private ComputeExitCauseService computeExitCauseService;
 
     @BeforeEach
     void beforeEach() throws IOException {
@@ -221,8 +229,9 @@ class PostComputeServiceTests {
         verify(dockerService, never()).run(any());
     }
 
-    @Test
-    void shouldRunTeePostComputeWithFailDockerResponse() {
+    @ParameterizedTest
+    @MethodSource("shouldRunTeePostComputeWithFailDockerResponseArgs")
+    void shouldRunTeePostComputeWithFailDockerResponse(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
@@ -243,15 +252,30 @@ class PostComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(false).build();
+                DockerRunResponse.builder()
+                        .isSuccessful(false)
+                        .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
+                        .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        when(computeExitCauseService.getPostComputeExitCause(CHAIN_TASK_ID))
+                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause())
+                .isEqualTo(exitCodeKeyToExpectedCauseValue.getValue());
         verify(dockerService, times(1)).run(any());
+    }
+
+    private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
+        return Map.of(
+                1, ReplicateStatusCause.POST_COMPUTE_FAILED,
+                2, ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED,
+                3, ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING
+        ).entrySet().stream();
     }
 
 }
