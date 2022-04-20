@@ -46,7 +46,7 @@ class ComputeExitCauseServiceTests {
     @Test
     void setAndGetPostComputeExitCause() {
         ReplicateStatusCause cause =
-                ReplicateStatusCause.POST_COMPUTE_FAILED;
+                ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND;
         Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.POST,
                 CHAIN_TASK_ID,
                 cause)).isTrue();

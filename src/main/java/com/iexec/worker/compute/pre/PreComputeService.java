@@ -80,6 +80,7 @@ public class PreComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         PreComputeResponse preComputeResponse = PreComputeResponse.builder()
                 .isTeeTask(taskDescription.isTeeTask())
+                .secureSessionId("")
                 .build();
         // verify enclave configuration for compute stage
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
