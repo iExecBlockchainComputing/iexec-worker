@@ -273,8 +273,8 @@ class PostComputeServiceTests {
     private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
         return Map.of(
                 1, ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND,
-                2, ReplicateStatusCause.POST_COMPUTE_UNKNOWN_ISSUE,
-                3, ReplicateStatusCause.POST_COMPUTE_MISSING_TASK_ID
+                2, ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED,
+                3, ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING
         ).entrySet().stream();
     }
 

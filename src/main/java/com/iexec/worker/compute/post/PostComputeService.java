@@ -146,10 +146,10 @@ public class PostComputeService {
                     cause = computeExitCauseService.getPostComputeExitCause(chainTaskId);
                     break;
                 case 2:
-                    cause = ReplicateStatusCause.POST_COMPUTE_UNKNOWN_ISSUE;
+                    cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;
                     break;
                 case 3:
-                    cause = ReplicateStatusCause.POST_COMPUTE_MISSING_TASK_ID;
+                    cause = ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING;
                     break;
                 default:
                     break;

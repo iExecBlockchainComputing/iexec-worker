@@ -256,7 +256,7 @@ class TaskManagerServiceTests {
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isFalse();
-        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_UNKNOWN_ISSUE);
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -277,7 +277,7 @@ class TaskManagerServiceTests {
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isFalse();
-        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_UNKNOWN_ISSUE);
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     // downloadData()
@@ -436,7 +436,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_UNKNOWN_ISSUE);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -457,7 +457,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_UNKNOWN_ISSUE);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     // with dataset and on-chain checksum
@@ -571,7 +571,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_UNKNOWN_ISSUE);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -597,7 +597,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_UNKNOWN_ISSUE);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -777,7 +777,7 @@ class TaskManagerServiceTests {
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder()
                         .isSuccessful(false)
-                        .exitCause(POST_COMPUTE_UNKNOWN_ISSUE)
+                        .exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
                         .build());
 
 
@@ -787,7 +787,7 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .failure(POST_COMPUTE_UNKNOWN_ISSUE));
+                        .failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
 
     @Test

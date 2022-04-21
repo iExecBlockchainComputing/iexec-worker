@@ -212,8 +212,8 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute
-        logError(POST_COMPUTE_UNKNOWN_ISSUE, context, chainTaskId);
-        return ReplicateActionResponse.failure(POST_COMPUTE_UNKNOWN_ISSUE);
+        logError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, context, chainTaskId);
+        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     ReplicateActionResponse compute(String chainTaskId) {
