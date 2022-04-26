@@ -65,7 +65,7 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause
      */
-    private ReplicateStatusCause getReplicateStatusCause(String computeStage,
+    ReplicateStatusCause getReplicateStatusCause(String computeStage,
                                                          String chainTaskId) {
         return exitCauseMap.get(buildKey(computeStage, chainTaskId));
     }
@@ -76,8 +76,11 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause
      */
-    public ReplicateStatusCause getPreComputeExitCause(String chainTaskId) {
-        return getReplicateStatusCause(ComputeStage.PRE, chainTaskId);
+    public ReplicateStatusCause getPreComputeExitCauseAndPrune(String chainTaskId) {
+        String stage = ComputeStage.PRE;
+        ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
+        pruneExitCause(stage, chainTaskId);
+        return cause;
     }
 
     /**
@@ -86,8 +89,11 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause
      */
-    public ReplicateStatusCause getPostComputeExitCause(String chainTaskId) {
-        return getReplicateStatusCause(ComputeStage.POST, chainTaskId);
+    public ReplicateStatusCause getPostComputeExitCauseAndPrune(String chainTaskId) {
+        String stage = ComputeStage.POST;
+        ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
+        pruneExitCause(stage, chainTaskId);
+        return cause;
     }
 
     /**
@@ -100,4 +106,17 @@ public class ComputeExitCauseService {
     private String buildKey(String prefix, String chainTaskId) {
         return prefix + "_" + chainTaskId;
     }
+
+    /**
+     * Prune exit cause.
+     *
+     * @param computeStage compute stage
+     * @param chainTaskId  task ID
+     */
+    private void pruneExitCause(String computeStage, String chainTaskId) {
+        if (ComputeStage.isValid(computeStage)) {
+            exitCauseMap.remove(buildKey(computeStage, chainTaskId));
+        }
+    }
+
 }

@@ -299,7 +299,7 @@ class PreComputeServiceTests {
                 .isSuccessful(false)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPreComputeExitCause(chainTaskId))
+        when(computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId))
                 .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
 
         PreComputeResponse preComputeResponse =

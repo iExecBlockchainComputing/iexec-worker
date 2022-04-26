@@ -33,25 +33,29 @@ class ComputeExitCauseServiceTests {
     }
 
     @Test
-    void setAndGetPreComputeExitCause() {
+    void setAndGetPreComputeExitCauseAndPrune() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
         Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.PRE,
                 CHAIN_TASK_ID,
                 cause)).isTrue();
-        Assertions.assertThat(computeExitCauseService.getPreComputeExitCause(CHAIN_TASK_ID))
+        Assertions.assertThat(computeExitCauseService.getPreComputeExitCauseAndPrune(CHAIN_TASK_ID))
                 .isEqualTo(cause);
+        Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.PRE,
+                CHAIN_TASK_ID)).isNull();
     }
 
     @Test
-    void setAndGetPostComputeExitCause() {
+    void setAndGetPostComputeExitCauseAndPrune() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND;
         Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.POST,
                 CHAIN_TASK_ID,
                 cause)).isTrue();
-        Assertions.assertThat(computeExitCauseService.getPostComputeExitCause(CHAIN_TASK_ID))
+        Assertions.assertThat(computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID))
                 .isEqualTo(cause);
+        Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.POST,
+                CHAIN_TASK_ID)).isNull();
     }
 
     @Test

@@ -258,7 +258,7 @@ class PostComputeServiceTests {
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPostComputeExitCause(CHAIN_TASK_ID))
+        when(computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID))
                 .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
 
         PostComputeResponse postComputeResponse =

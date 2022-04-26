@@ -143,7 +143,7 @@ public class PreComputeService {
         if (exitCode != null && exitCode != 0) {
             switch (exitCode) {
                 case 1:
-                    cause = computeExitCauseService.getPreComputeExitCause(chainTaskId);
+                    cause = computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;

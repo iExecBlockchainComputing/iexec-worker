@@ -143,7 +143,7 @@ public class PostComputeService {
         if (exitCode != null && exitCode != 0) {
             switch (exitCode) {
                 case 1:
-                    cause = computeExitCauseService.getPostComputeExitCause(chainTaskId);
+                    cause = computeExitCauseService.getPostComputeExitCauseAndPrune(chainTaskId);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;
