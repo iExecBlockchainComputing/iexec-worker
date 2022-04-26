@@ -59,15 +59,6 @@ class ComputeExitCauseServiceTests {
     }
 
     @Test
-    void shouldNotSetComputeExitCauseSinceInvalidStage() {
-        ReplicateStatusCause cause =
-                ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
-        Assertions.assertThat(computeExitCauseService.setExitCause("wrong-stage",
-                CHAIN_TASK_ID,
-                cause)).isFalse();
-    }
-
-    @Test
     void shouldNotSetComputeExitCauseSinceAlreadySet() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;

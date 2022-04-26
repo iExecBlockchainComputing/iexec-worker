@@ -43,10 +43,10 @@ public class ComputeController {
 
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
     public ResponseEntity sendExitCauseForGivenComputeStage(
-            @PathVariable String stage,
+            @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
-        if (!ComputeStage.isValid(stage) || exitMessage.getCause() == null) {
+        if (exitMessage.getCause() == null) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
@@ -63,7 +63,7 @@ public class ComputeController {
 
     @PostMapping(path = {
             "/iexec_out/{chainTaskId}/computed", //@Deprecated
-            "/compute/" + ComputeStage.POST + "/{chainTaskId}/computed"
+            "/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed"
     })
     public ResponseEntity<String> sendComputedFileForTee(@PathVariable String chainTaskId,
                                                          @RequestBody ComputedFile computedFile) {

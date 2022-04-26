@@ -51,16 +51,6 @@ class ComputeControllerTests {
     }
 
     @Test
-    void shouldNotSendExitCauseForComputeComputeStageSinceInvalidStage() {
-        ResponseEntity<?> response =
-                computeController.sendExitCauseForGivenComputeStage("invalid",
-                        CHAIN_TASK_ID,
-                        new ExitMessage());
-        Assertions.assertTrue(response.getStatusCode().is4xxClientError());
-        Assertions.assertEquals(400, response.getStatusCode().value());
-    }
-
-    @Test
     void shouldNotSendExitCauseForComputeComputeStageSinceNoCause() {
         ResponseEntity<?> response =
                 computeController.sendExitCauseForGivenComputeStage(ComputeStage.PRE,
@@ -72,7 +62,7 @@ class ComputeControllerTests {
 
     @Test
     void shouldNotSendExitCauseForComputeComputeStageSinceAlreadySet() {
-        String stage = ComputeStage.PRE;
+        ComputeStage stage = ComputeStage.PRE;
         computeStageExitService.setExitCause(stage, CHAIN_TASK_ID, CAUSE);
         //try to re set
         ResponseEntity<?> response =
@@ -82,5 +72,5 @@ class ComputeControllerTests {
         Assertions.assertTrue(response.getStatusCode().is2xxSuccessful());
         Assertions.assertEquals(208, response.getStatusCode().value());
     }
-    
+
 }

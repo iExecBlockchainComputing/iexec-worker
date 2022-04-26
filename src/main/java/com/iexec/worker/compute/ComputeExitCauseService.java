@@ -37,15 +37,9 @@ public class ComputeExitCauseService {
      * @param exitCause    root cause of the failure
      * @return true if exit cause is reported
      */
-    boolean setExitCause(String computeStage,
+    boolean setExitCause(ComputeStage computeStage,
                          String chainTaskId,
                          ReplicateStatusCause exitCause) {
-        if (!ComputeStage.isValid(computeStage)) {
-            log.info("Cannot set exit cause with invalid stage " +
-                            "[computeStage:{}, chainTaskId:{}, exitCause:{}]",
-                    computeStage, chainTaskId, exitCause);
-            return false;
-        }
         String key = buildKey(computeStage, chainTaskId);
         if (exitCauseMap.containsKey(key)) {
             log.info("Cannot set exit cause since already set " +
@@ -65,7 +59,7 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause
      */
-    ReplicateStatusCause getReplicateStatusCause(String computeStage,
+    ReplicateStatusCause getReplicateStatusCause(ComputeStage computeStage,
                                                          String chainTaskId) {
         return exitCauseMap.get(buildKey(computeStage, chainTaskId));
     }
@@ -77,7 +71,7 @@ public class ComputeExitCauseService {
      * @return exit cause
      */
     public ReplicateStatusCause getPreComputeExitCauseAndPrune(String chainTaskId) {
-        String stage = ComputeStage.PRE;
+        ComputeStage stage = ComputeStage.PRE;
         ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
         pruneExitCause(stage, chainTaskId);
         return cause;
@@ -90,7 +84,7 @@ public class ComputeExitCauseService {
      * @return exit cause
      */
     public ReplicateStatusCause getPostComputeExitCauseAndPrune(String chainTaskId) {
-        String stage = ComputeStage.POST;
+        ComputeStage stage = ComputeStage.POST;
         ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
         pruneExitCause(stage, chainTaskId);
         return cause;
@@ -103,7 +97,7 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause storage key
      */
-    private String buildKey(String prefix, String chainTaskId) {
+    private String buildKey(ComputeStage prefix, String chainTaskId) {
         return prefix + "_" + chainTaskId;
     }
 
@@ -113,10 +107,8 @@ public class ComputeExitCauseService {
      * @param computeStage compute stage
      * @param chainTaskId  task ID
      */
-    private void pruneExitCause(String computeStage, String chainTaskId) {
-        if (ComputeStage.isValid(computeStage)) {
-            exitCauseMap.remove(buildKey(computeStage, chainTaskId));
-        }
+    private void pruneExitCause(ComputeStage computeStage, String chainTaskId) {
+        exitCauseMap.remove(buildKey(computeStage, chainTaskId));
     }
 
 }

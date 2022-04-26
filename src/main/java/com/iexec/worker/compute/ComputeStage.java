@@ -16,19 +16,17 @@
 
 package com.iexec.worker.compute;
 
-import org.apache.commons.lang3.StringUtils;
+public enum ComputeStage {
 
-public class ComputeStage {
+    PRE(ComputeStage.PRE_VALUE),
+    POST(ComputeStage.POST_VALUE);
 
-    public static final String PRE = "pre";
-    public static final String POST = "post";
+    public static final String PRE_VALUE = "pre";
+    public static final String POST_VALUE = "post";
 
-    private ComputeStage() {
-        throw new UnsupportedOperationException();
-    }
+    private final String value;
 
-    public static boolean isValid(String input) {
-        return StringUtils.isNotEmpty(input)
-                & (input.equals(PRE) || input.equals(POST));
+    ComputeStage(String value) {
+        this.value = value;
     }
 }
