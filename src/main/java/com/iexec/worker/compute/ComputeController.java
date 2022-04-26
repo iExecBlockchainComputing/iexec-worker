@@ -51,7 +51,7 @@ public class ComputeController {
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
         }
-        if (computeStageExitService.setExitCause(stage,
+        if (!computeStageExitService.setExitCause(stage,
                 chainTaskId,
                 exitMessage.getCause())) {
             return ResponseEntity
