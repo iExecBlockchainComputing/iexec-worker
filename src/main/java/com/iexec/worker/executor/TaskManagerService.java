@@ -23,6 +23,7 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
@@ -143,7 +144,7 @@ public class TaskManagerService {
      * (even when the dataset requested is 0x0).
      * In the 0x0 dataset case, we'll have an empty uri, and we'll consider
      * the dataset as downloaded
-     * 
+     *
      * Note2: TEE datasets are not downloaded by the worker. Due to some technical
      * limitations with SCONE technology (production enclaves not being able to
      * read non trusted regions of the file system), the file will be directly
@@ -211,8 +212,8 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute
-        logError(POST_COMPUTE_FAILED, context, chainTaskId);
-        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED);
+        logError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, context, chainTaskId);
+        return ReplicateActionResponse.failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     ReplicateActionResponse compute(String chainTaskId) {
@@ -242,7 +243,7 @@ public class TaskManagerService {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
-            return getFailureResponseAndPrintError(PRE_COMPUTE_FAILED,
+            return getFailureResponseAndPrintError(preResponse.getExitCause(),
                     context, chainTaskId);
         }
 
@@ -250,20 +251,26 @@ public class TaskManagerService {
                 computeManagerService.runCompute(taskDescription,
                         preResponse.getSecureSessionId());
         if (!appResponse.isSuccessful()) {
-            logError("app compute error", context, chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(appResponse.getStdout());
+            ReplicateStatusCause cause = APP_COMPUTE_FAILED;
+            logError(cause, context, chainTaskId);
+            return ReplicateActionResponse.failureWithDetails(
+                    ReplicateStatusDetails.builder()
+                            .cause(cause)
+                            .exitCode(appResponse.getExitCode())
+                            .stdout(appResponse.getStdout())
+                            .build());
         }
 
         PostComputeResponse postResponse =
                 computeManagerService.runPostCompute(taskDescription,
                         preResponse.getSecureSessionId());
         if (!postResponse.isSuccessful()) {
-            logError("post compute error", context, chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(POST_COMPUTE_FAILED,
+            ReplicateStatusCause cause = postResponse.getExitCause();
+            logError(cause, context, chainTaskId);
+            return ReplicateActionResponse.failureWithStdout(cause,
                     postResponse.getStdout());
         }
-        return ReplicateActionResponse.successWithStdout(preResponse.getStdout() +
-                "\n" + appResponse.getStdout() + "\n" + postResponse.getStdout());
+        return ReplicateActionResponse.successWithStdout(appResponse.getStdout());
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
@@ -394,7 +401,7 @@ public class TaskManagerService {
      * To abort a task, the worker must, first, remove currently running containers
      * related to the task in question, unsubscribe from the task's notifications,
      * then remove result folders.
-     * 
+     *
      * @param chainTaskId
      * @return
      */

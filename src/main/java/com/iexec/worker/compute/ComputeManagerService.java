@@ -140,7 +140,7 @@ public class ComputeManagerService {
      * <p>
      * TEE tasks: download pre-compute and post-compute images,
      * create SCONE secure session, and run pre-compute container.
-     * 
+     *
      * @param taskDescription
      * @param workerpoolAuth
      * @return
@@ -152,15 +152,9 @@ public class ComputeManagerService {
                 taskDescription.isTeeTask());
 
         if (taskDescription.isTeeTask()) {
-            String secureSessionId =
-                    preComputeService.runTeePreCompute(taskDescription,
+            return preComputeService.runTeePreCompute(taskDescription,
                             workerpoolAuth);
-            return PreComputeResponse.builder()
-                    .isTeeTask(true)
-                    .secureSessionId(secureSessionId)
-                    .build();
         }
-
         return PreComputeResponse.builder()
                 .isSuccessful(true)
                 .build();
@@ -185,7 +179,6 @@ public class ComputeManagerService {
                     stdoutFile.getAbsolutePath());
             //TODO Make sure stdout is properly written
         }
-
         return appComputeResponse;
     }
 
@@ -211,7 +204,7 @@ public class ComputeManagerService {
             postComputeResponse.setSuccessful(isSuccessful);
         } else if (!secureSessionId.isEmpty()) {
             postComputeResponse = postComputeService
-                        .runTeePostCompute(taskDescription, secureSessionId);
+                    .runTeePostCompute(taskDescription, secureSessionId);
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;

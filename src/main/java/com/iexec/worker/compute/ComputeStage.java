@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute.app;
+package com.iexec.worker.compute;
 
-import com.iexec.worker.compute.ComputeResponse;
-import lombok.*;
+public enum ComputeStage {
 
-@Data
-@Builder
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-public class AppComputeResponse implements ComputeResponse {
+    PRE(ComputeStage.PRE_VALUE),
+    POST(ComputeStage.POST_VALUE);
 
-    private boolean isSuccessful;
-    private String stdout;
-    private String stderr;
-    private int exitCode;
-    
+    public static final String PRE_VALUE = "pre";
+    public static final String POST_VALUE = "post";
+
+    private final String value;
+
+    ComputeStage(String value) {
+        this.value = value;
+    }
 }

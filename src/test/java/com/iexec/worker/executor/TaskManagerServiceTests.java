@@ -23,11 +23,13 @@ import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
+import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
@@ -81,6 +83,8 @@ class TaskManagerServiceTests {
     private DockerService dockerService;
     @Mock
     private SubscriptionService subscriptionService;
+    @Mock
+    private ComputeExitCauseService computeExitCauseService;
 
     @Captor
     private ArgumentCaptor<Predicate<String>> predicateCaptor;
@@ -252,7 +256,7 @@ class TaskManagerServiceTests {
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isFalse();
-        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED);
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -273,7 +277,7 @@ class TaskManagerServiceTests {
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
 
         assertThat(actionResponse.isSuccess()).isFalse();
-        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED);
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     // downloadData()
@@ -432,7 +436,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_FAILED);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -453,7 +457,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_FAILED);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     // with dataset and on-chain checksum
@@ -567,7 +571,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_FAILED);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -593,7 +597,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(POST_COMPUTE_FAILED);
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -613,11 +617,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
 
@@ -625,10 +629,10 @@ class TaskManagerServiceTests {
                 taskManagerService.compute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse).isNotNull();
-        // pre-compute + app-compute + post-compute stdout
+        // app-compute
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .successWithStdout("stdout\nstdout\nstdout"));
+                        .successWithStdout("stdout"));
     }
 
     @Test
@@ -699,7 +703,10 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+                .thenReturn(PreComputeResponse.builder()
+                        .isSuccessful(false)
+                        .exitCause(PRE_COMPUTE_DATASET_URL_MISSING)
+                .build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
@@ -707,7 +714,7 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .failure(PRE_COMPUTE_FAILED));
+                        .failure(PRE_COMPUTE_DATASET_URL_MISSING));
     }
 
     @Test
@@ -725,9 +732,15 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(PreComputeResponse.builder()
+                        .isSuccessful(true)
+                        .build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder()
+                        .isSuccessful(false)
+                        .exitCode(5)
+                        .stdout("stdout")
+                        .build());
 
 
         ReplicateActionResponse replicateActionResponse =
@@ -735,8 +748,12 @@ class TaskManagerServiceTests {
 
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .failureWithStdout("stdout"));
+                ReplicateActionResponse.failureWithDetails(
+                        ReplicateStatusDetails.builder()
+                                .cause(APP_COMPUTE_FAILED)
+                                .exitCode(5)
+                                .stdout("stdout")
+                                .build()));
     }
 
     @Test
@@ -754,11 +771,14 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(PreComputeResponse.builder().isSuccessful(true).build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(false).stdout("stdout").build());
+                .thenReturn(PostComputeResponse.builder()
+                        .isSuccessful(false)
+                        .exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
+                        .build());
 
 
         ReplicateActionResponse replicateActionResponse =
@@ -767,7 +787,7 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .failureWithStdout(POST_COMPUTE_FAILED, "stdout"));
+                        .failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
 
     @Test

@@ -20,6 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.docker.DockerLogs;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
@@ -172,15 +173,15 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunTeePreCompute() {
+        PreComputeResponse mockResponse = mock(PreComputeResponse.class);
         taskDescription.setTeeTask(true);
         when(preComputeService.runTeePreCompute(taskDescription,
-                workerpoolAuthorization)).thenReturn(SECURE_SESSION_ID);
+                workerpoolAuthorization)).thenReturn(mockResponse);
 
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
-        Assertions.assertThat(preComputeResponse.isSuccessful()).isTrue();
-        Assertions.assertThat(preComputeResponse.getSecureSessionId()).isEqualTo(SECURE_SESSION_ID);
+        Assertions.assertThat(preComputeResponse).isEqualTo(mockResponse);
         verify(preComputeService, times(1))
                 .runTeePreCompute(taskDescription,
                         workerpoolAuthorization);
@@ -190,13 +191,18 @@ class ComputeManagerServiceTests {
     void shouldRunTeePreComputeWithFailureResponse() {
         taskDescription.setTeeTask(true);
         when(preComputeService.runTeePreCompute(taskDescription,
-                workerpoolAuthorization)).thenReturn("");
+                workerpoolAuthorization)).thenReturn(PreComputeResponse.builder()
+                .secureSessionId("")
+                .exitCause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING)
+                .build());
 
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
-        Assertions.assertThat(preComputeResponse.isSuccessful()).isFalse();
         Assertions.assertThat(preComputeResponse.getSecureSessionId()).isEmpty();
+        Assertions.assertThat(preComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(preComputeResponse.getExitCause())
+                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
     }
 
     // compute
