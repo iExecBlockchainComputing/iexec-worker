@@ -26,7 +26,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -464,7 +464,7 @@ public class TaskManagerService {
 
     private ReplicateActionResponse getFailureResponseAndPrintError(TeeSessionGenerationError teeSessionGenerationError, String context, String chainTaskId) {
         logError(teeSessionGenerationError, context, chainTaskId);
-        return ReplicateActionResponse.failureWithDetails(ReplicateStatusDetails.builder().teeSessionGenerationError(teeSessionGenerationError).build());
+        return ReplicateActionResponse.failureWithDetails(ReplicateStatusDetails.builder().teeSessionGenerationError(teeSessionGenerationError.toString()).build());
     }
 
     private ReplicateActionResponse getFailureResponseAndPrintError(ReplicateStatusCause cause, String context, String chainTaskId) {

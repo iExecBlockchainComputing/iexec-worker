@@ -23,7 +23,7 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.web.ApiResponseBody;
 import com.iexec.sms.api.SmsClient;
-import com.iexec.common.tee.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import feign.Request;

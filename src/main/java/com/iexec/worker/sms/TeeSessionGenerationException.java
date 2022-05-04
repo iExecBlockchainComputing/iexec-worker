@@ -16,7 +16,7 @@
 
 package com.iexec.worker.sms;
 
-import com.iexec.common.tee.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationError;
 
 public class TeeSessionGenerationException extends Exception {
     private final TeeSessionGenerationError teeSessionGenerationError;
