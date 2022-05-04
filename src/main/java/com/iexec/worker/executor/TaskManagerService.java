@@ -26,6 +26,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeSessionGenerationError;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -243,8 +244,21 @@ public class TaskManagerService {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
-            return getFailureResponseAndPrintError(preResponse.getExitCause(),
-                    context, chainTaskId);
+            final ReplicateActionResponse failureResponseAndPrintError;
+            if (preResponse.failedOnTeeSessionGeneration()) {
+                failureResponseAndPrintError = getFailureResponseAndPrintError(
+                        preResponse.getTeeSessionGenerationError(),
+                        context,
+                        chainTaskId
+                );
+            } else {
+                failureResponseAndPrintError = getFailureResponseAndPrintError(
+                        preResponse.getExitCause(),
+                        context,
+                        chainTaskId
+                );
+            }
+            return failureResponseAndPrintError;
         }
 
         AppComputeResponse appResponse =
@@ -448,6 +462,11 @@ public class TaskManagerService {
         return true;
     }
 
+    private ReplicateActionResponse getFailureResponseAndPrintError(TeeSessionGenerationError teeSessionGenerationError, String context, String chainTaskId) {
+        logError(teeSessionGenerationError, context, chainTaskId);
+        return ReplicateActionResponse.failureWithDetails(ReplicateStatusDetails.builder().teeSessionGenerationError(teeSessionGenerationError).build());
+    }
+
     private ReplicateActionResponse getFailureResponseAndPrintError(ReplicateStatusCause cause, String context, String chainTaskId) {
         logError(cause, context, chainTaskId);
         return ReplicateActionResponse.failure(cause);
@@ -467,6 +486,13 @@ public class TaskManagerService {
     private void logError(ReplicateStatusCause cause, String failureContext,
                           String chainTaskId) {
         logError(cause != null ? cause.toString() : "", failureContext,
+                chainTaskId);
+    }
+
+    private void logError(TeeSessionGenerationError teeSessionGenerationError,
+                          String failureContext,
+                          String chainTaskId) {
+        logError(teeSessionGenerationError != null ? teeSessionGenerationError.toString() : "", failureContext,
                 chainTaskId);
     }
 

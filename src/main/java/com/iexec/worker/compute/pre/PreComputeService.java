@@ -28,6 +28,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -114,9 +115,12 @@ public class PreComputeService {
         // }
         // ###############################################################################
         // create secure session
-        String secureSessionId = smsService.createTeeSession(workerpoolAuth);
-        if (secureSessionId.isEmpty()) {
+        String secureSessionId;
+        try {
+            secureSessionId = smsService.createTeeSession(workerpoolAuth);
+        } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId);
+            preComputeResponse.setTeeSessionGenerationError(e.getTeeSessionGenerationError());
             return preComputeResponse;
         }
         // run TEE pre-compute container if needed

@@ -32,6 +32,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
@@ -109,7 +110,7 @@ class PreComputeServiceTests {
      */
 
     @Test
-    void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() {
+    void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() throws TeeSessionGenerationException {
         taskDescription.setInputFiles(List.of("input-file1"));
 
         String secureSessionId = "secureSessionId";
@@ -146,7 +147,7 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() {
+    void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() throws TeeSessionGenerationException {
         // taskDescription.setInputFiles(List.of("input-file1")); <--
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
@@ -186,7 +187,7 @@ class PreComputeServiceTests {
 
 
     @Test
-    void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() {
+    void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() throws TeeSessionGenerationException {
         taskDescription.setDatasetAddress("");
         taskDescription.setInputFiles(List.of("input-file1"));
 
@@ -226,7 +227,7 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
+    void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() throws TeeSessionGenerationException {
         TeeEnclaveConfiguration enclaveConfig = mock(TeeEnclaveConfiguration.class);
         taskDescription.setAppEnclaveConfiguration(enclaveConfig);
         TeeEnclaveConfigurationValidator validator = mock(TeeEnclaveConfigurationValidator.class);
@@ -240,7 +241,7 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
+    void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() throws TeeSessionGenerationException {
         taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(8).toBytes() + 1);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
@@ -249,7 +250,7 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() {
+    void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() throws TeeSessionGenerationException {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -262,7 +263,7 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() {
+    void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() throws TeeSessionGenerationException {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -281,7 +282,7 @@ class PreComputeServiceTests {
 
     @ParameterizedTest
     @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
-    void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) {
+    void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
