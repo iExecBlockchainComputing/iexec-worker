@@ -73,7 +73,7 @@ class SmsServiceTests {
     @Test
     void shouldNotCreateTeeSessionOnFeignException() throws JsonProcessingException {
         final ObjectMapper mapper = new ObjectMapper();
-        final byte[] responseBody = mapper.writeValueAsBytes(ApiResponseBody.<Void, TeeSessionGenerationError>builder().errors(TeeSessionGenerationError.NO_SESSION_REQUEST).build());
+        final byte[] responseBody = mapper.writeValueAsBytes(ApiResponseBody.<Void, TeeSessionGenerationError>builder().error(TeeSessionGenerationError.NO_SESSION_REQUEST).build());
         final Request request = Request.create(Request.HttpMethod.GET, "url",
                 new HashMap<>(), null, new RequestTemplate());
 

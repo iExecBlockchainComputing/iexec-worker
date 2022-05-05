@@ -159,7 +159,7 @@ public class SmsService {
         } catch(FeignException e) {
             log.error("SMS failed to create TEE session [chainTaskId:{}]",
                     chainTaskId, e);
-            final Optional<TeeSessionGenerationError> error = ApiResponseBodyDecoder.getErrorsFromResponse(e.contentUTF8(), String.class, TeeSessionGenerationError.class);
+            final Optional<TeeSessionGenerationError> error = ApiResponseBodyDecoder.getErrorFromResponse(e.contentUTF8(), String.class, TeeSessionGenerationError.class);
             throw new TeeSessionGenerationException(error.orElse(TeeSessionGenerationError.UNKNOWN_ISSUE));
         }
     }
