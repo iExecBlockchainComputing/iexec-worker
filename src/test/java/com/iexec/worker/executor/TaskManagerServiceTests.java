@@ -60,6 +60,7 @@ import static org.mockito.Mockito.*;
 class TaskManagerServiceTests {
 
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String WORKER_ADDRESS = "WORKER_ADDRESS";
     public static final String PATH_TO_DOWNLOADED_FILE = "/path/to/downloaded/file";
 
     @InjectMocks
@@ -625,6 +626,7 @@ class TaskManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
+        when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
@@ -633,7 +635,7 @@ class TaskManagerServiceTests {
         // app-compute
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .successWithLogs("stdout", "stderr"));
+                        .successWithLogs(new ReplicateLogs(WORKER_ADDRESS, "stdout", "stderr")));
     }
 
     @Test

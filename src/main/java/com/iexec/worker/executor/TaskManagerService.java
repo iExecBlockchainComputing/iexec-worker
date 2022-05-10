@@ -270,6 +270,7 @@ public class TaskManagerService {
                             .exitCode(appResponse.getExitCode())
                             .replicateLogs(
                                     ReplicateLogs.builder()
+                                            .walletAddress(workerpoolAuthorization.getWorkerWallet())
                                             .stdout(appResponse.getStdout())
                                             .stderr(appResponse.getStderr())
                                             .build()
@@ -287,8 +288,11 @@ public class TaskManagerService {
                     postResponse.getStdout());
         }
         return ReplicateActionResponse.successWithLogs(
-                appResponse.getStdout(),
-                appResponse.getStderr()
+                new ReplicateLogs(
+                        workerConfigurationService.getWorkerWalletAddress(),
+                        appResponse.getStdout(),
+                        appResponse.getStderr()
+                )
         );
     }
 
