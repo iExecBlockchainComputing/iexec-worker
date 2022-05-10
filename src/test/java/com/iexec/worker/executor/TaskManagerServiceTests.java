@@ -22,7 +22,7 @@ import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
-import com.iexec.common.replicate.ReplicateLogs;
+import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
@@ -635,7 +635,7 @@ class TaskManagerServiceTests {
         // app-compute
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .successWithLogs(new ReplicateLogs(WORKER_ADDRESS, "stdout", "stderr")));
+                        .successWithLogs(new ComputeLogs(WORKER_ADDRESS, "stdout", "stderr")));
     }
 
     @Test
@@ -755,7 +755,7 @@ class TaskManagerServiceTests {
                         ReplicateStatusDetails.builder()
                                 .cause(APP_COMPUTE_FAILED)
                                 .exitCode(5)
-                                .replicateLogs(ReplicateLogs.builder().stdout("stdout").build())
+                                .computeLogs(ComputeLogs.builder().stdout("stdout").build())
                                 .build()));
     }
 
