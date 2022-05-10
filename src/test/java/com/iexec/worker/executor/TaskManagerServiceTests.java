@@ -22,6 +22,7 @@ import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ReplicateLogs;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
@@ -619,7 +620,7 @@ class TaskManagerServiceTests {
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder().isSuccessful(true).build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
@@ -632,7 +633,7 @@ class TaskManagerServiceTests {
         // app-compute
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .successWithStdout("stdout"));
+                        .successWithLogs("stdout", "stderr"));
     }
 
     @Test
@@ -752,7 +753,7 @@ class TaskManagerServiceTests {
                         ReplicateStatusDetails.builder()
                                 .cause(APP_COMPUTE_FAILED)
                                 .exitCode(5)
-                                .stdout("stdout")
+                                .replicateLogs(ReplicateLogs.builder().stdout("stdout").build())
                                 .build()));
     }
 
@@ -787,7 +788,7 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+                        .failureWithStdout(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, null));
     }
 
     @Test

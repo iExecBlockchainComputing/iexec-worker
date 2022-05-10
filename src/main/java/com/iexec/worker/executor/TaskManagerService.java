@@ -20,10 +20,7 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateActionResponse;
-import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationError;
@@ -271,7 +268,12 @@ public class TaskManagerService {
                     ReplicateStatusDetails.builder()
                             .cause(cause)
                             .exitCode(appResponse.getExitCode())
-                            .stdout(appResponse.getStdout())
+                            .replicateLogs(
+                                    ReplicateLogs.builder()
+                                            .stdout(appResponse.getStdout())
+                                            .stderr(appResponse.getStderr())
+                                            .build()
+                            )
                             .build());
         }
 
@@ -284,7 +286,10 @@ public class TaskManagerService {
             return ReplicateActionResponse.failureWithStdout(cause,
                     postResponse.getStdout());
         }
-        return ReplicateActionResponse.successWithStdout(appResponse.getStdout());
+        return ReplicateActionResponse.successWithLogs(
+                appResponse.getStdout(),
+                appResponse.getStderr()
+        );
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
