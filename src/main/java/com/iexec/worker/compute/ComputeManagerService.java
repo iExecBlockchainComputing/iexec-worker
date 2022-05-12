@@ -170,28 +170,21 @@ public class ComputeManagerService {
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription, secureSessionId);
 
-        if (appComputeResponse.isSuccessful())
-            if (!appComputeResponse.getStdout().isEmpty()) {
-                // save /output/stdout.txt file
-                String stdoutFilePath =
-                        workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
-                File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath
-                        , appComputeResponse.getStdout());
-                log.info("Saved stdout file [path:{}]",
-                        stdoutFile.getAbsolutePath());
-                //TODO Make sure stdout is properly written
-            }
-            if (!appComputeResponse.getStderr().isEmpty()) {
-                // save /output/stderr.txt file
-                String stderrFilePath =
-                        workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDERR_FILENAME;
-                File stderrFile = FileHelper.createFileWithContent(stderrFilePath
-                        , appComputeResponse.getStderr());
-                log.info("Saved stderr file [path:{}]",
-                        stderrFile.getAbsolutePath());
-                //TODO Make sure stderr is properly written
-            }
+        if (appComputeResponse.isSuccessful()) {
+            writeLogs(chainTaskId, STDOUT_FILENAME, appComputeResponse.getStdout());
+            writeLogs(chainTaskId, STDERR_FILENAME, appComputeResponse.getStderr());
+        }
         return appComputeResponse;
+    }
+
+    private void writeLogs(String chainTaskId, String filename, String logs) {
+        if (!logs.isEmpty()) {
+            String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + filename;
+            File file = FileHelper.createFileWithContent(filePath, logs);
+            log.info("Saved logs file [path:{}]",
+                    file.getAbsolutePath());
+            //TODO Make sure file is properly written
+        }
     }
 
     /*
