@@ -631,11 +631,14 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        // app-compute
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .successWithLogs(new ComputeLogs(WORKER_ADDRESS, "stdout", "stderr")));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(
+                        ReplicateActionResponse
+                                .successWithLogs(ComputeLogs.builder()
+                                        .stdout("stdout")
+                                        .stderr("stderr")
+                                        .build()));
     }
 
     @Test
