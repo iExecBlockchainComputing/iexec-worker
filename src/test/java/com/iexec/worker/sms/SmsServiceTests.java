@@ -16,18 +16,26 @@
 
 package com.iexec.worker.sms;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
+import com.iexec.common.web.ApiResponseBody;
 import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
+import feign.Request;
+import feign.RequestTemplate;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import java.util.HashMap;
 
 import static org.mockito.Mockito.*;
 
@@ -50,27 +58,33 @@ class SmsServiceTests {
     }
 
     @Test
-    void shouldCreateTeeSession() {
+    void shouldCreateTeeSession() throws TeeSessionGenerationException {
         Signature signatureStub = new Signature(SIGNATURE);
         WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
         when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenReturn(SESSION_ID);
+                .thenReturn(ApiResponseBody.<String, TeeSessionGenerationError>builder().data(SESSION_ID).build());
 
         String returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
         Assertions.assertThat(returnedSessionId).isEqualTo(SESSION_ID);
     }
 
     @Test
-    void shouldNotCreateTeeSessionOnFeignException() {
+    void shouldNotCreateTeeSessionOnFeignException() throws JsonProcessingException {
+        final ObjectMapper mapper = new ObjectMapper();
+        final byte[] responseBody = mapper.writeValueAsBytes(ApiResponseBody.<Void, TeeSessionGenerationError>builder().error(TeeSessionGenerationError.NO_SESSION_REQUEST).build());
+        final Request request = Request.create(Request.HttpMethod.GET, "url",
+                new HashMap<>(), null, new RequestTemplate());
+
         Signature signatureStub = new Signature(SIGNATURE);
         WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
         when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenThrow(FeignException.class);
-        Assertions.assertThat(smsService.createTeeSession(workerpoolAuthorization)).isEmpty();
+                .thenThrow(new FeignException.InternalServerError("", request, responseBody, null ));   //FIXME
+        final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(workerpoolAuthorization), TeeSessionGenerationException.class);
+        Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
         verify(smsClient).generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
     }
 

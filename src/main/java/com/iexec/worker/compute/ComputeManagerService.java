@@ -46,6 +46,7 @@ import java.util.Map;
 public class ComputeManagerService {
 
     private static final String STDOUT_FILENAME = "stdout.txt";
+    private static final String STDERR_FILENAME = "stderr.txt";
 
     private final Map<Long, Long> categoryTimeoutMap = new HashMap<>(5);
 
@@ -169,17 +170,21 @@ public class ComputeManagerService {
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription, secureSessionId);
 
-        if (appComputeResponse.isSuccessful() && !appComputeResponse.getStdout().isEmpty()) {
-            // save /output/stdout.txt file
-            String stdoutFilePath =
-                    workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
-            File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath
-                    , appComputeResponse.getStdout());
-            log.info("Saved stdout file [path:{}]",
-                    stdoutFile.getAbsolutePath());
-            //TODO Make sure stdout is properly written
+        if (appComputeResponse.isSuccessful()) {
+            writeLogs(chainTaskId, STDOUT_FILENAME, appComputeResponse.getStdout());
+            writeLogs(chainTaskId, STDERR_FILENAME, appComputeResponse.getStderr());
         }
         return appComputeResponse;
+    }
+
+    private void writeLogs(String chainTaskId, String filename, String logs) {
+        if (!logs.isEmpty()) {
+            String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + filename;
+            File file = FileHelper.createFileWithContent(filePath, logs);
+            log.info("Saved logs file [path:{}]",
+                    file.getAbsolutePath());
+            //TODO Make sure file is properly written
+        }
     }
 
     /*

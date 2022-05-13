@@ -22,6 +22,7 @@ import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
+import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
@@ -59,6 +60,7 @@ import static org.mockito.Mockito.*;
 class TaskManagerServiceTests {
 
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String WORKER_ADDRESS = "WORKER_ADDRESS";
     public static final String PATH_TO_DOWNLOADED_FILE = "/path/to/downloaded/file";
 
     @InjectMocks
@@ -619,20 +621,24 @@ class TaskManagerServiceTests {
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder().isSuccessful(true).build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
+        when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        // app-compute
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .successWithStdout("stdout"));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(
+                        ReplicateActionResponse
+                                .successWithLogs(ComputeLogs.builder()
+                                        .stdout("stdout")
+                                        .stderr("stderr")
+                                        .build()));
     }
 
     @Test
@@ -752,7 +758,7 @@ class TaskManagerServiceTests {
                         ReplicateStatusDetails.builder()
                                 .cause(APP_COMPUTE_FAILED)
                                 .exitCode(5)
-                                .stdout("stdout")
+                                .computeLogs(ComputeLogs.builder().stdout("stdout").build())
                                 .build()));
     }
 
@@ -787,7 +793,7 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+                        .failureWithStdout(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, null));
     }
 
     @Test
