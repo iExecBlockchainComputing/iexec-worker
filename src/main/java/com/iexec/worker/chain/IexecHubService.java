@@ -69,12 +69,12 @@ public class IexecHubService extends IexecHubAbstractService {
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
         try {
             return CompletableFuture.supplyAsync(() -> {
-                log.info("Requested  contribute [chainTaskId:{}, waitingTxCount:{}]",
+                log.info("Requested contribute [chainTaskId:{}, waitingTxCount:{}]",
                         contribution.getChainTaskId(), getWaitingTransactionCount());
                 return sendContributeTransaction(contribution);
             }, executor).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            log.error("contribute asynchronous execution did not complete", e);
         }
         return null;
     }
@@ -95,8 +95,7 @@ public class IexecHubService extends IexecHubAbstractService {
         try {
             contributeReceipt = contributeCall.send();
         } catch (Exception e) {
-            log.error("Failed to contribute [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to contribute [chainTaskId:{}]", chainTaskId, e);
             return null;
         }
 
@@ -136,11 +135,11 @@ public class IexecHubService extends IexecHubAbstractService {
     IexecHubContract.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
             return CompletableFuture.supplyAsync(() -> {
-                log.info("Requested  reveal [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
+                log.info("Requested reveal [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
                 return sendRevealTransaction(chainTaskId, resultDigest);
             }, executor).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            log.error("reveal asynchronous execution did not complete", e);
         }
         return null;
     }
@@ -155,8 +154,7 @@ public class IexecHubService extends IexecHubAbstractService {
         try {
             revealReceipt = revealCall.send();
         } catch (Exception e) {
-            log.error("Failed to reveal [chainTaskId:{}, exception:{}]", chainTaskId, e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to reveal [chainTaskId:{}]", chainTaskId, e);
             return null;
         }
 
