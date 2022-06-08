@@ -20,7 +20,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
-import com.iexec.common.chain.eip712.EIP712Utils;
 import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -39,7 +38,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.ECKeyPair;
 
 import java.io.File;
 import java.io.IOException;
@@ -304,9 +302,7 @@ public class ResultService {
         try {
             EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
             // sign challenge
-            ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-            String signedEip712Challenge = EIP712Utils.buildAuthorizationToken(eip712Challenge,
-                    workerConfigService.getWorkerWalletAddress(), ecKeyPair);
+            String signedEip712Challenge = eip712Challenge.buildAuthorizationTokenFromCredentials(credentialsService.getCredentials());
 
             if (signedEip712Challenge.isEmpty()) {
                 return "";
