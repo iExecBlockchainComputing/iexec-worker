@@ -20,12 +20,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.eip712.EIP712Utils;
+import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
@@ -302,10 +302,10 @@ public class ResultService {
         // get challenge
         Integer chainId = blockchainAdapterConfigurationService.getChainId();
         try {
-            Eip712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
+            EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
             // sign challenge
             ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-            String signedEip712Challenge = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
+            String signedEip712Challenge = EIP712Utils.buildAuthorizationToken(eip712Challenge,
                     workerConfigService.getWorkerWalletAddress(), ecKeyPair);
 
             if (signedEip712Challenge.isEmpty()) {
