@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.eip712.EIP712Domain;
 import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -43,10 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
@@ -300,9 +298,39 @@ public class ResultService {
         // get challenge
         Integer chainId = blockchainAdapterConfigurationService.getChainId();
         try {
-            EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
+            final EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
+            if (eip712Challenge == null) {
+                log.error("Couldn't retrieve an EIP712Challenge from Result Proxy");
+                return "";
+            }
+
+            final EIP712Domain domain = eip712Challenge.getDomain();
+            if (domain == null) {
+                log.error("Couldn't get a correct domain from EIP712Challenge " +
+                        "retrieved from Result Proxy [eip712Challenge:{}]",
+                        eip712Challenge);
+                return "";
+            }
+
+            final String expectedDomainName = "iExec Core";
+            final String actualDomainName = domain.getName();
+            if (!Objects.equals(actualDomainName, expectedDomainName)) {
+                log.error("Domain name does not match expected name" +
+                                " [expected:{}, actual:{}]",
+                        expectedDomainName, actualDomainName);
+                return "";
+            }
+
+            final long domainChainId = domain.getChainId();
+            if (!Objects.equals(domainChainId, chainId.longValue())) {
+                log.error("Domain chain id does not match expected chain id" +
+                                " [expected:{}, actual:{}]",
+                        chainId, domainChainId);
+                return "";
+            }
+
             // sign challenge
-            String signedEip712Challenge = eip712Challenge.buildAuthorizationTokenFromCredentials(credentialsService.getCredentials());
+            String signedEip712Challenge = credentialsService.signEIP712EntityAndBuildToken(eip712Challenge);
 
             if (signedEip712Challenge.isEmpty()) {
                 return "";
