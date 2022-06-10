@@ -19,6 +19,10 @@ package com.iexec.worker.compute;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
+/**
+ * This class is needed to have a case-insensitive `stage` path variable in
+ * {@link ComputeController#sendExitCauseForGivenComputeStage}.
+ */
 @Component
 public class ComputeStageConverter implements Converter<String, ComputeStage> {
     @Override
