@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.app;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
@@ -26,9 +27,13 @@ import lombok.*;
 @AllArgsConstructor
 public class AppComputeResponse implements ComputeResponse {
 
-    private boolean isSuccessful;
+    private DockerRunFinalStatus finalStatus;
     private String stdout;
     private String stderr;
     private int exitCode;
-    
+
+    @Override
+    public boolean isSuccessful() {
+        return finalStatus == DockerRunFinalStatus.SUCCESS;
+    }
 }

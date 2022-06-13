@@ -17,6 +17,7 @@
 package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -36,6 +37,9 @@ import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+
+import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_TIMEOUT;
 
 
 @Slf4j
@@ -129,12 +133,17 @@ public class PreComputeService {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
                             "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
-            Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
-            if (exitCode == null || exitCode != 0) {
-                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
-                log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
-                        "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
-                preComputeResponse.setExitCause(exitCause);
+            try {
+                Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
+                if (exitCode == null || exitCode != 0) {
+                    ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+                    log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
+                            "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+                    preComputeResponse.setExitCause(exitCause);
+                    return preComputeResponse;
+                }
+            } catch (TimeoutException e) {
+                preComputeResponse.setExitCause(PRE_COMPUTE_TIMEOUT);
                 return preComputeResponse;
             }
         }
@@ -171,7 +180,7 @@ public class PreComputeService {
      * @param secureSessionId
      * @return pre-compute exit code
      */
-    private Integer prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) {
+    private Integer prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) throws TimeoutException {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
         // check that docker image is present
@@ -198,7 +207,14 @@ public class PreComputeService {
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);
-        if (!dockerResponse.isSuccessful()) {
+        final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
+        if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
+            log.error("Tee pre-compute container timed out" +
+                    " [chainTaskId:{}, maxExecutionTime:{}]",
+                    chainTaskId, taskDescription.getMaxExecutionTime());
+            throw new TimeoutException("Tee pre-compute container timed out");
+        }
+        if (finalStatus == DockerRunFinalStatus.FAILED) {
             int exitCode = dockerResponse.getContainerExitCode();
             log.error("Tee pre-compute container failed [chainTaskId:{}, " +
                     "exitCode:{}]", chainTaskId, exitCode);

@@ -16,8 +16,11 @@
 
 package com.iexec.worker.compute;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
+
 public interface ComputeResponse {
 
+    DockerRunFinalStatus getFinalStatus();
     boolean isSuccessful();
     String getStdout();
     String getStderr();

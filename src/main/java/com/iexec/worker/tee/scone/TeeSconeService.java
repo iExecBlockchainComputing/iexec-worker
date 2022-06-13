@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
@@ -105,7 +106,7 @@ public class TeeSconeService {
         }
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
-        if (!dockerRunResponse.isSuccessful()) {
+        if (dockerRunResponse.getFinalStatus() != DockerRunFinalStatus.SUCCESS) {
             log.error("Failed to start LAS service");
             return false;
         }

@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.pre;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.compute.ComputeResponse;
@@ -28,7 +29,7 @@ import lombok.*;
 @AllArgsConstructor
 public class PreComputeResponse implements ComputeResponse {
 
-    private boolean isSuccessful;
+    private DockerRunFinalStatus finalStatus;
     private boolean isTeeTask;
     private String secureSessionId;
     private String stdout;
@@ -43,7 +44,7 @@ public class PreComputeResponse implements ComputeResponse {
         if (isTeeTask) {
             return !secureSessionId.isEmpty();
         }
-        return isSuccessful;
+        return finalStatus == DockerRunFinalStatus.SUCCESS;
     }
 
     public boolean failedOnTeeSessionGeneration() {

@@ -18,6 +18,7 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
@@ -157,7 +158,7 @@ public class ComputeManagerService {
                             workerpoolAuth);
         }
         return PreComputeResponse.builder()
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .build();
     }
 
@@ -201,12 +202,15 @@ public class ComputeManagerService {
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
         PostComputeResponse postComputeResponse = PostComputeResponse.builder()
-                .isSuccessful(false)
+                .finalStatus(DockerRunFinalStatus.FAILED)
                 .build();
 
         if (!taskDescription.isTeeTask()) {
             boolean isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
-            postComputeResponse.setSuccessful(isSuccessful);
+            postComputeResponse.setFinalStatus(
+                    isSuccessful
+                            ? DockerRunFinalStatus.SUCCESS
+                            : DockerRunFinalStatus.FAILED);
         } else if (!secureSessionId.isEmpty()) {
             postComputeResponse = postComputeService
                     .runTeePostCompute(taskDescription, secureSessionId);
@@ -216,7 +220,7 @@ public class ComputeManagerService {
         }
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
-            postComputeResponse.setSuccessful(false);
+            postComputeResponse.setFinalStatus(DockerRunFinalStatus.FAILED);
             return postComputeResponse;
         }
         resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);

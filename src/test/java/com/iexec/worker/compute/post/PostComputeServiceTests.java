@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
@@ -177,7 +178,7 @@ class PostComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -253,7 +254,7 @@ class PostComputeServiceTests {
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder()
-                        .isSuccessful(false)
+                        .finalStatus(DockerRunFinalStatus.FAILED)
                         .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);

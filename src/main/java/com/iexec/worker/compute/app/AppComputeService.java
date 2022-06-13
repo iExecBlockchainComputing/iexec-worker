@@ -88,7 +88,7 @@ public class AppComputeService {
         }
         DockerRunResponse dockerResponse = dockerService.run(runRequest);
         return AppComputeResponse.builder()
-                .isSuccessful(dockerResponse.isSuccessful())
+                .finalStatus(dockerResponse.getFinalStatus())
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .exitCode(dockerResponse.getContainerExitCode())

@@ -17,6 +17,7 @@
 package com.iexec.worker.compute.pre;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
@@ -128,7 +129,7 @@ class PreComputeServiceTests {
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -167,7 +168,7 @@ class PreComputeServiceTests {
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -208,7 +209,7 @@ class PreComputeServiceTests {
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -297,7 +298,7 @@ class PreComputeServiceTests {
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
-                .isSuccessful(false)
+                .finalStatus(DockerRunFinalStatus.FAILED)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
         when(computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId))

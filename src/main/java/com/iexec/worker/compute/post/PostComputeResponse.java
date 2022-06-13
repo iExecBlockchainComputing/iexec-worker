@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
@@ -27,7 +28,7 @@ import lombok.*;
 @AllArgsConstructor
 public class PostComputeResponse implements ComputeResponse {
 
-    private boolean isSuccessful;
+    private DockerRunFinalStatus finalStatus;
     private String stdout;
     private String stderr;
     private ReplicateStatusCause exitCause;
@@ -39,6 +40,6 @@ public class PostComputeResponse implements ComputeResponse {
         if (isTeeTask) {
             return !secureSessionId.isEmpty();
         }
-        return isSuccessful;
+        return finalStatus == DockerRunFinalStatus.SUCCESS;
     }
 }
