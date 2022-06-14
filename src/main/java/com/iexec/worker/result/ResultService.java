@@ -305,14 +305,7 @@ public class ResultService {
             }
 
             final EIP712Domain domain = eip712Challenge.getDomain();
-            if (domain == null) {
-                log.error("Couldn't get a correct domain from EIP712Challenge " +
-                        "retrieved from Result Proxy [eip712Challenge:{}]",
-                        eip712Challenge);
-                return "";
-            }
-
-            final String expectedDomainName = "iExec Result Proxy";
+            final String expectedDomainName = "iExec Result Repository";
             final String actualDomainName = domain.getName();
             if (!Objects.equals(actualDomainName, expectedDomainName)) {
                 log.error("Domain name does not match expected name" +
