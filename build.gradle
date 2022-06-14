@@ -90,6 +90,9 @@ dependencies {
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
+
+    // slf4j-test
+    testImplementation 'uk.org.lidalia:slf4j-test:1.2.0'
 }
 
 // ./gradlew build -Pdev
@@ -111,6 +114,11 @@ test {
             excludeTags 'slow'
         }
     }
+
+    // To avoid warnings on multiple SLF4J bindings,
+    // let's remove the Logback implementation
+    // and keep only SLF4j Test.
+    classpath = classpath.filter {!it.name.contains('logback-classic')}
 }
 
 task itest {

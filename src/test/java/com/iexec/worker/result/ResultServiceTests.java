@@ -18,8 +18,11 @@ package com.iexec.worker.result;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.eip712.EIP712Domain;
+import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
@@ -28,15 +31,23 @@ import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.resultproxy.api.ResultProxyClient;
+import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import uk.org.lidalia.slf4jtest.LoggingEvent;
+import uk.org.lidalia.slf4jtest.TestLogger;
+import uk.org.lidalia.slf4jtest.TestLoggerFactory;
 
 import java.io.File;
 import java.util.Optional;
@@ -44,7 +55,7 @@ import java.util.Optional;
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class ResultServiceTests {
 
@@ -64,6 +75,10 @@ class ResultServiceTests {
     private ResultProxyClient resultProxyClient;
     @Mock
     private WorkerConfigurationService workerConfigurationService;
+    @Mock
+    private BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
+    @Mock
+    private CredentialsService credentialsService;
 
     @InjectMocks
     private ResultService resultService;
@@ -456,4 +471,147 @@ class ResultServiceTests {
         Assertions.assertThat(isWritten).isFalse();
     }
 
+    // region getIexecUploadToken
+    @Test
+    void shouldGetIexecUploadToken() {
+        final TestLogger logger = TestLoggerFactory.getTestLogger(ResultService.class);
+        logger.clear();
+
+        final int chainId = 1;
+        final EIP712Domain domain = new EIP712Domain("iExec Result Repository", "1", chainId, null);
+        final EIP712Challenge challenge = new EIP712Challenge(domain, null);
+        final String signedChallenge = "signedChallenge";
+        final String uploadToken = "uploadToken";
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
+        when(credentialsService.signEIP712EntityAndBuildToken(challenge)).thenReturn(signedChallenge);
+        when(resultProxyClient.login(chainId, signedChallenge)).thenReturn(uploadToken);
+
+        assertThat(resultService.getIexecUploadToken()).isEqualTo(uploadToken);
+        assertThat(logger.getLoggingEvents())
+                .isEmpty();
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, times(1)).signEIP712EntityAndBuildToken(challenge);
+        verify(resultProxyClient, times(1)).login(chainId, signedChallenge);
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceNoResultChallenge() {
+        final TestLogger logger = TestLoggerFactory.getTestLogger(ResultService.class);
+        logger.clear();
+
+        final int chainId = 1;
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(null);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+        assertThat(logger.getLoggingEvents())
+                .containsExactly(LoggingEvent.error("Couldn't retrieve an EIP712Challenge from Result Proxy"));
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceGetResultChallengeThrows() {
+        final TestLogger logger = TestLoggerFactory.getTestLogger(ResultService.class);
+        logger.clear();
+
+        final int chainId = 1;
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenThrow(RuntimeException.class);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+        final ImmutableList<LoggingEvent> loggingEvents = logger.getLoggingEvents();
+        assertThat(loggingEvents).hasSize(1);
+        assertThat(loggingEvents.get(0).getMessage()).isEqualTo("Failed to get upload token");
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "wrong name"})
+    void shouldNotGetIexecUploadTokenSinceWrongDomainName(String wrongDomainName) {
+        final TestLogger logger = TestLoggerFactory.getTestLogger(ResultService.class);
+        logger.clear();
+
+        final int chainId = 1;
+        final EIP712Domain domain = new EIP712Domain(wrongDomainName, "1", chainId, null);
+        final EIP712Challenge challenge = new EIP712Challenge(domain, null);
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+        assertThat(logger.getLoggingEvents())
+                .containsExactly(LoggingEvent.error("Domain name does not match expected name" +
+                                " [expected:{}, actual:{}]",
+                        "iExec Result Repository", wrongDomainName));
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceWrongChainId() {
+        final TestLogger logger = TestLoggerFactory.getTestLogger(ResultService.class);
+        logger.clear();
+
+        final int expectedChainId = 1;
+        final long wrongChainId = 42;
+        final EIP712Domain domain = new EIP712Domain("iExec Result Repository", "1", wrongChainId, null);
+        final EIP712Challenge challenge = new EIP712Challenge(domain, null);
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(expectedChainId);
+        when(resultProxyClient.getChallenge(expectedChainId)).thenReturn(challenge);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+        assertThat(logger.getLoggingEvents())
+                .containsExactly(LoggingEvent.error("Domain chain id does not match expected chain id" +
+                                " [expected:{}, actual:{}]",
+                        expectedChainId, wrongChainId));
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(expectedChainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceSigningReturnsEmpty() {
+        final TestLogger logger = TestLoggerFactory.getTestLogger(ResultService.class);
+        logger.clear();
+
+        final int chainId = 1;
+        final EIP712Domain domain = new EIP712Domain("iExec Result Repository", "1", chainId, null);
+        final EIP712Challenge challenge = new EIP712Challenge(domain, null);
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
+        when(credentialsService.signEIP712EntityAndBuildToken(challenge)).thenReturn("");
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+        assertThat(logger.getLoggingEvents())
+                .containsExactly(LoggingEvent.error("Couldn't sign challenge for an unknown reason " +
+                        " [challenge:{}]", challenge));
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, times(1)).signEIP712EntityAndBuildToken(challenge);
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+    // endregion
 }

@@ -326,6 +326,8 @@ public class ResultService {
             String signedEip712Challenge = credentialsService.signEIP712EntityAndBuildToken(eip712Challenge);
 
             if (signedEip712Challenge.isEmpty()) {
+                log.error("Couldn't sign challenge for an unknown reason " +
+                        " [challenge:{}]", eip712Challenge);
                 return "";
             }
 
