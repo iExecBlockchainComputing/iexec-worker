@@ -90,9 +90,6 @@ dependencies {
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
-
-    // slf4j-test
-    testImplementation 'uk.org.lidalia:slf4j-test:1.2.0'
 }
 
 // ./gradlew build -Pdev
