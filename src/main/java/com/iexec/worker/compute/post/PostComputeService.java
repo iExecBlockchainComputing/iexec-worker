@@ -128,7 +128,7 @@ public class PostComputeService {
                         .build());
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
-            log.error("Tee pre-compute container timed out" +
+            log.error("Tee post-compute container timed out" +
                             " [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             return PostComputeResponse.builder().exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT).build();

@@ -322,4 +322,33 @@ class PreComputeServiceTests {
                 3, ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING
         ).entrySet().stream();
     }
+
+    @Test
+    void shouldFailToRunTeePreComputeSinceTimeout() throws TeeSessionGenerationException {
+        when(dockerClientInstanceMock
+                .pullImage(taskDescription.getTeePostComputeImage()))
+                .thenReturn(true);
+        when(smsService.createTeeSession(workerpoolAuthorization))
+                .thenReturn("secureSessionId");
+        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
+                .thenReturn(true);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
+        when(workerConfigService.getDockerNetworkName()).thenReturn("network");
+        when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
+                .finalStatus(DockerRunFinalStatus.TIMEOUT)
+                .build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+
+        PreComputeResponse preComputeResponse =
+                preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+
+        Assertions.assertThat(preComputeResponse.isSuccessful())
+                .isFalse();
+        Assertions.assertThat(preComputeResponse.getExitCause())
+                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
+        verify(dockerService).run(any());
+    }
 }
