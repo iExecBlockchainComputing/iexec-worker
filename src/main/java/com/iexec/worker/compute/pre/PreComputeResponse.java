@@ -40,6 +40,7 @@ public class PreComputeResponse implements ComputeResponse {
     private ReplicateStatusCause exitCause;
     private TeeSessionGenerationError teeSessionGenerationError;
 
+    @Override
     public boolean isSuccessful() {
         if (isTeeTask) {
             return !secureSessionId.isEmpty();
