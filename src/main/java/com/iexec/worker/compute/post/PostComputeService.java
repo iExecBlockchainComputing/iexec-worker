@@ -105,7 +105,9 @@ public class PostComputeService {
         if (!dockerService.getClient().isImagePresent(postComputeImage)) {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
-            return PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
+            return PostComputeResponse.builder()
+                    .finalStatus(DockerRunFinalStatus.FAILED)
+                    .build();
         }
         List<String> env = teeSconeService.
                 getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
@@ -130,14 +132,20 @@ public class PostComputeService {
             log.error("Tee post-compute container timed out" +
                             " [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
-            return PostComputeResponse.builder().exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT).build();
+            return PostComputeResponse.builder()
+                    .finalStatus(DockerRunFinalStatus.TIMEOUT)
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)
+                    .build();
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
             int exitCode = dockerResponse.getContainerExitCode();
             ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
             log.error("Failed to run tee post-compute [chainTaskId:{}, " +
                     "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
-            return PostComputeResponse.builder().exitCause(exitCause).build();
+            return PostComputeResponse.builder()
+                    .finalStatus(DockerRunFinalStatus.FAILED)
+                    .exitCause(exitCause)
+                    .build();
         }
         return PostComputeResponse.builder()
                 .finalStatus(DockerRunFinalStatus.SUCCESS)

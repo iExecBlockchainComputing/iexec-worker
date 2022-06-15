@@ -40,6 +40,6 @@ public class PostComputeResponse implements ComputeResponse {
         if (isTeeTask) {
             return !secureSessionId.isEmpty();
         }
-        return finalStatus == DockerRunFinalStatus.SUCCESS;
+        return ComputeResponse.super.isSuccessful();
     }
 }

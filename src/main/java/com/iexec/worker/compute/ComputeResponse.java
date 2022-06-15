@@ -21,8 +21,10 @@ import com.iexec.common.docker.DockerRunFinalStatus;
 public interface ComputeResponse {
 
     DockerRunFinalStatus getFinalStatus();
-    boolean isSuccessful();
     String getStdout();
     String getStderr();
+    default boolean isSuccessful() {
+        return getFinalStatus() == DockerRunFinalStatus.SUCCESS;
+    }
 
 }

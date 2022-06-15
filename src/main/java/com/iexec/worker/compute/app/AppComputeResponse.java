@@ -31,9 +31,4 @@ public class AppComputeResponse implements ComputeResponse {
     private String stdout;
     private String stderr;
     private int exitCode;
-
-    @Override
-    public boolean isSuccessful() {
-        return finalStatus == DockerRunFinalStatus.SUCCESS;
-    }
 }

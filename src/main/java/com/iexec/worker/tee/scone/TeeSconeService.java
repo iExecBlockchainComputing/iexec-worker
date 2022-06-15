@@ -106,7 +106,7 @@ public class TeeSconeService {
         }
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
-        if (dockerRunResponse.getFinalStatus() != DockerRunFinalStatus.SUCCESS) {
+        if (!dockerRunResponse.isSuccessful()) {
             log.error("Failed to start LAS service");
             return false;
         }

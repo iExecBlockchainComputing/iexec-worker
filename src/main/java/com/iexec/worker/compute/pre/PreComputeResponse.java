@@ -44,7 +44,7 @@ public class PreComputeResponse implements ComputeResponse {
         if (isTeeTask) {
             return !secureSessionId.isEmpty();
         }
-        return finalStatus == DockerRunFinalStatus.SUCCESS;
+        return ComputeResponse.super.isSuccessful();
     }
 
     public boolean failedOnTeeSessionGeneration() {
