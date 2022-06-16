@@ -32,6 +32,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -39,7 +40,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
+import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING;
 import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_TIMEOUT;
+import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
 
 
 @Slf4j
@@ -92,6 +95,7 @@ public class PreComputeService {
         if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
+            preComputeResponse.setFinalStatus(DockerRunFinalStatus.FAILED);
             return preComputeResponse;
         }
         long teeComputeMaxHeapSize = DataSize
@@ -101,6 +105,7 @@ public class PreComputeService {
             log.error("Enclave configuration should define a proper heap " +
                             "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
+            preComputeResponse.setFinalStatus(DockerRunFinalStatus.FAILED);
             return preComputeResponse;
         }
         // ###############################################################################
@@ -119,41 +124,57 @@ public class PreComputeService {
         // }
         // ###############################################################################
         // create secure session
-        String secureSessionId;
+        String secureSessionId = "";
         try {
             secureSessionId = smsService.createTeeSession(workerpoolAuth);
+            if (StringUtils.isEmpty(secureSessionId)) {
+                throw new TeeSessionGenerationException(UNKNOWN_ISSUE);
+            }
+            preComputeResponse.setSecureSessionId(secureSessionId);
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId);
             preComputeResponse.setTeeSessionGenerationError(e.getTeeSessionGenerationError());
-            return preComputeResponse;
         }
         // run TEE pre-compute container if needed
-        if (taskDescription.containsDataset() ||
-                taskDescription.containsInputFiles()) {
+        if (preComputeResponse.getTeeSessionGenerationError() == null
+                && (taskDescription.containsDataset()
+                || taskDescription.containsInputFiles())
+        ) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
                             "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
-            try {
-                Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
-                if (exitCode == null || exitCode != 0) {
-                    ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
-                    log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
-                            "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
-                    preComputeResponse.setExitCause(exitCause);
-                    return preComputeResponse;
-                }
-            } catch (TimeoutException e) {
-                preComputeResponse.setExitCause(PRE_COMPUTE_TIMEOUT);
-                return preComputeResponse;
-            }
+            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSessionId);
+            preComputeResponse.setExitCause(exitCause);
         }
-        preComputeResponse.setSecureSessionId(secureSessionId);
+
+        if (preComputeResponse.getExitCause() == null && preComputeResponse.getTeeSessionGenerationError() == null) {
+            preComputeResponse.setFinalStatus(DockerRunFinalStatus.SUCCESS);
+        }
+
         return preComputeResponse;
+    }
+
+    private ReplicateStatusCause downloadDatasetAndFiles(TaskDescription taskDescription, String secureSessionId) {
+        try {
+            Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
+            if (exitCode == null || exitCode != 0) {
+                String chainTaskId = taskDescription.getChainTaskId();
+                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+                log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
+                        "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+                return exitCause;
+            }
+        } catch (TimeoutException e) {
+            return PRE_COMPUTE_TIMEOUT;
+        }
+        return null;
     }
 
     private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
         ReplicateStatusCause cause = null;
-        if (exitCode != null && exitCode != 0) {
+        if (exitCode == null) {
+            cause = PRE_COMPUTE_IMAGE_MISSING;
+        } else {
             switch (exitCode) {
                 case 1:
                     cause = computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId);

@@ -51,4 +51,18 @@ public class PreComputeResponse implements ComputeResponse {
     public boolean failedOnTeeSessionGeneration() {
         return teeSessionGenerationError != null;
     }
+
+    public void setExitCause(ReplicateStatusCause exitCause) {
+        this.exitCause = exitCause;
+        if (exitCause != null) {
+            this.finalStatus = DockerRunFinalStatus.FAILED;
+        }
+    }
+
+    public void setTeeSessionGenerationError(TeeSessionGenerationError teeSessionGenerationError) {
+        this.teeSessionGenerationError = teeSessionGenerationError;
+        if (teeSessionGenerationError != null) {
+            this.finalStatus = DockerRunFinalStatus.FAILED;
+        }
+    }
 }

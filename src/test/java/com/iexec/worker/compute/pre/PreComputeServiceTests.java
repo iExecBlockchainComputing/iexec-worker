@@ -137,7 +137,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
+                .isEqualTo(PreComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).secureSessionId(secureSessionId).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -176,7 +176,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
+                .isEqualTo(PreComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).secureSessionId(secureSessionId).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -217,7 +217,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
+                .isEqualTo(PreComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).secureSessionId(secureSessionId).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
