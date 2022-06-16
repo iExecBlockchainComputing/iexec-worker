@@ -43,7 +43,7 @@ public class PreComputeResponse implements ComputeResponse {
     @Override
     public boolean isSuccessful() {
         if (isTeeTask) {
-            return !secureSessionId.isEmpty();
+            return ComputeResponse.super.isSuccessful() && !secureSessionId.isEmpty();
         }
         return ComputeResponse.super.isSuccessful();
     }
