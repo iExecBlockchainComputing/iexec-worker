@@ -276,8 +276,9 @@ class PreComputeServiceTests {
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(false);
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
-                .isFalse();
+        final PreComputeResponse preComputeResponse = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+        Assertions.assertThat(preComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(preComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING);
         verify(dockerService, never()).run(any());
     }
 

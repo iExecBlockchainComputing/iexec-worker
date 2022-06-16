@@ -107,6 +107,7 @@ public class PostComputeService {
                     chainTaskId);
             return PostComputeResponse.builder()
                     .finalStatus(DockerRunFinalStatus.FAILED)
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
                     .build();
         }
         List<String> env = teeSconeService.

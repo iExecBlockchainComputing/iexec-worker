@@ -227,6 +227,7 @@ class PostComputeServiceTests {
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING);
         verify(dockerService, never()).run(any());
     }
 
