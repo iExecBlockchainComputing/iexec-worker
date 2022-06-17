@@ -106,7 +106,6 @@ public class PostComputeService {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
             return PostComputeResponse.builder()
-                    .finalStatus(DockerRunFinalStatus.FAILED)
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
                     .build();
         }
@@ -134,7 +133,6 @@ public class PostComputeService {
                             " [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             return PostComputeResponse.builder()
-                    .finalStatus(DockerRunFinalStatus.TIMEOUT)
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)
                     .build();
         }
@@ -144,12 +142,10 @@ public class PostComputeService {
             log.error("Failed to run tee post-compute [chainTaskId:{}, " +
                     "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
             return PostComputeResponse.builder()
-                    .finalStatus(DockerRunFinalStatus.FAILED)
                     .exitCause(exitCause)
                     .build();
         }
         return PostComputeResponse.builder()
-                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .build();

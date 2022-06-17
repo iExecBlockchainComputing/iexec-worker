@@ -16,7 +16,6 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;

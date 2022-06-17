@@ -18,7 +18,7 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.docker.DockerRunFinalStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
@@ -157,9 +157,7 @@ public class ComputeManagerService {
             return preComputeService.runTeePreCompute(taskDescription,
                             workerpoolAuth);
         }
-        return PreComputeResponse.builder()
-                .finalStatus(DockerRunFinalStatus.SUCCESS)
-                .build();
+        return PreComputeResponse.builder().build();
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -202,15 +200,13 @@ public class ComputeManagerService {
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
         PostComputeResponse postComputeResponse = PostComputeResponse.builder()
-                .finalStatus(DockerRunFinalStatus.FAILED)
+                .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
                 .build();
 
         if (!taskDescription.isTeeTask()) {
-            boolean isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
-            postComputeResponse.setFinalStatus(
-                    isSuccessful
-                            ? DockerRunFinalStatus.SUCCESS
-                            : DockerRunFinalStatus.FAILED);
+            if (postComputeService.runStandardPostCompute(taskDescription)) {
+                postComputeResponse.setExitCause(null);
+            }
         } else if (!secureSessionId.isEmpty()) {
             postComputeResponse = postComputeService
                     .runTeePostCompute(taskDescription, secureSessionId);
@@ -220,7 +216,6 @@ public class ComputeManagerService {
         }
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
-            postComputeResponse.setFinalStatus(DockerRunFinalStatus.FAILED);
             return postComputeResponse;
         }
         resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);

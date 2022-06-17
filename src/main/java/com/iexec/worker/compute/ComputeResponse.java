@@ -16,15 +16,15 @@
 
 package com.iexec.worker.compute;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 
 public interface ComputeResponse {
 
-    DockerRunFinalStatus getFinalStatus();
+    ReplicateStatusCause getExitCause();
     String getStdout();
     String getStderr();
     default boolean isSuccessful() {
-        return getFinalStatus() == DockerRunFinalStatus.SUCCESS;
+        return getExitCause() == null;
     }
 
 }

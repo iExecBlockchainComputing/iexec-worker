@@ -16,9 +16,7 @@
 
 package com.iexec.worker.compute.pre;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
@@ -29,16 +27,12 @@ import lombok.*;
 @AllArgsConstructor
 public class PreComputeResponse implements ComputeResponse {
 
-    private DockerRunFinalStatus finalStatus;
+    private ReplicateStatusCause exitCause;
     private boolean isTeeTask;
     private String secureSessionId;
     private String stdout;
     private String stderr;
 
-    // Only zero or one of `exitCause` or `teeSessionGenerationError`
-    // should be non-null, not both.
-    private ReplicateStatusCause exitCause;
-    private TeeSessionGenerationError teeSessionGenerationError;
 
     @Override
     public boolean isSuccessful() {
@@ -48,21 +42,7 @@ public class PreComputeResponse implements ComputeResponse {
         return ComputeResponse.super.isSuccessful();
     }
 
-    public boolean failedOnTeeSessionGeneration() {
-        return teeSessionGenerationError != null;
-    }
-
     public void setExitCause(ReplicateStatusCause exitCause) {
         this.exitCause = exitCause;
-        if (exitCause != null) {
-            this.finalStatus = DockerRunFinalStatus.FAILED;
-        }
-    }
-
-    public void setTeeSessionGenerationError(TeeSessionGenerationError teeSessionGenerationError) {
-        this.teeSessionGenerationError = teeSessionGenerationError;
-        if (teeSessionGenerationError != null) {
-            this.finalStatus = DockerRunFinalStatus.FAILED;
-        }
     }
 }

@@ -232,7 +232,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -253,7 +253,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -274,7 +274,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
+                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -411,7 +411,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -432,7 +432,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -453,7 +453,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
+                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -492,7 +492,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -541,7 +541,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -567,7 +567,7 @@ class TaskManagerServiceTests {
                 when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -593,7 +593,7 @@ class TaskManagerServiceTests {
                 when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
+                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -620,11 +620,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).stdout("stdout").stderr("stderr").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PostComputeResponse.builder().build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
         when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
@@ -711,7 +711,6 @@ class TaskManagerServiceTests {
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.FAILED)
                         .exitCause(PRE_COMPUTE_DATASET_URL_MISSING)
                 .build());
 
@@ -740,11 +739,10 @@ class TaskManagerServiceTests {
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.SUCCESS)
                         .build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.FAILED)
+                        .exitCause(APP_COMPUTE_FAILED)
                         .exitCode(5)
                         .stdout("stdout")
                         .build());
@@ -778,12 +776,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.FAILED)
                         .exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
                         .build());
 

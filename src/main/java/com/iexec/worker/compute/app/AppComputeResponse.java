@@ -16,7 +16,7 @@
 
 package com.iexec.worker.compute.app;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
@@ -27,7 +27,7 @@ import lombok.*;
 @AllArgsConstructor
 public class AppComputeResponse implements ComputeResponse {
 
-    private DockerRunFinalStatus finalStatus;
+    private ReplicateStatusCause exitCause;
     private String stdout;
     private String stderr;
     private int exitCode;

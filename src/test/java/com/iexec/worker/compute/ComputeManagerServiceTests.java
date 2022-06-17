@@ -213,7 +213,6 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(false);
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.SUCCESS)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -239,7 +238,7 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(false);
         AppComputeResponse expectedDockerRunResponse =
         AppComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.FAILED)
+                        .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -260,7 +259,6 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(true);
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.SUCCESS)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -287,7 +285,7 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(true);
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.FAILED)
+                        .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -340,7 +338,6 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(true);
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.SUCCESS)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -369,7 +366,7 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(true);
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
-                        .finalStatus(DockerRunFinalStatus.FAILED)
+                        .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();

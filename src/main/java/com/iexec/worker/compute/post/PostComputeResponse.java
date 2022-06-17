@@ -16,7 +16,6 @@
 
 package com.iexec.worker.compute.post;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
@@ -28,8 +27,7 @@ import lombok.*;
 @AllArgsConstructor
 public class PostComputeResponse implements ComputeResponse {
 
-    private DockerRunFinalStatus finalStatus;
+    private ReplicateStatusCause exitCause;
     private String stdout;
     private String stderr;
-    private ReplicateStatusCause exitCause;
 }
