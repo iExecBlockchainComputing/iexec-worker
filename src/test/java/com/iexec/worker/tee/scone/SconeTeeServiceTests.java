@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
@@ -83,7 +84,7 @@ class SconeTeeServiceTests {
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
-                .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
+                .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(teeSconeService.startLasService()).isTrue();
@@ -137,7 +138,7 @@ class SconeTeeServiceTests {
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
-                .thenReturn(DockerRunResponse.builder().isSuccessful(false).build());
+                .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
 
         Assertions.assertThat(teeSconeService.startLasService()).isFalse();
     }

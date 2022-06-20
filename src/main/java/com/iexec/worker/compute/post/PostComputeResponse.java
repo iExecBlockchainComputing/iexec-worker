@@ -27,18 +27,7 @@ import lombok.*;
 @AllArgsConstructor
 public class PostComputeResponse implements ComputeResponse {
 
-    private boolean isSuccessful;
+    private ReplicateStatusCause exitCause;
     private String stdout;
     private String stderr;
-    private ReplicateStatusCause exitCause;
-
-    private boolean isTeeTask;
-    private String secureSessionId;
-
-    public boolean isSuccessful() {
-        if (isTeeTask) {
-            return !secureSessionId.isEmpty();
-        }
-        return isSuccessful;
-    }
 }

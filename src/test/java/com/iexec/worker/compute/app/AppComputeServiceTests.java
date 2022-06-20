@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.app;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
@@ -101,7 +102,7 @@ class AppComputeServiceTests {
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
@@ -148,7 +149,7 @@ class AppComputeServiceTests {
         String lasNetworkName = "lasNetworkName";
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -186,7 +187,7 @@ class AppComputeServiceTests {
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(false).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 

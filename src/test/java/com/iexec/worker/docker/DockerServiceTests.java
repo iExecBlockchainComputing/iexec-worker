@@ -17,6 +17,7 @@
 package com.iexec.worker.docker;
 
 import com.iexec.common.docker.DockerLogs;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
@@ -200,7 +201,7 @@ class DockerServiceTests {
                 .maxExecutionTime(5000)
                 .build();
         DockerRunResponse successResponse = DockerRunResponse.builder()
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .dockerLogs(DockerLogs.builder()
                         .stdout("stdout")
                         .stderr("stderr")
@@ -245,7 +246,7 @@ class DockerServiceTests {
                 .maxExecutionTime(5000)
                 .build();
         DockerRunResponse failureResponse = DockerRunResponse.builder()
-                .isSuccessful(false)
+                .finalStatus(DockerRunFinalStatus.FAILED)
                 .dockerLogs(DockerLogs.builder()
                         .stdout("stdout")
                         .stderr("stderr")
@@ -273,7 +274,7 @@ class DockerServiceTests {
                 .maxExecutionTime(0) // in detached mode
                 .build();
         DockerRunResponse successResponse = DockerRunResponse.builder()
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .build();
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.run(dockerRunRequest))

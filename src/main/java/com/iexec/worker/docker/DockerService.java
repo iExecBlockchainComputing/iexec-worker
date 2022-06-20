@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
@@ -137,14 +138,14 @@ public class DockerService {
      */
     public DockerRunResponse run(DockerRunRequest dockerRunRequest) {
         DockerRunResponse dockerRunResponse = DockerRunResponse.builder()
-                .isSuccessful(false)
+                .finalStatus(DockerRunFinalStatus.FAILED)
                 .build();
         String containerName = dockerRunRequest.getContainerName();
         if (!addToRunningContainersRecord(containerName)) {
             return dockerRunResponse;
         }
         dockerRunResponse = getClient().run(dockerRunRequest);
-        if (!dockerRunResponse.isSuccessful()
+        if (dockerRunResponse.getFinalStatus() != DockerRunFinalStatus.SUCCESS
                 || dockerRunRequest.getMaxExecutionTime() != 0) {
             removeFromRunningContainersRecord(containerName);
         }

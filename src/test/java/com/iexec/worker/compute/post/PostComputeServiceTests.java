@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
@@ -177,7 +178,7 @@ class PostComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -226,6 +227,7 @@ class PostComputeServiceTests {
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING);
         verify(dockerService, never()).run(any());
     }
 
@@ -253,7 +255,7 @@ class PostComputeServiceTests {
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder()
-                        .isSuccessful(false)
+                        .finalStatus(DockerRunFinalStatus.FAILED)
                         .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
@@ -278,4 +280,40 @@ class PostComputeServiceTests {
         ).entrySet().stream();
     }
 
+    @Test
+    void shouldNotRunTeePostComputeSinceTimeout() {
+        taskDescription = TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .datasetUri(DATASET_URI)
+                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
+                .developerLoggerEnabled(true)
+                .build();
+        List<String> env = Arrays.asList("var0", "var1");
+        when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
+        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
+                .thenReturn(true);
+        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
+                .thenReturn(env);
+        when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
+        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
+        when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
+        DockerRunResponse expectedDockerRunResponse =
+                DockerRunResponse.builder()
+                        .finalStatus(DockerRunFinalStatus.TIMEOUT)
+                        .build();
+        when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+
+        PostComputeResponse postComputeResponse =
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause())
+                .isEqualTo(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
+        verify(dockerService, times(1)).run(any());
+    }
 }

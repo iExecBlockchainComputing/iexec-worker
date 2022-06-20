@@ -20,6 +20,7 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ComputeLogs;
@@ -231,7 +232,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -252,7 +253,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -273,7 +274,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(false).build());
+                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(CHAIN_TASK_ID);
@@ -410,7 +411,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -431,7 +432,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -452,7 +453,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(false).build());
+                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -491,7 +492,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -540,7 +541,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -566,7 +567,7 @@ class TaskManagerServiceTests {
                 when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -592,7 +593,7 @@ class TaskManagerServiceTests {
                 when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, ""))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(false).build());
+                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -619,11 +620,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").stderr("stderr").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PostComputeResponse.builder().build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
         when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
@@ -710,7 +711,6 @@ class TaskManagerServiceTests {
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
-                        .isSuccessful(false)
                         .exitCause(PRE_COMPUTE_DATASET_URL_MISSING)
                 .build());
 
@@ -739,11 +739,10 @@ class TaskManagerServiceTests {
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
-                        .isSuccessful(true)
                         .build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder()
-                        .isSuccessful(false)
+                        .exitCause(APP_COMPUTE_FAILED)
                         .exitCode(5)
                         .stdout("stdout")
                         .build());
@@ -777,12 +776,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().isSuccessful(true).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().isSuccessful(true).stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder()
-                        .isSuccessful(false)
                         .exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
                         .build());
 

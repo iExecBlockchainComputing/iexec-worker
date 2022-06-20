@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -104,7 +105,9 @@ public class PostComputeService {
         if (!dockerService.getClient().isImagePresent(postComputeImage)) {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
-            return PostComputeResponse.builder().isSuccessful(false).build();
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
+                    .build();
         }
         List<String> env = teeSconeService.
                 getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
@@ -124,15 +127,25 @@ public class PostComputeService {
                         .dockerNetwork(workerConfigService.getDockerNetworkName())
                         .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
-        if (!dockerResponse.isSuccessful()) {
+        final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
+        if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
+            log.error("Tee post-compute container timed out" +
+                            " [chainTaskId:{}, maxExecutionTime:{}]",
+                    chainTaskId, taskDescription.getMaxExecutionTime());
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)
+                    .build();
+        }
+        if (finalStatus == DockerRunFinalStatus.FAILED) {
             int exitCode = dockerResponse.getContainerExitCode();
             ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
             log.error("Failed to run tee post-compute [chainTaskId:{}, " +
                     "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
-            return PostComputeResponse.builder().exitCause(exitCause).build();
+            return PostComputeResponse.builder()
+                    .exitCause(exitCause)
+                    .build();
         }
         return PostComputeResponse.builder()
-                .isSuccessful(dockerResponse.isSuccessful())
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .build();
