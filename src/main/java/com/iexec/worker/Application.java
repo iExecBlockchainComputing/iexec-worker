@@ -25,6 +25,7 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.worker.WorkerService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -32,7 +33,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -77,7 +77,7 @@ public class Application implements CommandLineRunner {
             System.exit(0);
         }
 
-        if (!StringUtils.hasText(loginService.login())) {
+        if (StringUtils.isEmpty(loginService.login())) {
             String message = "Worker wasn't able to login, stopping...";
             LoggingUtils.printHighlightedMessage(message);
             System.exit(0);

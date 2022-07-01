@@ -109,8 +109,7 @@ public abstract class BaseFeignClient {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
-            log.error("Error while sleeping");
-            e.printStackTrace();
+            log.error("Error while sleeping", e);
         }
     }
 }

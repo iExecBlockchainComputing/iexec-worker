@@ -16,10 +16,11 @@
 
 package com.iexec.worker.docker;
 
-import com.github.dockerjava.api.exception.DockerException;
 import com.iexec.common.docker.DockerLogs;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
@@ -38,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 
-public class DockerServiceTests {
+class DockerServiceTests {
 
     private static final String CHAIN_TASK_ID = "chainTaskId";
 
@@ -52,7 +53,7 @@ public class DockerServiceTests {
     private DockerService dockerService = new DockerService(workerConfigService, dockerRegistryConfiguration);
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
     }
@@ -62,9 +63,9 @@ public class DockerServiceTests {
      */
 
     @Test
-    public void shouldGetUnauthenticatedClient() {
+    void shouldGetUnauthenticatedClient() {
         DockerClientInstance dockerClientInstance = dockerService.getClient();
-        assertThat(dockerClientInstance.getClient().authConfig().getPassword()).isNull();
+        assertThat(dockerClientInstance).isEqualTo(DockerClientFactory.getDockerClientInstance());
     }
 
     /**
@@ -73,7 +74,7 @@ public class DockerServiceTests {
 
     // docker.io/image:tag
     @Test
-    public void shouldGetAuthenticatedClientWithDockerIoRegistry() throws Exception {
+    void shouldGetAuthenticatedClientWithDockerIoRegistry() throws Exception {
         String registry = DEFAULT_DOCKER_REGISTRY;
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -93,7 +94,7 @@ public class DockerServiceTests {
 
     // registry.xyz/name:tag
     @Test
-    public void shouldGetAuthenticatedClientWithCustomRegistry() throws Exception {
+    void shouldGetAuthenticatedClientWithCustomRegistry() throws Exception {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -113,7 +114,7 @@ public class DockerServiceTests {
 
     // registry:port/image:tag
     @Test
-    public void shouldGetAuthenticatedClientWithCustomRegistryAndPort() throws Exception {
+    void shouldGetAuthenticatedClientWithCustomRegistryAndPort() throws Exception {
         String registry = "registry.host.com:5050";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -133,7 +134,7 @@ public class DockerServiceTests {
     
     // image:tag
     @Test
-    public void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() throws Exception {
+    void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() throws Exception {
         String registry = "";
         String imageName = registry + "name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -158,19 +159,19 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
+    void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.empty());
+
         DockerClientInstance instance = dockerService.getClient(imageName);
-        assertThat(instance.getClient().authConfig().getRegistryAddress()).isEqualTo(registry);
-        assertThat(instance.getClient().authConfig().getPassword()).isNull();
         verify(dockerService, never()).getClient(anyString(), anyString(), anyString());
+        assertThat(instance).isEqualTo(DockerClientFactory.getDockerClientInstance(registry));
     }
 
     @Test
-    public void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() throws Exception {
+    void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() throws Exception {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -179,12 +180,13 @@ public class DockerServiceTests {
                 .build();
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
-        doThrow(DockerException.class)
+        doThrow(Exception.class)
                 .when(dockerService)
                 .getClient(registry, credentials.getUsername(), credentials.getPassword());
+
         DockerClientInstance instance = dockerService.getClient(imageName);
-        assertThat(instance.getClient().authConfig().getRegistryAddress()).isEqualTo(registry);
         verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
+        assertThat(instance).isEqualTo(DockerClientFactory.getDockerClientInstance(registry));
     }
 
     /**
@@ -192,14 +194,14 @@ public class DockerServiceTests {
      */
 
     @Test
-    public void shouldRecordContainerThenRunThenRemoveContainerRecord() {
+    void shouldRecordContainerThenRunThenRemoveContainerRecord() {
         String containerName = "containerName";
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
                 .maxExecutionTime(5000)
                 .build();
         DockerRunResponse successResponse = DockerRunResponse.builder()
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .dockerLogs(DockerLogs.builder()
                         .stdout("stdout")
                         .stderr("stderr")
@@ -220,7 +222,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldNotRunSinceCannotAddContainerToRecords() {
+    void shouldNotRunSinceCannotAddContainerToRecords() {
         String containerName = "containerName";
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
@@ -237,14 +239,14 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldRunThenRemoveContainerFromRecordsSinceRunFailed() {
+    void shouldRunThenRemoveContainerFromRecordsSinceRunFailed() {
         String containerName = "containerName";
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
                 .maxExecutionTime(5000)
                 .build();
         DockerRunResponse failureResponse = DockerRunResponse.builder()
-                .isSuccessful(false)
+                .finalStatus(DockerRunFinalStatus.FAILED)
                 .dockerLogs(DockerLogs.builder()
                         .stdout("stdout")
                         .stderr("stderr")
@@ -265,14 +267,14 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldRunAndNotRemoveContainerFromRecordsSinceInDetachedMode() {
+    void shouldRunAndNotRemoveContainerFromRecordsSinceInDetachedMode() {
         String containerName = "containerName";
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
                 .maxExecutionTime(0) // in detached mode
                 .build();
         DockerRunResponse successResponse = DockerRunResponse.builder()
-                .isSuccessful(true)
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .build();
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.run(dockerRunRequest))
@@ -289,7 +291,7 @@ public class DockerServiceTests {
     //#region getInputBind()
 
     @Test
-    public void shouldGetInputBind() {
+    void shouldGetInputBind() {
         String taskInputDir = "/input/dir";
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(taskInputDir);
         assertThat(dockerService.getInputBind(CHAIN_TASK_ID))
@@ -302,7 +304,7 @@ public class DockerServiceTests {
     //#region getIexecOutBind()
 
     @Test
-    public void shouldGetIexecOutBind() {
+    void shouldGetIexecOutBind() {
         String taskIexecOutDir = "/iexec/out/dir";
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(taskIexecOutDir);
         assertThat(dockerService.getIexecOutBind(CHAIN_TASK_ID))
@@ -315,7 +317,7 @@ public class DockerServiceTests {
     //#region stopAllRunningContainers
 
     @Test
-    public void shouldStopAllRunningContainers() {
+    void shouldStopAllRunningContainers() {
         String container1 = "container1";
         String container2 = "container2";
         dockerService.addToRunningContainersRecord(container1);
@@ -329,7 +331,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldNotStopRunningContainers() {
+    void shouldNotStopRunningContainers() {
         // no running container
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         dockerService.stopAllRunningContainers();
@@ -341,7 +343,7 @@ public class DockerServiceTests {
     //#region stopRunningContainersWithNamePattern()
 
     @Test
-    public void shouldStopRunningContainersWithNamePattern() {
+    void shouldStopRunningContainersWithNamePattern() {
         String computeContainerName = "awesome-app-" + CHAIN_TASK_ID;
         String preComputeContainerName = computeContainerName + "-tee-pre-compute";
         String postComputeContainerName = computeContainerName + "-tee-post-compute";
@@ -368,7 +370,7 @@ public class DockerServiceTests {
     //#region stopRunningContainer
 
     @Test
-    public void shouldStopRunningContainer() {
+    void shouldStopRunningContainer() {
         String containerName = "containerName";
         // Add container to record
         dockerService.addToRunningContainersRecord(containerName);
@@ -386,7 +388,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldNotStopRunningContainerSinceNotFound() {
+    void shouldNotStopRunningContainerSinceNotFound() {
         String containerName = "containerName";
         doReturn(dockerClientInstanceMock).when(dockerService).getClient();
         when(dockerClientInstanceMock.isContainerPresent(containerName)).thenReturn(false);
@@ -400,7 +402,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldNotStopRunningContainerButRemoveRecordSinceNotActive() {
+    void shouldNotStopRunningContainerButRemoveRecordSinceNotActive() {
         String containerName = "containerName";
         // Add container to record
         dockerService.addToRunningContainersRecord(containerName);
@@ -417,7 +419,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldTryToStopRunningContainerButNotRemoveRecordSinceStopFailed() {
+    void shouldTryToStopRunningContainerButNotRemoveRecordSinceStopFailed() {
         String containerName = "containerName";
         // Add container to record
         dockerService.addToRunningContainersRecord(containerName);
@@ -439,14 +441,14 @@ public class DockerServiceTests {
     //#region addToRunningContainersRecord()
 
     @Test
-    public void shouldAddToRunningContainersRecord() {
+    void shouldAddToRunningContainersRecord() {
         String containerName = "containerName";
         Assertions.assertThat(dockerService
                 .addToRunningContainersRecord(containerName)).isTrue();
     }
 
     @Test
-    public void shouldNotAddToRunningContainersRecord() {
+    void shouldNotAddToRunningContainersRecord() {
         String containerName = "containerName";
         dockerService.addToRunningContainersRecord(containerName);
         //add already existing name
@@ -459,7 +461,7 @@ public class DockerServiceTests {
     //#region removeFromRunningContainersRecord()
 
     @Test
-    public void shouldRemoveFromRunningContainersRecord() {
+    void shouldRemoveFromRunningContainersRecord() {
         String containerName = "containerName";
         // Add container to records
         assertThat(dockerService.getRunningContainersRecord().size()).isZero();
@@ -471,7 +473,7 @@ public class DockerServiceTests {
     }
 
     @Test
-    public void shouldNotRemoveFromRunningContainersRecord() {
+    void shouldNotRemoveFromRunningContainersRecord() {
         String containerName = "containerName";
 
         Assertions.assertThat(dockerService

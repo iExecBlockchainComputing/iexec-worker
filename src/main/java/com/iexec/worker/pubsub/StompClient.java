@@ -41,7 +41,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -130,26 +132,28 @@ public class StompClient {
     /**
      * This scheduler will start the listener thread if it happens
      * to be interrupted for whatever reason.
+     * @return A {@link CompletableFuture} representing the listener task.
      */
     @Scheduled(initialDelay = 30000, fixedRate = 30000) // 30s, 30s
-    void restartSessionRequestListenerIfStopped() {
-        startSessionRequestListenerIfAbsent();
+    CompletableFuture<Void> restartSessionRequestListenerIfStopped() {
+        return startSessionRequestListenerIfAbsent();
     }
 
     /**
      * Start the thread that listens to session requests in a dedicated
      * thread executor to not block one thread of the default common pool.
+     * @return A {@link CompletableFuture} representing the listener task.
      */
-    void startSessionRequestListenerIfAbsent() {
+    CompletableFuture<Void> startSessionRequestListenerIfAbsent() {
         synchronized(listenerLock) {
             if (listenerLock.isLocked()) {
                 // Another thread is already listening.
                 log.debug("Cannot start a second session request listener");
-                return;
+                return null;
             }
             listenerLock.lock();
         }
-        AsyncUtils.runAsyncTask("listen-to-stomp-session",
+        return AsyncUtils.runAsyncTask("listen-to-stomp-session",
                 this::listenToSessionRequests, singleThreadExecutor);
     }
 
@@ -161,7 +165,7 @@ public class StompClient {
      * <br>
      * 
      * <p><b>Note:</b> the reason we use an AtomicBoolean is because the
-     * method {@link SessionHandler#handleTransportError()} is called
+     * method {@link SessionHandler#handleTransportError(StompSession, Throwable)} is called
      * two times to handle connectivity issues when the websocket
      * connection is, for whatever reason, brutally terminated while
      * a message is being transmitted.
@@ -169,9 +173,9 @@ public class StompClient {
      * problem ({@code Premature end of chunk coded message body:
      * closing chunk expected}).
      * The second call happens after the connection is closed in
-     * {@link WebSocketHandler#afterConnectionClosed()}.
+     * {@link WebSocketHandler#afterConnectionClosed(WebSocketSession, CloseStatus)}.
      * So trying to directly trigger new connection attempts from
-     * {@link SessionHandler#handleTransportError()} would result
+     * {@link SessionHandler#handleTransportError(StompSession, Throwable)} would result
      * in parallel zombie threads trying to establish a new session
      * each.
      * Instead, each call to this method changes the flag
@@ -291,7 +295,7 @@ public class StompClient {
         }
     }
 
-    private class Lock {
+    private static class Lock {
         private final AtomicBoolean value = new AtomicBoolean(false);
 
         boolean isLocked() {

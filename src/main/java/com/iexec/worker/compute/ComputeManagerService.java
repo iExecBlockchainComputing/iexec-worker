@@ -18,6 +18,7 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
@@ -46,6 +47,7 @@ import java.util.Map;
 public class ComputeManagerService {
 
     private static final String STDOUT_FILENAME = "stdout.txt";
+    private static final String STDERR_FILENAME = "stderr.txt";
 
     private final Map<Long, Long> categoryTimeoutMap = new HashMap<>(5);
 
@@ -140,7 +142,7 @@ public class ComputeManagerService {
      * <p>
      * TEE tasks: download pre-compute and post-compute images,
      * create SCONE secure session, and run pre-compute container.
-     * 
+     *
      * @param taskDescription
      * @param workerpoolAuth
      * @return
@@ -152,18 +154,10 @@ public class ComputeManagerService {
                 taskDescription.isTeeTask());
 
         if (taskDescription.isTeeTask()) {
-            String secureSessionId =
-                    preComputeService.runTeePreCompute(taskDescription,
+            return preComputeService.runTeePreCompute(taskDescription,
                             workerpoolAuth);
-            return PreComputeResponse.builder()
-                    .isTeeTask(true)
-                    .secureSessionId(secureSessionId)
-                    .build();
         }
-
-        return PreComputeResponse.builder()
-                .isSuccessful(true)
-                .build();
+        return PreComputeResponse.builder().build();
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -175,18 +169,21 @@ public class ComputeManagerService {
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription, secureSessionId);
 
-        if (appComputeResponse.isSuccessful() && !appComputeResponse.getStdout().isEmpty()) {
-            // save /output/stdout.txt file
-            String stdoutFilePath =
-                    workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + STDOUT_FILENAME;
-            File stdoutFile = FileHelper.createFileWithContent(stdoutFilePath
-                    , appComputeResponse.getStdout());
-            log.info("Saved stdout file [path:{}]",
-                    stdoutFile.getAbsolutePath());
-            //TODO Make sure stdout is properly written
+        if (appComputeResponse.isSuccessful()) {
+            writeLogs(chainTaskId, STDOUT_FILENAME, appComputeResponse.getStdout());
+            writeLogs(chainTaskId, STDERR_FILENAME, appComputeResponse.getStderr());
         }
-
         return appComputeResponse;
+    }
+
+    private void writeLogs(String chainTaskId, String filename, String logs) {
+        if (!logs.isEmpty()) {
+            String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + filename;
+            File file = FileHelper.createFileWithContent(filePath, logs);
+            log.info("Saved logs file [path:{}]",
+                    file.getAbsolutePath());
+            //TODO Make sure file is properly written
+        }
     }
 
     /*
@@ -203,22 +200,22 @@ public class ComputeManagerService {
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
         PostComputeResponse postComputeResponse = PostComputeResponse.builder()
-                .isSuccessful(false)
+                .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
                 .build();
 
         if (!taskDescription.isTeeTask()) {
-            boolean isSuccessful = postComputeService.runStandardPostCompute(taskDescription);
-            postComputeResponse.setSuccessful(isSuccessful);
+            if (postComputeService.runStandardPostCompute(taskDescription)) {
+                postComputeResponse.setExitCause(null);
+            }
         } else if (!secureSessionId.isEmpty()) {
             postComputeResponse = postComputeService
-                        .runTeePostCompute(taskDescription, secureSessionId);
+                    .runTeePostCompute(taskDescription, secureSessionId);
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;
         }
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
-            postComputeResponse.setSuccessful(false);
             return postComputeResponse;
         }
         resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);

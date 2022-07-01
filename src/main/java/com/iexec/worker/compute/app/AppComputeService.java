@@ -16,13 +16,17 @@
 
 package com.iexec.worker.compute.app;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.springframework.stereotype.Service;
 
@@ -35,18 +39,21 @@ public class AppComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final TeeSconeService teeSconeService;
+    private final SgxService sgxService;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            TeeSconeService teeSconeService) {
+            TeeSconeService teeSconeService,
+            SgxService sgxService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
+        this.sgxService = sgxService;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
-                                      String secureSessionId) {
+                                         String secureSessionId) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
@@ -70,7 +77,11 @@ public class AppComputeService {
                 .env(env)
                 .binds(binds)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
-                .isSgx(taskDescription.isTeeTask())
+                .sgxDriverMode(
+                        taskDescription.isTeeTask()
+                                ? sgxService.getSgxDriverMode()
+                                : SgxDriverMode.NONE
+                )
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         // Enclave should be able to connect to the LAS
@@ -78,10 +89,12 @@ public class AppComputeService {
             runRequest.setDockerNetwork(workerConfigService.getDockerNetworkName());
         }
         DockerRunResponse dockerResponse = dockerService.run(runRequest);
+        final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         return AppComputeResponse.builder()
-                .isSuccessful(dockerResponse.isSuccessful())
+                .exitCause(getExitCauseFromFinalStatus(finalStatus))
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
+                .exitCode(dockerResponse.getContainerExitCode())
                 .build();
     }
 
@@ -91,5 +104,14 @@ public class AppComputeService {
     // Exp: integration tests
     private String getTaskContainerName(String chainTaskId) {
         return workerConfigService.getWorkerName() + "-" + chainTaskId;
+    }
+
+    private ReplicateStatusCause getExitCauseFromFinalStatus(DockerRunFinalStatus finalStatus) {
+        if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
+            return ReplicateStatusCause.APP_COMPUTE_TIMEOUT;
+        } else if (finalStatus == DockerRunFinalStatus.FAILED) {
+            return ReplicateStatusCause.APP_COMPUTE_FAILED;
+        }
+        return null;
     }
 }

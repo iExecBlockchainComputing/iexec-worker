@@ -16,8 +16,8 @@
 
 package com.iexec.worker.config;
 
+import com.iexec.blockchain.api.BlockchainAdapterApiClient;
 import com.iexec.common.config.PublicChainConfig;
-import com.iexec.worker.feign.CustomBlockchainAdapterClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -35,12 +35,11 @@ import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
 public class BlockchainAdapterConfigurationService {
     private final PublicChainConfig publicChainConfig;
 
-    public BlockchainAdapterConfigurationService(CustomBlockchainAdapterClient customBlockchainAdapterClient) {
-        this.publicChainConfig = customBlockchainAdapterClient.getPublicChainConfig();
+    public BlockchainAdapterConfigurationService(BlockchainAdapterApiClient blockchainAdapterClient) {
+        this.publicChainConfig = blockchainAdapterClient.getPublicChainConfig();
         if (publicChainConfig == null) {
             throw new MissingConfigurationException(
-                    "Received public chain config is null; "
-                            + "can't create BlockchainAdapterConfigurationService");
+                    "Received public chain config is null; can't create BlockchainAdapterConfigurationService");
         }
 
         log.info("Received public chain config [config:{}]", this.publicChainConfig);

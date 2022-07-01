@@ -54,7 +54,7 @@ public class RevealService {
         String resultDigest = args[1];
 
         Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
-        if (!optionalChainTask.isPresent()) {
+        if (optionalChainTask.isEmpty()) {
             log.error("Task couldn't be retrieved [chainTaskId:{}]", chainTaskId);
             return false;
         }
@@ -64,7 +64,7 @@ public class RevealService {
         boolean isRevealDeadlineReached = chainTask.getRevealDeadline() < new Date().getTime();
 
         Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
-        if (!optionalContribution.isPresent()) {
+        if (optionalContribution.isEmpty()) {
             log.error("Contribution couldn't be retrieved [chainTaskId:{}]", chainTaskId);
             return false;
         }

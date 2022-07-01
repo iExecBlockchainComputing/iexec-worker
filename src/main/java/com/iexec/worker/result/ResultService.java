@@ -20,26 +20,25 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.eip712.EIP712Domain;
+import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
-import com.iexec.common.result.eip712.Eip712Challenge;
-import com.iexec.common.result.eip712.Eip712ChallengeUtils;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.CustomResultFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.ECKeyPair;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,7 +61,7 @@ public class ResultService {
     private final BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
-    private final CustomResultFeignClient customResultFeignClient;
+    private final ResultProxyClient resultProxyClient;
     private final Map<String, ResultInfo> resultInfoMap;
 
     public ResultService(
@@ -70,12 +69,12 @@ public class ResultService {
             BlockchainAdapterConfigurationService blockchainAdapterConfigurationService,
             CredentialsService credentialsService,
             IexecHubService iexecHubService,
-            CustomResultFeignClient customResultFeignClient) {
+            ResultProxyClient resultProxyClient) {
         this.workerConfigService = workerConfigService;
         this.blockchainAdapterConfigurationService = blockchainAdapterConfigurationService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
-        this.customResultFeignClient = customResultFeignClient;
+        this.resultProxyClient = resultProxyClient;
         this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
@@ -119,8 +118,7 @@ public class ResultService {
         try {
             computedFileJsonAsString = new ObjectMapper().writeValueAsString(computedFile);
         } catch (JsonProcessingException e) {
-            log.error("Failed to prepare computed file [chainTaskId:{}]",
-                    chainTaskId, e);
+            log.error("Failed to prepare computed file [chainTaskId:{}]", chainTaskId, e);
             return false;
         }
         String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
@@ -150,7 +148,7 @@ public class ResultService {
         try {
             zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
         } catch (IOException e) {
-            log.error("Failed to get zip result [chainTaskId:{}, zipLocation:{}]", chainTaskId, zipLocation);
+            log.error("Failed to get zip result [chainTaskId:{}, zipLocation:{}]", chainTaskId, zipLocation, e);
         }
 
         return ResultModel.builder()
@@ -240,12 +238,13 @@ public class ResultService {
             return false;
         }
 
-        String location = customResultFeignClient.uploadResult(authorizationToken, getResultModelWithZip(chainTaskId));
-        if (location.isEmpty()) {
-            log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId);
+        try {
+            resultProxyClient.addResult(authorizationToken, getResultModelWithZip(chainTaskId));
+            return true;
+        } catch (RuntimeException e) {
+            log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId, e);
             return false;
         }
-        return true;
     }
 
     private String getWeb3ResultLink(String chainTaskId) {
@@ -272,12 +271,13 @@ public class ResultService {
 
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
-                String ipfsHash = customResultFeignClient.getIpfsHashForTask(chainTaskId);
-                if (ipfsHash.isEmpty()) {
-                    log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId);
+                try {
+                    String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
+                    location = "/ipfs/" + ipfsHash;
+                } catch (RuntimeException e) {
+                    log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId, e);
                     return "";
                 }
-                location = "/ipfs/" + ipfsHash;
                 break;
             case DROPBOX_RESULT_STORAGE_PROVIDER:
                 location = "/results/" + chainTaskId;
@@ -297,39 +297,50 @@ public class ResultService {
     public String getIexecUploadToken() {
         // get challenge
         Integer chainId = blockchainAdapterConfigurationService.getChainId();
-        Optional<Eip712Challenge> oEip712Challenge = customResultFeignClient.getResultChallenge(chainId);
+        try {
+            final EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
+            if (eip712Challenge == null) {
+                log.error("Couldn't retrieve an EIP712Challenge from Result Proxy");
+                return "";
+            }
 
-        if (!oEip712Challenge.isPresent()) {
+            final EIP712Domain domain = eip712Challenge.getDomain();
+            final String expectedDomainName = "iExec Result Repository";
+            final String actualDomainName = domain.getName();
+            if (!Objects.equals(actualDomainName, expectedDomainName)) {
+                log.error("Domain name does not match expected name" +
+                                " [expected:{}, actual:{}]",
+                        expectedDomainName, actualDomainName);
+                return "";
+            }
+
+            final long domainChainId = domain.getChainId();
+            if (!Objects.equals(domainChainId, chainId.longValue())) {
+                log.error("Domain chain id does not match expected chain id" +
+                                " [expected:{}, actual:{}]",
+                        chainId, domainChainId);
+                return "";
+            }
+
+            // sign challenge
+            String signedEip712Challenge = credentialsService.signEIP712EntityAndBuildToken(eip712Challenge);
+
+            if (signedEip712Challenge.isEmpty()) {
+                log.error("Couldn't sign challenge for an unknown reason " +
+                        " [challenge:{}]", eip712Challenge);
+                return "";
+            }
+
+            // login
+            return resultProxyClient.login(chainId, signedEip712Challenge);
+        } catch (RuntimeException e) {
+            log.error("Failed to get upload token", e);
             return "";
         }
-
-        Eip712Challenge eip712Challenge = oEip712Challenge.get();
-
-        // sign challenge
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-        String signedEip712Challenge = Eip712ChallengeUtils.buildAuthorizationToken(eip712Challenge,
-                workerConfigService.getWorkerWalletAddress(), ecKeyPair);
-
-        if (signedEip712Challenge.isEmpty()) {
-            return "";
-        }
-
-        // login
-        return customResultFeignClient.login(chainId, signedEip712Challenge);
     }
 
     public boolean isResultAvailable(String chainTaskId) {
         return isResultZipFound(chainTaskId);
-    }
-
-    /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean encryptResult(String chainTaskId) {
-        throw new UnsupportedOperationException(
-            "Result encryption is not supported for standard tasks");
     }
 
     public ComputedFile getComputedFile(String chainTaskId) {
@@ -388,8 +399,7 @@ public class ResultService {
                     chainTaskId, computedFile);
             return false;
         }
-        if (StringUtils.isEmpty(computedFile.getResultDigest())
-                || !BytesUtils.isBytes32(stringToBytes(computedFile.getResultDigest()))) {
+        if (!BytesUtils.isNonZeroedBytes32(computedFile.getResultDigest())) {
             log.error("Cannot write computed file if result digest is invalid" +
                             "[chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.feign.client;
+package com.iexec.worker.compute;
 
-import com.iexec.common.config.PublicChainConfig;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+public enum ComputeStage {
 
-@FeignClient(name = "BlockchainAdapterClient", url = "#{publicConfigurationService.blockchainAdapterUrl}")
-public interface BlockchainAdapterClient {
-    @GetMapping("/config/chain")
-    ResponseEntity<PublicChainConfig> getPublicChainConfig();
+    PRE(ComputeStage.PRE_VALUE),
+    POST(ComputeStage.POST_VALUE);
+
+    public static final String PRE_VALUE = "pre";
+    public static final String POST_VALUE = "post";
+
+    private final String value;
+
+    ComputeStage(String value) {
+        this.value = value;
+    }
 }

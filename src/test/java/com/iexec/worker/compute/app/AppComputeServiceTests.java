@@ -16,6 +16,8 @@
 
 package com.iexec.worker.compute.app;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
@@ -25,6 +27,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
@@ -43,7 +46,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-public class AppComputeServiceTests {
+class AppComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
@@ -81,15 +84,17 @@ public class AppComputeServiceTests {
     private TeeSconeService teeSconeService;
     @Mock
     private SconeConfiguration sconeConfig;
+    @Mock
+    private SgxService sgxService;
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
-    public void shouldRunCompute() {
+    void shouldRunCompute() {
         taskDescription.setTeeTask(false);
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
@@ -97,8 +102,9 @@ public class AppComputeServiceTests {
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
@@ -119,14 +125,14 @@ public class AppComputeServiceTests {
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
                         .binds(Arrays.asList(inputBind, iexecOutBind))
-                        .isSgx(false)
+                        .sgxDriverMode(SgxDriverMode.NONE)
                         .shouldDisplayLogs(true)
                         .build()
         );
     }
 
     @Test
-    public void shouldRunComputeWithTeeAndConnectAppToLas() {
+    void shouldRunComputeWithTeeAndConnectAppToLas() {
         taskDescription.setTeeTask(true);
         taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
                 .builder().heapSize(heapSize).build());
@@ -143,8 +149,9 @@ public class AppComputeServiceTests {
         String lasNetworkName = "lasNetworkName";
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
@@ -166,7 +173,7 @@ public class AppComputeServiceTests {
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
                         .binds(Arrays.asList(inputBind ,iexecOutBind))
-                        .isSgx(true)
+                        .sgxDriverMode(SgxDriverMode.LEGACY)
                         .dockerNetwork(lasNetworkName)
                         .shouldDisplayLogs(true)
                         .build()
@@ -174,14 +181,15 @@ public class AppComputeServiceTests {
     }
 
     @Test
-    public void shouldRunComputeWithFailDockerResponse() {
+    void shouldRunComputeWithFailDockerResponse() {
         taskDescription.setTeeTask(false);
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(false).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute.post;
+package com.iexec.worker.compute;
 
 
 import com.iexec.common.result.ComputedFile;
+import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.result.ResultService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,15 +30,41 @@ import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.http.ResponseEntity.ok;
 
 @RestController
-public class PostComputeController {
+public class ComputeController {
 
+    private final ComputeExitCauseService computeStageExitService;
     private final ResultService resultService;
 
-    public PostComputeController(ResultService resultService) {
+    public ComputeController(ComputeExitCauseService computeStageExitService,
+                             ResultService resultService) {
+        this.computeStageExitService = computeStageExitService;
         this.resultService = resultService;
     }
 
-    @PostMapping(path = "/iexec_out/{chainTaskId}/computed")
+    @PostMapping("/compute/{stage}/{chainTaskId}/exit")
+    public ResponseEntity sendExitCauseForGivenComputeStage(
+            @PathVariable ComputeStage stage,
+            @PathVariable String chainTaskId,
+            @RequestBody ExitMessage exitMessage) {
+        if (exitMessage.getCause() == null) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .build();
+        }
+        if (!computeStageExitService.setExitCause(stage,
+                chainTaskId,
+                exitMessage.getCause())) {
+            return ResponseEntity
+                    .status(HttpStatus.ALREADY_REPORTED.value())
+                    .build();
+        }
+        return ok().build();
+    }
+
+    @PostMapping(path = {
+            "/iexec_out/{chainTaskId}/computed", //@Deprecated
+            "/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed"
+    })
     public ResponseEntity<String> sendComputedFileForTee(@PathVariable String chainTaskId,
                                                          @RequestBody ComputedFile computedFile) {
         if (!chainTaskId.equals(computedFile.getTaskId())) {

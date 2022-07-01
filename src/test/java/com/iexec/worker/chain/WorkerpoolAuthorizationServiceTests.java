@@ -26,13 +26,13 @@ import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class WorkerpoolAuthorizationServiceTests {
+class WorkerpoolAuthorizationServiceTests {
 
     @InjectMocks
     private WorkerpoolAuthorizationService workerpoolAuthorizationService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
     }
 
@@ -42,7 +42,7 @@ public class WorkerpoolAuthorizationServiceTests {
      */
 
     @Test
-    public void shouldWorkerpoolAuthorizationBeValid() {
+    void shouldWorkerpoolAuthorizationBeValid() {
         // PRIVATE_KEY_STRING: "a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6";
         // PUBLIC_KEY_STRING: "0x506bc1dc099358e5137292f4efdd57e400f29ba5132aa5d12b18dac1c1f6aaba645c0b7b58158babbfa6c6cd5a48aa7340a8749176b120e8516216787a13dc76";
         String signingAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc";

@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.pre;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
@@ -26,16 +27,22 @@ import lombok.*;
 @AllArgsConstructor
 public class PreComputeResponse implements ComputeResponse {
 
-    private boolean isSuccessful;
+    private ReplicateStatusCause exitCause;
     private boolean isTeeTask;
     private String secureSessionId;
     private String stdout;
     private String stderr;
 
+
+    @Override
     public boolean isSuccessful() {
-        if (isTeeTask){
-            return !secureSessionId.isEmpty();
+        if (isTeeTask) {
+            return ComputeResponse.super.isSuccessful() && !secureSessionId.isEmpty();
         }
-        return isSuccessful;
+        return ComputeResponse.super.isSuccessful();
+    }
+
+    public void setExitCause(ReplicateStatusCause exitCause) {
+        this.exitCause = exitCause;
     }
 }

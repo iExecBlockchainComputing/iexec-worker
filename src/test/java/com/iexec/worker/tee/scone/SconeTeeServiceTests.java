@@ -16,9 +16,11 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -35,7 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class SconeTeeServiceTests {
+class SconeTeeServiceTests {
 
     private static final String REGISTRY_NAME = "registryName";
     private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
@@ -66,7 +68,7 @@ public class SconeTeeServiceTests {
     private DockerClientInstance dockerClientInstanceMock;
 
     @BeforeEach
-    public void init() throws Exception {
+    void init() throws Exception {
         MockitoAnnotations.openMocks(this);
         when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
         when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
@@ -77,12 +79,13 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void shouldStartLasService() {
+    void shouldStartLasService() {
         when(sconeConfig.getLasContainerName()).thenReturn("containerName");
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
-                .thenReturn(DockerRunResponse.builder().isSuccessful(true).build());
+                .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(teeSconeService.startLasService()).isTrue();
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
@@ -91,27 +94,28 @@ public class SconeTeeServiceTests {
                 DockerRunRequest.builder()
                         .containerName("containerName")
                         .imageUri(IMAGE_URI)
-                        .isSgx(true)
+                        .sgxDriverMode(SgxDriverMode.LEGACY)
                         .maxExecutionTime(0)
                         .build()
         );
     }
 
     @Test
-    public void shouldNotStartLasServiceSinceUnknownRegistry() {
+    void shouldNotStartLasServiceSinceUnknownRegistry() {
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(sconeConfig.getRegistryName()).thenReturn("unknownRegistry");
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            teeSconeService.startLasService();
-        });
+        Exception exception = assertThrows(
+                RuntimeException.class,
+                () -> teeSconeService.startLasService()
+        );
 
         Assertions.assertThat(exception.getMessage().contains("not from a known registry"))
                 .isTrue();
     }
 
     @Test
-    public void shouldNotStartLasServiceSinceClientError() throws Exception {
+    void shouldNotStartLasServiceSinceClientError() throws Exception {
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
@@ -120,7 +124,7 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void shouldNotStartLasServiceSinceCannotPullImage() {
+    void shouldNotStartLasServiceSinceCannotPullImage() {
         when(sconeConfig.getLasContainerName()).thenReturn("containerName");
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(false);
@@ -129,18 +133,18 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void shouldNotStartLasServiceSinceCannotRunDockerContainer() {
+    void shouldNotStartLasServiceSinceCannotRunDockerContainer() {
         when(sconeConfig.getLasContainerName()).thenReturn("containerName");
         when(sconeConfig.getLasImageUri()).thenReturn(IMAGE_URI);
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
-                .thenReturn(DockerRunResponse.builder().isSuccessful(false).build());
+                .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
 
         Assertions.assertThat(teeSconeService.startLasService()).isFalse();
     }
 
     @Test
-    public void shouldBuildPreComputeDockerEnv() {
+    void shouldBuildPreComputeDockerEnv() {
         when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
         when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
@@ -159,7 +163,7 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void shouldBuildComputeDockerEnv() {
+    void shouldBuildComputeDockerEnv() {
         when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
         when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
@@ -176,7 +180,7 @@ public class SconeTeeServiceTests {
     }
 
     @Test
-    public void shouldBuildPostComputeDockerEnv() {
+    void shouldBuildPostComputeDockerEnv() {
         when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
         when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);

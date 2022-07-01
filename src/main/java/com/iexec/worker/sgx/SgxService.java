@@ -16,17 +16,25 @@
 
 package com.iexec.worker.sgx;
 
+import com.github.dockerjava.api.model.Device;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -34,31 +42,57 @@ import java.util.Collections;
 public class SgxService {
 
     private final WorkerConfigurationService workerConfigService;
+    private final ApplicationContext context;
     private final DockerService dockerService;
-    private final boolean isSgxSupported;
+    private final SgxDriverMode sgxDriverMode;
+
+    private boolean sgxEnabled;
 
     public SgxService(
             WorkerConfigurationService workerConfigService,
+            ApplicationContext context,
             DockerService dockerService,
-            @Value("${debug.forceTeeDisabled}") boolean forceTeeDisabled
+            @Value("${tee.sgx.driver-mode}") SgxDriverMode sgxDriverMode
     ) {
         this.workerConfigService = workerConfigService;
+        this.context = context;
         this.dockerService = dockerService;
-        this.isSgxSupported = !forceTeeDisabled && isSgxSupported();
+        this.sgxDriverMode = sgxDriverMode;
+    }
+
+    @PostConstruct
+    void init() {
+        boolean sgxSupported = isSgxSupported(sgxDriverMode);
+        final boolean driverModeNotNone = SgxDriverMode.isDriverModeNotNone(sgxDriverMode);
+        if (!sgxSupported && driverModeNotNone) {
+            this.sgxEnabled = false;
+            log.error("SGX required but not supported by worker. Shutting down. " +
+                    "[sgxDriverMode: {}]", sgxDriverMode);
+            SpringApplication.exit(context, () -> 1);
+            return;
+        }
+
+        this.sgxEnabled = driverModeNotNone;
+    }
+
+    public SgxDriverMode getSgxDriverMode() {
+        return sgxDriverMode;
     }
 
     public boolean isSgxEnabled() {
-        return isSgxSupported;
+        return sgxEnabled;
     }
 
-    private boolean isSgxSupported() {
+    private boolean isSgxSupported(SgxDriverMode sgxDriverMode) {
         log.info("Checking SGX support");
-        boolean isSgxDriverFound = new File(SgxUtils.SGX_DRIVER_PATH).exists();
-        if (!isSgxDriverFound) {
-            log.error("SGX driver not found");
-            return false;
+        if (sgxDriverMode == SgxDriverMode.LEGACY) {
+            boolean isSgxDriverFound = new File(SgxUtils.LEGACY_SGX_DRIVER_PATH).exists();
+            if (!isSgxDriverFound) {
+                log.error("Legacy SGX driver not found");
+                return false;
+            }
         }
-        if (!isSgxDevicePresent()) {
+        if (!isSgxDevicePresent(sgxDriverMode)) {
             log.error("SGX driver is installed but no SGX device was found " +
                     "(SGX not enabled?)");
             return false;
@@ -67,34 +101,45 @@ public class SgxService {
         return true;
     }
 
-    private boolean isSgxDevicePresent() {
+    private boolean isSgxDevicePresent(SgxDriverMode sgxDriverMode) {
         // "wallet-address-sgx-check" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
         String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
         String alpineLatest = "alpine:latest";
-        String cmd = "find /dev -name isgx -exec echo true ;";
+
+        final String[] devices = sgxDriverMode.getDevices();
+        // Check all required devices exists
+        final String cmd = String.format("/bin/sh -c '%s; echo $?;'",
+                Arrays.stream(devices)
+                        .map(devicePath -> "test -e \"" + devicePath + "\"")
+                        .collect(Collectors.joining(" && ")));
 
         if (!dockerService.getClient().pullImage(alpineLatest)) {
             log.error("Failed to pull image for sgx check");
             return false;
         }
 
+        final List<Device> devicesBind = Arrays.stream(devices)
+                .map(Device::parse)
+                .collect(Collectors.toList());
+
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
                 .imageUri(alpineLatest)
                 .cmd(cmd)
                 .maxExecutionTime(60000) // 1 min
-                .binds(Collections.singletonList("/dev:/dev"))
+                .devices(devicesBind)
                 .build();
 
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
-        if (!dockerRunResponse.isSuccessful()) {
-            log.error("Failed to check SGX device, will continue without TEE support");
+        if (dockerRunResponse.getFinalStatus() != DockerRunFinalStatus.SUCCESS) {
+            log.error("Failed to check SGX device.");
             return false;
         }
 
-        String stdout = dockerRunResponse.getDockerLogs() != null ? dockerRunResponse.getDockerLogs().getStdout() : "";
-        return stdout.replace("\n", "").equals("true");
+        // Check test returned a 0 exit code.
+        String testResult = dockerRunResponse.getStdout().trim();
+        return Integer.parseInt(testResult) == 0;
     }
 }

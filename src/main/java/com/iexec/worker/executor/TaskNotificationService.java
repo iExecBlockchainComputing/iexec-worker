@@ -77,7 +77,7 @@ public class TaskNotificationService {
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
-        ReplicateActionResponse actionResponse = null;
+        ReplicateActionResponse actionResponse;
         TaskNotificationType nextAction = null;
         log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
@@ -133,7 +133,7 @@ public class TaskNotificationService {
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
                 actionResponse = taskManagerService.compute(chainTaskId);
                 if (actionResponse.getDetails() != null) {
-                    actionResponse.getDetails().tailStdout();
+                    actionResponse.getDetails().tailLogs();
                 }
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED, actionResponse.getDetails());
@@ -237,7 +237,7 @@ public class TaskNotificationService {
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
-                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutStdout());
+                chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute;
+package com.iexec.worker.sms;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.sms.api.TeeSessionGenerationError;
 
-public interface ComputeResponse {
+public class TeeSessionGenerationException extends Exception {
+    private final TeeSessionGenerationError teeSessionGenerationError;
 
-    ReplicateStatusCause getExitCause();
-    String getStdout();
-    String getStderr();
-    default boolean isSuccessful() {
-        return getExitCause() == null;
+    public TeeSessionGenerationException(TeeSessionGenerationError teeSessionGenerationError) {
+        this.teeSessionGenerationError = teeSessionGenerationError;
     }
 
+    public TeeSessionGenerationError getTeeSessionGenerationError() {
+        return teeSessionGenerationError;
+    }
 }

@@ -18,8 +18,11 @@ package com.iexec.worker.result;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
+import com.iexec.common.chain.eip712.EIP712Domain;
+import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
@@ -27,27 +30,31 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.resultproxy.api.ResultProxyClient;
+import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.feign.CustomResultFeignClient;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Optional;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-public class ResultServiceTests {
+class ResultServiceTests {
 
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
     // 32 + 32 + 1 = 65 bytes
@@ -62,22 +69,26 @@ public class ResultServiceTests {
     @Mock
     private IexecHubService iexecHubService;
     @Mock
-    private CustomResultFeignClient customResultFeignClient;
+    private ResultProxyClient resultProxyClient;
     @Mock
     private WorkerConfigurationService workerConfigurationService;
+    @Mock
+    private BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
+    @Mock
+    private CredentialsService credentialsService;
 
     @InjectMocks
     private ResultService resultService;
     private String tmp;
 
     @BeforeEach
-    public void init() throws IOException {
+    void init() {
         MockitoAnnotations.openMocks(this);
         tmp = folderRule.getAbsolutePath();
     }
 
     @Test
-    public void shouldWriteErrorToIexecOut() {
+    void shouldWriteErrorToIexecOut() {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(tmp);
 
@@ -102,7 +113,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteErrorToIexecOutSince() {
+    void shouldNotWriteErrorToIexecOutSince() {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn("/null");
 
@@ -114,13 +125,13 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetTeeWeb2ResultLinkSinceIpfs() {
+    void shouldGetTeeWeb2ResultLinkSinceIpfs() {
         String storage = IPFS_RESULT_STORAGE_PROVIDER;
         String ipfsHash = "QmcipfsHash";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().resultStorageProvider(storage).build());
-        when(customResultFeignClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
+        when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
@@ -128,7 +139,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetTeeWeb2ResultLinkSinceDropbox() {
+    void shouldGetTeeWeb2ResultLinkSinceDropbox() {
         String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
@@ -140,7 +151,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
+    void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
         String storage = "some-unsupported-third-party-storage";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
@@ -153,7 +164,7 @@ public class ResultServiceTests {
 
 
     @Test
-    public void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
+    void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
@@ -164,7 +175,7 @@ public class ResultServiceTests {
     // get computed file
 
     @Test
-    public void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
+    void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
         String chainTaskId = "deterministic-output-file";
 
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
@@ -185,7 +196,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree() {
+    void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree() {
         String chainTaskId = "deterministic-output-directory";
 
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
@@ -207,7 +218,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldGetComputedFileWithWeb3ResultDigest() {
+    void shouldGetComputedFileWithWeb3ResultDigest() {
         String chainTaskId = "callback-directory";
 
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
@@ -226,7 +237,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldWriteComputedFile() throws JsonProcessingException {
+    void shouldWriteComputedFile() throws JsonProcessingException {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -251,7 +262,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceNothingToWrite() {
+    void shouldNotWriteComputedFileSinceNothingToWrite() {
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(ChainTask.builder()
                         .status(ChainTaskStatus.ACTIVE).build()));
@@ -268,7 +279,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceNoChainTaskId() {
+    void shouldNotWriteComputedFileSinceNoChainTaskId() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId("")
                 .resultDigest(RESULT_DIGEST)
@@ -291,7 +302,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceNotActive() {
+    void shouldNotWriteComputedFileSinceNotActive() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -314,7 +325,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceAlreadyWritten() throws JsonProcessingException {
+    void shouldNotWriteComputedFileSinceAlreadyWritten() throws JsonProcessingException {
         ComputedFile newComputedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("0x0000000000000000000000000000000000000000000000000000000000000003")
@@ -346,11 +357,11 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceResultDigestIsEmpty() {
+    void shouldNotWriteComputedFileSinceResultDigestIsEmpty() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("")
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                 .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
@@ -369,11 +380,11 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceResultDigestIsInvalid() {
+    void shouldNotWriteComputedFileSinceResultDigestIsInvalid() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest("0x01")
-                .enclaveSignature(BytesUtils.EMPTY_HEXASTRING_64)
+                .enclaveSignature(BytesUtils.EMPTY_HEX_STRING_32)
                 .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
@@ -392,7 +403,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceSignatureIsRequiredAndEmpty() {
+    void shouldNotWriteComputedFileSinceSignatureIsRequiredAndEmpty() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -415,7 +426,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceSignatureIsRequiredAndInvalid() {
+    void shouldNotWriteComputedFileSinceSignatureIsRequiredAndInvalid() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -438,7 +449,7 @@ public class ResultServiceTests {
     }
 
     @Test
-    public void shouldNotWriteComputedFileSinceWriteFailed() {
+    void shouldNotWriteComputedFileSinceWriteFailed() {
         ComputedFile computedFile = ComputedFile.builder()
                 .taskId(CHAIN_TASK_ID)
                 .resultDigest(RESULT_DIGEST)
@@ -457,4 +468,127 @@ public class ResultServiceTests {
         Assertions.assertThat(isWritten).isFalse();
     }
 
+    // region getIexecUploadToken
+    @Test
+    void shouldGetIexecUploadToken() {
+        final int chainId = 1;
+        final EIP712Domain domain = spy(new EIP712Domain("iExec Result Repository", "1", chainId, null));
+        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
+        final String signedChallenge = "signedChallenge";
+        final String uploadToken = "uploadToken";
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
+        when(credentialsService.signEIP712EntityAndBuildToken(challenge)).thenReturn(signedChallenge);
+        when(resultProxyClient.login(chainId, signedChallenge)).thenReturn(uploadToken);
+
+        assertThat(resultService.getIexecUploadToken()).isEqualTo(uploadToken);
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, times(1)).signEIP712EntityAndBuildToken(challenge);
+        verify(resultProxyClient, times(1)).login(chainId, signedChallenge);
+
+        verify(challenge, times(1)).getDomain();
+        verify(domain, times(1)).getName();
+        verify(domain, times(1)).getChainId();
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceNoResultChallenge() {
+        final int chainId = 1;
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(null);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceGetResultChallengeThrows() {
+        final int chainId = 1;
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenThrow(RuntimeException.class);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "wrong name"})
+    void shouldNotGetIexecUploadTokenSinceWrongDomainName(String wrongDomainName) {
+        final int chainId = 1;
+        final EIP712Domain domain = spy(new EIP712Domain(wrongDomainName, "1", chainId, null));
+        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+
+        verify(challenge, times(1)).getDomain();
+        verify(domain, times(1)).getName();
+        verify(domain, times(0)).getChainId();
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceWrongChainId() {
+        final int expectedChainId = 1;
+        final long wrongChainId = 42;
+        final EIP712Domain domain = spy(new EIP712Domain("iExec Result Repository", "1", wrongChainId, null));
+        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(expectedChainId);
+        when(resultProxyClient.getChallenge(expectedChainId)).thenReturn(challenge);
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(expectedChainId);
+        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
+        verify(resultProxyClient, never()).login(anyInt(), any());
+
+        verify(challenge, times(1)).getDomain();
+        verify(domain, times(1)).getName();
+        verify(domain, times(1)).getChainId();
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenSinceSigningReturnsEmpty() {
+        final int chainId = 1;
+        final EIP712Domain domain = spy(new EIP712Domain("iExec Result Repository", "1", chainId, null));
+        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
+
+        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
+        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
+        when(credentialsService.signEIP712EntityAndBuildToken(challenge)).thenReturn("");
+
+        assertThat(resultService.getIexecUploadToken()).isEmpty();
+
+        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
+        verify(resultProxyClient, times(1)).getChallenge(chainId);
+        verify(credentialsService, times(1)).signEIP712EntityAndBuildToken(challenge);
+        verify(resultProxyClient, never()).login(anyInt(), any());
+
+        verify(challenge, times(1)).getDomain();
+        verify(domain, times(1)).getName();
+        verify(domain, times(1)).getChainId();
+    }
+    // endregion
 }
