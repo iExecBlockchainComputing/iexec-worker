@@ -96,7 +96,7 @@ class PostComputeServiceTests {
     private ComputeExitCauseService computeExitCauseService;
 
     @BeforeEach
-    void beforeEach() throws IOException {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
@@ -105,10 +105,7 @@ class PostComputeServiceTests {
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
     }
 
-    /**
-     * Standard post compute
-     */
-
+    //region runStandardPostCompute
     @Test
     void shouldRunStandardPostCompute() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
@@ -148,11 +145,9 @@ class PostComputeServiceTests {
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON).exists()).isFalse();
     }
+    //endregion
 
-    /**
-     * Tee post compute
-     */
-
+    //region runTeePostCompute
     @Test
     void shouldRunTeePostComputeAndConnectToLasNetwork() {
         String lasNetworkName = "networkName";
@@ -161,7 +156,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -216,7 +210,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
@@ -239,7 +232,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -287,7 +279,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -316,4 +307,5 @@ class PostComputeServiceTests {
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
         verify(dockerService, times(1)).run(any());
     }
+    //endregion
 }

@@ -125,7 +125,6 @@ public class PostComputeService {
                         .binds(binds)
                         .sgxDriverMode(sgxService.getSgxDriverMode())
                         .dockerNetwork(workerConfigService.getDockerNetworkName())
-                        .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {

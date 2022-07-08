@@ -110,10 +110,7 @@ class PreComputeServiceTests {
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
     }
 
-    /**
-     * Tee pre compute
-     */
-
+    //region runTeePreCompute
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() throws TeeSessionGenerationException {
         taskDescription.setInputFiles(List.of("input-file1"));
@@ -356,6 +353,7 @@ class PreComputeServiceTests {
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
     }
+    //endregion
 
     // region teeSessionGenerationErrorToReplicateStatusCause
     static Stream<Arguments> teeSessionGenerationErrorMap() {
