@@ -198,7 +198,6 @@ class PostComputeServiceTests {
                         .binds(Collections.singletonList(iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.LEGACY)
                         .dockerNetwork(lasNetworkName)
-                        .shouldDisplayLogs(true)
                         .build()
         );
     }
