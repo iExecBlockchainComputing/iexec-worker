@@ -108,16 +108,20 @@ class PostComputeServiceTests {
     }
 
     //region runStandardPostCompute
+    private void logDirectoryTree(String path) {
+        log.info("\n{}", FileHelper.printDirectoryTree(new File(path)));
+    }
+
     @Test
     void shouldRunStandardPostCompute() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        log.info("\n{}", FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
         Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isTrue();
-        log.info("\n{}", FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
     }
@@ -126,24 +130,24 @@ class PostComputeServiceTests {
     void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        log.info("\n{}", FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("dummyIexecOut");
 
         Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
-        log.info("\n{}", FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
     }
 
     @Test
     void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         //don't create iexec_out.zip
-        log.info("\n{}", FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
         Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
-        log.info("\n{}", FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).doesNotExist();
     }
