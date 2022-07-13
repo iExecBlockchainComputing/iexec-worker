@@ -63,28 +63,37 @@ public class PostComputeService {
         this.computeExitCauseService = computeExitCauseService;
     }
 
-    public boolean runStandardPostCompute(TaskDescription taskDescription) {
+    public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         // result encryption is no more supported for standard tasks
         if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
-            log.error("Result encryption is not supported for standard tasks" +
-                    " [chainTaskId:{}]", chainTaskId);
-            return false;
+            log.error("Result encryption is not supported for standard tasks [chainTaskId:{}]", chainTaskId);
+            //TODO replace exitCause with another one
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
+                    .build();
         }
 
         // create /output/iexec_out.zip
-        ResultUtils.zipIexecOut(workerConfigService.getTaskIexecOutDir(chainTaskId)
-                , workerConfigService.getTaskOutputDir(chainTaskId));
+        String zipIexecOutPath = ResultUtils.zipIexecOut(
+                workerConfigService.getTaskIexecOutDir(chainTaskId),
+                workerConfigService.getTaskOutputDir(chainTaskId));
+        if (zipIexecOutPath.isEmpty()) {
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)
+                    .build();
+        }
         // copy /output/iexec_out/computed.json to /output/computed.json to have the same workflow as TEE.
         boolean isCopied = FileHelper.copyFile(
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON,
                 workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON);
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
-            return false;
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED)
+                    .build();
         }
-
-        return true;
+        return PostComputeResponse.builder().build();
     }
 
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {

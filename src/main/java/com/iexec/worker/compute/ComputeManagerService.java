@@ -204,12 +204,9 @@ public class ComputeManagerService {
                 .build();
 
         if (!taskDescription.isTeeTask()) {
-            if (postComputeService.runStandardPostCompute(taskDescription)) {
-                postComputeResponse.setExitCause(null);
-            }
+            postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
         } else if (!secureSessionId.isEmpty()) {
-            postComputeResponse = postComputeService
-                    .runTeePostCompute(taskDescription, secureSessionId);
+            postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSessionId);
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;
@@ -221,6 +218,5 @@ public class ComputeManagerService {
         resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
         return postComputeResponse;
     }
-
 
 }
