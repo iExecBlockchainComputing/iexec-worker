@@ -242,6 +242,36 @@ class ResultServiceTests {
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         Assertions.assertThat(computedFile).isNull();
     }
+
+    @Test
+    void shouldNotComputeWeb2ResultDigestWhenFileTreeNotFound() {
+        String chainTaskId = "deterministic-output-directory-missing";
+        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId + "/output");
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
+                TaskDescription.builder().callback(BytesUtils.EMPTY_ADDRESS).build());
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        Assertions.assertThat(computedFile).isNull();
+        computedFile = resultService.readComputedFile(chainTaskId);
+        Assertions.assertThat(computedFile).isNotNull();
+        String resultDigest = resultService.computeResultDigest(computedFile);
+        Assertions.assertThat(resultDigest).isEmpty();
+    }
+
+    @Test
+    void shouldNotComputeWeb3ResultDigestWhenNoCallbackData() {
+        String chainTaskId = "callback-no-data";
+        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId + "/output");
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
+                TaskDescription.builder().callback(CALLBACK).build());
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        Assertions.assertThat(computedFile).isNull();
+        computedFile = resultService.readComputedFile(chainTaskId);
+        Assertions.assertThat(computedFile).isNotNull();
+        String resultDigest = resultService.computeResultDigest(computedFile);
+        Assertions.assertThat(resultDigest).isEmpty();
+    }
     //endregion
 
     //region writeComputedFile
