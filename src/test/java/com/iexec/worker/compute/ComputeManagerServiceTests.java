@@ -57,9 +57,9 @@ class ComputeManagerServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
+    private final static String DIGEST = "digest";
     private final static String APP_URI = "APP_URI";
-    private final static String TEE_POST_COMPUTE_IMAGE =
-            "TEE_POST_COMPUTE_IMAGE";
+    private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
     private final static long MAX_EXECUTION_TIME = 1000;
 
@@ -301,17 +301,44 @@ class ComputeManagerServiceTests {
 
     //region runPostCompute
     @Test
+    void shouldNotBeSuccessfulWhenComputedFileNotFound() {
+        taskDescription.setTeeTask(false);
+        when(postComputeService.runStandardPostCompute(taskDescription))
+                .thenReturn(PostComputeResponse.builder().build());
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
+        PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, "");
+        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
+    }
+
+    @Test
+    void shouldNotBeSuccessfulWhenResultDigestComputationFails() {
+        taskDescription.setTeeTask(false);
+        when(postComputeService.runStandardPostCompute(taskDescription))
+                .thenReturn(PostComputeResponse.builder().build());
+        ComputedFile computedFile = ComputedFile.builder().build();
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.computeResultDigest(computedFile)).thenReturn("");
+        PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, "");
+        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
+    }
+
+    @Test
     void shouldRunStandardPostCompute() {
         taskDescription.setTeeTask(false);
         when(postComputeService.runStandardPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
         ComputedFile computedFile = mock(ComputedFile.class);
-        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.computeResultDigest(computedFile)).thenReturn(DIGEST);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription, "");
         Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(postComputeService).runStandardPostCompute(taskDescription);
+        verify(resultService).readComputedFile(CHAIN_TASK_ID);
+        verify(resultService).computeResultDigest(computedFile);
         verify(resultService).saveResultInfo(anyString(), any(), any());
     }
 
@@ -339,7 +366,8 @@ class ComputeManagerServiceTests {
                 SECURE_SESSION_ID))
                 .thenReturn(expectedDockerRunResponse);
         ComputedFile computedFile = mock(ComputedFile.class);
-        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.computeResultDigest(computedFile)).thenReturn(DIGEST);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
@@ -350,6 +378,8 @@ class ComputeManagerServiceTests {
         Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
         verify(postComputeService).runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+        verify(resultService).readComputedFile(CHAIN_TASK_ID);
+        verify(resultService).computeResultDigest(computedFile);
         verify(resultService).saveResultInfo(anyString(), any(), any());
     }
 

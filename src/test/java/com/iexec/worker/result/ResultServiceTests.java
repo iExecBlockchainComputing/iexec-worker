@@ -18,7 +18,6 @@ package com.iexec.worker.result;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
 import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.chain.eip712.EIP712Domain;
@@ -35,6 +34,7 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,14 +54,14 @@ import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 class ResultServiceTests {
 
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
     // 32 + 32 + 1 = 65 bytes
     public static final String ENCLAVE_SIGNATURE = "0x000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0c";
     private static final String CHAIN_TASK_ID = "taskId";
-    private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test" +
-            "/resources/tmp/test-worker";
+    private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker/";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
 
     @TempDir
@@ -135,7 +135,7 @@ class ResultServiceTests {
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
-        assertThat(resultLink.equals(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash))).isTrue();
+        assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash));
     }
 
     @Test
@@ -147,7 +147,7 @@ class ResultServiceTests {
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
-        assertThat(resultLink.equals(resultService.buildResultLink(storage, "/results/" + CHAIN_TASK_ID))).isTrue();
+        assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/results/" + CHAIN_TASK_ID));
     }
 
     @Test
@@ -159,7 +159,7 @@ class ResultServiceTests {
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
-        assertThat(resultLink.isEmpty()).isTrue();
+        assertThat(resultLink).isEmpty();
     }
 
 
@@ -169,20 +169,19 @@ class ResultServiceTests {
 
         String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
 
-        assertThat(resultLink.isEmpty()).isTrue();
+        assertThat(resultLink).isEmpty();
     }
 
-    // get computed file
-
+    //region getComputedFile
     @Test
     void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
         String chainTaskId = "deterministic-output-file";
 
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
                         "/output/iexec_out");
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
                         "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
                 TaskDescription.builder().callback(BytesUtils.EMPTY_ADDRESS).build());
@@ -200,10 +199,10 @@ class ResultServiceTests {
         String chainTaskId = "deterministic-output-directory";
 
         when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
                         "/output/iexec_out");
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
                         "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
                 TaskDescription.builder().callback(BytesUtils.EMPTY_ADDRESS).build());
@@ -211,7 +210,7 @@ class ResultServiceTests {
         ComputedFile computedFile =
                 resultService.getComputedFile(chainTaskId);
         String hash = computedFile.getResultDigest();
-        System.out.println(hash);
+        log.info(hash);
         // should be equal to the content of the file since it is a byte32
         Assertions.assertThat(hash).isEqualTo(
                 "0xc6114778cc5c33db5fbbd4d0f9be116ed0232961045341714aba5a72d3ef7402");
@@ -222,20 +221,30 @@ class ResultServiceTests {
         String chainTaskId = "callback-directory";
 
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + "/" + chainTaskId +
-                        "/output");
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId + "/output");
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(
                 TaskDescription.builder().callback(CALLBACK).build());
 
         ComputedFile computedFile =
                 resultService.getComputedFile(chainTaskId);
         String hash = computedFile.getResultDigest();
-        System.out.println(hash);
+        log.info(hash);
         // should be equal to the content of the file since it is a byte32
         Assertions.assertThat(hash).isEqualTo(
                 "0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6");
     }
 
+    @Test
+    void shouldNotGetComputedFileWhenFileNotFound() {
+        String chainTaskId = "does-not-exist";
+        when(workerConfigurationService.getTaskOutputDir(chainTaskId))
+                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId + "/output");
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        Assertions.assertThat(computedFile).isNull();
+    }
+    //endregion
+
+    //region writeComputedFile
     @Test
     void shouldWriteComputedFile() throws JsonProcessingException {
         ComputedFile computedFile = ComputedFile.builder()
@@ -467,8 +476,9 @@ class ResultServiceTests {
 
         Assertions.assertThat(isWritten).isFalse();
     }
+    //endregion
 
-    // region getIexecUploadToken
+    //region getIexecUploadToken
     @Test
     void shouldGetIexecUploadToken() {
         final int chainId = 1;
@@ -590,5 +600,5 @@ class ResultServiceTests {
         verify(domain, times(1)).getName();
         verify(domain, times(1)).getChainId();
     }
-    // endregion
+    //endregion
 }
