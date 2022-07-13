@@ -63,6 +63,17 @@ public class PostComputeService {
         this.computeExitCauseService = computeExitCauseService;
     }
 
+    /**
+     * This method implements the post-compute part of the workflow dedicated to standard tasks.
+     * <p>
+     * This method implements almost the same algorithm thant the one executed for TEE tasks in
+     * a tee-worker-post-compute container.
+     * Classes names are inlined in comments for comparison.
+     * @param taskDescription description of a standard task
+     * @return a post compute response with a cause in case of error. The response is returned to
+     *         {@link com.iexec.worker.compute.ComputeManagerService}
+     * @see com.iexec.worker.compute.ComputeManagerService
+     */
     public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
         // result encryption is no more supported for standard tasks
@@ -74,7 +85,8 @@ public class PostComputeService {
                     .build();
         }
 
-        // create /output/iexec_out.zip
+        // create /output/iexec_out.zip as in Web2ResultService#encryptAndUploadResult
+        // return a POST_COMPUTE_OUT_FOLDER_ZIP_FAILED error on failure
         String zipIexecOutPath = ResultUtils.zipIexecOut(
                 workerConfigService.getTaskIexecOutDir(chainTaskId),
                 workerConfigService.getTaskOutputDir(chainTaskId));
@@ -83,7 +95,8 @@ public class PostComputeService {
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)
                     .build();
         }
-        // copy /output/iexec_out/computed.json to /output/computed.json to have the same workflow as TEE.
+        // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
+        // return a POST_COMPUTE_SEND_COMPUTED_FILE_FAILED error on failure
         boolean isCopied = FileHelper.copyFile(
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON,
                 workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON);
