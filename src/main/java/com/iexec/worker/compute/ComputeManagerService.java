@@ -204,23 +204,24 @@ public class ComputeManagerService {
                 .build();
 
         if (!taskDescription.isTeeTask()) {
-            if (postComputeService.runStandardPostCompute(taskDescription)) {
-                postComputeResponse.setExitCause(null);
-            }
+            postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
         } else if (!secureSessionId.isEmpty()) {
-            postComputeResponse = postComputeService
-                    .runTeePostCompute(taskDescription, secureSessionId);
+            postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSessionId);
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;
         }
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = resultService.readComputedFile(chainTaskId);
         if (computedFile == null) {
+            postComputeResponse.setExitCause(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
             return postComputeResponse;
+        }
+        String resultDigest = resultService.computeResultDigest(computedFile);
+        if (resultDigest.isEmpty()) {
+            postComputeResponse.setExitCause(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
         }
         resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
         return postComputeResponse;
     }
-
 
 }
