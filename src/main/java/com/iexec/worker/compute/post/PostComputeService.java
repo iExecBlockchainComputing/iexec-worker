@@ -76,14 +76,6 @@ public class PostComputeService {
      */
     public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
-        // result encryption is no more supported for standard tasks
-        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
-            log.error("Result encryption is not supported for standard tasks [chainTaskId:{}]", chainTaskId);
-            //TODO replace exitCause with another one
-            return PostComputeResponse.builder()
-                    .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
-                    .build();
-        }
 
         // create /output/iexec_out.zip as in Web2ResultService#encryptAndUploadResult
         // return a POST_COMPUTE_OUT_FOLDER_ZIP_FAILED error on failure

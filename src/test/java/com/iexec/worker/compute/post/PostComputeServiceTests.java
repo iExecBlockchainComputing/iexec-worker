@@ -151,15 +151,6 @@ class PostComputeServiceTests {
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).doesNotExist();
     }
-
-    @Test
-    void shouldNotRunStandardPostComputeWhenResultEncryptionRequested() {
-        TaskDescription taskDescription = TaskDescription.builder().isResultEncryption(true).build();
-        PostComputeResponse postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
-        //TODO replace exitCause
-    }
     //endregion
 
     //region runTeePostCompute
