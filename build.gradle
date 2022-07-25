@@ -27,6 +27,13 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
+        url "https://docker-regis-adm.iex.ec/repository/maven-public/"
+        credentials {
+            username nexusUser
+            password nexusPassword
+        }
+    }
+    maven {
         url "https://nexus.intra.iex.ec/repository/maven-public/"
     }
     maven {
@@ -143,8 +150,8 @@ publishing {
     repositories {
         maven {
             credentials {
-                username project.hasProperty('nexusUser') ? nexusUser : ''
-                password project.hasProperty('nexusPassword') ? nexusPassword : ''
+                username nexusUser
+                password nexusPassword
             }
             url project.hasProperty('nexusUrl') ? nexusUrl : ''
         }
