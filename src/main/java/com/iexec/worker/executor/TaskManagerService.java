@@ -104,6 +104,12 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
+        // result encryption is not supported for standard tasks
+        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
+            return getFailureResponseAndPrintError(TASK_DESCRIPTION_INVALID,
+                    context, chainTaskId);
+        }
+
         if (taskDescription.isTeeTask() && !teeSconeService.isTeeEnabled()) {
             return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
                     context, chainTaskId);

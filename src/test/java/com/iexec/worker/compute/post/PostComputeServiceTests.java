@@ -32,6 +32,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
+import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
@@ -105,20 +107,21 @@ class PostComputeServiceTests {
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
     }
 
-    /**
-     * Standard post compute
-     */
+    //region runStandardPostCompute
+    private void logDirectoryTree(String path) {
+        log.info("\n{}", FileHelper.printDirectoryTree(new File(path)));
+    }
 
     @Test
     void shouldRunStandardPostCompute() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isTrue();
+        logDirectoryTree(output);
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
     }
@@ -127,32 +130,30 @@ class PostComputeServiceTests {
     void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("dummyIexecOut");
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
+        logDirectoryTree(output);
     }
 
     @Test
     void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         //don't create iexec_out.zip
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
+        logDirectoryTree(output);
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
-        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON).exists()).isFalse();
+        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).doesNotExist();
     }
+    //endregion
 
-    /**
-     * Tee post compute
-     */
-
+    //region runTeePostCompute
     @Test
     void shouldRunTeePostComputeAndConnectToLasNetwork() {
         String lasNetworkName = "networkName";
@@ -316,4 +317,5 @@ class PostComputeServiceTests {
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
         verify(dockerService, times(1)).run(any());
     }
+    //endregion
 }

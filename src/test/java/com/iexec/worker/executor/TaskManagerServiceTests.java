@@ -118,6 +118,7 @@ class TaskManagerServiceTests {
                 .build();
     }
 
+    //region start
     @Test
     void shouldStart() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
@@ -161,6 +162,18 @@ class TaskManagerServiceTests {
     }
 
     @Test
+    void shouldNotStartSinceStandardTaskWithEncryption() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        TaskDescription taskDescription = TaskDescription.builder().isResultEncryption(true).build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
+        Assertions.assertThat(actionResponse.isSuccess()).isFalse();
+        Assertions.assertThat(actionResponse.getDetails().getCause()).isEqualTo(TASK_DESCRIPTION_INVALID);
+    }
+
+    @Test
     void shouldNotStartSinceTeeTaskAndButEnabledOnHost() {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -174,8 +187,9 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
     }
+    //endregion
 
-
+    //region downloadApp
     @Test
     void shouldDownloadApp() {
         TaskDescription taskDescription = getStubTaskDescription(false);
@@ -282,8 +296,9 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
+    //endregion
 
-    // downloadData()
+    //region downloadData
 
     /**
      * Note : Remember dataset URI and input files are optional
@@ -602,7 +617,9 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.getDetails().getCause())
                 .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
+    //endregion
 
+    //region compute
     @Test
     void shouldCompute() {
         TaskDescription taskDescription = TaskDescription.builder().build();
@@ -793,7 +810,9 @@ class TaskManagerServiceTests {
                 ReplicateActionResponse
                         .failureWithStdout(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, null));
     }
+    //endregion
 
+    //region contribute
     @Test
     void shouldContribute() {
         ComputedFile computedFile = mock(ComputedFile.class);
@@ -938,7 +957,6 @@ class TaskManagerServiceTests {
                 ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
 
-
     @Test
     void shouldNotContributeSinceInvalidContributeChainReceipt() {
         ComputedFile computedFile = mock(ComputedFile.class);
@@ -965,7 +983,9 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
+    //endregion
 
+    //region reveal
     @Test
     void shouldReveal() {
         long consensusBlock = 20;
@@ -1122,7 +1142,9 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
+    //endregion
 
+    //region uploadResult
     @Test
     void shouldUploadResultWithResultUri() {
         String resultUri = "resultUri";
@@ -1171,7 +1193,9 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse.failure(RESULT_LINK_MISSING));
     }
+    //endregion
 
+    //region complete
     @Test
     void shouldComplete() {
         when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
@@ -1195,9 +1219,9 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse.failure());
     }
+    //endregion
 
-    //#region abort()
-
+    //region abort
     @Test
     void shouldAbortTask() {
         when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
@@ -1210,7 +1234,7 @@ class TaskManagerServiceTests {
         assertThat(predicateCaptor.getValue().test(CHAIN_TASK_ID)).isTrue();
     }
 
-    //#endregion
+    //endregion
 
     //TODO clean theses
     //misc

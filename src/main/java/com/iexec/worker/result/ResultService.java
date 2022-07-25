@@ -308,16 +308,14 @@ public class ResultService {
             final String expectedDomainName = "iExec Result Repository";
             final String actualDomainName = domain.getName();
             if (!Objects.equals(actualDomainName, expectedDomainName)) {
-                log.error("Domain name does not match expected name" +
-                                " [expected:{}, actual:{}]",
+                log.error("Domain name does not match expected name [expected:{}, actual:{}]",
                         expectedDomainName, actualDomainName);
                 return "";
             }
 
             final long domainChainId = domain.getChainId();
             if (!Objects.equals(domainChainId, chainId.longValue())) {
-                log.error("Domain chain id does not match expected chain id" +
-                                " [expected:{}, actual:{}]",
+                log.error("Domain chain id does not match expected chain id [expected:{}, actual:{}]",
                         chainId, domainChainId);
                 return "";
             }
@@ -326,8 +324,8 @@ public class ResultService {
             String signedEip712Challenge = credentialsService.signEIP712EntityAndBuildToken(eip712Challenge);
 
             if (signedEip712Challenge.isEmpty()) {
-                log.error("Couldn't sign challenge for an unknown reason " +
-                        " [challenge:{}]", eip712Challenge);
+                log.error("Couldn't sign challenge for an unknown reason [challenge:{}]",
+                        eip712Challenge);
                 return "";
             }
 
@@ -343,23 +341,27 @@ public class ResultService {
         return isResultZipFound(chainTaskId);
     }
 
-    public ComputedFile getComputedFile(String chainTaskId) {
-        ComputedFile computedFile =
-                IexecFileHelper.readComputedFile(chainTaskId,
-                        workerConfigService.getTaskOutputDir(chainTaskId));
+    public ComputedFile readComputedFile(String chainTaskId) {
+        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
+                workerConfigService.getTaskOutputDir(chainTaskId));
         if (computedFile == null) {
-            log.error("Failed to getComputedFile (computed.json missing)" +
-                    "[chainTaskId:{}]", chainTaskId);
+            log.error("Failed to read computed file (computed.json missing) [chainTaskId:{}]", chainTaskId);
+        }
+        return computedFile;
+    }
+
+    public ComputedFile getComputedFile(String chainTaskId) {
+        ComputedFile computedFile = readComputedFile(chainTaskId);
+        if (computedFile == null) {
+            log.error("Failed to getComputedFile (computed.json missing) [chainTaskId:{}]", chainTaskId);
             return null;
         }
         if (computedFile.getResultDigest() == null || computedFile.getResultDigest().isEmpty()) {
             String resultDigest = computeResultDigest(computedFile);
             if (resultDigest.isEmpty()) {
                 log.error("Failed to getComputedFile (resultDigest is empty " +
-                                "but cant compute it)" +
-                                "[chainTaskId:{}, computedFile:{}]",
-                        chainTaskId,
-                        computedFile);
+                                "but cant compute it) [chainTaskId:{}, computedFile:{}]",
+                        chainTaskId, computedFile);
                 return null;
             }
             computedFile.setResultDigest(resultDigest);
@@ -400,8 +402,7 @@ public class ResultService {
             return false;
         }
         if (!BytesUtils.isNonZeroedBytes32(computedFile.getResultDigest())) {
-            log.error("Cannot write computed file if result digest is invalid" +
-                            "[chainTaskId:{}, computedFile:{}]",
+            log.error("Cannot write computed file if result digest is invalid [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
@@ -409,8 +410,7 @@ public class ResultService {
         if (isSignatureRequired &&
                 (StringUtils.isEmpty(computedFile.getEnclaveSignature())
                         || stringToBytes(computedFile.getEnclaveSignature()).length != 65)) {
-            log.error("Cannot write computed file if TEE signature is invalid" +
-                            "[chainTaskId:{}, computedFile:{}]",
+            log.error("Cannot write computed file if TEE signature is invalid [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
@@ -419,15 +419,14 @@ public class ResultService {
             String json = mapper.writeValueAsString(computedFile);
             Files.write(Paths.get(computedFilePath), json.getBytes());
         } catch (IOException e) {
-            log.error("Cannot write computed file if write failed" +
-                            "[chainTaskId:{}, computedFile:{}]",
+            log.error("Cannot write computed file if write failed [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile, e);
             return false;
         }
         return true;
     }
 
-    private String computeResultDigest(ComputedFile computedFile) {
+    public String computeResultDigest(ComputedFile computedFile) {
         String chainTaskId = computedFile.getTaskId();
         String resultDigest;
         if (iexecHubService.getTaskDescription(chainTaskId).containsCallback()) {
@@ -437,8 +436,7 @@ public class ResultService {
                     workerConfigService.getTaskOutputDir(chainTaskId));
         }
         if (resultDigest.isEmpty()) {
-            log.error("Failed to computeResultDigest (resultDigest empty)" +
-                            "[chainTaskId:{}, computedFile:{}]",
+            log.error("Failed to computeResultDigest (resultDigest empty) [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return "";
         }
