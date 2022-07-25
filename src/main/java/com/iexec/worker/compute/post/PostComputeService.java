@@ -66,8 +66,12 @@ public class PostComputeService {
     /**
      * This method implements the post-compute part of the workflow dedicated to standard tasks.
      * <p>
-     * This method implements almost the same algorithm thant the one executed for TEE tasks in
-     * a tee-worker-post-compute container.
+     * The algorithm is almost the same as the one executed for TEE tasks in a tee-worker-post-compute container:
+     * <ul>
+     * <li>Creation of the archive containing results as in {@code Web2ResultService#encryptAndUploadResult}
+     * <li>Send {@code computed.json} to its final folder as in {@code FlowService#sendComputedFileToHost}
+     * </ul>
+     * <p>
      * Classes names are inlined in comments for comparison.
      * @param taskDescription description of a standard task
      * @return a post compute response with a cause in case of error. The response is returned to
