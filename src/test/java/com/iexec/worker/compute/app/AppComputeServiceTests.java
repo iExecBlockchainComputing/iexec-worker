@@ -17,15 +17,16 @@
 package com.iexec.worker.compute.app;
 
 import com.iexec.common.docker.DockerRunFinalStatus;
+import com.iexec.common.docker.DockerRunRequest;
+import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.scone.SconeConfiguration;
@@ -44,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class AppComputeServiceTests {
@@ -51,11 +53,10 @@ class AppComputeServiceTests {
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
     private final static String APP_URI = "APP_URI";
-    private final static String SCONE_CAS_URL = "SCONE_CAS_URL";
     private final static String WORKER_NAME = "WORKER_NAME";
     private final static String TEE_POST_COMPUTE_IMAGE =
             "TEE_POST_COMPUTE_IMAGE";
-    private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
+    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
     private final static String INPUT = "INPUT";
     private final static String IEXEC_OUT = "IEXEC_OUT";
@@ -90,7 +91,6 @@ class AppComputeServiceTests {
     @BeforeEach
     void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
-        when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
     }
 
     @Test
@@ -108,7 +108,7 @@ class AppComputeServiceTests {
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService, times(1)).run(any());
@@ -136,7 +136,7 @@ class AppComputeServiceTests {
         taskDescription.setTeeTask(true);
         taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
                 .builder().heapSize(heapSize).build());
-        when(teeSconeService.buildComputeDockerEnv(SECURE_SESSION_ID, heapSize))
+        when(teeSconeService.buildComputeDockerEnv(SECURE_SESSION, heapSize))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
         env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
@@ -155,7 +155,7 @@ class AppComputeServiceTests {
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService, times(1)).run(any());
@@ -193,7 +193,7 @@ class AppComputeServiceTests {
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
         verify(dockerService, times(1)).run(any());

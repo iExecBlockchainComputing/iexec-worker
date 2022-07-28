@@ -24,6 +24,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -33,7 +34,6 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -87,8 +87,7 @@ public class PreComputeService {
     public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         final PreComputeResponse.PreComputeResponseBuilder preComputeResponseBuilder = PreComputeResponse.builder()
-                .isTeeTask(taskDescription.isTeeTask())
-                .secureSessionId("");
+                .isTeeTask(taskDescription.isTeeTask());
 
         // verify enclave configuration for compute stage
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
@@ -124,14 +123,14 @@ public class PreComputeService {
         // }
         // ###############################################################################
         // create secure session
-        String secureSessionId = "";
+        TeeSessionGenerationResponse secureSession = null;
         TeeSessionGenerationError teeSessionGenerationError = null;
         try {
-            secureSessionId = smsService.createTeeSession(workerpoolAuth);
-            if (StringUtils.isEmpty(secureSessionId)) {
+            secureSession = smsService.createTeeSession(workerpoolAuth);
+            if (secureSession == null) {
                 throw new TeeSessionGenerationException(UNKNOWN_ISSUE);
             }
-            preComputeResponseBuilder.secureSessionId(secureSessionId);
+            preComputeResponseBuilder.secureSession(secureSession);
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
             teeSessionGenerationError = e.getTeeSessionGenerationError();
@@ -144,16 +143,16 @@ public class PreComputeService {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
                             "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
-            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSessionId);
+            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
             preComputeResponseBuilder.exitCause(exitCause);
         }
 
         return preComputeResponseBuilder.build();
     }
 
-    private ReplicateStatusCause downloadDatasetAndFiles(TaskDescription taskDescription, String secureSessionId) {
+    private ReplicateStatusCause downloadDatasetAndFiles(TaskDescription taskDescription, TeeSessionGenerationResponse secureSession) {
         try {
-            Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
+            Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
                 ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
@@ -214,7 +213,7 @@ public class PreComputeService {
      * @param secureSessionId
      * @return pre-compute exit code
      */
-    private Integer prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) throws TimeoutException {
+    private Integer prepareTeeInputData(TaskDescription taskDescription, TeeSessionGenerationResponse secureSession) throws TimeoutException {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
         // check that docker image is present
@@ -225,7 +224,7 @@ public class PreComputeService {
             return null;
         }
         // run container
-        List<String> env = teeSconeService.buildPreComputeDockerEnv(secureSessionId,
+        List<String> env = teeSconeService.buildPreComputeDockerEnv(secureSession,
                 preComputeHeapSize);
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()

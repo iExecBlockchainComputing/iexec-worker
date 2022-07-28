@@ -24,6 +24,7 @@ import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
@@ -53,13 +54,13 @@ public class AppComputeService {
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
-                                         String secureSessionId) {
+                                        TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
         if (taskDescription.isTeeTask()) {
             TeeEnclaveConfiguration enclaveConfig =
                     taskDescription.getAppEnclaveConfiguration();
-            List<String> strings = teeSconeService.buildComputeDockerEnv(secureSessionId,
+            List<String> strings = teeSconeService.buildComputeDockerEnv(secureSession,
                     enclaveConfig != null ? enclaveConfig.getHeapSize() : 0);
             env.addAll(strings);
         }

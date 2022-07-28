@@ -19,6 +19,7 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
+
 import java.util.List;
 
 
@@ -113,30 +115,30 @@ public class TeeSconeService {
     }
 
     public List<String> buildPreComputeDockerEnv(
-            @Nonnull String sessionId,
+            @Nonnull TeeSessionGenerationResponse session,
             long heapSize) {
-        String sconeConfigId = sessionId + "/pre-compute";
-        return getDockerEnv(sconeConfigId, heapSize);
+        String sconeConfigId = session.getSessionId() + "/pre-compute";
+        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
     }
 
     public List<String> buildComputeDockerEnv(
-            @Nonnull String sessionId,
+            @Nonnull TeeSessionGenerationResponse session,
             long heapSize) {
-        String sconeConfigId = sessionId + "/app";
-        return getDockerEnv(sconeConfigId, heapSize);
+        String sconeConfigId = session.getSessionId() + "/app";
+        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
     }
 
     public List<String> getPostComputeDockerEnv(
-            @Nonnull String sessionId,
+            @Nonnull TeeSessionGenerationResponse session,
             long heapSize) {
-        String sconeConfigId = sessionId + "/post-compute";
-        return getDockerEnv(sconeConfigId, heapSize);
+        String sconeConfigId = session.getSessionId() + "/post-compute";
+        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
     }
 
-    private List<String> getDockerEnv(String sconeConfigId, long sconeHeap) {
+    private List<String> getDockerEnv(String sconeConfigId, long sconeHeap, String casUrl) {
         String sconeVersion = sconeConfig.isShowVersion() ? "1" : "0";
         return List.of(
-                SCONE_CAS_ADDR + "=" + sconeConfig.getCasUrl(),
+                SCONE_CAS_ADDR + "=" + casUrl,
                 SCONE_LAS_ADDR + "=" + sconeConfig.getLasUrl(),
                 SCONE_CONFIG_ID + "=" + sconeConfigId,
                 SCONE_HEAP + "=" + sconeHeap,
