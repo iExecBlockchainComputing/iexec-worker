@@ -149,7 +149,7 @@ public class DockerService {
                 || dockerRunRequest.getMaxExecutionTime() != 0) {
             removeFromRunningContainersRecord(containerName);
         }
-        if (shouldPrintDeveloperLogs()) {
+        if (workerConfigService.isDeveloperLoggerEnabled()) {
             String chainTaskId = dockerRunRequest.getChainTaskId();
             if (StringUtils.isEmpty(chainTaskId)) {
                 log.error("Cannot print developer logs [chainTaskId:{}]", chainTaskId);
@@ -283,10 +283,6 @@ public class DockerService {
             return false;
         }
         return runningContainersRecord.remove(containerName);
-    }
-
-    private boolean shouldPrintDeveloperLogs() {
-        return workerConfigService.isDeveloperLoggerEnabled();
     }
 
     private String getComputeDeveloperLogs(String chainTaskId, String stdout, String stderr) {
