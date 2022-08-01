@@ -22,13 +22,17 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientFactory;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.io.File;
 import java.util.Optional;
@@ -38,7 +42,7 @@ import static com.iexec.common.docker.client.DockerClientInstance.DEFAULT_DOCKER
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-
+@ExtendWith(OutputCaptureExtension.class)
 class DockerServiceTests {
 
     private static final String CHAIN_TASK_ID = "chainTaskId";
@@ -46,8 +50,8 @@ class DockerServiceTests {
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
-    private WorkerConfigurationService workerConfigService = mock(WorkerConfigurationService.class);
-    private DockerRegistryConfiguration dockerRegistryConfiguration = mock(DockerRegistryConfiguration.class);
+    private final WorkerConfigurationService workerConfigService = mock(WorkerConfigurationService.class);
+    private final DockerRegistryConfiguration dockerRegistryConfiguration = mock(DockerRegistryConfiguration.class);
 
     @Spy
     private DockerService dockerService = new DockerService(workerConfigService, dockerRegistryConfiguration);
@@ -55,22 +59,14 @@ class DockerServiceTests {
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
-        when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(false);
     }
 
-    /**
-     * getClient()
-     */
-
+    //region getClient
     @Test
     void shouldGetUnauthenticatedClient() {
         DockerClientInstance dockerClientInstance = dockerService.getClient();
         assertThat(dockerClientInstance).isEqualTo(DockerClientFactory.getDockerClientInstance());
     }
-
-    /**
-     * getClient(imageName)
-     */
 
     // docker.io/image:tag
     @Test
@@ -188,11 +184,9 @@ class DockerServiceTests {
         verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
         assertThat(instance).isEqualTo(DockerClientFactory.getDockerClientInstance(registry));
     }
+    //endregion
 
-    /**
-     * run()
-     */
-
+    //region run
     @Test
     void shouldRecordContainerThenRunThenRemoveContainerRecord() {
         String containerName = "containerName";
@@ -287,6 +281,52 @@ class DockerServiceTests {
         verify(dockerClientInstanceMock).run(dockerRunRequest);
         verify(dockerService, never()).removeFromRunningContainersRecord(containerName);
     }
+
+    @Test
+    void shouldNotDisplayLogsWhenChainTaskIdNotFound(CapturedOutput output) {
+        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .containerName("containerName").build();
+        DockerRunResponse successResponse = DockerRunResponse.builder().build();
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        when(dockerClientInstanceMock.run(dockerRunRequest)).thenReturn(successResponse);
+        when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(true);
+
+        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        assertThat(dockerRunResponse).isNotNull();
+        assertThat(output.getOut()).contains("Cannot print developer logs");
+    }
+
+    @Test
+    void shouldDisplayLogs(CapturedOutput output) {
+        final String stdoutMessage = "Message written on stdout";
+        final String stderrMessage = "Message written on stderr";
+        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .containerName("containerName").build();
+        DockerLogs dockerLogs = DockerLogs.builder()
+                .stdout("Message written on stdout")
+                .stderr("Message written on stderr")
+                .build();
+        DockerRunResponse responseWithLogs = DockerRunResponse.builder()
+                .dockerLogs(dockerLogs)
+                .build();
+        doReturn(dockerClientInstanceMock).when(dockerService).getClient();
+        when(dockerClientInstanceMock.run(dockerRunRequest)).thenReturn(responseWithLogs);
+        when(workerConfigService.isDeveloperLoggerEnabled()).thenReturn(true);
+        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID))
+                .thenReturn("./src/test/resources/tmp/test-worker/" + CHAIN_TASK_ID + IexecFileHelper.SLASH_INPUT);
+        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn("./src/test/resources/tmp/test-worker/" + CHAIN_TASK_ID
+                        + IexecFileHelper.SLASH_OUTPUT + IexecFileHelper.SLASH_IEXEC_OUT);
+
+        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
+        assertThat(dockerRunResponse).isNotNull();
+        assertThat(output.getOut()).contains(
+                "Developer logs of docker run [chainTaskId:chainTaskId]",
+                stdoutMessage,
+                stderrMessage);
+    }
+    //endregion
 
     //#region getInputBind()
 
@@ -464,12 +504,12 @@ class DockerServiceTests {
     void shouldRemoveFromRunningContainersRecord() {
         String containerName = "containerName";
         // Add container to records
-        assertThat(dockerService.getRunningContainersRecord().size()).isZero();
+        assertThat(dockerService.getRunningContainersRecord()).isEmpty();
         dockerService.addToRunningContainersRecord(containerName);
-        assertThat(dockerService.getRunningContainersRecord().size()).isEqualTo(1);
+        assertThat(dockerService.getRunningContainersRecord()).hasSize(1);
         boolean isRemoved = dockerService.removeFromRunningContainersRecord(containerName);
         assertThat(isRemoved).isTrue();
-        assertThat(dockerService.getRunningContainersRecord().size()).isZero();
+        assertThat(dockerService.getRunningContainersRecord()).isEmpty();
     }
 
     @Test
