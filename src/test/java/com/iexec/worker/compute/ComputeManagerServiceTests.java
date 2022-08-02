@@ -70,7 +70,6 @@ class ComputeManagerServiceTests {
             .datasetUri(DATASET_URI)
             .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
-            .developerLoggerEnabled(true)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true)
             .maxExecutionTime(3000)

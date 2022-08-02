@@ -238,7 +238,6 @@ public class PreComputeService {
                 .binds(binds)
                 .sgxDriverMode(sgxService.getSgxDriverMode())
                 .dockerNetwork(workerConfigService.getDockerNetworkName())
-                .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
