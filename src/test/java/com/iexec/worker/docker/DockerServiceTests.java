@@ -304,8 +304,8 @@ class DockerServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .containerName("containerName").build();
         DockerLogs dockerLogs = DockerLogs.builder()
-                .stdout("Message written on stdout")
-                .stderr("Message written on stderr")
+                .stdout(stdoutMessage)
+                .stderr(stderrMessage)
                 .build();
         DockerRunResponse responseWithLogs = DockerRunResponse.builder()
                 .dockerLogs(dockerLogs)
