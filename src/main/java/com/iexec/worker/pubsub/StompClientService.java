@@ -66,7 +66,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-public class StompClient {
+public class StompClientService {
 
     // All session requests coming in this time interval
     // will be treated together.
@@ -84,8 +84,8 @@ public class StompClient {
     private final WebSocketStompClient stompClient;
     private StompSession session;
 
-    public StompClient(ApplicationEventPublisher applicationEventPublisher,
-                       CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
+    public StompClientService(ApplicationEventPublisher applicationEventPublisher,
+                              CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
         this.eventPublisher = applicationEventPublisher;
         this.webSocketServerUrl = coreConfigService.getUrl() + "/connect";
         log.info("Creating STOMP client");
@@ -233,7 +233,7 @@ public class StompClient {
     }
 
     /**
-     * Sleep {@link StompClient#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
+     * Sleep {@link StompClientService#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
      * 
      * @throws InterruptedException
      */
@@ -251,7 +251,7 @@ public class StompClient {
         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
             log.info("Connected to STOMP session [session: {}, isConnected: {}]",
                     session.getSessionId(), session.isConnected());
-            StompClient.this.session = session;
+            StompClientService.this.session = session;
             // notify subscribers
             eventPublisher.publishEvent(new SessionCreatedEvent());
         }
