@@ -80,7 +80,7 @@ public class ContributionService {
         }
 
         if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
-            return Optional.of(CONTRIBUTION_AUTHORIZATION_NOT_FOUND);//TODO Rename status to WORKERPOOL_AUTHORIZATION_NOT_FOUND
+            return Optional.of(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
         }
 
         return Optional.empty();
