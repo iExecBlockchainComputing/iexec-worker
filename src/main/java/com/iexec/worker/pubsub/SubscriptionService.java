@@ -42,14 +42,14 @@ public class SubscriptionService {
     private final Map<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>();
     private final String workerWalletAddress;
     private final ApplicationEventPublisher eventPublisher;
-    private final StompClient stompClient;
+    private final StompClientService stompClientService;
 
     public SubscriptionService(WorkerConfigurationService workerConfigurationService,
                                ApplicationEventPublisher applicationEventPublisher,
-                               StompClient stompClient) {
+                               StompClientService stompClientService) {
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.eventPublisher = applicationEventPublisher;
-        this.stompClient = stompClient;
+        this.stompClientService = stompClientService;
     }
 
     /**
@@ -65,7 +65,7 @@ public class SubscriptionService {
             return;
         }
         MessageHandler messageHandler = new MessageHandler(chainTaskId, this.workerWalletAddress);
-        stompClient.subscribeToTopic(topic, messageHandler).ifPresent(subscription -> {
+        stompClientService.subscribeToTopic(topic, messageHandler).ifPresent(subscription -> {
             this.chainTaskIdToSubscription.put(chainTaskId, subscription);
             log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
         });
@@ -87,8 +87,7 @@ public class SubscriptionService {
     }
 
     /**
-     * Check whether or not the worker is subscribed
-     * to a task's topic.
+     * Check if the worker is subscribed to a task's topic.
      * 
      * @param chainTaskId id of the task to check
      * @return true if subscribed, false otherwise
