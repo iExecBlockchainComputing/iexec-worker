@@ -37,42 +37,41 @@ public interface CoreClient {
 
     //region /workers
     @GetMapping("/workers/challenge")
-    ResponseEntity<String> getChallenge(@RequestParam("walletAddress") String walletAddress);
+    ResponseEntity<String> getChallenge(@RequestParam String walletAddress);
 
     @PostMapping("/workers/login")
-    ResponseEntity<String> login(@RequestParam("walletAddress") String walletAddress,
+    ResponseEntity<String> login(@RequestParam String walletAddress,
                                  @RequestBody Signature authorization);
 
     @PostMapping("/workers/ping")
-    ResponseEntity<String> ping(@RequestHeader("Authorization") String bearerToken);
+    ResponseEntity<String> ping(@RequestHeader String authorization);
 
     @PostMapping("/workers/register")
-    ResponseEntity<Void> registerWorker(@RequestHeader("Authorization") String bearerToken,
+    ResponseEntity<Void> registerWorker(@RequestHeader String authorization,
                                         @RequestBody WorkerModel model);
 
     @GetMapping("/workers/config")
     ResponseEntity<PublicConfiguration> getPublicConfiguration();
 
     @GetMapping("/workers/computing")
-    ResponseEntity<List<String>> getComputingTasks(
-            @RequestHeader("Authorization") String bearerToken);
+    ResponseEntity<List<String>> getComputingTasks(@RequestHeader String authorization);
     //endregion
 
     //region /replicates
     @GetMapping("/replicates/available")
     ResponseEntity<WorkerpoolAuthorization> getAvailableReplicate(
-            @RequestHeader("Authorization") String bearerToken,
-            @RequestParam("blockNumber") long blockNumber);
+            @RequestHeader String authorization,
+            @RequestParam long blockNumber);
 
     @GetMapping("/replicates/interrupted")
     ResponseEntity<List<TaskNotification>> getMissedTaskNotifications(
-            @RequestHeader("Authorization") String bearerToken,
-            @RequestParam("blockNumber") long blockNumber);
+            @RequestHeader String authorization,
+            @RequestParam long blockNumber);
 
     @PostMapping("/replicates/{chainTaskId}/updateStatus")
     ResponseEntity<TaskNotificationType> updateReplicateStatus(
-            @RequestHeader("Authorization") String bearerToken,
-            @PathVariable("chainTaskId") String chainTaskId,
+            @RequestHeader String authorization,
+            @PathVariable String chainTaskId,
             @RequestBody ReplicateStatusUpdate replicateStatusUpdate);
     //endregion
 
