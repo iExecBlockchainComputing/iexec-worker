@@ -20,10 +20,9 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ComputeLogs;
+import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
@@ -46,6 +45,8 @@ import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.*;
 
 import java.util.Collections;
@@ -659,10 +660,11 @@ class TaskManagerServiceTests {
                                         .build()));
     }
 
-    @Test
-    void shouldNotComputeSinceCannotContributeStatusIsPresent() {
-        ReplicateStatusCause replicateStatusCause =
-                ReplicateStatusCause.CONTRIBUTION_AUTHORIZATION_NOT_FOUND;
+    @ParameterizedTest
+    @EnumSource(value = ReplicateStatusCause.class,
+            names = {"CHAIN_UNREACHABLE", "STAKE_TOO_LOW", "TASK_NOT_ACTIVE", "CONTRIBUTION_TIMEOUT",
+                    "CONTRIBUTION_ALREADY_SET", "WORKERPOOL_AUTHORIZATION_NOT_FOUND"})
+    void shouldNotComputeSinceCannotContributeStatusIsPresent(ReplicateStatusCause replicateStatusCause) {
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(replicateStatusCause));
@@ -670,10 +672,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .failure(replicateStatusCause));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(replicateStatusCause));
     }
 
     @Test
