@@ -24,6 +24,7 @@ import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.web.ApiResponseBody;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import feign.Request;
@@ -41,8 +42,8 @@ import static org.mockito.Mockito.*;
 
 class SmsServiceTests {
 
-    private static final String CAS_URL = "http://cas";
-    private static final String SESSION_ID = "randomSessionId";
+    private final static TeeSessionGenerationResponse SESSION = mock(TeeSessionGenerationResponse.class);
+
     private static final String SIGNATURE = "random-signature";
 
     @Mock
@@ -64,10 +65,10 @@ class SmsServiceTests {
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
         when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenReturn(ApiResponseBody.<String, TeeSessionGenerationError>builder().data(SESSION_ID).build());
+                .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
 
-        String returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
-        Assertions.assertThat(returnedSessionId).isEqualTo(SESSION_ID);
+        TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
+        Assertions.assertThat(returnedSessionId).isEqualTo(SESSION);
     }
 
     @Test
@@ -86,21 +87,6 @@ class SmsServiceTests {
         final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(workerpoolAuthorization), TeeSessionGenerationException.class);
         Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
         verify(smsClient).generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
-    }
-
-    @Test
-    void shouldGetSconeCasUrl() {
-        when(smsClient.getSconeCasUrl()).thenReturn(CAS_URL);
-        String sconeCasUrl = smsService.getSconeCasUrl();
-        Assertions.assertThat(sconeCasUrl).isEqualTo(CAS_URL);
-        verify(smsClient).getSconeCasUrl();
-    }
-
-    @Test
-    void shouldNotGetSconeCasUrlOnException() {
-        when(smsClient.getSconeCasUrl()).thenThrow(FeignException.class);
-        Assertions.assertThat(smsService.getSconeCasUrl()).isEmpty();
-        verify(smsClient).getSconeCasUrl();
     }
 
     @Test

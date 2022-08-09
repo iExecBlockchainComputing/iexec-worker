@@ -204,7 +204,7 @@ public class TaskManagerService {
         logError(errorCause, context, chainTaskId);
         boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause);
         // try to run post-compute
-        if (isOk && computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
+        if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
             return ReplicateActionResponse.failure(errorCause);
         }
@@ -251,7 +251,7 @@ public class TaskManagerService {
 
         AppComputeResponse appResponse =
                 computeManagerService.runCompute(taskDescription,
-                        preResponse.getSecureSessionId());
+                        preResponse.getSecureSession());
         if (!appResponse.isSuccessful()) {
             ReplicateStatusCause cause = APP_COMPUTE_FAILED;
             logError(cause, context, chainTaskId);
@@ -270,7 +270,7 @@ public class TaskManagerService {
 
         PostComputeResponse postResponse =
                 computeManagerService.runPostCompute(taskDescription,
-                        preResponse.getSecureSessionId());
+                        preResponse.getSecureSession());
         if (!postResponse.isSuccessful()) {
             ReplicateStatusCause cause = postResponse.getExitCause();
             logError(cause, context, chainTaskId);

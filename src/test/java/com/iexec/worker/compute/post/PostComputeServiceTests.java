@@ -25,6 +25,7 @@ import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -52,18 +53,18 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
-    private final static String SCONE_CAS_URL = "SCONE_CAS_URL";
     private final static String WORKER_NAME = "WORKER_NAME";
     private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private final static long TEE_POST_COMPUTE_HEAP = 1024;
     private final static String TEE_POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
-    private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
+    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
 
     @TempDir
@@ -99,7 +100,6 @@ class PostComputeServiceTests {
     void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
@@ -169,7 +169,7 @@ class PostComputeServiceTests {
         when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
+        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION, TEE_POST_COMPUTE_HEAP))
                 .thenReturn(env);
         String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
@@ -183,7 +183,7 @@ class PostComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
 
         assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(dockerService, times(1)).run(any());
@@ -225,7 +225,7 @@ class PostComputeServiceTests {
                 .thenReturn(false);
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING);
         verify(dockerService, never()).run(any());
@@ -247,7 +247,7 @@ class PostComputeServiceTests {
         when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
+        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION, TEE_POST_COMPUTE_HEAP))
                 .thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
@@ -264,7 +264,7 @@ class PostComputeServiceTests {
                 .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCause())
@@ -295,7 +295,7 @@ class PostComputeServiceTests {
         when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION_ID, TEE_POST_COMPUTE_HEAP))
+        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION, TEE_POST_COMPUTE_HEAP))
                 .thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
@@ -309,7 +309,7 @@ class PostComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCause())

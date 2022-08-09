@@ -20,10 +20,9 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ComputeLogs;
+import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
@@ -55,6 +54,7 @@ import java.util.function.Predicate;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 
@@ -231,7 +231,7 @@ class TaskManagerServiceTests {
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -252,7 +252,7 @@ class TaskManagerServiceTests {
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -273,7 +273,7 @@ class TaskManagerServiceTests {
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
@@ -410,7 +410,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -431,7 +431,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -452,7 +452,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
@@ -491,7 +491,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_BAD_CHECKSUM));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -540,7 +540,7 @@ class TaskManagerServiceTests {
                 taskDescription.getInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -566,7 +566,7 @@ class TaskManagerServiceTests {
                 taskDescription.getInputFiles());
                 when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -592,7 +592,7 @@ class TaskManagerServiceTests {
                 taskDescription.getInputFiles());
                 when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, ""))
+        when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =

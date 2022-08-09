@@ -21,6 +21,7 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.sgx.SgxDriverMode;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -44,6 +45,7 @@ class SconeTeeServiceTests {
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
+    private final static TeeSessionGenerationResponse SESSION = new TeeSessionGenerationResponse(SESSION_ID, CAS_URL);
     private static final boolean SHOW_VERSION = true;
     private static final String LOG_LEVEL = "debug";
     public static final String REGISTRY_USERNAME = "registryUsername";
@@ -146,12 +148,11 @@ class SconeTeeServiceTests {
     @Test
     void shouldBuildPreComputeDockerEnv() {
         when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
-        when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
         long preComputeHeapSize = 1024;
-        Assertions.assertThat(teeSconeService.buildPreComputeDockerEnv(SESSION_ID,
+        Assertions.assertThat(teeSconeService.buildPreComputeDockerEnv(SESSION,
                 preComputeHeapSize))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
@@ -165,11 +166,10 @@ class SconeTeeServiceTests {
     @Test
     void shouldBuildComputeDockerEnv() {
         when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
-        when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.buildComputeDockerEnv(SESSION_ID, heapSize))
+        Assertions.assertThat(teeSconeService.buildComputeDockerEnv(SESSION, heapSize))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,
@@ -182,11 +182,10 @@ class SconeTeeServiceTests {
     @Test
     void shouldBuildPostComputeDockerEnv() {
         when(sconeConfig.getLasUrl()).thenReturn(LAS_URL);
-        when(sconeConfig.getCasUrl()).thenReturn(CAS_URL);
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.getPostComputeDockerEnv(SESSION_ID, 1024))
+        Assertions.assertThat(teeSconeService.getPostComputeDockerEnv(SESSION, 1024))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,

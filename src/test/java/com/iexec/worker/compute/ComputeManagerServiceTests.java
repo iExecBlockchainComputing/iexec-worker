@@ -19,11 +19,11 @@ package com.iexec.worker.compute;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
 import com.iexec.common.docker.DockerLogs;
-import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
@@ -53,6 +53,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class ComputeManagerServiceTests {
@@ -62,7 +64,7 @@ class ComputeManagerServiceTests {
     private final static String APP_URI = "APP_URI";
     private final static String TEE_POST_COMPUTE_IMAGE =
             "TEE_POST_COMPUTE_IMAGE";
-    private final static String SECURE_SESSION_ID = "SECURE_SESSION_ID";
+    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
 
     private final TaskDescription taskDescription = TaskDescription.builder()
@@ -193,14 +195,14 @@ class ComputeManagerServiceTests {
         taskDescription.setTeeTask(true);
         when(preComputeService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(PreComputeResponse.builder()
-                .secureSessionId("")
+                .secureSession(null)
                 .exitCause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING)
                 .build());
 
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
-        Assertions.assertThat(preComputeResponse.getSecureSessionId()).isEmpty();
+        Assertions.assertThat(preComputeResponse.getSecureSession()).isNull();
         Assertions.assertThat(preComputeResponse.isSuccessful()).isFalse();
         Assertions.assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
@@ -216,13 +218,13 @@ class ComputeManagerServiceTests {
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
-        when(appComputeService.runCompute(taskDescription, ""))
+        when(appComputeService.runCompute(taskDescription, null))
                 .thenReturn(expectedDockerRunResponse);
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(jUnitTemporaryFolder.getAbsolutePath());
 
         AppComputeResponse appComputeResponse =
-                computeManagerService.runCompute(taskDescription, "");
+                computeManagerService.runCompute(taskDescription, null);
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
@@ -230,7 +232,7 @@ class ComputeManagerServiceTests {
                 "stderr");
         verify(appComputeService, times(1))
                 .runCompute(taskDescription,
-                        "");
+                        null);
     }
 
     @Test
@@ -242,11 +244,11 @@ class ComputeManagerServiceTests {
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
-        when(appComputeService.runCompute(taskDescription, ""))
+        when(appComputeService.runCompute(taskDescription, null))
                 .thenReturn(expectedDockerRunResponse);
 
         AppComputeResponse appComputeResponse =
-                computeManagerService.runCompute(taskDescription, "");
+                computeManagerService.runCompute(taskDescription, null);
         Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
         Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
@@ -263,13 +265,13 @@ class ComputeManagerServiceTests {
                         .stderr(dockerLogs.getStderr())
                         .build();
         when(appComputeService.runCompute(taskDescription,
-                SECURE_SESSION_ID)).thenReturn(expectedDockerRunResponse);
+                SECURE_SESSION)).thenReturn(expectedDockerRunResponse);
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
                 .thenReturn(jUnitTemporaryFolder.getAbsolutePath());
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
@@ -277,7 +279,7 @@ class ComputeManagerServiceTests {
                 "stderr");
         verify(appComputeService, times(1))
                 .runCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
     }
 
     @Test
@@ -289,12 +291,12 @@ class ComputeManagerServiceTests {
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
-        when(appComputeService.runCompute(taskDescription, SECURE_SESSION_ID))
+        when(appComputeService.runCompute(taskDescription, SECURE_SESSION))
                 .thenReturn(expectedDockerRunResponse);
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
         Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
         Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
@@ -313,7 +315,7 @@ class ComputeManagerServiceTests {
         when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
 
         PostComputeResponse postComputeResponse =
-                computeManagerService.runPostCompute(taskDescription, "");
+                computeManagerService.runPostCompute(taskDescription, null);
         Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(postComputeService, times(1))
                 .runStandardPostCompute(taskDescription);
@@ -329,7 +331,7 @@ class ComputeManagerServiceTests {
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
-                        "");
+                        null);
         Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
     }
 
@@ -342,21 +344,21 @@ class ComputeManagerServiceTests {
                         .stderr(dockerLogs.getStderr())
                         .build();
         when(postComputeService.runTeePostCompute(taskDescription,
-                SECURE_SESSION_ID))
+                SECURE_SESSION))
                 .thenReturn(expectedDockerRunResponse);
         ComputedFile computedFile = mock(ComputedFile.class);
         when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
         Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
         Assertions.assertThat(postComputeResponse.getStdout()).isEqualTo(
                 "stdout");
         Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
         verify(postComputeService, times(1))
-                .runTeePostCompute(taskDescription, SECURE_SESSION_ID);
+                .runTeePostCompute(taskDescription, SECURE_SESSION);
         verify(resultService, times(1))
                 .saveResultInfo(anyString(), any(), any());
     }
@@ -371,12 +373,12 @@ class ComputeManagerServiceTests {
                         .stderr(dockerLogs.getStderr())
                         .build();
         when(postComputeService.runTeePostCompute(taskDescription,
-                SECURE_SESSION_ID))
+                SECURE_SESSION))
                 .thenReturn(expectedDockerRunResponse);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
-                        SECURE_SESSION_ID);
+                        SECURE_SESSION);
         Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
         Assertions.assertThat(postComputeResponse.getStdout()).isEqualTo(
                 "stdout");

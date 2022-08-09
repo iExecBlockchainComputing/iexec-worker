@@ -27,6 +27,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
 import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -53,10 +54,13 @@ import java.util.stream.Stream;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static com.iexec.sms.api.TeeSessionGenerationError.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 class PreComputeServiceTests {
 
+    private static final String SECURE_SESSION_ID = "secureSessionId";
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP = 1024;
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
@@ -77,6 +81,8 @@ class PreComputeServiceTests {
             .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
+    private final static TeeSessionGenerationResponse secureSession = mock(TeeSessionGenerationResponse.class);
+
 
     @InjectMocks
     private PreComputeService preComputeService;
@@ -118,14 +124,13 @@ class PreComputeServiceTests {
     void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() throws TeeSessionGenerationException {
         taskDescription.setInputFiles(List.of("input-file1"));
 
-        String secureSessionId = "secureSessionId";
-        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
+        when(teeSconeService.buildPreComputeDockerEnv(secureSession, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -141,7 +146,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -157,14 +162,13 @@ class PreComputeServiceTests {
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
-        String secureSessionId = "secureSessionId";
-        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
+        when(teeSconeService.buildPreComputeDockerEnv(secureSession, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -180,7 +184,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -198,14 +202,13 @@ class PreComputeServiceTests {
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
-        String secureSessionId = "secureSessionId";
-        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSessionId);
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.buildPreComputeDockerEnv(secureSessionId, PRE_COMPUTE_HEAP))
+        when(teeSconeService.buildPreComputeDockerEnv(secureSession, PRE_COMPUTE_HEAP))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -221,7 +224,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSessionId(secureSessionId).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
@@ -259,12 +262,12 @@ class PreComputeServiceTests {
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
-        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn("");
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
                 .isFalse();
         verify(smsService).createTeeSession(workerpoolAuthorization);
-        verify(teeSconeService, never()).buildPreComputeDockerEnv(anyString(), anyLong());
+        verify(teeSconeService, never()).buildPreComputeDockerEnv(any(), anyLong());
     }
 
     @Test
@@ -273,7 +276,7 @@ class PreComputeServiceTests {
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
-                .thenReturn("secureSessionId");
+                .thenReturn(secureSession);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
@@ -293,7 +296,7 @@ class PreComputeServiceTests {
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
-                .thenReturn("secureSessionId");
+                .thenReturn(secureSession);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
@@ -334,7 +337,7 @@ class PreComputeServiceTests {
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
-                .thenReturn("secureSessionId");
+                .thenReturn(secureSession);
         when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
@@ -386,14 +389,16 @@ class PreComputeServiceTests {
                 Arguments.of(POST_COMPUTE_GET_SIGNATURE_TOKENS_FAILED_EMPTY_TEE_CREDENTIALS, TEE_SESSION_GENERATION_POST_COMPUTE_GET_SIGNATURE_TOKENS_FAILED_EMPTY_TEE_CREDENTIALS),
 
                 // Secure session generation
-                Arguments.of(SECURE_SESSION_CAS_CALL_FAILED, TEE_SESSION_GENERATION_SECURE_SESSION_CAS_CALL_FAILED),
+                Arguments.of(SECURE_SESSION_STORAGE_CALL_FAILED, TEE_SESSION_GENERATION_SECURE_SESSION_STORAGE_CALL_FAILED),
                 Arguments.of(SECURE_SESSION_GENERATION_FAILED, TEE_SESSION_GENERATION_SECURE_SESSION_GENERATION_FAILED),
+                Arguments.of(SECURE_SESSION_NO_TEE_PROVIDER, TEE_SESSION_GENERATION_SECURE_SESSION_NO_TEE_PROVIDER),
+                Arguments.of(SECURE_SESSION_UNKNOWN_TEE_PROVIDER, TEE_SESSION_GENERATION_SECURE_SESSION_UNKNOWN_TEE_PROVIDER),
 
                 // Miscellaneous
                 Arguments.of(GET_TASK_DESCRIPTION_FAILED, TEE_SESSION_GENERATION_GET_TASK_DESCRIPTION_FAILED),
                 Arguments.of(NO_SESSION_REQUEST, TEE_SESSION_GENERATION_NO_SESSION_REQUEST),
                 Arguments.of(NO_TASK_DESCRIPTION, TEE_SESSION_GENERATION_NO_TASK_DESCRIPTION),
-                Arguments.of(GET_SESSION_YML_FAILED, TEE_SESSION_GENERATION_GET_SESSION_YML_FAILED),
+                Arguments.of(GET_SESSION_FAILED, TEE_SESSION_GENERATION_GET_SESSION_FAILED),
 
                 Arguments.of(UNKNOWN_ISSUE, TEE_SESSION_GENERATION_UNKNOWN_ISSUE)
         );

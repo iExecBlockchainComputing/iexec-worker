@@ -24,6 +24,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -87,7 +88,8 @@ public class PostComputeService {
         return true;
     }
 
-    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
+    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, 
+                                                TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
         String postComputeImage = teeWorkflowConfig.getPostComputeImage();
         long postComputeHeapSize = teeWorkflowConfig.getPostComputeHeapSize();
@@ -110,7 +112,7 @@ public class PostComputeService {
                     .build();
         }
         List<String> env = teeSconeService.
-                getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
+                getPostComputeDockerEnv(secureSession, postComputeHeapSize);
         List<String> binds =
                 Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
 

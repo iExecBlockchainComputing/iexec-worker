@@ -23,7 +23,6 @@ import com.iexec.worker.sms.SmsService;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -71,21 +70,12 @@ public class SconeConfiguration {
     @Getter
     private final String lasContainerName;
 
-    @Getter
-    private final String casUrl;
-
     public SconeConfiguration(WorkerConfigurationService workerConfigService,
                               SmsService smsService) {
         this.smsService = smsService;
         // "iexec-las-0xWalletAddress" as lasContainerName to avoid naming conflict
         // when running multiple workers on the same machine.
         lasContainerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
-        // Get cas url from sms
-        casUrl = smsService.getSconeCasUrl();
-        log.info("Received cas url [casUrl:{}]", casUrl);
-        if (StringUtils.isEmpty(casUrl)) {
-            throw new BeanInstantiationException(this.getClass(), "Missing cas url");
-        }
         TeeWorkflowSharedConfiguration config = smsService.getTeeWorkflowConfiguration();
         if (config == null) {
             throw new RuntimeException("Missing tee workflow configuration");
