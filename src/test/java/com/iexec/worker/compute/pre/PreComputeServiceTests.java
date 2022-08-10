@@ -36,8 +36,8 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
-import com.iexec.worker.tee.scone.SconeConfiguration;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeServicesManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,12 +55,10 @@ import java.util.stream.Stream;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static com.iexec.sms.api.TeeSessionGenerationError.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 class PreComputeServiceTests {
 
-    private static final String SECURE_SESSION_ID = "secureSessionId";
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP = 1024;
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
@@ -93,9 +91,7 @@ class PreComputeServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
-    private TeeSconeService teeSconeService;
-    @Mock
-    private SconeConfiguration sconeConfig;
+    private TeeServicesManager teeServicesManager;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
@@ -109,11 +105,15 @@ class PreComputeServiceTests {
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
+    @Mock
+    private TeeAbstractService teeMockedService;
+
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
     }
 
     /**
@@ -130,7 +130,7 @@ class PreComputeServiceTests {
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.buildPreComputeDockerEnv(secureSession, PRE_COMPUTE_HEAP))
+        when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -168,7 +168,7 @@ class PreComputeServiceTests {
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.buildPreComputeDockerEnv(secureSession, PRE_COMPUTE_HEAP))
+        when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -208,7 +208,7 @@ class PreComputeServiceTests {
         when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.buildPreComputeDockerEnv(secureSession, PRE_COMPUTE_HEAP))
+        when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
         String iexecInBind = "/path:/iexec_in";
         when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
@@ -267,7 +267,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
                 .isFalse();
         verify(smsService).createTeeSession(workerpoolAuthorization);
-        verify(teeSconeService, never()).buildPreComputeDockerEnv(any(), anyLong());
+        verify(teeMockedService, never()).buildPreComputeDockerEnv(any(), any());
     }
 
     @Test

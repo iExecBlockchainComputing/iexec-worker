@@ -40,7 +40,8 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,7 +78,7 @@ class TaskManagerServiceTests {
     @Mock
     private ComputeManagerService computeManagerService;
     @Mock
-    private TeeSconeService teeSconeService;
+    private TeeServicesManager teeServicesManager;
     @Mock
     private DataService dataService;
     @Mock
@@ -89,12 +90,16 @@ class TaskManagerServiceTests {
     @Mock
     private ComputeExitCauseService computeExitCauseService;
 
+    @Mock
+    private TeeAbstractService teeMockedService;
+
     @Captor
     private ArgumentCaptor<Predicate<String>> predicateCaptor;
 
     @BeforeEach
     void init() {
         MockitoAnnotations.openMocks(this);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
     }
 
     TaskDescription getStubTaskDescription(boolean isTeeTask) {
@@ -126,7 +131,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(getStubTaskDescription(false));
-        when(teeSconeService.isTeeEnabled()).thenReturn(false);
+        when(teeMockedService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(CHAIN_TASK_ID);
@@ -166,7 +171,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(getStubTaskDescription(true));
-        when(teeSconeService.isTeeEnabled()).thenReturn(false);
+        when(teeMockedService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(CHAIN_TASK_ID);

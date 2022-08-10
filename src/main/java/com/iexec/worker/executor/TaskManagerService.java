@@ -35,7 +35,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +59,7 @@ public class TaskManagerService {
     private final ContributionService contributionService;
     private final RevealService revealService;
     private final ComputeManagerService computeManagerService;
-    private final TeeSconeService teeSconeService;
+    private final TeeServicesManager teeServicesManager;
     private final DataService dataService;
     private final ResultService resultService;
     private final DockerService dockerService;
@@ -71,7 +71,7 @@ public class TaskManagerService {
             ContributionService contributionService,
             RevealService revealService,
             ComputeManagerService computeManagerService,
-            TeeSconeService teeSconeService,
+            TeeServicesManager teeServicesManager,
             DataService dataService,
             ResultService resultService,
             DockerService dockerService,
@@ -81,7 +81,7 @@ public class TaskManagerService {
         this.contributionService = contributionService;
         this.revealService = revealService;
         this.computeManagerService = computeManagerService;
-        this.teeSconeService = teeSconeService;
+        this.teeServicesManager = teeServicesManager;
         this.dataService = dataService;
         this.resultService = resultService;
         this.dockerService = dockerService;
@@ -104,7 +104,7 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !teeSconeService.isTeeEnabled()) {
+        if (taskDescription.isTeeTask() && !teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider()).isTeeEnabled()) {
             return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
                     context, chainTaskId);
         }

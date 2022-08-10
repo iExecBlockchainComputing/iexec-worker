@@ -19,10 +19,14 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeAbstractService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,7 +39,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class TeeSconeService {
+public class TeeSconeService implements TeeAbstractService {
 
     private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
     private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";
@@ -45,6 +49,7 @@ public class TeeSconeService {
     private static final String SCONE_VERSION = "SCONE_VERSION";
     // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
+    private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SconeConfiguration sconeConfig;
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
@@ -52,10 +57,12 @@ public class TeeSconeService {
     private final boolean isLasStarted;
 
     public TeeSconeService(
+            TeeWorkflowConfiguration teeWorkflowConfig,
             SconeConfiguration sconeConfig,
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             SgxService sgxService) {
+        this.teeWorkflowConfig = teeWorkflowConfig;
         this.sconeConfig = sconeConfig;
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
@@ -114,25 +121,30 @@ public class TeeSconeService {
         return true;
     }
 
+    @Override
     public List<String> buildPreComputeDockerEnv(
-            @Nonnull TeeSessionGenerationResponse session,
-            long heapSize) {
+            TaskDescription taskDescription,
+            @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
-        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
+        return getDockerEnv(sconeConfigId, teeWorkflowConfig.getPreComputeHeapSize(), session.getSecretProvisioningUrl());
     }
 
+    @Override
     public List<String> buildComputeDockerEnv(
-            @Nonnull TeeSessionGenerationResponse session,
-            long heapSize) {
+            TaskDescription taskDescription,
+            @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/app";
+        TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
+        long heapSize = enclaveConfig != null ? enclaveConfig.getHeapSize() : 0;
         return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
     }
 
-    public List<String> getPostComputeDockerEnv(
-            @Nonnull TeeSessionGenerationResponse session,
-            long heapSize) {
+    @Override
+    public List<String> buildPostComputeDockerEnv(
+            TaskDescription taskDescription,
+            @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/post-compute";
-        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
+        return getDockerEnv(sconeConfigId, teeWorkflowConfig.getPostComputeHeapSize(), session.getSecretProvisioningUrl());
     }
 
     private List<String> getDockerEnv(String sconeConfigId, long sconeHeap, String casUrl) {

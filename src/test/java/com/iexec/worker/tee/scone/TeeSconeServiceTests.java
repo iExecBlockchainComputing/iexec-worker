@@ -21,7 +21,10 @@ import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.sgx.SgxDriverMode;
+import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -38,7 +41,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class SconeTeeServiceTests {
+class TeeSconeServiceTests {
 
     private static final String REGISTRY_NAME = "registryName";
     private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
@@ -48,6 +51,9 @@ class SconeTeeServiceTests {
     private final static TeeSessionGenerationResponse SESSION = new TeeSessionGenerationResponse(SESSION_ID, CAS_URL);
     private static final boolean SHOW_VERSION = true;
     private static final String LOG_LEVEL = "debug";
+    private static final TaskDescription TASK_DESCRIPTION = TaskDescription.builder()
+        .appEnclaveConfiguration(TeeEnclaveConfiguration.builder().heapSize(1024).build())
+        .build();
     public static final String REGISTRY_USERNAME = "registryUsername";
     public static final String REGISTRY_PASSWORD = "registryPassword";
     public static final long heapSize = 1024;
@@ -58,6 +64,8 @@ class SconeTeeServiceTests {
     private TeeSconeService teeSconeService;
     @Mock
     private SconeConfiguration sconeConfig;
+    @Mock
+    private TeeWorkflowConfiguration teeWorkflowConfig;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
@@ -75,6 +83,8 @@ class SconeTeeServiceTests {
         when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
         when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
         when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
+        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(1024L);
+        when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(1024L);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(dockerClientInstanceMock);
@@ -151,9 +161,7 @@ class SconeTeeServiceTests {
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        long preComputeHeapSize = 1024;
-        Assertions.assertThat(teeSconeService.buildPreComputeDockerEnv(SESSION,
-                preComputeHeapSize))
+        Assertions.assertThat(teeSconeService.buildPreComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,
@@ -169,7 +177,7 @@ class SconeTeeServiceTests {
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.buildComputeDockerEnv(SESSION, heapSize))
+        Assertions.assertThat(teeSconeService.buildComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,
@@ -185,7 +193,7 @@ class SconeTeeServiceTests {
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.getPostComputeDockerEnv(SESSION, 1024))
+        Assertions.assertThat(teeSconeService.buildPostComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,

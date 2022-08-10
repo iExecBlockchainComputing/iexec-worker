@@ -31,8 +31,8 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.scone.SconeConfiguration;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeServicesManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,9 +84,7 @@ class PostComputeServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
-    private TeeSconeService teeSconeService;
-    @Mock
-    private SconeConfiguration sconeConfig;
+    private TeeServicesManager teeServicesManager;
     @Mock
     private TeeWorkflowConfiguration teeWorkflowConfig;
     @Mock
@@ -96,10 +94,15 @@ class PostComputeServiceTests {
     @Mock
     private ComputeExitCauseService computeExitCauseService;
 
+    @Mock
+    private TeeAbstractService teeMockedService;
+
     @BeforeEach
     void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
@@ -169,7 +172,7 @@ class PostComputeServiceTests {
         when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION, TEE_POST_COMPUTE_HEAP))
+        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(env);
         String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
@@ -247,7 +250,7 @@ class PostComputeServiceTests {
         when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION, TEE_POST_COMPUTE_HEAP))
+        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
@@ -295,7 +298,7 @@ class PostComputeServiceTests {
         when(teeWorkflowConfig.getPostComputeEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(teeSconeService.getPostComputeDockerEnv(SECURE_SESSION, TEE_POST_COMPUTE_HEAP))
+        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(env);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);

@@ -29,8 +29,8 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.scone.SconeConfiguration;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeServicesManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -82,15 +82,17 @@ class AppComputeServiceTests {
     @Mock
     private PublicConfigurationService publicConfigService;
     @Mock
-    private TeeSconeService teeSconeService;
-    @Mock
-    private SconeConfiguration sconeConfig;
+    private TeeServicesManager teeServicesManager;
     @Mock
     private SgxService sgxService;
+
+    @Mock
+    private TeeAbstractService teeMockedService;
 
     @BeforeEach
     void beforeEach() throws IOException {
         MockitoAnnotations.openMocks(this);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
     }
 
     @Test
@@ -136,7 +138,7 @@ class AppComputeServiceTests {
         taskDescription.setTeeTask(true);
         taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
                 .builder().heapSize(heapSize).build());
-        when(teeSconeService.buildComputeDockerEnv(SECURE_SESSION, heapSize))
+        when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
         env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));

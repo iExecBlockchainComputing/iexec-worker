@@ -30,7 +30,7 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeServicesManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +44,7 @@ public class PostComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final TeeSconeService teeSconeService;
+    private final TeeServicesManager teeServicesManager;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
@@ -52,13 +52,13 @@ public class PostComputeService {
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            TeeSconeService teeSconeService,
+            TeeServicesManager teeServicesManager,
             TeeWorkflowConfiguration teeWorkflowConfig,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.teeSconeService = teeSconeService;
+        this.teeServicesManager = teeServicesManager;
         this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
@@ -92,7 +92,6 @@ public class PostComputeService {
                                                 TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
         String postComputeImage = teeWorkflowConfig.getPostComputeImage();
-        long postComputeHeapSize = teeWorkflowConfig.getPostComputeHeapSize();
         // ###############################################################################
         // TODO: activate this when user specific post-compute is properly
         // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
@@ -111,8 +110,8 @@ public class PostComputeService {
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
                     .build();
         }
-        List<String> env = teeSconeService.
-                getPostComputeDockerEnv(secureSession, postComputeHeapSize);
+        List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider())
+                .buildPostComputeDockerEnv(taskDescription, secureSession);
         List<String> binds =
                 Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
 
