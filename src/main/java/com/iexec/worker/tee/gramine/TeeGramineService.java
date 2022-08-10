@@ -6,7 +6,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeAbstractService;
-import org.jvnet.hk2.annotations.Service;
+import org.springframework.stereotype.Service;
 
 @Service
 public class TeeGramineService implements TeeAbstractService {
