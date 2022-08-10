@@ -1,8 +1,5 @@
 package com.iexec.worker.tee.gramine;
 
-import java.util.Collections;
-import java.util.List;
-
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
@@ -10,6 +7,7 @@ import com.iexec.worker.tee.TeeAbstractService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
 @Service
 public class TeeGramineService implements TeeAbstractService {
@@ -31,8 +29,7 @@ public class TeeGramineService implements TeeAbstractService {
     public List<String> buildPreComputeDockerEnv(
             TaskDescription taskDescription,
             @Nonnull TeeSessionGenerationResponse session) {
-        // FIXME: implement PreCompute
-        return Collections.emptyList();
+        return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
     }
 
     @Override
