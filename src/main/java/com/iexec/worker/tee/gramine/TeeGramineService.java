@@ -1,5 +1,6 @@
 package com.iexec.worker.tee.gramine;
 
+import java.util.Collections;
 import java.util.List;
 
 import com.iexec.common.task.TaskDescription;
@@ -8,10 +9,12 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeAbstractService;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Nonnull;
+
 @Service
 public class TeeGramineService implements TeeAbstractService {
-    private final static String SPS_URL = "SPS";
-    private final static String SPS_SESSION = "SESSION";
+    private static final String SPS_URL = "SPS";
+    private static final String SPS_SESSION = "SESSION";
 
     private final SgxService sgxService;
 
@@ -27,22 +30,22 @@ public class TeeGramineService implements TeeAbstractService {
     @Override
     public List<String> buildPreComputeDockerEnv(
             TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
+            @Nonnull TeeSessionGenerationResponse session) {
         // FIXME: implement PreCompute
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public List<String> buildComputeDockerEnv(
             TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
+            @Nonnull TeeSessionGenerationResponse session) {
         return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
     }
 
     @Override
     public List<String> buildPostComputeDockerEnv(
             TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
+            @Nonnull TeeSessionGenerationResponse session) {
         return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
     }
 
