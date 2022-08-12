@@ -36,6 +36,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.scone.LasServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +65,7 @@ public class TaskManagerService {
     private final ResultService resultService;
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
+    private final LasServicesManager lasServicesManager;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -75,7 +77,8 @@ public class TaskManagerService {
             DataService dataService,
             ResultService resultService,
             DockerService dockerService,
-            SubscriptionService subscriptionService) {
+            SubscriptionService subscriptionService,
+            LasServicesManager lasServicesManager) {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
@@ -86,6 +89,7 @@ public class TaskManagerService {
         this.resultService = resultService;
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
+        this.lasServicesManager = lasServicesManager;
     }
 
     ReplicateActionResponse start(String chainTaskId) {
@@ -230,6 +234,11 @@ public class TaskManagerService {
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
             return getFailureResponseAndPrintError(APP_NOT_FOUND_LOCALLY,
+                    context, chainTaskId);
+        }
+
+        if (taskDescription.isTeeTask() && !lasServicesManager.startLasService(chainTaskId)) {
+            return getFailureResponseAndPrintError(LAS_START_FAILED,
                     context, chainTaskId);
         }
 

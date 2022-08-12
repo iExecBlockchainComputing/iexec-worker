@@ -26,10 +26,11 @@ import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
+import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.worker.compute.TeeWorkflowConfiguration;
+import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
@@ -38,6 +39,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeAbstractService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +73,7 @@ class PreComputeServiceTests {
             .datasetName("datasetName")
             .datasetChecksum("datasetChecksum")
             .teePostComputeImage("teePostComputeImage")
+            .teeEnclaveProvider(TeeEnclaveProvider.SCONE)
             .appEnclaveConfiguration(TeeEnclaveConfiguration.builder()
                     .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
                     .heapSize(1024)
@@ -102,6 +105,8 @@ class PreComputeServiceTests {
     private SgxService sgxService;
     @Mock
     private ComputeExitCauseService computeExitCauseService;
+    @Mock
+    private TeeWorkflowConfigurationService teeWorkflowConfigurationService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -114,6 +119,7 @@ class PreComputeServiceTests {
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeWorkflowConfigurationService.getTeeWorkflowConfiguration(chainTaskId)).thenReturn(teeWorkflowConfig);
     }
 
     /**

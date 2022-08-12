@@ -24,6 +24,7 @@ import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.CredentialsService;
@@ -41,13 +42,12 @@ import java.util.Optional;
 public class SmsService {
 
     private final CredentialsService credentialsService;
-    private final SmsClient smsClient;
-    private TeeWorkflowSharedConfiguration teeWorkflowConfiguration;
+    private final SmsClientProvider smsClientProvider;
 
     public SmsService(CredentialsService credentialsService,
-                      SmsClient smsClient) {
+                      SmsClientProvider smsClientProvider) {
         this.credentialsService = credentialsService;
-        this.smsClient = smsClient;
+        this.smsClientProvider = smsClientProvider;
     }
 
     @Retryable(value = FeignException.class)
@@ -56,6 +56,13 @@ public class SmsService {
         String authorization = getAuthorizationString(workerpoolAuthorization);
         SmsSecretResponse smsResponse;
 
+        Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
+        if (oSmsClient.isEmpty()) {
+            log.error("No SMS set for task [chainTaskId:{}]", chainTaskId);
+            return Optional.empty();
+        }
+
+        final SmsClient smsClient = oSmsClient.get();
         smsResponse = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
 
         if (smsResponse == null) {
@@ -122,19 +129,23 @@ public class SmsService {
      * Get the configuration needed for TEE workflow from the SMS. This
      * configuration contains: las image, pre-compute image uri, pre-compute heap
      * size, post-compute image uri, post-compute heap size.
-     * Note: Caching response to avoid calling the SMS
+     *
      * @return configuration if success, null otherwise
      */
-    public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration() {
-        if (teeWorkflowConfiguration == null) {
-            try {
-                teeWorkflowConfiguration = smsClient.getTeeWorkflowConfiguration();
-            } catch (FeignException e) {
-                log.error("Failed to get tee workflow configuration from sms", e);
-                teeWorkflowConfiguration = null;
-            }
+    public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
+        Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
+        if (oSmsClient.isEmpty()) {
+            log.error("No SMS set for task [chainTaskId:{}]", chainTaskId);
+            return null;
         }
-        return teeWorkflowConfiguration;
+
+        final SmsClient smsClient = oSmsClient.get();
+        try {
+            return smsClient.getTeeWorkflowConfiguration();
+        } catch (FeignException e) {
+            log.error("Failed to get tee workflow configuration from sms", e);
+            return null;
+        }
     }
 
     // TODO: use the below method with retry.
@@ -143,6 +154,13 @@ public class SmsService {
         log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
         String authorization = getAuthorizationString(workerpoolAuthorization);
         try {
+            Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
+            if (oSmsClient.isEmpty()) {
+                log.error("No SMS set for task [chainTaskId:{}]", chainTaskId);
+                throw new TeeSessionGenerationException(TeeSessionGenerationError.NO_SMS_FOR_TASK);
+            }
+
+            final SmsClient smsClient = oSmsClient.get();
             TeeSessionGenerationResponse session = smsClient.generateTeeSession(authorization, workerpoolAuthorization)
                     .getData();
             log.info("Created TEE session [chainTaskId:{}, session:{}]",

@@ -27,12 +27,13 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.worker.compute.TeeWorkflowConfiguration;
+import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeAbstractService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,6 +94,8 @@ class PostComputeServiceTests {
     private SgxService sgxService;
     @Mock
     private ComputeExitCauseService computeExitCauseService;
+    @Mock
+    private TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
     @Mock
     private TeeAbstractService teeMockedService;
@@ -102,6 +105,7 @@ class PostComputeServiceTests {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeWorkflowConfigurationService.getTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenReturn(teeWorkflowConfig);
 
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;

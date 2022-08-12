@@ -26,11 +26,12 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.worker.compute.TeeWorkflowConfiguration;
+import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -45,23 +46,23 @@ public class PostComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final TeeServicesManager teeServicesManager;
-    private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
+    private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             TeeServicesManager teeServicesManager,
-            TeeWorkflowConfiguration teeWorkflowConfig,
             SgxService sgxService,
-            ComputeExitCauseService computeExitCauseService) {
+            ComputeExitCauseService computeExitCauseService,
+            TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
-        this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
+        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
     }
 
     public boolean runStandardPostCompute(TaskDescription taskDescription) {
@@ -88,9 +89,13 @@ public class PostComputeService {
         return true;
     }
 
-    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, 
-                                                TeeSessionGenerationResponse secureSession) {
+    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription,
+                                                 TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
+
+        TeeWorkflowConfiguration teeWorkflowConfig =
+                teeWorkflowConfigurationService.getTeeWorkflowConfiguration(taskDescription.getChainTaskId());
+
         String postComputeImage = teeWorkflowConfig.getPostComputeImage();
         // ###############################################################################
         // TODO: activate this when user specific post-compute is properly
