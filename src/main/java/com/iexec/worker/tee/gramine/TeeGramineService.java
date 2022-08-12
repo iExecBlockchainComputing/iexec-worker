@@ -11,8 +11,8 @@ import java.util.List;
 
 @Service
 public class TeeGramineService implements TeeAbstractService {
-    private static final String SPS_URL = "SPS";
-    private static final String SPS_SESSION = "SESSION";
+    private static final String SPS_URL = "sps";
+    private static final String SPS_SESSION = "session";
 
     private final SgxService sgxService;
 
