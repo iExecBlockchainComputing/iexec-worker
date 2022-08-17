@@ -74,7 +74,7 @@ public class ComputeExitCauseService {
         ComputeStage stage = ComputeStage.PRE;
         ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
         pruneExitCause(stage, chainTaskId);
-        return cause;
+        return cause != null ? cause : ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE;
     }
 
     /**
@@ -87,7 +87,7 @@ public class ComputeExitCauseService {
         ComputeStage stage = ComputeStage.POST;
         ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
         pruneExitCause(stage, chainTaskId);
-        return cause;
+        return cause != null ? cause : ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
     }
 
     /**
