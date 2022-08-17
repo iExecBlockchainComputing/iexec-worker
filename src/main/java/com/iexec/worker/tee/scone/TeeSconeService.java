@@ -28,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -97,6 +99,11 @@ public class TeeSconeService implements TeeAbstractService {
         TeeWorkflowConfiguration teeWorkflowConfig =
                 teeWorkflowConfigurationService.getTeeWorkflowConfiguration(chainTaskId);
         return getDockerEnv(chainTaskId, sconeConfigId, teeWorkflowConfig.getPostComputeHeapSize(), session.getSecretProvisioningUrl());
+    }
+
+    @Override
+    public Collection<String> getBindings() {
+        return Collections.emptySet();
     }
 
     private List<String> getDockerEnv(String chainTaskId,

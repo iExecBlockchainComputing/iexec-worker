@@ -26,17 +26,21 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeAbstractService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Slf4j
@@ -115,10 +119,14 @@ public class PostComputeService {
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
                     .build();
         }
-        List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider())
+        TeeAbstractService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+        List<String> env = teeService
                 .buildPostComputeDockerEnv(taskDescription, secureSession);
-        List<String> binds =
-                Collections.singletonList(dockerService.getIexecOutBind(chainTaskId));
+        List<String> binds = Stream.of(
+                        Collections.singletonList(dockerService.getIexecOutBind(chainTaskId)),
+                        teeService.getBindings())
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
 
         DockerRunResponse dockerResponse = dockerService.run(
                 DockerRunRequest.builder()

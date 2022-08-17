@@ -1,11 +1,11 @@
 package com.iexec.worker.tee;
 
-import java.util.List;
-
-import javax.annotation.Nonnull;
-
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+
+import javax.annotation.Nonnull;
+import java.util.Collection;
+import java.util.List;
 
 public interface TeeAbstractService {
     boolean isTeeEnabled();
@@ -21,4 +21,6 @@ public interface TeeAbstractService {
     List<String> buildPostComputeDockerEnv(
             TaskDescription taskDescription,
             @Nonnull TeeSessionGenerationResponse session);
+
+    Collection<String> getBindings();
 }

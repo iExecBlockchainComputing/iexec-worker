@@ -46,6 +46,10 @@ scone:
     password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
   las-port: ${IEXEC_LAS_PORT:18766}
 
+gramine:
+  sps:
+    ssl-certs: ${IEXEC_SPS_CERTIFICATES:}
+
 management:
   endpoint:
     restart:
