@@ -32,6 +32,7 @@ class ComputeExitCauseServiceTests {
         computeExitCauseService = new ComputeExitCauseService();
     }
 
+    //region getPreComputeExitCauseAndPrune
     @Test
     void setAndGetPreComputeExitCauseAndPrune() {
         ReplicateStatusCause cause =
@@ -46,6 +47,16 @@ class ComputeExitCauseServiceTests {
     }
 
     @Test
+    void shouldReturnUnknownIssueWhenPreComputeExitCauseNotSet() {
+        ReplicateStatusCause cause = computeExitCauseService.getPreComputeExitCauseAndPrune(CHAIN_TASK_ID);
+        Assertions.assertThat(cause)
+                .isNotNull()
+                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    }
+    //endregion
+
+    //region getPostComputeExitCauseAndPrune
+    @Test
     void setAndGetPostComputeExitCauseAndPrune() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND;
@@ -57,6 +68,15 @@ class ComputeExitCauseServiceTests {
         Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.POST,
                 CHAIN_TASK_ID)).isNull();
     }
+
+    @Test
+    void shouldReturnUnknownIssueWhenPostComputeExitCauseNotSet() {
+        ReplicateStatusCause cause = computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID);
+        Assertions.assertThat(cause)
+                .isNotNull()
+                .isEqualTo(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    }
+    //endregion
 
     @Test
     void shouldNotSetComputeExitCauseSinceAlreadySet() {
