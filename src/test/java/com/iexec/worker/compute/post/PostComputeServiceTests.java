@@ -30,7 +30,6 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
@@ -60,7 +59,6 @@ class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
-    private final static String SCONE_CAS_URL = "SCONE_CAS_URL";
     private final static String WORKER_NAME = "WORKER_NAME";
     private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private final static long TEE_POST_COMPUTE_HEAP = 1024;
@@ -87,8 +85,6 @@ class PostComputeServiceTests {
     @Mock
     private TeeSconeService teeSconeService;
     @Mock
-    private SconeConfiguration sconeConfig;
-    @Mock
     private TeeWorkflowConfiguration teeWorkflowConfig;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
@@ -101,7 +97,6 @@ class PostComputeServiceTests {
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
