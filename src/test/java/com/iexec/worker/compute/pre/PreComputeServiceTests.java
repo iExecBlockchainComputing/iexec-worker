@@ -30,12 +30,10 @@ import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
-import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,13 +81,9 @@ class PreComputeServiceTests {
     @Mock
     private SmsService smsService;
     @Mock
-    private DataService dataService;
-    @Mock
     private DockerService dockerService;
     @Mock
     private TeeSconeService teeSconeService;
-    @Mock
-    private SconeConfiguration sconeConfig;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
