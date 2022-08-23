@@ -98,7 +98,7 @@ public class PostComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
 
         TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getTeeWorkflowConfiguration(taskDescription.getChainTaskId());
+                teeWorkflowConfigurationService.getTeeWorkflowConfiguration(chainTaskId);
 
         String postComputeImage = teeWorkflowConfig.getPostComputeImage();
         // ###############################################################################

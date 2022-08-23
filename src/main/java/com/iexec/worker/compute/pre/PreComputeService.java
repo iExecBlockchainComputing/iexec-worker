@@ -220,7 +220,7 @@ public class PreComputeService {
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
         TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getTeeWorkflowConfiguration(taskDescription.getChainTaskId());
+                teeWorkflowConfigurationService.getTeeWorkflowConfiguration(chainTaskId);
 
         // check that docker image is present
         String preComputeImage = teeWorkflowConfig.getPreComputeImage();
