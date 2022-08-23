@@ -90,7 +90,7 @@ public class AppComputeService {
                 )
                 .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
-        // Enclave should be able to connect to the LAS/the SPS
+        // Enclave should be able to connect to the LAS
         if (taskDescription.isTeeTask()) {
             runRequest.setDockerNetwork(workerConfigService.getDockerNetworkName());
         }
