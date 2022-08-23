@@ -29,7 +29,7 @@ import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
@@ -119,7 +119,7 @@ public class PostComputeService {
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
                     .build();
         }
-        TeeAbstractService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+        TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
         List<String> env = teeService
                 .buildPostComputeDockerEnv(taskDescription, secureSession);
         List<String> binds = Stream.of(

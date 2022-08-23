@@ -37,7 +37,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import org.assertj.core.api.Assertions;
@@ -111,7 +111,7 @@ class PreComputeServiceTests {
     private ArgumentCaptor<DockerRunRequest> captor;
 
     @Mock
-    private TeeAbstractService teeMockedService;
+    private TeeService teeMockedService;
 
     @BeforeEach
     void beforeEach() {

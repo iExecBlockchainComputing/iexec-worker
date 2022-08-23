@@ -7,7 +7,7 @@ import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.List;
 
-public interface TeeAbstractService {
+public interface TeeService {
     boolean isTeeEnabled();
 
     List<String> buildPreComputeDockerEnv(

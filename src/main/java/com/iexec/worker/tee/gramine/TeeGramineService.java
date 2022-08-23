@@ -3,7 +3,7 @@ package com.iexec.worker.tee.gramine;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,7 +15,7 @@ import java.util.List;
 
 @Service
 @Slf4j
-public class TeeGramineService implements TeeAbstractService {
+public class TeeGramineService implements TeeService {
     private static final String SPS_URL = "sps";
     private static final String SPS_SESSION = "session";
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";

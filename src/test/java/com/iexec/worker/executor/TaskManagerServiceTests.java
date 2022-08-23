@@ -39,7 +39,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.scone.LasServicesManager;
 import com.iexec.worker.utils.WorkflowException;
@@ -91,7 +91,7 @@ class TaskManagerServiceTests {
     private LasServicesManager lasServicesManager;
 
     @Mock
-    private TeeAbstractService teeMockedService;
+    private TeeService teeMockedService;
 
     @Captor
     private ArgumentCaptor<Predicate<String>> predicateCaptor;

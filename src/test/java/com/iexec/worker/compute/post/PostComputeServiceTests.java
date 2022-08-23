@@ -31,7 +31,7 @@ import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import org.assertj.core.api.Assertions;
@@ -98,7 +98,7 @@ class PostComputeServiceTests {
     private TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
     @Mock
-    private TeeAbstractService teeMockedService;
+    private TeeService teeMockedService;
 
     @BeforeEach
     void beforeEach() throws IOException {

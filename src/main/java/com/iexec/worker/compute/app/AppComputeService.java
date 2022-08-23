@@ -27,7 +27,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import org.springframework.stereotype.Service;
 
@@ -65,7 +65,7 @@ public class AppComputeService {
         ));
 
         if (taskDescription.isTeeTask()) {
-            final TeeAbstractService teeService = teeServicesManager
+            final TeeService teeService = teeServicesManager
                     .getTeeService(taskDescription.getTeeEnclaveProvider());
 
             final List<String> strings = teeService

@@ -29,7 +29,7 @@ import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -87,7 +87,7 @@ class AppComputeServiceTests {
     private SgxService sgxService;
 
     @Mock
-    private TeeAbstractService teeMockedService;
+    private TeeService teeMockedService;
 
     @BeforeEach
     void beforeEach() throws IOException {

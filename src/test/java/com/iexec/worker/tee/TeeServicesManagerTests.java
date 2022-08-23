@@ -40,7 +40,7 @@ class TeeServicesManagerTests {
 
     @ParameterizedTest
     @MethodSource("teeServices")
-    void shouldReturnTeeService(TeeEnclaveProvider provider, Class<? super TeeAbstractService> teeService) {
+    void shouldReturnTeeService(TeeEnclaveProvider provider, Class<? super TeeService> teeService) {
         assertInstanceOf(teeService, teeServicesManager.getTeeService(provider));
     }
 

@@ -21,7 +21,7 @@ import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.tee.TeeWorkflowConfiguration;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeAbstractService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class TeeSconeService implements TeeAbstractService {
+public class TeeSconeService implements TeeService {
 
     private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
     private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";

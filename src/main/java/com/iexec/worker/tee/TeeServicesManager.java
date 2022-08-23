@@ -16,7 +16,7 @@ public class TeeServicesManager {
         this.teeGramineService = teeGramineService;
     }
 
-    public TeeAbstractService getTeeService(TeeEnclaveProvider teeEnclaveProvider) {
+    public TeeService getTeeService(TeeEnclaveProvider teeEnclaveProvider) {
         if (teeEnclaveProvider == null) {
             throw new IllegalArgumentException("TEE enclave provider can't be null.");
         }
