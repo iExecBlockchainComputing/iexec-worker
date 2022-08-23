@@ -16,20 +16,34 @@ import org.mockito.Spy;
 
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 class LasServicesManagerTests {
-    private static final String CHAIN_TASK_ID = "chainTaskId";
     private static final String CONTAINER_NAME = "containerName";
-    private static final TeeWorkflowSharedConfiguration CONFIG = TeeWorkflowSharedConfiguration.builder()
-            .lasImage("lasImage")
+
+    private static final String CHAIN_TASK_ID_1 = "chainTaskId1";
+    private static final String CHAIN_TASK_ID_2 = "chainTaskId2";
+
+    private static final String LAS_IMAGE_URI_1 = "lasImage1";
+    private static final String LAS_IMAGE_URI_2 = "lasImage2";
+
+    private static final TeeWorkflowSharedConfiguration CONFIG_1 = TeeWorkflowSharedConfiguration.builder()
+            .lasImage(LAS_IMAGE_URI_1)
+            .build();
+    private static final TeeWorkflowSharedConfiguration CONFIG_2 = TeeWorkflowSharedConfiguration.builder()
+            .lasImage(LAS_IMAGE_URI_2)
+            .build();
+    private static final TeeWorkflowSharedConfiguration CONFIG_3 = TeeWorkflowSharedConfiguration.builder()
+            .lasImage(LAS_IMAGE_URI_1)
             .build();
 
     @Mock
     SmsClient mockedSmsClient;
     @Mock
-    LasService mockedLasService;
+    LasService mockedLasService1;
+    @Mock
+    LasService mockedLasService2;
 
     @Mock
     SconeConfiguration sconeConfiguration;
@@ -49,16 +63,48 @@ class LasServicesManagerTests {
     void init() {
         MockitoAnnotations.openMocks(this);
 
-        when(lasServicesManager.createLasContainerName()).thenReturn(CONTAINER_NAME);
-        when(lasServicesManager.createLasService(any(), any())).thenReturn(mockedLasService);
+        doReturn(CONTAINER_NAME).when(lasServicesManager).createLasContainerName();
+        when(lasServicesManager.createLasService(LAS_IMAGE_URI_1)).thenReturn(mockedLasService1);
+        when(lasServicesManager.createLasService(LAS_IMAGE_URI_2)).thenReturn(mockedLasService2);
     }
 
     @Test
     void shouldStartLasService() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(mockedSmsClient));
-        when(mockedSmsClient.getTeeWorkflowConfiguration()).thenReturn(CONFIG);
-        when(mockedLasService.start()).thenReturn(true);
+        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(Optional.of(mockedSmsClient));
+        when(mockedSmsClient.getTeeWorkflowConfiguration()).thenReturn(CONFIG_1);
+        when(mockedLasService1.start()).thenReturn(true);
 
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID));
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+    }
+
+    @Test
+    void shouldStartTwoLasServicesForDifferentLasImageUri() {
+        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(Optional.of(mockedSmsClient));
+        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(Optional.of(mockedSmsClient));
+        when(mockedSmsClient.getTeeWorkflowConfiguration())
+                .thenReturn(CONFIG_1)
+                .thenReturn(CONFIG_2);
+        when(mockedLasService1.start()).thenReturn(true);
+        when(mockedLasService2.start()).thenReturn(true);
+
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
+
+        Assertions.assertNotEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
+    }
+
+    @Test
+    void shouldStartOnlyOneLasServiceForSameLasImageUri() {
+        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(Optional.of(mockedSmsClient));
+        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(Optional.of(mockedSmsClient));
+        when(mockedSmsClient.getTeeWorkflowConfiguration())
+                .thenReturn(CONFIG_1)
+                .thenReturn(CONFIG_3);
+        when(mockedLasService1.start()).thenReturn(true);
+
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
+
+        Assertions.assertEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
     }
 }

@@ -23,8 +23,8 @@ public class LasServicesManager {
     private final SgxService sgxService;
     private final DockerService dockerService;
 
-    private final Map<String, LasService> lasForTask = new HashMap<>();
-    private final Map<String, LasService> startedLasServices = new HashMap<>();
+    private final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
+    private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
                               SmsClientProvider smsClientProvider,
@@ -54,24 +54,24 @@ public class LasServicesManager {
                 ? config.getLasImage()
                 : "";
 
-        // "iexec-las-0xWalletAddress-timestamp" as lasContainerName to avoid naming conflict
-        // when running multiple workers on the same machine or using multiple SMS.
-        final String lasContainerName = createLasContainerName();
-
-        final LasService lasService = startedLasServices.computeIfAbsent(
-                lasContainerName,
-                containerName -> createLasService(lasImageUri, containerName));
-        lasForTask.putIfAbsent(chainTaskId, lasService);
+        final LasService lasService = lasImageUriToLasService.computeIfAbsent(
+                lasImageUri,
+                this::createLasService);
+        chainTaskIdToLasService.putIfAbsent(chainTaskId, lasService);
         return lasService.isStarted() || lasService.start();
     }
 
+    /**
+     * "iexec-las-0xWalletAddress-timestamp" as lasContainerName to avoid naming conflict
+     * when running multiple workers on the same machine or using multiple SMS.
+     */
     String createLasContainerName() {
         return "iexec-las-" + workerConfigService.getWorkerWalletAddress() + "-" + new Date().getTime();
     }
 
-    LasService createLasService(String lasImageUri, String containerName) {
+    LasService createLasService(String lasImageUri) {
         return new LasService(
-                containerName,
+                createLasContainerName(),
                 lasImageUri,
                 sconeConfiguration,
                 workerConfigService,
@@ -81,10 +81,10 @@ public class LasServicesManager {
 
     @PreDestroy
     void stopLasService() {
-        startedLasServices.values().forEach(LasService::stop);
+        lasImageUriToLasService.values().forEach(LasService::stop);
     }
 
     public LasService getLas(String chainTaskId) {
-        return lasForTask.get(chainTaskId);
+        return chainTaskIdToLasService.get(chainTaskId);
     }
 }
