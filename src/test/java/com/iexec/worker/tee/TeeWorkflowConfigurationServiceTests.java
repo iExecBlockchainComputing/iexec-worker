@@ -1,9 +1,9 @@
 package com.iexec.worker.tee;
 
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.docker.DockerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class TeeWorkflowConfigurationServiceTests {
     private static final String POST_COMPUTE_IMAGE = "postComputeImage";
     private static final long POST_COMPUTE_HEAP_SIZE = 1024L;
     private static final String POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
-    private static final TeeWorkflowSharedConfiguration SHARED_CONFIG = TeeWorkflowSharedConfiguration.builder()
+    private static final TeeWorkflowConfiguration SHARED_CONFIG = TeeWorkflowConfiguration.builder()
             .preComputeImage(PRE_COMPUTE_IMAGE)
             .preComputeHeapSize(PRE_COMPUTE_HEAP_SIZE)
             .preComputeEntrypoint(PRE_COMPUTE_ENTRYPOINT)

@@ -1,8 +1,8 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
@@ -43,7 +43,7 @@ public class LasServicesManager {
         // So the following won't throw an exception.
         final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
 
-        final TeeWorkflowSharedConfiguration config = smsClient.getTeeWorkflowConfiguration();
+        final TeeWorkflowConfiguration config = smsClient.getTeeWorkflowConfiguration();
         if (config == null) {
             throw new RuntimeException("Missing tee workflow configuration");
         }

@@ -31,7 +31,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeWorkflowConfiguration;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

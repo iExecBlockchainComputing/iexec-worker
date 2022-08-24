@@ -20,13 +20,9 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.sms.secret.SmsSecret;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.web.ApiResponseBodyDecoder;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.TeeSessionGenerationError;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -129,7 +125,7 @@ public class SmsService {
      *
      * @return configuration if success, null otherwise
      */
-    public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
+    public TeeWorkflowConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.

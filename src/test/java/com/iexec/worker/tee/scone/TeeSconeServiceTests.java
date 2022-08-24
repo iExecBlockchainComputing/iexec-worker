@@ -20,7 +20,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeWorkflowConfiguration;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

@@ -20,12 +20,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.web.ApiResponseBody;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.TeeSessionGenerationError;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import feign.Request;
@@ -99,7 +95,7 @@ class SmsServiceTests {
 
     @Test
     void shouldGetTeeWorkflowConfiguration() {
-        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
+        TeeWorkflowConfiguration teeWorkflowConfiguration = mock(TeeWorkflowConfiguration.class);
         when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
         when(smsClientProvider.getOrCreateSmsClientForTask(any())).thenReturn(smsClient);
 

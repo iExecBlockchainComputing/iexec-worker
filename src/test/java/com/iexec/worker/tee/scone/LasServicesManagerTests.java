@@ -1,6 +1,6 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -26,13 +26,13 @@ class LasServicesManagerTests {
     private static final String LAS_IMAGE_URI_1 = "lasImage1";
     private static final String LAS_IMAGE_URI_2 = "lasImage2";
 
-    private static final TeeWorkflowSharedConfiguration CONFIG_1 = TeeWorkflowSharedConfiguration.builder()
+    private static final TeeWorkflowConfiguration CONFIG_1 = TeeWorkflowConfiguration.builder()
             .lasImage(LAS_IMAGE_URI_1)
             .build();
-    private static final TeeWorkflowSharedConfiguration CONFIG_2 = TeeWorkflowSharedConfiguration.builder()
+    private static final TeeWorkflowConfiguration CONFIG_2 = TeeWorkflowConfiguration.builder()
             .lasImage(LAS_IMAGE_URI_2)
             .build();
-    private static final TeeWorkflowSharedConfiguration CONFIG_3 = TeeWorkflowSharedConfiguration.builder()
+    private static final TeeWorkflowConfiguration CONFIG_3 = TeeWorkflowConfiguration.builder()
             .lasImage(LAS_IMAGE_URI_1)
             .build();
 

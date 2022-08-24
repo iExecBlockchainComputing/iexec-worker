@@ -19,7 +19,7 @@ package com.iexec.worker.tee.scone;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.tee.TeeWorkflowConfiguration;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;

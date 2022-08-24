@@ -1,8 +1,8 @@
 package com.iexec.worker.tee;
 
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +39,7 @@ public class TeeWorkflowConfigurationService {
         // So the following won't throw an exception.
         final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
 
-        final TeeWorkflowSharedConfiguration config = smsClient.getTeeWorkflowConfiguration();
+        final TeeWorkflowConfiguration config = smsClient.getTeeWorkflowConfiguration();
         log.info("Received tee workflow configuration [config:{}]", config);
         if (config == null) {
             throw new TeeWorkflowConfigurationCreationException(
