@@ -118,7 +118,7 @@ public class TeeSconeService implements TeeService {
                 SCONE_CAS_ADDR + "=" + casUrl,
                 SCONE_LAS_ADDR + "=" + las.getUrl(),
                 SCONE_CONFIG_ID + "=" + sconeConfigId,
-                SCONE_HEAP + "=" + sconeHeap,
+                SCONE_HEAP + "=" + sconeHeap,   // TODO: remove sconeHeap in a next release
                 SCONE_LOG + "=" + sconeConfig.getLogLevel(),
                 SCONE_VERSION + "=" + sconeVersion);
     }
