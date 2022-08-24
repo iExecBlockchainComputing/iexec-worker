@@ -22,5 +22,5 @@ public interface TeeService {
             TaskDescription taskDescription,
             @Nonnull TeeSessionGenerationResponse session);
 
-    Collection<String> getBindings();
+    Collection<String> getAdditionalBindings();
 }

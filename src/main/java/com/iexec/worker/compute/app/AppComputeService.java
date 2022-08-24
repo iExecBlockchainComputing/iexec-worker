@@ -72,7 +72,7 @@ public class AppComputeService {
                     .buildComputeDockerEnv(taskDescription, secureSession);
             env.addAll(strings);
 
-            binds.addAll(teeService.getBindings());
+            binds.addAll(teeService.getAdditionalBindings());
         }
 
         DockerRunRequest runRequest = DockerRunRequest.builder()

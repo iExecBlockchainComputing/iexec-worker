@@ -56,7 +56,7 @@ public class TeeGramineService implements TeeService {
     }
 
     @Override
-    public Collection<String> getBindings() {
+    public Collection<String> getAdditionalBindings() {
         final List<String> bindings = new ArrayList<>();
         bindings.add(AESMD_SOCKET + ":" + AESMD_SOCKET);
 

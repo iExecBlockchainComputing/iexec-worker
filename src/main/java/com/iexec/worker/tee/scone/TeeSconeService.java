@@ -102,7 +102,7 @@ public class TeeSconeService implements TeeService {
     }
 
     @Override
-    public Collection<String> getBindings() {
+    public Collection<String> getAdditionalBindings() {
         return Collections.emptySet();
     }
 

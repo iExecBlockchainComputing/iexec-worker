@@ -124,7 +124,7 @@ public class PostComputeService {
                 .buildPostComputeDockerEnv(taskDescription, secureSession);
         List<String> binds = Stream.of(
                         Collections.singletonList(dockerService.getIexecOutBind(chainTaskId)),
-                        teeService.getBindings())
+                        teeService.getAdditionalBindings())
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
 
