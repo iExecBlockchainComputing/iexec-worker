@@ -46,7 +46,7 @@ public class LasService {
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .containerName(containerName)
                 .imageUri(imageUri)
-                // application & post-compose enclaves will be
+                // pre-compute, application & post-compute enclaves will be
                 // able to talk to the LAS via this network
                 .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .sgxDriverMode(sgxService.getSgxDriverMode())
