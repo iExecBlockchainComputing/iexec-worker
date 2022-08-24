@@ -16,8 +16,8 @@ import java.util.List;
 @Service
 @Slf4j
 public class TeeGramineService implements TeeService {
-    private static final String SPS_URL = "sps";
-    private static final String SPS_SESSION = "session";
+    private static final String SPS_URL_ENV_VAR = "sps";
+    private static final String SPS_SESSION_ENV_VAR = "session";
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
     private static final String CERTS_FOLDER = "/graphene/attestation/certs/";
 
@@ -69,7 +69,7 @@ public class TeeGramineService implements TeeService {
 
     private List<String> getDockerEnv(String sessionId, String spsUrl) {
         return List.of(
-                SPS_URL + "=" + spsUrl,
-                SPS_SESSION + "=" + sessionId);
+                SPS_URL_ENV_VAR + "=" + spsUrl,
+                SPS_SESSION_ENV_VAR + "=" + sessionId);
     }
 }
