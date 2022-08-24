@@ -64,8 +64,14 @@ public class TeeSconeService implements TeeService {
         }
     }
 
+    @Override
     public boolean isTeeEnabled() {
         return sgxService.isSgxEnabled();
+    }
+
+    @Override
+    public boolean prepareTeeForTask(String chainTaskId) {
+        return lasServicesManager.startLasService(chainTaskId);
     }
 
     @Override

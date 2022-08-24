@@ -41,7 +41,6 @@ import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.scone.LasServicesManager;
 import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -87,8 +86,6 @@ class TaskManagerServiceTests {
     private DockerService dockerService;
     @Mock
     private SubscriptionService subscriptionService;
-    @Mock
-    private LasServicesManager lasServicesManager;
 
     @Mock
     private TeeService teeMockedService;
@@ -664,7 +661,7 @@ class TaskManagerServiceTests {
                 .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
-        when(lasServicesManager.startLasService(CHAIN_TASK_ID))
+        when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
@@ -786,7 +783,7 @@ class TaskManagerServiceTests {
                 .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
-        when(lasServicesManager.startLasService(CHAIN_TASK_ID))
+        when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
                 .thenReturn(false);
 
         ReplicateActionResponse replicateActionResponse =

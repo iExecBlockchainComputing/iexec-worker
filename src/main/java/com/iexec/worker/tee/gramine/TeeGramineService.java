@@ -35,6 +35,12 @@ public class TeeGramineService implements TeeService {
     }
 
     @Override
+    public boolean prepareTeeForTask(String chainTaskId) {
+        // Nothing to do for a particular task
+        return true;
+    }
+
+    @Override
     public List<String> buildPreComputeDockerEnv(
             TaskDescription taskDescription,
             @Nonnull TeeSessionGenerationResponse session) {

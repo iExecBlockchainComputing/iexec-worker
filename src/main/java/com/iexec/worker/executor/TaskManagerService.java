@@ -37,9 +37,9 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
-import com.iexec.worker.tee.scone.LasServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +68,6 @@ public class TaskManagerService {
     private final ResultService resultService;
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
-    private final LasServicesManager lasServicesManager;
     private final SmsClientProvider smsClientProvider;
     private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
@@ -83,7 +82,6 @@ public class TaskManagerService {
             ResultService resultService,
             DockerService dockerService,
             SubscriptionService subscriptionService,
-            LasServicesManager lasServicesManager,
             SmsClientProvider smsClientProvider,
             TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
         this.workerConfigurationService = workerConfigurationService;
@@ -96,7 +94,6 @@ public class TaskManagerService {
         this.resultService = resultService;
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
-        this.lasServicesManager = lasServicesManager;
         this.smsClientProvider = smsClientProvider;
         this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
     }
@@ -268,9 +265,12 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !lasServicesManager.startLasService(chainTaskId)) {
-            return getFailureResponseAndPrintError(LAS_START_FAILED,
-                    context, chainTaskId);
+        if (taskDescription.isTeeTask()) {
+            TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+            if (!teeService.prepareTeeForTask(chainTaskId)) {
+                return getFailureResponseAndPrintError(LAS_START_FAILED,
+                        context, chainTaskId);
+            }
         }
 
         WorkerpoolAuthorization workerpoolAuthorization =
