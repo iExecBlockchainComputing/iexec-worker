@@ -105,7 +105,7 @@ class PostComputeServiceTests {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeWorkflowConfigurationService.getTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenReturn(teeWorkflowConfig);
+        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenReturn(teeWorkflowConfig);
 
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;

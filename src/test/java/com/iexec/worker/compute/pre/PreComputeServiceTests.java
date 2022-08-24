@@ -119,7 +119,7 @@ class PreComputeServiceTests {
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeWorkflowConfigurationService.getTeeWorkflowConfiguration(chainTaskId)).thenReturn(teeWorkflowConfig);
+        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId)).thenReturn(teeWorkflowConfig);
     }
 
     /**

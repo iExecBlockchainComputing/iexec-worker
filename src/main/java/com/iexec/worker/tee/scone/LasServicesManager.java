@@ -2,10 +2,10 @@ package com.iexec.worker.tee.scone;
 
 import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.sms.api.SmsClientProvider;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +13,6 @@ import javax.annotation.PreDestroy;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class LasServicesManager {
@@ -39,12 +38,10 @@ public class LasServicesManager {
     }
 
     public boolean startLasService(String chainTaskId) {
-        final Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
-        if (oSmsClient.isEmpty()) {
-            throw new RuntimeException("No SMS set for task [chainTaskId:" + chainTaskId +"]");
-        }
-
-        final SmsClient smsClient = oSmsClient.get();
+        // SMS client should already have been created once before.
+        // If it couldn't be created, then the task would have been aborted.
+        // So the following won't throw an exception.
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
 
         final TeeWorkflowSharedConfiguration config = smsClient.getTeeWorkflowConfiguration();
         if (config == null) {

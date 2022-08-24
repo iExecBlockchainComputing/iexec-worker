@@ -23,6 +23,8 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.sms.api.SmsClientCreationException;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -36,6 +38,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import com.iexec.worker.tee.scone.LasServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
@@ -66,6 +69,8 @@ public class TaskManagerService {
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
     private final LasServicesManager lasServicesManager;
+    private final SmsClientProvider smsClientProvider;
+    private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -78,7 +83,9 @@ public class TaskManagerService {
             ResultService resultService,
             DockerService dockerService,
             SubscriptionService subscriptionService,
-            LasServicesManager lasServicesManager) {
+            LasServicesManager lasServicesManager,
+            SmsClientProvider smsClientProvider,
+            TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
@@ -90,6 +97,8 @@ public class TaskManagerService {
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
         this.lasServicesManager = lasServicesManager;
+        this.smsClientProvider = smsClientProvider;
+        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
     }
 
     ReplicateActionResponse start(String chainTaskId) {
@@ -108,11 +117,33 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider()).isTeeEnabled()) {
-            return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
-                    context, chainTaskId);
-        }
+        if (taskDescription.isTeeTask()) {
+            if (!teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider()).isTeeEnabled()) {
+                return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
+                        context, chainTaskId);
+            }
 
+            try {
+                // Try to load the `SmsClient` relative to the task.
+                // If it can't be loaded, then we won't be able to run the task, so we can abort it right now.
+                smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
+            } catch (SmsClientCreationException e) {
+                log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
+                return getFailureResponseAndPrintError(UNKNOWN_SMS,
+                        context, chainTaskId
+                );
+            }
+            try {
+                // Try to load the `TeeWorkflowConfiguration` relative to the task.
+                // If it can't be loaded, then we won't be able to run the task, so we can abort it right now.
+                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
+            } catch (RuntimeException e) {
+                log.error("Couldn't get TeeWorkflowConfiguration [chainTaskId: {}]", chainTaskId, e);
+                return getFailureResponseAndPrintError(GET_TEE_WORKFLOW_CONFIGURATION_FAILED,
+                        context, chainTaskId
+                );
+            }
+        }
         return ReplicateActionResponse.success();
     }
 

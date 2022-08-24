@@ -56,13 +56,10 @@ public class SmsService {
         String authorization = getAuthorizationString(workerpoolAuthorization);
         SmsSecretResponse smsResponse;
 
-        Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
-        if (oSmsClient.isEmpty()) {
-            log.error("No SMS set for task [chainTaskId:{}]", chainTaskId);
-            return Optional.empty();
-        }
-
-        final SmsClient smsClient = oSmsClient.get();
+        // SMS client should already have been created once before.
+        // If it couldn't be created, then the task would have been aborted.
+        // So the following won't throw an exception.
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
         smsResponse = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
 
         if (smsResponse == null) {
@@ -133,13 +130,10 @@ public class SmsService {
      * @return configuration if success, null otherwise
      */
     public TeeWorkflowSharedConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
-        Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
-        if (oSmsClient.isEmpty()) {
-            log.error("No SMS set for task [chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-
-        final SmsClient smsClient = oSmsClient.get();
+        // SMS client should already have been created once before.
+        // If it couldn't be created, then the task would have been aborted.
+        // So the following won't throw an exception.
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
         try {
             return smsClient.getTeeWorkflowConfiguration();
         } catch (FeignException e) {
@@ -153,14 +147,13 @@ public class SmsService {
         String chainTaskId = workerpoolAuthorization.getChainTaskId();
         log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
         String authorization = getAuthorizationString(workerpoolAuthorization);
-        try {
-            Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
-            if (oSmsClient.isEmpty()) {
-                log.error("No SMS set for task [chainTaskId:{}]", chainTaskId);
-                throw new TeeSessionGenerationException(TeeSessionGenerationError.NO_SMS_FOR_TASK);
-            }
 
-            final SmsClient smsClient = oSmsClient.get();
+        // SMS client should already have been created once before.
+        // If it couldn't be created, then the task would have been aborted.
+        // So the following won't throw an exception.
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
+
+        try {
             TeeSessionGenerationResponse session = smsClient.generateTeeSession(authorization, workerpoolAuthorization)
                     .getData();
             log.info("Created TEE session [chainTaskId:{}, session:{}]",

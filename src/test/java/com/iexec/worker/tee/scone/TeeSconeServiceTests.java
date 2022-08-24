@@ -75,7 +75,7 @@ class TeeSconeServiceTests {
                 .preComputeHeapSize(HEAP_SIZE)
                 .postComputeHeapSize(HEAP_SIZE)
                 .build();
-        when(teeWorkflowConfigurationService.getTeeWorkflowConfiguration(CHAIN_TASK_ID))
+        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID))
                 .thenReturn(teeWorkflowConfig);
 
         final LasService lasService = mock(LasService.class);

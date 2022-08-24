@@ -111,7 +111,7 @@ public class PreComputeService {
         // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
         // ###############################################################################
         // Download specific post-compute image if requested.
-        // Otherwise the default one will be used. 
+        // Otherwise the default one will be used.
         // if (taskDescription.containsPostCompute() &&
         //         !dockerService.getClient()
         //                 .pullImage(taskDescription.getTeePostComputeImage())) {
@@ -220,7 +220,7 @@ public class PreComputeService {
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
         TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getTeeWorkflowConfiguration(chainTaskId);
+                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
 
         // check that docker image is present
         String preComputeImage = teeWorkflowConfig.getPreComputeImage();

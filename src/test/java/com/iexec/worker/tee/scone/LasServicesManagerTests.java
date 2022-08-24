@@ -14,8 +14,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
-import java.util.Optional;
-
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
@@ -70,7 +68,7 @@ class LasServicesManagerTests {
 
     @Test
     void shouldStartLasService() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(Optional.of(mockedSmsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration()).thenReturn(CONFIG_1);
         when(mockedLasService1.start()).thenReturn(true);
 
@@ -79,8 +77,8 @@ class LasServicesManagerTests {
 
     @Test
     void shouldStartTwoLasServicesForDifferentLasImageUri() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(Optional.of(mockedSmsClient));
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(Optional.of(mockedSmsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration())
                 .thenReturn(CONFIG_1)
                 .thenReturn(CONFIG_2);
@@ -95,8 +93,8 @@ class LasServicesManagerTests {
 
     @Test
     void shouldStartOnlyOneLasServiceForSameLasImageUri() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(Optional.of(mockedSmsClient));
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(Optional.of(mockedSmsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration())
                 .thenReturn(CONFIG_1)
                 .thenReturn(CONFIG_3);

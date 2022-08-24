@@ -12,8 +12,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -57,7 +55,7 @@ class TeeWorkflowConfigurationServiceTests {
 
     @Test
     void shouldBuildTeeWorkflowConfiguration() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(smsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeWorkflowConfiguration()).thenReturn(SHARED_CONFIG);
         when(dockerClient.pullImage(PRE_COMPUTE_IMAGE)).thenReturn(true);
         when(dockerClient.pullImage(POST_COMPUTE_IMAGE)).thenReturn(true);
@@ -71,36 +69,22 @@ class TeeWorkflowConfigurationServiceTests {
         assertEquals(POST_COMPUTE_HEAP_SIZE, teeWorkflowConfiguration.getPostComputeHeapSize());
         assertEquals(POST_COMPUTE_ENTRYPOINT, teeWorkflowConfiguration.getPostComputeEntrypoint());
 
-        verify(smsClientProvider).getSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
         verify(smsClient).getTeeWorkflowConfiguration();
         verify(dockerClient).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient).pullImage(POST_COMPUTE_IMAGE);
     }
 
     @Test
-    void shouldNotBuildTeeWorkflowConfigurationWhenNoSmsClient() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> teeWorkflowConfigurationService.buildTeeWorkflowConfiguration(CHAIN_TASK_ID));
-        assertEquals("No SMS set for task [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
-
-        verify(smsClientProvider).getSmsClientForTask(CHAIN_TASK_ID);
-        verify(smsClient, times(0)).getTeeWorkflowConfiguration();
-        verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
-        verify(dockerClient, times(0)).pullImage(POST_COMPUTE_IMAGE);
-    }
-
-    @Test
     void shouldNotBuildTeeWorkflowConfigurationWhenNoConfigRetrieved() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(smsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeWorkflowConfiguration()).thenReturn(null);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        TeeWorkflowConfigurationCreationException exception = assertThrows(TeeWorkflowConfigurationCreationException.class,
                 () -> teeWorkflowConfigurationService.buildTeeWorkflowConfiguration(CHAIN_TASK_ID));
         assertEquals("Missing tee workflow configuration [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
 
-        verify(smsClientProvider).getSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
         verify(smsClient).getTeeWorkflowConfiguration();
         verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).pullImage(POST_COMPUTE_IMAGE);
@@ -108,16 +92,16 @@ class TeeWorkflowConfigurationServiceTests {
 
     @Test
     void shouldNotBuildTeeWorkflowConfigurationWhenFailedToDownloadPreComputeImage() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(smsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeWorkflowConfiguration()).thenReturn(SHARED_CONFIG);
         when(dockerClient.pullImage(PRE_COMPUTE_IMAGE)).thenReturn(false);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        TeeWorkflowConfigurationCreationException exception = assertThrows(TeeWorkflowConfigurationCreationException.class,
                 () -> teeWorkflowConfigurationService.buildTeeWorkflowConfiguration(CHAIN_TASK_ID));
         assertEquals("Failed to download pre-compute image " +
                 "[chainTaskId:" + CHAIN_TASK_ID +", preComputeImage:" + PRE_COMPUTE_IMAGE + "]", exception.getMessage());
 
-        verify(smsClientProvider).getSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
         verify(smsClient).getTeeWorkflowConfiguration();
         verify(dockerClient).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).pullImage(POST_COMPUTE_IMAGE);
@@ -125,17 +109,17 @@ class TeeWorkflowConfigurationServiceTests {
 
     @Test
     void shouldNotBuildTeeWorkflowConfigurationWhenFailedToDownloadPostComputeImage() {
-        when(smsClientProvider.getSmsClientForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(smsClient));
+        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeWorkflowConfiguration()).thenReturn(SHARED_CONFIG);
         when(dockerClient.pullImage(PRE_COMPUTE_IMAGE)).thenReturn(true);
         when(dockerClient.pullImage(POST_COMPUTE_IMAGE)).thenReturn(false);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        TeeWorkflowConfigurationCreationException exception = assertThrows(TeeWorkflowConfigurationCreationException.class,
                 () -> teeWorkflowConfigurationService.buildTeeWorkflowConfiguration(CHAIN_TASK_ID));
         assertEquals("Failed to download post-compute image " +
                 "[chainTaskId:" + CHAIN_TASK_ID +", postComputeImage:" + POST_COMPUTE_IMAGE + "]", exception.getMessage());
 
-        verify(smsClientProvider).getSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
         verify(smsClient).getTeeWorkflowConfiguration();
         verify(dockerClient).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient).pullImage(POST_COMPUTE_IMAGE);

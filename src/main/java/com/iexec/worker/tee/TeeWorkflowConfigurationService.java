@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Manages the {@link TeeWorkflowConfiguration}, providing an easy way to get a configuration for a task
@@ -30,21 +29,21 @@ public class TeeWorkflowConfigurationService {
         this.dockerService = dockerService;
     }
 
-    public TeeWorkflowConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
+    public TeeWorkflowConfiguration getOrCreateTeeWorkflowConfiguration(String chainTaskId) {
         return configurationForTask.computeIfAbsent(chainTaskId, this::buildTeeWorkflowConfiguration);
     }
 
     TeeWorkflowConfiguration buildTeeWorkflowConfiguration(String chainTaskId) {
-        final Optional<SmsClient> oSmsClient = smsClientProvider.getSmsClientForTask(chainTaskId);
-        if (oSmsClient.isEmpty()) {
-            throw new RuntimeException("No SMS set for task [chainTaskId:" + chainTaskId +"]");
-        }
+        // SMS client should already have been created once before.
+        // If it couldn't be created, then the task would have been aborted.
+        // So the following won't throw an exception.
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
 
-        final SmsClient smsClient = oSmsClient.get();
         final TeeWorkflowSharedConfiguration config = smsClient.getTeeWorkflowConfiguration();
         log.info("Received tee workflow configuration [config:{}]", config);
         if (config == null) {
-            throw new RuntimeException("Missing tee workflow configuration [chainTaskId:" + chainTaskId +"]");
+            throw new TeeWorkflowConfigurationCreationException(
+                    "Missing tee workflow configuration [chainTaskId:" + chainTaskId +"]");
         }
 
         final String preComputeImage = config.getPreComputeImage();
@@ -52,12 +51,14 @@ public class TeeWorkflowConfigurationService {
 
         if (!dockerService.getClient(preComputeImage)
                 .pullImage(preComputeImage)) {
-            throw new RuntimeException("Failed to download pre-compute image " +
+            throw new TeeWorkflowConfigurationCreationException(
+                    "Failed to download pre-compute image " +
                     "[chainTaskId:" + chainTaskId +", preComputeImage:" + preComputeImage + "]");
         }
         if (!dockerService.getClient(postComputeImage)
                 .pullImage(postComputeImage)) {
-            throw new RuntimeException("Failed to download post-compute image " +
+            throw new TeeWorkflowConfigurationCreationException(
+                    "Failed to download post-compute image " +
                     "[chainTaskId:" + chainTaskId +", postComputeImage:" + postComputeImage + "]");
         }
         return TeeWorkflowConfiguration.builder()
