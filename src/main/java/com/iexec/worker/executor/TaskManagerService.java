@@ -112,6 +112,7 @@ public class TaskManagerService {
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
             final Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
             if (teePrerequisitesIssue.isPresent()) {
+                log.error("TEE prerequisites are not met [chainTaskId: {}, issue: {}]", chainTaskId, teePrerequisitesIssue.get());
                 return getFailureResponseAndPrintError(teePrerequisitesIssue.get(), context, chainTaskId);
             }
         }

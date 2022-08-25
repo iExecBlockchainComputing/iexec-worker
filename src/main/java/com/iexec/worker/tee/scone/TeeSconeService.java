@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.SmsClientProvider;
@@ -32,6 +33,9 @@ import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_PREPARATION_FAILED;
 
 
 @Slf4j
@@ -63,6 +67,15 @@ public class TeeSconeService extends TeeService {
         } else {
             LoggingUtils.printHighlightedMessage("Worker will not run TEE tasks");
         }
+    }
+
+    @Override
+    public Optional<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
+        Optional<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
+        if (teePrerequisiteIssue.isPresent()) {
+            return teePrerequisiteIssue;
+        }
+        return prepareTeeForTask(chainTaskId) ? Optional.empty() : Optional.of(TEE_PREPARATION_FAILED);
     }
 
     @Override
