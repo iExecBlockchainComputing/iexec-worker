@@ -16,28 +16,32 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.sms.api.SmsClientCreationException;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.sms.api.TeeWorkflowConfiguration;
+import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 
 import java.util.List;
+import java.util.Optional;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 class TeeSconeServiceTests {
 
     private static final String REGISTRY_NAME = "registryName";
-    private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
@@ -54,11 +58,14 @@ class TeeSconeServiceTests {
     public static final long HEAP_SIZE = 1024L;
 
     @InjectMocks
+    @Spy
     private TeeSconeService teeSconeService;
     @Mock
     private SconeConfiguration sconeConfig;
     @Mock
     private SgxService sgxService;
+    @Mock
+    private SmsClientProvider smsClientProvider;
     @Mock
     private TeeWorkflowConfigurationService teeWorkflowConfigurationService;
     @Mock
@@ -84,12 +91,103 @@ class TeeSconeServiceTests {
         when(lasServicesManager.getLas(CHAIN_TASK_ID)).thenReturn(lasService);
     }
 
+    // region areTeePrerequisitesMetForTask
+    @Test
+    void shouldTeePrerequisiteMetForTask() {
+        doReturn(true).when(teeSconeService).isTeeEnabled();
+        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doReturn(null).when(teeWorkflowConfigurationService).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        doReturn(true).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
+
+        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+                teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
+
+        assertThat(teePrerequisitesIssue).isEmpty();
+
+        verify(teeSconeService).isTeeEnabled();
+        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(teeWorkflowConfigurationService).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        verify(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldTeePrerequisiteNotMetForTaskSinceTeeNotEnabled() {
+        doReturn(false).when(teeSconeService).isTeeEnabled();
+
+        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+                teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
+
+        assertThat(teePrerequisitesIssue).isPresent();
+        assertThat(teePrerequisitesIssue.get()).isEqualTo(TEE_NOT_SUPPORTED);
+
+        verify(teeSconeService, times(1)).isTeeEnabled();
+        verify(smsClientProvider, times(0)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(teeWorkflowConfigurationService, times(0)).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        verify(teeSconeService, times(0)).prepareTeeForTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldTeePrerequisiteNotMetForTaskSinceSmsClientCantBeLoaded() {
+        doReturn(true).when(teeSconeService).isTeeEnabled();
+        doThrow(SmsClientCreationException.class).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+
+        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+                teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
+
+        assertThat(teePrerequisitesIssue).isPresent();
+        assertThat(teePrerequisitesIssue.get()).isEqualTo(UNKNOWN_SMS);
+
+        verify(teeSconeService, times(1)).isTeeEnabled();
+        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(teeWorkflowConfigurationService, times(0)).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        verify(teeSconeService, times(0)).prepareTeeForTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldTeePrerequisiteNotMetForTaskSinceTeeWorkflowConfigurationCantBeLoaded() {
+        doReturn(true).when(teeSconeService).isTeeEnabled();
+        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doThrow(SmsClientCreationException.class).when(teeWorkflowConfigurationService).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+
+        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+                teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
+
+        assertThat(teePrerequisitesIssue).isPresent();
+        assertThat(teePrerequisitesIssue.get()).isEqualTo(GET_TEE_WORKFLOW_CONFIGURATION_FAILED);
+
+        verify(teeSconeService, times(1)).isTeeEnabled();
+        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(teeWorkflowConfigurationService, times(1)).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        verify(teeSconeService, times(0)).prepareTeeForTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldTeePrerequisiteNotMetForTaskSinceCantPrepareTee() {
+        doReturn(true).when(teeSconeService).isTeeEnabled();
+        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doReturn(null).when(teeWorkflowConfigurationService).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        doReturn(false).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
+
+        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+                teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
+
+        assertThat(teePrerequisitesIssue).isPresent();
+        assertThat(teePrerequisitesIssue.get()).isEqualTo(TEE_PREPARATION_FAILED);
+
+        verify(teeSconeService, times(1)).isTeeEnabled();
+        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(teeWorkflowConfigurationService, times(1)).getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID);
+        verify(teeSconeService, times(1)).prepareTeeForTask(CHAIN_TASK_ID);
+    }
+    // endregion
+
+    // region buildPreComputeDockerEnv
     @Test
     void shouldBuildPreComputeDockerEnv() {
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.buildPreComputeDockerEnv(TASK_DESCRIPTION, SESSION))
+        assertThat(teeSconeService.buildPreComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,
@@ -98,13 +196,15 @@ class TeeSconeServiceTests {
                     "SCONE_LOG=" + LOG_LEVEL,
                     "SCONE_VERSION=" + 1));
     }
+    // endregion
 
+    // region buildComputeDockerEnv
     @Test
     void shouldBuildComputeDockerEnv() {
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.buildComputeDockerEnv(TASK_DESCRIPTION, SESSION))
+        assertThat(teeSconeService.buildComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,
@@ -113,13 +213,15 @@ class TeeSconeServiceTests {
                     "SCONE_LOG=" + LOG_LEVEL,
                     "SCONE_VERSION=" + 1));
     }
+    // endregion
 
+    // region buildPostComputeDockerEnv
     @Test
     void shouldBuildPostComputeDockerEnv() {
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        Assertions.assertThat(teeSconeService.buildPostComputeDockerEnv(TASK_DESCRIPTION, SESSION))
+        assertThat(teeSconeService.buildPostComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
                     "SCONE_CAS_ADDR=" + CAS_URL,
                     "SCONE_LAS_ADDR=" + LAS_URL,
@@ -128,5 +230,5 @@ class TeeSconeServiceTests {
                     "SCONE_LOG=" + LOG_LEVEL,
                     "SCONE_VERSION=" + 1));
     }
-
+    // endregion
 }

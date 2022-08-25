@@ -50,16 +50,14 @@ public class TeeSconeService extends TeeService {
     private static final String SCONE_VERSION = "SCONE_VERSION";
     // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
-    private final SgxService sgxService;
     private final LasServicesManager lasServicesManager;
 
     public TeeSconeService(
-            SmsClientProvider smsClientProvider,
             SgxService sgxService,
+            SmsClientProvider smsClientProvider,
             TeeWorkflowConfigurationService teeWorkflowConfigurationService,
             LasServicesManager lasServicesManager) {
-        super(smsClientProvider, teeWorkflowConfigurationService);
-        this.sgxService = sgxService;
+        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
         this.lasServicesManager = lasServicesManager;
 
         if (isTeeEnabled()) {
@@ -71,7 +69,7 @@ public class TeeSconeService extends TeeService {
 
     @Override
     public Optional<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
-        Optional<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
+        final Optional<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
         if (teePrerequisiteIssue.isPresent()) {
             return teePrerequisiteIssue;
         }

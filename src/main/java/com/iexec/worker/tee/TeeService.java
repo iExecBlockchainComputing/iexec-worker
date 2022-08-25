@@ -5,6 +5,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nonnull;
@@ -16,11 +17,14 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 @Slf4j
 public abstract class TeeService {
+    protected final SgxService sgxService;
     protected final SmsClientProvider smsClientProvider;
     protected final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
-    protected TeeService(SmsClientProvider smsClientProvider,
+    protected TeeService(SgxService sgxService,
+                         SmsClientProvider smsClientProvider,
                          TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
+        this.sgxService = sgxService;
         this.smsClientProvider = smsClientProvider;
         this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
     }

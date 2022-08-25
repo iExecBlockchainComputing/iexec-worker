@@ -3,6 +3,7 @@ package com.iexec.worker.tee;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.worker.sgx.SgxService;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
@@ -10,8 +11,10 @@ import java.util.List;
 
 class TeeServiceMock extends TeeService {
 
-    protected TeeServiceMock(SmsClientProvider smsClientProvider, TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
-        super(smsClientProvider, teeWorkflowConfigurationService);
+    protected TeeServiceMock(SgxService sgxService,
+                             SmsClientProvider smsClientProvider,
+                             TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
+        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
     }
 
     @Override

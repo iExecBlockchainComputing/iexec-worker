@@ -3,6 +3,7 @@ package com.iexec.worker.tee;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.SmsClientProvider;
+import com.iexec.worker.sgx.SgxService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,8 @@ import static org.mockito.Mockito.when;
 class TeeServiceTests {
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
 
+    @Mock
+    SgxService sgxService;
     @Mock
     SmsClientProvider smsClientProvider;
     @Mock

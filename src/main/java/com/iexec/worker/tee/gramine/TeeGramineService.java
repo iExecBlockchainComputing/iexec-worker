@@ -23,15 +23,13 @@ public class TeeGramineService extends TeeService {
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
     private static final String CERTS_FOLDER = "/graphene/attestation/certs/";
 
-    private final SgxService sgxService;
     private final GramineConfiguration gramineConfiguration;
 
-    public TeeGramineService(SmsClientProvider smsClientProvider,
+    public TeeGramineService(SgxService sgxService,
+                             SmsClientProvider smsClientProvider,
                              TeeWorkflowConfigurationService teeWorkflowConfigurationService,
-                             SgxService sgxService,
                              GramineConfiguration gramineConfiguration) {
-        super(smsClientProvider, teeWorkflowConfigurationService);
-        this.sgxService = sgxService;
+        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
         this.gramineConfiguration = gramineConfiguration;
     }
 
