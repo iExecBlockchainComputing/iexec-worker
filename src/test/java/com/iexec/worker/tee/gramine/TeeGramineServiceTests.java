@@ -27,7 +27,6 @@ class TeeGramineServiceTests {
             SESSION_ID,
             SPS_URL
     );
-    private static final String CERTS_PATH = "/folder/to/certs";
 
     @Mock
     SgxService sgxService;
@@ -35,8 +34,6 @@ class TeeGramineServiceTests {
     SmsClientProvider smsClientProvider;
     @Mock
     TeeWorkflowConfigurationService teeWorkflowConfigurationService;
-    @Mock
-    GramineConfiguration gramineConfiguration;
 
     @InjectMocks
     TeeGramineService teeGramineService;
@@ -73,7 +70,7 @@ class TeeGramineServiceTests {
     void shouldPrepareTeeForTask(String chainTaskId) {
         assertTrue(teeGramineService.prepareTeeForTask(chainTaskId));
 
-        verifyNoInteractions(sgxService, smsClientProvider, teeWorkflowConfigurationService, gramineConfiguration);
+        verifyNoInteractions(sgxService, smsClientProvider, teeWorkflowConfigurationService);
     }
     // endregion
 
@@ -126,30 +123,12 @@ class TeeGramineServiceTests {
     // endregion
 
     // region getAdditionalBindings
-    @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = {""})
-    void shouldGetAdditionalBindingsWithNoCerts(String emptyCertsPath) {
-        when(gramineConfiguration.getSslCertificates()).thenReturn(emptyCertsPath);
-
+    @Test
+    void shouldGetAdditionalBindings() {
         final Collection<String> bindings = teeGramineService.getAdditionalBindings();
 
         assertEquals(1, bindings.size());
         assertTrue(bindings.contains("/var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket"));
-    }
-
-    @Test
-    void shouldGetAdditionalBindingsWithCerts() {
-        when(gramineConfiguration.getSslCertificates()).thenReturn(CERTS_PATH);
-
-        final Collection<String> bindings = teeGramineService.getAdditionalBindings();
-
-        assertEquals(2, bindings.size());
-        assertTrue(bindings.containsAll(List.of(
-                        "/var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket",
-                        CERTS_PATH + ":/graphene/attestation/certs/"
-                )
-        ));
     }
     // endregion
 }

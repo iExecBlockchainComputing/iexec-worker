@@ -8,9 +8,9 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -21,16 +21,11 @@ public class TeeGramineService extends TeeService {
     private static final String SPS_URL_ENV_VAR = "sps";
     private static final String SPS_SESSION_ENV_VAR = "session";
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
-    private static final String CERTS_FOLDER = "/graphene/attestation/certs/";
-
-    private final GramineConfiguration gramineConfiguration;
 
     public TeeGramineService(SgxService sgxService,
                              SmsClientProvider smsClientProvider,
-                             TeeWorkflowConfigurationService teeWorkflowConfigurationService,
-                             GramineConfiguration gramineConfiguration) {
+                             TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
         super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
-        this.gramineConfiguration = gramineConfiguration;
     }
 
     @Override
@@ -69,11 +64,6 @@ public class TeeGramineService extends TeeService {
     public Collection<String> getAdditionalBindings() {
         final List<String> bindings = new ArrayList<>();
         bindings.add(AESMD_SOCKET + ":" + AESMD_SOCKET);
-
-        final String sslCertificates = gramineConfiguration.getSslCertificates();
-        if (StringUtils.hasLength(sslCertificates)) {
-            bindings.add(sslCertificates + ":" + CERTS_FOLDER);
-        }
         return bindings;
     }
 
