@@ -163,12 +163,32 @@ class TaskManagerServiceTests {
     }
 
     @Test
-    void shouldNotStartSinceTeeTaskAndButEnabledOnHost() {
+    void shouldStartWithTee() {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
+                .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
                 .thenReturn(getStubTaskDescription(true));
-        when(teeMockedService.isTeeEnabled()).thenReturn(false);
+        when(teeMockedService.isTeeEnabled()).thenReturn(true);
+        when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(CHAIN_TASK_ID);
+
+        assertThat(actionResponse.isSuccess()).isTrue();
+    }
+
+    @Test
+    void shouldNotStartSinceTeePrerequisitesAreNotMet() {
+        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
+                .thenReturn(true);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(getStubTaskDescription(true));
+        when(teeMockedService.isTeeEnabled()).thenReturn(true);
+        when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(TEE_NOT_SUPPORTED));
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(CHAIN_TASK_ID);
@@ -176,7 +196,6 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
     }
-
 
     @Test
     void shouldDownloadApp() {

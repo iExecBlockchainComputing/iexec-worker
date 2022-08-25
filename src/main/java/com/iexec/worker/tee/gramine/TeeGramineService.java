@@ -1,9 +1,11 @@
 package com.iexec.worker.tee.gramine;
 
 import com.iexec.common.task.TaskDescription;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
+import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,7 +17,7 @@ import java.util.List;
 
 @Service
 @Slf4j
-public class TeeGramineService implements TeeService {
+public class TeeGramineService extends TeeService {
     private static final String SPS_URL_ENV_VAR = "sps";
     private static final String SPS_SESSION_ENV_VAR = "session";
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
@@ -24,7 +26,11 @@ public class TeeGramineService implements TeeService {
     private final SgxService sgxService;
     private final GramineConfiguration gramineConfiguration;
 
-    public TeeGramineService(SgxService sgxService, GramineConfiguration gramineConfiguration) {
+    public TeeGramineService(SmsClientProvider smsClientProvider,
+                             TeeWorkflowConfigurationService teeWorkflowConfigurationService,
+                             SgxService sgxService,
+                             GramineConfiguration gramineConfiguration) {
+        super(smsClientProvider, teeWorkflowConfigurationService);
         this.sgxService = sgxService;
         this.gramineConfiguration = gramineConfiguration;
     }

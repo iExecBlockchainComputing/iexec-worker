@@ -23,8 +23,6 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.sms.api.SmsClientCreationException;
-import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -39,7 +37,6 @@ import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -68,8 +65,6 @@ public class TaskManagerService {
     private final ResultService resultService;
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
-    private final SmsClientProvider smsClientProvider;
-    private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -81,9 +76,7 @@ public class TaskManagerService {
             DataService dataService,
             ResultService resultService,
             DockerService dockerService,
-            SubscriptionService subscriptionService,
-            SmsClientProvider smsClientProvider,
-            TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
+            SubscriptionService subscriptionService) {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
@@ -94,8 +87,6 @@ public class TaskManagerService {
         this.resultService = resultService;
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
-        this.smsClientProvider = smsClientProvider;
-        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
     }
 
     ReplicateActionResponse start(String chainTaskId) {
@@ -115,30 +106,13 @@ public class TaskManagerService {
         }
 
         if (taskDescription.isTeeTask()) {
-            if (!teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider()).isTeeEnabled()) {
-                return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
-                        context, chainTaskId);
-            }
-
-            try {
-                // Try to load the `SmsClient` relative to the task.
-                // If it can't be loaded, then we won't be able to run the task, so we can abort it right now.
-                smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
-            } catch (SmsClientCreationException e) {
-                log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
-                return getFailureResponseAndPrintError(UNKNOWN_SMS,
-                        context, chainTaskId
-                );
-            }
-            try {
-                // Try to load the `TeeWorkflowConfiguration` relative to the task.
-                // If it can't be loaded, then we won't be able to run the task, so we can abort it right now.
-                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
-            } catch (RuntimeException e) {
-                log.error("Couldn't get TeeWorkflowConfiguration [chainTaskId: {}]", chainTaskId, e);
-                return getFailureResponseAndPrintError(GET_TEE_WORKFLOW_CONFIGURATION_FAILED,
-                        context, chainTaskId
-                );
+            // If any TEE prerequisite is not met,
+            // then we won't be able to run the task.
+            // So it should be aborted right now.
+            final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+            final Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
+            if (teePrerequisitesIssue.isPresent()) {
+                return getFailureResponseAndPrintError(teePrerequisitesIssue.get(), context, chainTaskId);
             }
         }
         return ReplicateActionResponse.success();

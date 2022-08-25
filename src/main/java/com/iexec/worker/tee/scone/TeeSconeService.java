@@ -18,6 +18,7 @@ package com.iexec.worker.tee.scone;
 
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.sgx.SgxService;
@@ -35,7 +36,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class TeeSconeService implements TeeService {
+public class TeeSconeService extends TeeService {
 
     private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
     private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";
@@ -46,15 +47,15 @@ public class TeeSconeService implements TeeService {
     // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
     private final SgxService sgxService;
-    private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
     private final LasServicesManager lasServicesManager;
 
     public TeeSconeService(
+            SmsClientProvider smsClientProvider,
             SgxService sgxService,
             TeeWorkflowConfigurationService teeWorkflowConfigurationService,
             LasServicesManager lasServicesManager) {
+        super(smsClientProvider, teeWorkflowConfigurationService);
         this.sgxService = sgxService;
-        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
         this.lasServicesManager = lasServicesManager;
 
         if (isTeeEnabled()) {
