@@ -792,7 +792,7 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse).isNotNull();
         Assertions.assertThat(replicateActionResponse).isEqualTo(
                 ReplicateActionResponse
-                        .failure(LAS_START_FAILED));
+                        .failure(TEE_PREPARATION_FAILED));
     }
 
     @Test

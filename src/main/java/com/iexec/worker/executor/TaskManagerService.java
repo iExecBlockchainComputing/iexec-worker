@@ -268,7 +268,7 @@ public class TaskManagerService {
         if (taskDescription.isTeeTask()) {
             TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
             if (!teeService.prepareTeeForTask(chainTaskId)) {
-                return getFailureResponseAndPrintError(LAS_START_FAILED,
+                return getFailureResponseAndPrintError(TEE_PREPARATION_FAILED,
                         context, chainTaskId);
             }
         }
