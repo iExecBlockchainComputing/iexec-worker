@@ -85,7 +85,7 @@ public class LasService {
 
     void stop() {
         if (isStarted) {
-            dockerService.getClient().stopAndRemoveContainer(containerName);
+            isStarted = !dockerService.getClient().stopAndRemoveContainer(containerName);
         }
     }
 
