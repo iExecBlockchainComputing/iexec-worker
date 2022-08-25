@@ -22,6 +22,7 @@ public class LasServicesManager {
     private final SgxService sgxService;
     private final DockerService dockerService;
 
+    //TODO: Purge entry when task is over (completed/failed)
     private final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
