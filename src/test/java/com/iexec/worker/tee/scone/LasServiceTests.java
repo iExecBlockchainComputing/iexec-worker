@@ -16,7 +16,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -82,6 +82,7 @@ class LasServiceTests {
                         .maxExecutionTime(0)
                         .build()
         );
+        assertTrue(lasService.isStarted());
     }
 
     @Test
@@ -101,6 +102,7 @@ class LasServiceTests {
 
         Assertions.assertThat(exception.getMessage().contains("not from a known registry"))
                 .isTrue();
+        assertFalse(lasService.isStarted());
     }
 
     @Test
@@ -109,6 +111,7 @@ class LasServiceTests {
                 .thenReturn(null);
 
         Assertions.assertThat(lasService.start()).isFalse();
+        assertFalse(lasService.isStarted());
     }
 
     @Test
@@ -116,6 +119,7 @@ class LasServiceTests {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(false);
 
         Assertions.assertThat(lasService.start()).isFalse();
+        assertFalse(lasService.isStarted());
     }
 
     @Test
@@ -125,5 +129,6 @@ class LasServiceTests {
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
 
         Assertions.assertThat(lasService.start()).isFalse();
+        assertFalse(lasService.isStarted());
     }
 }

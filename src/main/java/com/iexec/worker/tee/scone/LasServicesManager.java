@@ -44,11 +44,7 @@ public class LasServicesManager {
         // Just checking no LAS is already created/started for this task
         final LasService alreadyCreatedLas = getLas(chainTaskId);
         if (alreadyCreatedLas != null) {
-            if (alreadyCreatedLas.isStarted()) {
-                return true;
-            } else {
-                return alreadyCreatedLas.start();
-            }
+            return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
         // SMS client should already have been created once before.

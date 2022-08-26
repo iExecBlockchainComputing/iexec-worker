@@ -80,6 +80,8 @@ public class LasService {
             log.error("Failed to start LAS service");
             return false;
         }
+
+        isStarted = true;
         return true;
     }
 
