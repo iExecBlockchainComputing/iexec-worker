@@ -6,6 +6,7 @@ import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class LasServicesManager {
     private final SconeConfiguration sconeConfiguration;
     private final SmsClientProvider smsClientProvider;
@@ -46,7 +48,8 @@ public class LasServicesManager {
 
         final TeeWorkflowConfiguration config = smsClient.getTeeWorkflowConfiguration();
         if (config == null) {
-            throw new RuntimeException("Missing tee workflow configuration");
+            log.error("Missing tee workflow configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
+            return false;
         }
         final String lasImageUri = !StringUtils.isEmpty(config.getLasImage())
                 ? config.getLasImage()
@@ -78,7 +81,7 @@ public class LasServicesManager {
     }
 
     @PreDestroy
-    void stopLasService() {
+    void stopLasServices() {
         lasImageUriToLasService.values().forEach(LasService::stop);
     }
 
