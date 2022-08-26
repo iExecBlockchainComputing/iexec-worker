@@ -70,7 +70,8 @@ class LasServicesManagerTests {
 
     // region startLasService
     @Test
-    void shouldStartLasService() {
+    void shouldStartLasServiceWhenLasNotYetCreated() {
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration()).thenReturn(CONFIG_1);
         when(mockedLasService1.start()).thenReturn(true);
@@ -79,7 +80,30 @@ class LasServicesManagerTests {
     }
 
     @Test
+    void shouldNotStartLasServiceWhenAlreadyStarted() {
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(mockedLasService1);
+        when(mockedLasService1.isStarted()).thenReturn(true);
+
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+
+        verifyNoInteractions(smsClientProvider, mockedSmsClient);
+    }
+
+    @Test
+    void shouldStartLasServiceWhenLasCreatedButNotStarted() {
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(mockedLasService1);
+        when(mockedLasService1.isStarted()).thenReturn(false);
+        when(mockedLasService1.start()).thenReturn(true);
+
+        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+
+        verifyNoInteractions(smsClientProvider, mockedSmsClient);
+    }
+
+    @Test
     void shouldStartTwoLasServicesForDifferentLasImageUri() {
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration())
@@ -91,11 +115,15 @@ class LasServicesManagerTests {
         Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
         Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
 
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenCallRealMethod();
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenCallRealMethod();
         Assertions.assertNotEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
     }
 
     @Test
     void shouldStartOnlyOneLasServiceForSameLasImageUri() {
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_2)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration())
@@ -111,6 +139,7 @@ class LasServicesManagerTests {
 
     @Test
     void shouldNotStartLasServiceSinceMissingTeeWorkflowConfiguration() {
+        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID_1)).thenReturn(mockedSmsClient);
         when(mockedSmsClient.getTeeWorkflowConfiguration()).thenReturn(null);
 

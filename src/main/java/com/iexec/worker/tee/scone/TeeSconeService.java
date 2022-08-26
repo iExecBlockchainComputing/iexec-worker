@@ -76,8 +76,6 @@ public class TeeSconeService extends TeeService {
         return prepareTeeForTask(chainTaskId) ? Optional.empty() : Optional.of(TEE_PREPARATION_FAILED);
     }
 
-
-
     @Override
     public boolean prepareTeeForTask(String chainTaskId) {
         return lasServicesManager.startLasService(chainTaskId);
