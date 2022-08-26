@@ -18,11 +18,6 @@ class TeeServiceMock extends TeeService {
     }
 
     @Override
-    public boolean isTeeEnabled() {
-        return false;
-    }
-
-    @Override
     public boolean prepareTeeForTask(String chainTaskId) {
         return false;
     }

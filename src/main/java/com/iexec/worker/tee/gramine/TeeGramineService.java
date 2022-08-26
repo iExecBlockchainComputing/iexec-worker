@@ -29,11 +29,6 @@ public class TeeGramineService extends TeeService {
     }
 
     @Override
-    public boolean isTeeEnabled() {
-        return sgxService.isSgxEnabled();
-    }
-
-    @Override
     public boolean prepareTeeForTask(String chainTaskId) {
         // Nothing to do for a particular task
         return true;

@@ -43,26 +43,6 @@ class TeeGramineServiceTests {
         MockitoAnnotations.openMocks(this);
     }
 
-    // region isTeeEnabled
-    @Test
-    void shouldTeeBeEnabled() {
-        when(sgxService.isSgxEnabled()).thenReturn(true);
-
-        assertTrue(teeGramineService.isTeeEnabled());
-
-        verify(sgxService).isSgxEnabled();
-    }
-
-    @Test
-    void shouldTeeNotBeEnabled() {
-        when(sgxService.isSgxEnabled()).thenReturn(false);
-
-        assertFalse(teeGramineService.isTeeEnabled());
-
-        verify(sgxService).isSgxEnabled();
-    }
-    //
-
     // region prepareTeeForTask
     @ParameterizedTest
     @NullSource

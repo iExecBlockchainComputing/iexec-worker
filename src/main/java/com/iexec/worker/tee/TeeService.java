@@ -17,8 +17,8 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 @Slf4j
 public abstract class TeeService {
-    protected final SgxService sgxService;
-    protected final SmsClientProvider smsClientProvider;
+    private final SgxService sgxService;
+    private final SmsClientProvider smsClientProvider;
     protected final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
 
     protected TeeService(SgxService sgxService,
@@ -27,6 +27,10 @@ public abstract class TeeService {
         this.sgxService = sgxService;
         this.smsClientProvider = smsClientProvider;
         this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
+    }
+
+    public boolean isTeeEnabled() {
+        return sgxService.isSgxEnabled();
     }
 
     public Optional<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
@@ -53,8 +57,6 @@ public abstract class TeeService {
 
         return Optional.empty();
     }
-
-    public abstract boolean isTeeEnabled();
 
     /**
      * Start any required service(s) to use TEE with selected technology for given task.

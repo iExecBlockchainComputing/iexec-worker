@@ -15,6 +15,9 @@ import org.mockito.Spy;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TeeServiceTests {
@@ -35,6 +38,26 @@ class TeeServiceTests {
     void init() {
         MockitoAnnotations.openMocks(this);
     }
+
+    // region isTeeEnabled
+    @Test
+    void shouldTeeBeEnabled() {
+        when(sgxService.isSgxEnabled()).thenReturn(true);
+
+        assertTrue(teeService.isTeeEnabled());
+
+        verify(sgxService).isSgxEnabled();
+    }
+
+    @Test
+    void shouldTeeNotBeEnabled() {
+        when(sgxService.isSgxEnabled()).thenReturn(false);
+
+        assertFalse(teeService.isTeeEnabled());
+
+        verify(sgxService).isSgxEnabled();
+    }
+    //
 
     // region areTeePrerequisitesMetForTask
     @Test
