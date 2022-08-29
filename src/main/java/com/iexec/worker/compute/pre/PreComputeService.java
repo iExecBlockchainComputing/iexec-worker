@@ -81,6 +81,8 @@ public class PreComputeService {
      * If the task contains a dataset or some input files, the pre-compute enclave
      * is started to handle them.
      *
+     * @param taskDescription
+     * @param workerpoolAuth
      * @return PreComputeResponse
      */
     public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
