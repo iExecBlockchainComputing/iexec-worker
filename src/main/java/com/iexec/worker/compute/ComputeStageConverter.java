@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,19 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.utils;
+package com.iexec.worker.compute;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
-import lombok.Getter;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
 
-@Getter
-public class WorkflowException extends Exception {
-
-    private final ReplicateStatusCause replicateStatusCause;
-
-    public WorkflowException(ReplicateStatusCause cause) {
-        this(cause, cause.name());
+/**
+ * This class is needed to have a case-insensitive `stage` path variable in
+ * {@link ComputeController#sendExitCauseForGivenComputeStage}.
+ */
+@Component
+public class ComputeStageConverter implements Converter<String, ComputeStage> {
+    @Override
+    public ComputeStage convert(String value) {
+        return ComputeStage.valueOf(value.toUpperCase());
     }
-
-    public WorkflowException(ReplicateStatusCause cause, String message) {
-        super(message);
-        this.replicateStatusCause = cause;
-    }
-
 }

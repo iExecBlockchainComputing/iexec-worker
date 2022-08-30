@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
@@ -26,17 +27,7 @@ import lombok.*;
 @AllArgsConstructor
 public class PostComputeResponse implements ComputeResponse {
 
-    private boolean isSuccessful;
+    private ReplicateStatusCause exitCause;
     private String stdout;
     private String stderr;
-
-    private boolean isTeeTask;
-    private String secureSessionId;
-
-    public boolean isSuccessful() {
-        if (isTeeTask){
-            return !secureSessionId.isEmpty();
-        }
-        return isSuccessful;
-    }
 }

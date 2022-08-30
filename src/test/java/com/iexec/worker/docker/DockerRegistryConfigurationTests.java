@@ -60,7 +60,7 @@ class DockerRegistryConfigurationTests {
     void shouldThrowWhenRegistryIsMissingPassword() {
         DockerRegistryConfiguration configuration = getValidConfiguration();
         configuration.getRegistries().get(0).setPassword(null);
-        assertThrows(Exception.class, configuration::validateRegistries);
+        assertThrows(IllegalArgumentException.class, configuration::validateRegistries);
     }
 
     // getRegistryCredentials

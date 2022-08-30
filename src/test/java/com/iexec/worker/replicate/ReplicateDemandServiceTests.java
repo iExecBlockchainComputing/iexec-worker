@@ -32,12 +32,10 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-
 
 class ReplicateDemandServiceTests {
 
@@ -75,9 +73,9 @@ class ReplicateDemandServiceTests {
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
                 .when(replicateDemandService).askForReplicate();
 
-        wait1SecondForCompletion(replicateDemandService.triggerAskForReplicate());
+        replicateDemandService.triggerAskForReplicate();
         // Make sure askForReplicate method is called 1 time
-        verify(replicateDemandService).askForReplicate();
+        verify(replicateDemandService, timeout(1000)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 1 time
         verify(iexecHubService).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
@@ -94,20 +92,20 @@ class ReplicateDemandServiceTests {
                 .when(replicateDemandService).askForReplicate();
 
         // Trigger 1st time
-        wait1SecondForCompletion(replicateDemandService.triggerAskForReplicate());
+        replicateDemandService.triggerAskForReplicate();
         // Make sure askForReplicate method is called 1st time
-        verify(replicateDemandService, times(1)).askForReplicate();
+        verify(replicateDemandService, timeout(1000)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 1st time
-        verify(iexecHubService, times(1)).getLatestBlockNumber();
+        verify(iexecHubService).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
 
         // Trigger 2nd time
         threadNameWrapper.value = "";
-        wait1SecondForCompletion(replicateDemandService.triggerAskForReplicate());
+        replicateDemandService.triggerAskForReplicate();
         // Make sure askForReplicate method is called 2nd time
-        verify(replicateDemandService, times(2)).askForReplicate();
+        verify(replicateDemandService, timeout(1000).times(2)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 2nd time
         verify(iexecHubService, times(2)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
@@ -132,13 +130,12 @@ class ReplicateDemandServiceTests {
                 .when(replicateDemandService).askForReplicate();
 
         // Trigger 4 times
-        final CompletableFuture<Void> firstRequest = replicateDemandService.triggerAskForReplicate();
         replicateDemandService.triggerAskForReplicate();
         replicateDemandService.triggerAskForReplicate();
         replicateDemandService.triggerAskForReplicate();
-        wait1SecondForCompletion(firstRequest);
+        replicateDemandService.triggerAskForReplicate();
         // Make sure askForReplicate method is called only 2 times
-        verify(replicateDemandService, times(2)).askForReplicate();
+        verify(replicateDemandService, after(1000).times(2)).askForReplicate();
         // Make sure getLatestBlockNumber method is called only 2 times
         verify(iexecHubService, times(2)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
@@ -159,8 +156,7 @@ class ReplicateDemandServiceTests {
 
         replicateDemandService.askForReplicate();
 
-        verify(subscriptionService, times(1))
-                .subscribeToTopic(CHAIN_TASK_ID);
+        verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID);
         verify(applicationEventPublisher).publishEvent(taskNotificationCaptor.capture());
         Assertions.assertThat(taskNotificationCaptor.getValue().getChainTaskId())
                 .isEqualTo(CHAIN_TASK_ID);
@@ -235,21 +231,14 @@ class ReplicateDemandServiceTests {
                 .thenReturn(Optional.of(workerpoolAuthorization));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
 
-        doAnswer(invocation -> {
-            TimeUnit.MILLISECONDS.sleep(100); // sleep duration > test duration
-            return invocation.callRealMethod();
-        }).when(replicateDemandService).startTask(any());
-
         // Trigger 2 times
-        final CompletableFuture<Void> firstRequest = CompletableFuture.runAsync(replicateDemandService::askForReplicate);
-        final CompletableFuture<Void> secondRequest = CompletableFuture.runAsync(replicateDemandService::askForReplicate);
-        waitForCompletion(secondRequest, 100, TimeUnit.MILLISECONDS);
-        waitForCompletion(firstRequest, 100, TimeUnit.MILLISECONDS);
+        CompletableFuture.runAsync(replicateDemandService::askForReplicate);
+        CompletableFuture.runAsync(replicateDemandService::askForReplicate);
 
         // Make sure askForReplicate method is called 1 time
-        verify(replicateDemandService, times(1)).startTask(any());
+        verify(replicateDemandService, after(1000)).startTask(any());
         // Make sure getLatestBlockNumber method is called 1 time
-        verify(iexecHubService, times(1)).getLatestBlockNumber();
+        verify(iexecHubService).getLatestBlockNumber();
     }
 
     private WorkerpoolAuthorization getStubAuth() {
@@ -259,15 +248,4 @@ class ReplicateDemandServiceTests {
     }
     // endregion
 
-    private void wait1SecondForCompletion(CompletableFuture<Void> completable) {
-        waitForCompletion(completable, 1, TimeUnit.SECONDS);
-    }
-
-    private void waitForCompletion(CompletableFuture<Void> completable,
-                                   long duration,
-                                   TimeUnit timeUnit) {
-        completable
-                .completeOnTimeout(null, duration, timeUnit)
-                .join();
-    }
 }

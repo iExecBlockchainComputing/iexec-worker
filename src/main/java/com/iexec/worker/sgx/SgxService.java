@@ -17,6 +17,7 @@
 package com.iexec.worker.sgx;
 
 import com.github.dockerjava.api.model.Device;
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.sgx.SgxDriverMode;
@@ -132,7 +133,7 @@ public class SgxService {
 
 
         DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
-        if (!dockerRunResponse.isSuccessful()) {
+        if (dockerRunResponse.getFinalStatus() != DockerRunFinalStatus.SUCCESS) {
             log.error("Failed to check SGX device.");
             return false;
         }

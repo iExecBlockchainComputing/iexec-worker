@@ -16,6 +16,7 @@
 
 package com.iexec.worker.compute.app;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
@@ -66,7 +67,6 @@ class AppComputeServiceTests {
             .datasetUri(DATASET_URI)
             .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
-            .developerLoggerEnabled(true)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true)
             .build();
@@ -101,7 +101,7 @@ class AppComputeServiceTests {
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
@@ -125,7 +125,6 @@ class AppComputeServiceTests {
                         .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
                         .binds(Arrays.asList(inputBind, iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.NONE)
-                        .shouldDisplayLogs(true)
                         .build()
         );
     }
@@ -148,7 +147,7 @@ class AppComputeServiceTests {
         String lasNetworkName = "lasNetworkName";
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(true).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -174,7 +173,6 @@ class AppComputeServiceTests {
                         .binds(Arrays.asList(inputBind ,iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.LEGACY)
                         .dockerNetwork(lasNetworkName)
-                        .shouldDisplayLogs(true)
                         .build()
         );
     }
@@ -186,7 +184,7 @@ class AppComputeServiceTests {
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().isSuccessful(false).build();
+                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 

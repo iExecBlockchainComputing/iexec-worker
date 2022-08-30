@@ -16,14 +16,17 @@
 
 package com.iexec.worker.docker;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.validator.constraints.time.DurationMin;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
-
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,18 +34,31 @@ import java.util.stream.Collectors;
 @Slf4j
 @Configuration
 @ConfigurationProperties(prefix = "docker")
+@Getter
+@Setter
 public class DockerRegistryConfiguration {
 
-    @Setter
-    @Getter
     private List<RegistryCredentials> registries;
+
+    /**
+     * Min pull timeout expressed in minutes
+     */
+    @DurationMin(minutes = 0)
+    @Value("${docker.image.pull-timeout.min}")
+    private Duration minPullTimeout;
+    /**
+     * Max pull timeout expressed in minutes
+     */
+    @DurationMin(minutes = 0)
+    @Value("${docker.image.pull-timeout.max}")
+    private Duration maxPullTimeout;
 
     /**
      * Check that if a Docker registry's username is present, then its password is also
      * present, otherwise the worker will fail to start.
      */
     @PostConstruct
-    void validateRegistries() throws Exception {
+    void validateRegistries() {
         if (registries == null || registries.isEmpty()) {
             log.warn("Docker registry list is empty");
             return;
@@ -55,7 +71,7 @@ public class DockerRegistryConfiguration {
                 .filter(registryAuth -> StringUtils.isBlank(registryAuth.getPassword()))
                 .collect(Collectors.toList());
         if (!registriesWithMissingPasswords.isEmpty()) {
-            throw new Exception("Missing passwords for registries with usernames: "
+            throw new IllegalArgumentException("Missing passwords for registries with usernames: "
                     + registriesWithMissingPasswords);
         }
     }

@@ -16,10 +16,15 @@
 
 package com.iexec.worker.compute;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
+
 public interface ComputeResponse {
 
-    boolean isSuccessful();
+    ReplicateStatusCause getExitCause();
     String getStdout();
     String getStderr();
+    default boolean isSuccessful() {
+        return getExitCause() == null;
+    }
 
 }

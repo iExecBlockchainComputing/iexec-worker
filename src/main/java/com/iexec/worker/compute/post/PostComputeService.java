@@ -16,12 +16,15 @@
 
 package com.iexec.worker.compute.post;
 
+import com.iexec.common.docker.DockerRunFinalStatus;
 import com.iexec.common.docker.DockerRunRequest;
 import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -43,42 +46,63 @@ public class PostComputeService {
     private final TeeSconeService teeSconeService;
     private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
+    private final ComputeExitCauseService computeExitCauseService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             TeeSconeService teeSconeService,
             TeeWorkflowConfiguration teeWorkflowConfig,
-            SgxService sgxService) {
+            SgxService sgxService,
+            ComputeExitCauseService computeExitCauseService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeSconeService = teeSconeService;
         this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
+        this.computeExitCauseService = computeExitCauseService;
     }
 
-    public boolean runStandardPostCompute(TaskDescription taskDescription) {
+    /**
+     * This method implements the post-compute part of the workflow dedicated to standard tasks.
+     * <p>
+     * The algorithm is almost the same as the one executed for TEE tasks in a tee-worker-post-compute container:
+     * <ul>
+     * <li>Creation of the archive containing results as in {@code Web2ResultService#encryptAndUploadResult}
+     * <li>Send {@code computed.json} to its final folder as in {@code FlowService#sendComputedFileToHost}
+     * </ul>
+     * <p>
+     * Classes names are inlined in comments for comparison.
+     * @param taskDescription description of a standard task
+     * @return a post compute response with a cause in case of error. The response is returned to
+     *         {@link com.iexec.worker.compute.ComputeManagerService}
+     * @see com.iexec.worker.compute.ComputeManagerService
+     */
+    public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
-        // result encryption is no more supported for standard tasks
-        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
-            log.error("Result encryption is not supported for standard tasks" +
-                    " [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
 
-        // create /output/iexec_out.zip
-        ResultUtils.zipIexecOut(workerConfigService.getTaskIexecOutDir(chainTaskId)
-                , workerConfigService.getTaskOutputDir(chainTaskId));
-        // copy /output/iexec_out/computed.json to /output/computed.json to have the same workflow as TEE.
+        // create /output/iexec_out.zip as in Web2ResultService#encryptAndUploadResult
+        // return a POST_COMPUTE_OUT_FOLDER_ZIP_FAILED error on failure
+        String zipIexecOutPath = ResultUtils.zipIexecOut(
+                workerConfigService.getTaskIexecOutDir(chainTaskId),
+                workerConfigService.getTaskOutputDir(chainTaskId));
+        if (zipIexecOutPath.isEmpty()) {
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)
+                    .build();
+        }
+        // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
+        // return a POST_COMPUTE_SEND_COMPUTED_FILE_FAILED error on failure
         boolean isCopied = FileHelper.copyFile(
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON,
                 workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON);
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
-            return false;
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED)
+                    .build();
         }
-
-        return true;
+        return PostComputeResponse.builder().build();
     }
 
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription, String secureSessionId) {
@@ -99,7 +123,9 @@ public class PostComputeService {
         if (!dockerService.getClient().isImagePresent(postComputeImage)) {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
-            return PostComputeResponse.builder().isSuccessful(false).build();
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
+                    .build();
         }
         List<String> env = teeSconeService.
                 getPostComputeDockerEnv(secureSessionId, postComputeHeapSize);
@@ -117,13 +143,49 @@ public class PostComputeService {
                         .binds(binds)
                         .sgxDriverMode(sgxService.getSgxDriverMode())
                         .dockerNetwork(workerConfigService.getDockerNetworkName())
-                        .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
+        final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
+        if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
+            log.error("Tee post-compute container timed out" +
+                            " [chainTaskId:{}, maxExecutionTime:{}]",
+                    chainTaskId, taskDescription.getMaxExecutionTime());
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)
+                    .build();
+        }
+        if (finalStatus == DockerRunFinalStatus.FAILED) {
+            int exitCode = dockerResponse.getContainerExitCode();
+            ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+            log.error("Failed to run tee post-compute [chainTaskId:{}, " +
+                    "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+            return PostComputeResponse.builder()
+                    .exitCause(exitCause)
+                    .build();
+        }
         return PostComputeResponse.builder()
-                .isSuccessful(dockerResponse.isSuccessful())
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .build();
+    }
+
+    private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
+        ReplicateStatusCause cause = null;
+        if (exitCode != null && exitCode != 0) {
+            switch (exitCode) {
+                case 1:
+                    cause = computeExitCauseService.getPostComputeExitCauseAndPrune(chainTaskId);
+                    break;
+                case 2:
+                    cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;
+                    break;
+                case 3:
+                    cause = ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING;
+                    break;
+                default:
+                    break;
+            }
+        }
+        return cause;
     }
 
     private String getTaskTeePostComputeContainerName(String chainTaskId) {

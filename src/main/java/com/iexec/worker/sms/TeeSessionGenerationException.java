@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.feign.client;
+package com.iexec.worker.sms;
 
-import com.iexec.common.config.PublicChainConfig;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+import com.iexec.sms.api.TeeSessionGenerationError;
 
-@FeignClient(name = "BlockchainAdapterClient", url = "#{publicConfigurationService.blockchainAdapterUrl}")
-public interface BlockchainAdapterClient {
-    @GetMapping("/config/chain")
-    ResponseEntity<PublicChainConfig> getPublicChainConfig();
+public class TeeSessionGenerationException extends Exception {
+    private final TeeSessionGenerationError teeSessionGenerationError;
+
+    public TeeSessionGenerationException(TeeSessionGenerationError teeSessionGenerationError) {
+        this.teeSessionGenerationError = teeSessionGenerationError;
+    }
+
+    public TeeSessionGenerationError getTeeSessionGenerationError() {
+        return teeSessionGenerationError;
+    }
 }

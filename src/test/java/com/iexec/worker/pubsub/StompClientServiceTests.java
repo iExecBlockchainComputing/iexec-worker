@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-class StompClientTests {
+class StompClientServiceTests {
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
@@ -33,7 +33,7 @@ class StompClientTests {
 
     @Spy
     @InjectMocks
-    private StompClient stompClient;
+    private StompClientService stompClientService;
 
     @BeforeEach
     void init() {
@@ -43,14 +43,14 @@ class StompClientTests {
     @Test
     void shouldNotSubscribeToTopicWhenOneParamIsNull() {
         assertThrows(NullPointerException.class,
-                () -> stompClient.subscribeToTopic("topic", null));
+                () -> stompClientService.subscribeToTopic("topic", null));
         assertThrows(NullPointerException.class,
-                () -> stompClient.subscribeToTopic(null, mock(StompFrameHandler.class)));
+                () -> stompClientService.subscribeToTopic(null, mock(StompFrameHandler.class)));
     }
 
     @Test
     void shouldNotSubscribeToTopicWhenSessionIsNull() {
-        assertThat(stompClient.subscribeToTopic("topic", mock(StompFrameHandler.class))).isEmpty();
+        assertThat(stompClientService.subscribeToTopic("topic", mock(StompFrameHandler.class))).isEmpty();
     }
 
     @Test
@@ -61,30 +61,30 @@ class StompClientTests {
         // Get the name of the thread that runs listenToSessionRequests()
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(
                 threadNameWrapper, invocation))
-                .when(stompClient).listenToSessionRequests();
+                .when(stompClientService).listenToSessionRequests();
         // Reduce session refresh back off duration to make test faster.
-        doAnswer((invocation) -> backOffBriefly()).when(stompClient).backOff();
+        doAnswer((invocation) -> backOffBriefly()).when(stompClientService).backOff();
         // Don't execute session creation with remote server.
-        doNothing().when(stompClient).createSession();
+        doNothing().when(stompClientService).createSession();
         
-        stompClient.init();
+        stompClientService.init();
         waitSessionRequestExecution();
         // Make sure listenToSessionRequests() runs asynchronously
         assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
         // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClient).listenToSessionRequests();
+        verify(stompClientService).listenToSessionRequests();
         // Make sure requestNewSession() method is called only 1 time
-        verify(stompClient).requestNewSession();
+        verify(stompClientService).requestNewSession();
         // Make sure createSession() method is called only 1 time
-        verify(stompClient).createSession();
+        verify(stompClientService).createSession();
     }
 
     @Test
     void shouldStartOnlyOneListenerThread() {
         final CompletableFuture<Void> firstListener =
-                stompClient.startSessionRequestListenerIfAbsent();
+                stompClientService.startSessionRequestListenerIfAbsent();
         final CompletableFuture<Void> secondListener =
-                stompClient.startSessionRequestListenerIfAbsent();
+                stompClientService.startSessionRequestListenerIfAbsent();
 
         assertThat(secondListener).isNull();
         assertThat(firstListener).isNotNull();
@@ -92,39 +92,39 @@ class StompClientTests {
 
     @Test
     void shouldRestartListenerThreadWhenNoOneIsFound() {
-        assertThat(stompClient.restartSessionRequestListenerIfStopped()).isNotNull();
+        assertThat(stompClientService.restartSessionRequestListenerIfStopped()).isNotNull();
     }
 
     @Test
     void shouldNoRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
-        stompClient.startSessionRequestListenerIfAbsent();
+        stompClientService.startSessionRequestListenerIfAbsent();
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClient).listenToSessionRequests();
-        stompClient.restartSessionRequestListenerIfStopped();
+        verify(stompClientService).listenToSessionRequests();
+        stompClientService.restartSessionRequestListenerIfStopped();
         TimeUnit.MILLISECONDS.sleep(10);
         // Make sure listenToSessionRequests() method is still called only 1 time
-        verify(stompClient).listenToSessionRequests();
+        verify(stompClientService).listenToSessionRequests();
     }
 
     @Test
     void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived()
             throws Exception {
         // Reduce session refresh back off duration to make test faster.
-        doAnswer((invocation) -> backOffBriefly()).when(stompClient).backOff();
+        doAnswer((invocation) -> backOffBriefly()).when(stompClientService).backOff();
         // Don't execute session creation with remote server.
-        doNothing().when(stompClient).createSession();
+        doNothing().when(stompClientService).createSession();
         // Start listener
-        CompletableFuture.runAsync(() -> stompClient.listenToSessionRequests());
+        CompletableFuture.runAsync(() -> stompClientService.listenToSessionRequests());
         waitForListener();
 
         // Request multiple times
-        stompClient.requestNewSession();
-        stompClient.requestNewSession();
-        stompClient.requestNewSession();
+        stompClientService.requestNewSession();
+        stompClientService.requestNewSession();
+        stompClientService.requestNewSession();
         waitSessionRequestExecution();
         // Make sure createSession() method is called only 1 time
-        verify(stompClient).createSession();
+        verify(stompClientService).createSession();
     }
 
     private void waitForListener() throws InterruptedException {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.task;
+package com.iexec.worker.compute;
 
-import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateStatus;
-import lombok.*;
+public enum ComputeStage {
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
-@Setter
-public class TaskEvent {
+    PRE(ComputeStage.PRE_VALUE),
+    POST(ComputeStage.POST_VALUE);
 
-    private String chainTaskId;
-    private ReplicateStatus status;
-    private TaskNotificationType action;
+    public static final String PRE_VALUE = "pre";
+    public static final String POST_VALUE = "post";
+
+    private final String value;
+
+    ComputeStage(String value) {
+        this.value = value;
+    }
 }

@@ -16,32 +16,39 @@
 
 package com.iexec.worker.sms;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
+import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
+import com.iexec.common.web.ApiResponseBody;
+import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.chain.CredentialsService;
+import feign.FeignException;
+import feign.Request;
+import feign.RequestTemplate;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.ResponseEntity;
 
-import java.io.IOException;
+import java.util.HashMap;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class SmsServiceTests {
 
-    public static final String CHAIN_TASK_ID = "0xabc";
-    public static final String SESSION_ID = "randomSessionId";
+    private static final String CAS_URL = "http://cas";
+    private static final String SESSION_ID = "randomSessionId";
+    private static final String SIGNATURE = "random-signature";
 
     @Mock
     private CredentialsService credentialsService;
     @Mock
     private SmsClient smsClient;
-
     @InjectMocks
     private SmsService smsService;
 
@@ -51,15 +58,73 @@ class SmsServiceTests {
     }
 
     @Test
-    void shouldCreateTeeSession() throws IOException {
-        Signature signatureStub = new Signature("random-signature");
+    void shouldCreateTeeSession() throws TeeSessionGenerationException {
+        Signature signatureStub = new Signature(SIGNATURE);
         WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
         when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
                 .thenReturn(signatureStub);
-        when(smsClient.createTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
+                .thenReturn(ApiResponseBody.<String, TeeSessionGenerationError>builder().data(SESSION_ID).build());
 
         String returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
-        assertThat(returnedSessionId).isEqualTo(SESSION_ID);
+        Assertions.assertThat(returnedSessionId).isEqualTo(SESSION_ID);
     }
+
+    @Test
+    void shouldNotCreateTeeSessionOnFeignException() throws JsonProcessingException {
+        final ObjectMapper mapper = new ObjectMapper();
+        final byte[] responseBody = mapper.writeValueAsBytes(ApiResponseBody.<Void, TeeSessionGenerationError>builder().error(TeeSessionGenerationError.NO_SESSION_REQUEST).build());
+        final Request request = Request.create(Request.HttpMethod.GET, "url",
+                new HashMap<>(), null, new RequestTemplate());
+
+        Signature signatureStub = new Signature(SIGNATURE);
+        WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
+        when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
+                .thenReturn(signatureStub);
+        when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
+                .thenThrow(new FeignException.InternalServerError("", request, responseBody, null ));   //FIXME
+        final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(workerpoolAuthorization), TeeSessionGenerationException.class);
+        Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
+        verify(smsClient).generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
+    }
+
+    @Test
+    void shouldGetSconeCasUrl() {
+        when(smsClient.getSconeCasUrl()).thenReturn(CAS_URL);
+        String sconeCasUrl = smsService.getSconeCasUrl();
+        Assertions.assertThat(sconeCasUrl).isEqualTo(CAS_URL);
+        verify(smsClient).getSconeCasUrl();
+    }
+
+    @Test
+    void shouldNotGetSconeCasUrlOnException() {
+        when(smsClient.getSconeCasUrl()).thenThrow(FeignException.class);
+        Assertions.assertThat(smsService.getSconeCasUrl()).isEmpty();
+        verify(smsClient).getSconeCasUrl();
+    }
+
+    @Test
+    void shouldGetTeeWorkflowConfiguration() {
+        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
+        when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
+        verify(smsClient).getTeeWorkflowConfiguration();
+    }
+
+    @Test
+    void shouldCallGetTeeWorkflowConfigurationApiOnlyOnce() {
+        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
+        when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
+        verify(smsClient).getTeeWorkflowConfiguration();
+    }
+
+    @Test
+    void shouldNotGetTeeWorkflowConfigurationOnException() {
+        when(smsClient.getTeeWorkflowConfiguration()).thenThrow(FeignException.class);
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isNull();
+        verify(smsClient).getTeeWorkflowConfiguration();
+    }
+
 }
