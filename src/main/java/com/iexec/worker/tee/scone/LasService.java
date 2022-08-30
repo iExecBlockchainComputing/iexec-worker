@@ -85,10 +85,22 @@ public class LasService {
         return true;
     }
 
-    void stop() {
-        if (isStarted) {
-            isStarted = !dockerService.getClient().stopAndRemoveContainer(containerName);
+    /**
+     * Tries to stop and remove this LAS instance container.
+     * It is considered successful when the container is not present anymore
+     * after the execution of this method.
+     *
+     * @return {@literal true} if the container is not present anymore,
+     * {@literal false} otherwise.
+     */
+    synchronized boolean stopAndRemoveContainer() {
+        if (isStarted()) {
+            final DockerClientInstance client = dockerService.getClient();
+            client.stopAndRemoveContainer(containerName);
+            isStarted = client.isContainerPresent(containerName);
         }
+
+        return !isStarted;
     }
 
     public String getUrl() {

@@ -18,8 +18,7 @@ import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class LasServiceTests {
     private static final String CONTAINER_NAME = "iexec-las";
@@ -47,14 +46,14 @@ class LasServiceTests {
     @BeforeEach
     void init() throws Exception {
         MockitoAnnotations.openMocks(this);
-        lasService = new LasService(
+        lasService = spy(new LasService(
                 CONTAINER_NAME,
                 IMAGE_URI,
                 sconeConfiguration,
                 workerConfigService,
                 sgxService,
                 dockerService
-        );
+        ));
 
         when(sconeConfiguration.getRegistryName()).thenReturn(REGISTRY_NAME);
         when(sconeConfiguration.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
@@ -64,6 +63,7 @@ class LasServiceTests {
                 .thenReturn(dockerClientInstanceMock);
     }
 
+    // region start
     @Test
     void shouldStartLasService() {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
@@ -131,4 +131,44 @@ class LasServiceTests {
         Assertions.assertThat(lasService.start()).isFalse();
         assertFalse(lasService.isStarted());
     }
+    // endregion
+
+    // region stopAndRemoveContainer
+    @Test
+    void shouldStopAndRemoveContainer() {
+        when(lasService.isStarted()).thenReturn(true).thenCallRealMethod();
+        when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(true);
+        when(dockerClientInstanceMock.isContainerPresent(CONTAINER_NAME)).thenReturn(false);
+
+        assertTrue(lasService.stopAndRemoveContainer());
+        assertFalse(lasService.isStarted());
+
+        verify(dockerClientInstanceMock).stopAndRemoveContainer(CONTAINER_NAME);
+        verify(dockerClientInstanceMock).isContainerPresent(CONTAINER_NAME);
+    }
+
+    @Test
+    void shouldNotStopSinceNotStarted() {
+        when(lasService.isStarted()).thenReturn(false);
+
+        assertTrue(lasService.stopAndRemoveContainer());
+        assertFalse(lasService.isStarted());
+
+        verify(dockerClientInstanceMock, times(0)).stopAndRemoveContainer(CONTAINER_NAME);
+        verify(dockerClientInstanceMock, times(0)).isContainerPresent(CONTAINER_NAME);
+    }
+
+    @Test
+    void shouldFailTotStopAndRemoveContainer() {
+        when(lasService.isStarted()).thenReturn(true).thenCallRealMethod();
+        when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(false);
+        when(dockerClientInstanceMock.isContainerPresent(CONTAINER_NAME)).thenReturn(true);
+
+        assertFalse(lasService.stopAndRemoveContainer());
+        assertTrue(lasService.isStarted());
+
+        verify(dockerClientInstanceMock).stopAndRemoveContainer(CONTAINER_NAME);
+        verify(dockerClientInstanceMock).isContainerPresent(CONTAINER_NAME);
+    }
+    // endregion
 }

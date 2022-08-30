@@ -181,7 +181,7 @@ class LasServicesManagerTests {
             areStarted.put(chainTaskId, true);
             return true;
         });
-        doAnswer(invocation -> areStarted.put(chainTaskId, false)).when(lasService).stop();
+        doAnswer(invocation -> areStarted.put(chainTaskId, false)).when(lasService).stopAndRemoveContainer();
 
         lasServicesManager.startLasService(chainTaskId);
         Assertions.assertTrue(areStarted.get(chainTaskId));

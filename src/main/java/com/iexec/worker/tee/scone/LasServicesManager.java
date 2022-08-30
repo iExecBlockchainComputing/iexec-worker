@@ -88,7 +88,7 @@ public class LasServicesManager {
 
     @PreDestroy
     void stopLasServices() {
-        lasImageUriToLasService.values().forEach(LasService::stop);
+        lasImageUriToLasService.values().forEach(LasService::stopAndRemoveContainer);
     }
 
     public LasService getLas(String chainTaskId) {
