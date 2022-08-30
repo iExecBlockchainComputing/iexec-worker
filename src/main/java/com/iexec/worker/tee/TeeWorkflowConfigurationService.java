@@ -1,5 +1,6 @@
 package com.iexec.worker.tee;
 
+import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeWorkflowConfiguration;
@@ -49,18 +50,9 @@ public class TeeWorkflowConfigurationService {
         final String preComputeImage = config.getPreComputeImage();
         final String postComputeImage = config.getPostComputeImage();
 
-        if (!dockerService.getClient(preComputeImage)
-                .pullImage(preComputeImage)) {
-            throw new TeeWorkflowConfigurationCreationException(
-                    "Failed to download pre-compute image " +
-                    "[chainTaskId:" + chainTaskId +", preComputeImage:" + preComputeImage + "]");
-        }
-        if (!dockerService.getClient(postComputeImage)
-                .pullImage(postComputeImage)) {
-            throw new TeeWorkflowConfigurationCreationException(
-                    "Failed to download post-compute image " +
-                    "[chainTaskId:" + chainTaskId +", postComputeImage:" + postComputeImage + "]");
-        }
+        checkImageIsPresentOrDownload(preComputeImage, chainTaskId, "preComputeImage");
+        checkImageIsPresentOrDownload(postComputeImage, chainTaskId, "postComputeImage");
+
         return TeeWorkflowConfiguration.builder()
                 .preComputeImage(preComputeImage)
                 .preComputeHeapSize(config.getPreComputeHeapSize())
@@ -69,5 +61,15 @@ public class TeeWorkflowConfigurationService {
                 .postComputeHeapSize(config.getPostComputeHeapSize())
                 .postComputeEntrypoint(config.getPostComputeEntrypoint())
                 .build();
+    }
+
+    private void checkImageIsPresentOrDownload(String image, String chainTaskId, String imageType) {
+        final DockerClientInstance client = dockerService.getClient(image);
+        if (!client.isImagePresent(image)
+                && !client.pullImage(image)) {
+            throw new TeeWorkflowConfigurationCreationException(
+                    "Failed to download image " +
+                            "[chainTaskId:" + chainTaskId +", " + imageType + ":" + image + "]");
+        }
     }
 }
