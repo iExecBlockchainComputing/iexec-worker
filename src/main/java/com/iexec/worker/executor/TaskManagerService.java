@@ -35,7 +35,8 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeService;
+import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +60,7 @@ public class TaskManagerService {
     private final ContributionService contributionService;
     private final RevealService revealService;
     private final ComputeManagerService computeManagerService;
-    private final TeeSconeService teeSconeService;
+    private final TeeServicesManager teeServicesManager;
     private final DataService dataService;
     private final ResultService resultService;
     private final DockerService dockerService;
@@ -71,7 +72,7 @@ public class TaskManagerService {
             ContributionService contributionService,
             RevealService revealService,
             ComputeManagerService computeManagerService,
-            TeeSconeService teeSconeService,
+            TeeServicesManager teeServicesManager,
             DataService dataService,
             ResultService resultService,
             DockerService dockerService,
@@ -81,7 +82,7 @@ public class TaskManagerService {
         this.contributionService = contributionService;
         this.revealService = revealService;
         this.computeManagerService = computeManagerService;
-        this.teeSconeService = teeSconeService;
+        this.teeServicesManager = teeServicesManager;
         this.dataService = dataService;
         this.resultService = resultService;
         this.dockerService = dockerService;
@@ -104,11 +105,17 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !teeSconeService.isTeeEnabled()) {
-            return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
-                    context, chainTaskId);
+        if (taskDescription.isTeeTask()) {
+            // If any TEE prerequisite is not met,
+            // then we won't be able to run the task.
+            // So it should be aborted right now.
+            final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+            final Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
+            if (teePrerequisitesIssue.isPresent()) {
+                log.error("TEE prerequisites are not met [chainTaskId: {}, issue: {}]", chainTaskId, teePrerequisitesIssue.get());
+                return getFailureResponseAndPrintError(teePrerequisitesIssue.get(), context, chainTaskId);
+            }
         }
-
         return ReplicateActionResponse.success();
     }
 
@@ -231,6 +238,14 @@ public class TaskManagerService {
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
             return getFailureResponseAndPrintError(APP_NOT_FOUND_LOCALLY,
                     context, chainTaskId);
+        }
+
+        if (taskDescription.isTeeTask()) {
+            TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+            if (!teeService.prepareTeeForTask(chainTaskId)) {
+                return getFailureResponseAndPrintError(TEE_PREPARATION_FAILED,
+                        context, chainTaskId);
+            }
         }
 
         WorkerpoolAuthorization workerpoolAuthorization =

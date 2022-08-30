@@ -22,15 +22,16 @@ import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeService;
+import com.iexec.worker.tee.TeeServicesManager;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,17 +40,17 @@ public class AppComputeService {
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
-    private final TeeSconeService teeSconeService;
+    private final TeeServicesManager teeServicesManager;
     private final SgxService sgxService;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
-            TeeSconeService teeSconeService,
+            TeeServicesManager teeServicesManager,
             SgxService sgxService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
-        this.teeSconeService = teeSconeService;
+        this.teeServicesManager = teeServicesManager;
         this.sgxService = sgxService;
     }
 
@@ -57,18 +58,22 @@ public class AppComputeService {
                                         TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
         List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
-        if (taskDescription.isTeeTask()) {
-            TeeEnclaveConfiguration enclaveConfig =
-                    taskDescription.getAppEnclaveConfiguration();
-            List<String> strings = teeSconeService.buildComputeDockerEnv(secureSession,
-                    enclaveConfig != null ? enclaveConfig.getHeapSize() : 0);
-            env.addAll(strings);
-        }
 
-        List<String> binds = Arrays.asList(
+        List<String> binds = new ArrayList<>(Arrays.asList(
                 dockerService.getInputBind(chainTaskId),
                 dockerService.getIexecOutBind(chainTaskId)
-        );
+        ));
+
+        if (taskDescription.isTeeTask()) {
+            final TeeService teeService = teeServicesManager
+                    .getTeeService(taskDescription.getTeeEnclaveProvider());
+
+            final List<String> strings = teeService
+                    .buildComputeDockerEnv(taskDescription, secureSession);
+            env.addAll(strings);
+
+            binds.addAll(teeService.getAdditionalBindings());
+        }
 
         DockerRunRequest runRequest = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)

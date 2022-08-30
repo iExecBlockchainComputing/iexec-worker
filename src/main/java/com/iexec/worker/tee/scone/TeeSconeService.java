@@ -16,26 +16,31 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
-import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveConfiguration;
+import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.docker.DockerService;
+import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeService;
+import com.iexec.worker.tee.TeeWorkflowConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
-import javax.annotation.PreDestroy;
-
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_PREPARATION_FAILED;
 
 
 @Slf4j
 @Service
-public class TeeSconeService {
+public class TeeSconeService extends TeeService {
 
     private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
     private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";
@@ -45,112 +50,89 @@ public class TeeSconeService {
     private static final String SCONE_VERSION = "SCONE_VERSION";
     // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
-    private final SconeConfiguration sconeConfig;
-    private final WorkerConfigurationService workerConfigService;
-    private final DockerService dockerService;
-    private final SgxService sgxService;
-    private final boolean isLasStarted;
+    private final LasServicesManager lasServicesManager;
 
     public TeeSconeService(
-            SconeConfiguration sconeConfig,
-            WorkerConfigurationService workerConfigService,
-            DockerService dockerService,
-            SgxService sgxService) {
-        this.sconeConfig = sconeConfig;
-        this.workerConfigService = workerConfigService;
-        this.dockerService = dockerService;
-        this.sgxService = sgxService;
-        this.isLasStarted = sgxService.isSgxEnabled() && startLasService();
-        if (this.isLasStarted) {
+            SgxService sgxService,
+            SmsClientProvider smsClientProvider,
+            TeeWorkflowConfigurationService teeWorkflowConfigurationService,
+            LasServicesManager lasServicesManager) {
+        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
+        this.lasServicesManager = lasServicesManager;
+
+        if (isTeeEnabled()) {
             log.info("Worker can run TEE tasks");
         } else {
             LoggingUtils.printHighlightedMessage("Worker will not run TEE tasks");
         }
     }
 
-    public boolean isTeeEnabled() {
-        return isLasStarted;
+    @Override
+    public Optional<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
+        final Optional<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
+        if (teePrerequisiteIssue.isPresent()) {
+            return teePrerequisiteIssue;
+        }
+        return prepareTeeForTask(chainTaskId) ? Optional.empty() : Optional.of(TEE_PREPARATION_FAILED);
     }
 
-    boolean startLasService() {
-        String lasImage = sconeConfig.getLasImageUri();
-        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
-                .containerName(sconeConfig.getLasContainerName())
-                .imageUri(lasImage)
-                // application & post-compose enclaves will be
-                // able to talk to the LAS via this network
-                .dockerNetwork(workerConfigService.getDockerNetworkName())
-                .sgxDriverMode(sgxService.getSgxDriverMode())
-                .maxExecutionTime(0)
-                .build();
-        if (!lasImage.contains(sconeConfig.getRegistryName())) {
-            throw new RuntimeException(String.format("LAS image (%s) is not " +
-                    "from a known registry (%s)", lasImage, sconeConfig.getRegistryName()));
-        }
-        DockerClientInstance client;
-        try {
-            client = dockerService.getClient(
-                    sconeConfig.getRegistryName(),
-                    sconeConfig.getRegistryUsername(),
-                    sconeConfig.getRegistryPassword());
-        } catch (Exception e) {
-            log.error("", e);
-            throw new RuntimeException("Failed to get Docker authenticated client to run LAS");
-        }
-        if (client == null) {
-            log.error("Docker client with credentials is required to enable TEE support");
-            return false;
-        }
-        if (!client.pullImage(lasImage)) {
-            log.error("Failed to download LAS image");
-            return false;
-        }
-
-        DockerRunResponse dockerRunResponse = dockerService.run(dockerRunRequest);
-        if (!dockerRunResponse.isSuccessful()) {
-            log.error("Failed to start LAS service");
-            return false;
-        }
-        return true;
+    @Override
+    public boolean prepareTeeForTask(String chainTaskId) {
+        return lasServicesManager.startLasService(chainTaskId);
     }
 
+    @Override
     public List<String> buildPreComputeDockerEnv(
-            @Nonnull TeeSessionGenerationResponse session,
-            long heapSize) {
+            TaskDescription taskDescription,
+            @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
-        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
+        String chainTaskId = taskDescription.getChainTaskId();
+        TeeWorkflowConfiguration teeWorkflowConfig =
+                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
+        return getDockerEnv(chainTaskId, sconeConfigId, teeWorkflowConfig.getPreComputeHeapSize(), session.getSecretProvisioningUrl());
     }
 
+    @Override
     public List<String> buildComputeDockerEnv(
-            @Nonnull TeeSessionGenerationResponse session,
-            long heapSize) {
+            TaskDescription taskDescription,
+            @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/app";
-        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
+        String chainTaskId = taskDescription.getChainTaskId();
+        TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
+        long heapSize = enclaveConfig != null ? enclaveConfig.getHeapSize() : 0;
+        return getDockerEnv(chainTaskId, sconeConfigId, heapSize, session.getSecretProvisioningUrl());
     }
 
-    public List<String> getPostComputeDockerEnv(
-            @Nonnull TeeSessionGenerationResponse session,
-            long heapSize) {
+    @Override
+    public List<String> buildPostComputeDockerEnv(
+            TaskDescription taskDescription,
+            @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/post-compute";
-        return getDockerEnv(sconeConfigId, heapSize, session.getSecretProvisioningUrl());
+        String chainTaskId = taskDescription.getChainTaskId();
+        TeeWorkflowConfiguration teeWorkflowConfig =
+                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
+        return getDockerEnv(chainTaskId, sconeConfigId, teeWorkflowConfig.getPostComputeHeapSize(), session.getSecretProvisioningUrl());
     }
 
-    private List<String> getDockerEnv(String sconeConfigId, long sconeHeap, String casUrl) {
+    @Override
+    public Collection<String> getAdditionalBindings() {
+        return Collections.emptySet();
+    }
+
+    private List<String> getDockerEnv(String chainTaskId,
+                                      String sconeConfigId,
+                                      long sconeHeap,
+                                      String casUrl) {
+        final LasService las = lasServicesManager.getLas(chainTaskId);
+        SconeConfiguration sconeConfig = las.getSconeConfig();
+
         String sconeVersion = sconeConfig.isShowVersion() ? "1" : "0";
         return List.of(
                 SCONE_CAS_ADDR + "=" + casUrl,
-                SCONE_LAS_ADDR + "=" + sconeConfig.getLasUrl(),
+                SCONE_LAS_ADDR + "=" + las.getUrl(),
                 SCONE_CONFIG_ID + "=" + sconeConfigId,
-                SCONE_HEAP + "=" + sconeHeap,
+                SCONE_HEAP + "=" + sconeHeap,   // TODO: remove sconeHeap in a next release
                 SCONE_LOG + "=" + sconeConfig.getLogLevel(),
                 SCONE_VERSION + "=" + sconeVersion);
-    }
-
-    @PreDestroy
-    private void stopLasService() {
-        if (isLasStarted) {
-            dockerService.getClient().stopAndRemoveContainer(
-                    sconeConfig.getLasContainerName());
-        }
     }
 }

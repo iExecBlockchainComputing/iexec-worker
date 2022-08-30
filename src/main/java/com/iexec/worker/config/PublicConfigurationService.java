@@ -21,9 +21,7 @@ import com.iexec.blockchain.api.BlockchainAdapterApiClientBuilder;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientBuilder;
-import com.iexec.worker.feign.CustomCoreFeignClient;
+ import com.iexec.worker.feign.CustomCoreFeignClient;
 import feign.Logger;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
@@ -61,10 +59,6 @@ public class PublicConfigurationService {
         return publicConfiguration.getResultRepositoryURL();
     }
 
-    public String getSmsURL() {
-        return publicConfiguration.getSmsURL();
-    }
-
     public String getRequiredWorkerVersion() {
         return publicConfiguration.getRequiredWorkerVersion();
     }
@@ -77,10 +71,5 @@ public class PublicConfigurationService {
     @Bean
     public ResultProxyClient resultProxyClient() {
         return ResultProxyClientBuilder.getInstance(Logger.Level.NONE, getResultRepositoryURL());
-    }
-
-    @Bean
-    public SmsClient smsClient() {
-        return SmsClientBuilder.getInstance(Logger.Level.NONE, getSmsURL());
     }
 }

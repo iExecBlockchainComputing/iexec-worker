@@ -20,11 +20,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.web.ApiResponseBody;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.TeeSessionGenerationError;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import feign.Request;
@@ -50,6 +47,8 @@ class SmsServiceTests {
     private CredentialsService credentialsService;
     @Mock
     private SmsClient smsClient;
+    @Mock
+    private SmsClientProvider smsClientProvider;
     @InjectMocks
     private SmsService smsService;
 
@@ -66,9 +65,11 @@ class SmsServiceTests {
                 .thenReturn(signatureStub);
         when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
                 .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
+        when(smsClientProvider.getOrCreateSmsClientForTask(any())).thenReturn(smsClient);
 
         TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
         Assertions.assertThat(returnedSessionId).isEqualTo(SESSION);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(any());
     }
 
     @Test
@@ -84,32 +85,32 @@ class SmsServiceTests {
                 .thenReturn(signatureStub);
         when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
                 .thenThrow(new FeignException.InternalServerError("", request, responseBody, null ));   //FIXME
+        when(smsClientProvider.getOrCreateSmsClientForTask(any())).thenReturn(smsClient);
+
         final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(workerpoolAuthorization), TeeSessionGenerationException.class);
         Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(any());
         verify(smsClient).generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
     }
 
     @Test
     void shouldGetTeeWorkflowConfiguration() {
-        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
+        TeeWorkflowConfiguration teeWorkflowConfiguration = mock(TeeWorkflowConfiguration.class);
         when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
-        verify(smsClient).getTeeWorkflowConfiguration();
-    }
+        when(smsClientProvider.getOrCreateSmsClientForTask(any())).thenReturn(smsClient);
 
-    @Test
-    void shouldCallGetTeeWorkflowConfigurationApiOnlyOnce() {
-        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
-        when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration(any())).isEqualTo(teeWorkflowConfiguration);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(any());
         verify(smsClient).getTeeWorkflowConfiguration();
     }
 
     @Test
     void shouldNotGetTeeWorkflowConfigurationOnException() {
         when(smsClient.getTeeWorkflowConfiguration()).thenThrow(FeignException.class);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isNull();
+        when(smsClientProvider.getOrCreateSmsClientForTask(any())).thenReturn(smsClient);
+
+        Assertions.assertThat(smsService.getTeeWorkflowConfiguration(any())).isNull();
+        verify(smsClientProvider).getOrCreateSmsClientForTask(any());
         verify(smsClient).getTeeWorkflowConfiguration();
     }
 
