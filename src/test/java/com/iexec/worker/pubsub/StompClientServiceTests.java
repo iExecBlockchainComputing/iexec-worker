@@ -108,10 +108,9 @@ class StompClientServiceTests {
     }
 
     @Test
-    void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived()
-            throws Exception {
+    void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived() throws Exception {
         // Reduce session refresh back off duration to make test faster.
-        doAnswer((invocation) -> backOffBriefly()).when(stompClientService).backOff();
+        doAnswer(invocation -> backOffBriefly()).when(stompClientService).backOff();
         // Don't execute session creation with remote server.
         doNothing().when(stompClientService).createSession();
         // Start listener
