@@ -97,6 +97,7 @@ public class LasService {
         if (isStarted()) {
             final DockerClientInstance client = dockerService.getClient();
             client.stopAndRemoveContainer(containerName);
+            // TODO: this should be the default case in `DockerClientInstance::stopAndRemoveContainer`
             isStarted = client.isContainerPresent(containerName);
         }
 
