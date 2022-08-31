@@ -112,7 +112,7 @@ class TeeServiceTests {
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         Assertions.assertTrue(teePrerequisitesIssue.isPresent());
-        Assertions.assertEquals(GET_TEE_WORKFLOW_CONFIGURATION_FAILED, teePrerequisitesIssue.get());
+        Assertions.assertEquals(GET_TEE_SERVICES_CONFIGURATION_FAILED, teePrerequisitesIssue.get());
     }
     // endregion
 }

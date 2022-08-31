@@ -166,7 +166,7 @@ class TeeSconeServiceTests {
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue).isPresent();
-        assertThat(teePrerequisitesIssue.get()).isEqualTo(GET_TEE_WORKFLOW_CONFIGURATION_FAILED);
+        assertThat(teePrerequisitesIssue.get()).isEqualTo(GET_TEE_SERVICES_CONFIGURATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);

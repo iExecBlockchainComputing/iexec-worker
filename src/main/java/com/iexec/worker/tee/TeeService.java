@@ -57,7 +57,7 @@ public abstract class TeeService {
             teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesConfiguration [chainTaskId: {}]", chainTaskId, e);
-            return Optional.of(GET_TEE_WORKFLOW_CONFIGURATION_FAILED);  // FIXME: update member name
+            return Optional.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
         }
 
         return Optional.empty();
