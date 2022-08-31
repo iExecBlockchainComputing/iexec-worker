@@ -1,5 +1,6 @@
 package com.iexec.worker.tee.gramine;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -24,8 +25,9 @@ public class TeeGramineService extends TeeService {
 
     public TeeGramineService(SgxService sgxService,
                              SmsClientProvider smsClientProvider,
+                             IexecHubAbstractService iexecHubService,
                              TeeServicesConfigurationService teeServicesConfigurationService) {
-        super(sgxService, smsClientProvider, teeServicesConfigurationService);
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
     }
 
     @Override

@@ -41,14 +41,15 @@ public class TeeServicesConfigurationService {
     }
 
     TeeServicesConfiguration retrieveTeeServicesConfiguration(String chainTaskId) {
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
-        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);    // FIXME: baaaaad
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
         final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
 
-        final TeeServicesConfiguration config = smsClient.getServicesConfiguration(teeEnclaveProvider);
+        final TeeServicesConfiguration config = smsClient.getTeeServicesConfiguration(teeEnclaveProvider);
         log.info("Received TEE services configuration [config:{}]", config);
         if (config == null) {
             throw new TeeServicesConfigurationCreationException(

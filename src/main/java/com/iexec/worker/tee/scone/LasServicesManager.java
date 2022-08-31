@@ -1,5 +1,7 @@
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.chain.IexecHubAbstractService;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.SconeServicesConfiguration;
@@ -23,6 +25,7 @@ public class LasServicesManager {
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final DockerService dockerService;
+    private final IexecHubAbstractService iexecHubService;
 
     //TODO: Purge entry when task is over (completed/failed)
     private final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
@@ -32,12 +35,14 @@ public class LasServicesManager {
                               SmsClientProvider smsClientProvider,
                               WorkerConfigurationService workerConfigService,
                               SgxService sgxService,
-                              DockerService dockerService) {
+                              DockerService dockerService,
+                              IexecHubAbstractService iexecHubService) {
         this.sconeConfiguration = sconeConfiguration;
         this.smsClientProvider = smsClientProvider;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.dockerService = dockerService;
+        this.iexecHubService = iexecHubService;
     }
 
     public boolean startLasService(String chainTaskId) {
@@ -47,10 +52,11 @@ public class LasServicesManager {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
 
         final SconeServicesConfiguration config = smsClient.getSconeServicesConfiguration();
         if (config == null) {

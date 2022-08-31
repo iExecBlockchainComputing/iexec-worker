@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
@@ -68,11 +69,13 @@ class TeeSconeServiceTests {
     @Mock
     private SmsClientProvider smsClientProvider;
     @Mock
+    private IexecHubAbstractService iexecHubService;
+    @Mock
     private TeeAppConfiguration preComputeConfiguration;
     @Mock
     private TeeAppConfiguration postComputeConfiguration;
     @Mock
-    SconeServicesConfiguration config;
+    private SconeServicesConfiguration config;
     @Mock
     private TeeServicesConfigurationService teeServicesConfigurationService;
     @Mock
@@ -102,7 +105,8 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteMetForTask() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
+        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         doReturn(null).when(teeServicesConfigurationService).getTeeServicesConfiguration(CHAIN_TASK_ID);
         doReturn(true).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
 
@@ -112,7 +116,7 @@ class TeeSconeServiceTests {
         assertThat(teePrerequisitesIssue).isEmpty();
 
         verify(teeSconeService).isTeeEnabled();
-        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(teeServicesConfigurationService).getTeeServicesConfiguration(CHAIN_TASK_ID);
         verify(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
     }
@@ -128,7 +132,7 @@ class TeeSconeServiceTests {
         assertThat(teePrerequisitesIssue.get()).isEqualTo(TEE_NOT_SUPPORTED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
-        verify(smsClientProvider, times(0)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider, times(0)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(teeServicesConfigurationService, times(0)).getTeeServicesConfiguration(CHAIN_TASK_ID);
         verify(teeSconeService, times(0)).prepareTeeForTask(CHAIN_TASK_ID);
     }
@@ -136,7 +140,8 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteNotMetForTaskSinceSmsClientCantBeLoaded() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doThrow(SmsClientCreationException.class).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
+        doThrow(SmsClientCreationException.class).when(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
 
         final Optional<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
@@ -145,7 +150,7 @@ class TeeSconeServiceTests {
         assertThat(teePrerequisitesIssue.get()).isEqualTo(UNKNOWN_SMS);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
-        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(teeServicesConfigurationService, times(0)).getTeeServicesConfiguration(CHAIN_TASK_ID);
         verify(teeSconeService, times(0)).prepareTeeForTask(CHAIN_TASK_ID);
     }
@@ -153,7 +158,8 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteNotMetForTaskSinceTeeWorkflowConfigurationCantBeLoaded() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
+        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         doThrow(SmsClientCreationException.class).when(teeServicesConfigurationService).getTeeServicesConfiguration(CHAIN_TASK_ID);
 
         final Optional<ReplicateStatusCause> teePrerequisitesIssue =
@@ -163,7 +169,7 @@ class TeeSconeServiceTests {
         assertThat(teePrerequisitesIssue.get()).isEqualTo(GET_TEE_WORKFLOW_CONFIGURATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
-        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(teeServicesConfigurationService, times(1)).getTeeServicesConfiguration(CHAIN_TASK_ID);
         verify(teeSconeService, times(0)).prepareTeeForTask(CHAIN_TASK_ID);
     }
@@ -171,7 +177,8 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteNotMetForTaskSinceCantPrepareTee() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
+        doReturn(null).when(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         doReturn(null).when(teeServicesConfigurationService).getTeeServicesConfiguration(CHAIN_TASK_ID);
         doReturn(false).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
 
@@ -182,7 +189,7 @@ class TeeSconeServiceTests {
         assertThat(teePrerequisitesIssue.get()).isEqualTo(TEE_PREPARATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
-        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
+        verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(teeServicesConfigurationService, times(1)).getTeeServicesConfiguration(CHAIN_TASK_ID);
         verify(teeSconeService, times(1)).prepareTeeForTask(CHAIN_TASK_ID);
     }

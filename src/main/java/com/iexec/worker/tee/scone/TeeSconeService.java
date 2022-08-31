@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
@@ -55,9 +56,10 @@ public class TeeSconeService extends TeeService {
     public TeeSconeService(
             SgxService sgxService,
             SmsClientProvider smsClientProvider,
+            IexecHubAbstractService iexecHubService,
             TeeServicesConfigurationService teeServicesConfigurationService,
             LasServicesManager lasServicesManager) {
-        super(sgxService, smsClientProvider, teeServicesConfigurationService);
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
         this.lasServicesManager = lasServicesManager;
 
         if (isTeeEnabled()) {

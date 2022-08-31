@@ -1,5 +1,6 @@
 package com.iexec.worker.tee;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientCreationException;
@@ -19,13 +20,16 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 public abstract class TeeService {
     private final SgxService sgxService;
     private final SmsClientProvider smsClientProvider;
+    private final IexecHubAbstractService iexecHubService;
     protected final TeeServicesConfigurationService teeServicesConfigurationService;
 
     protected TeeService(SgxService sgxService,
                          SmsClientProvider smsClientProvider,
+                         IexecHubAbstractService iexecHubService,
                          TeeServicesConfigurationService teeServicesConfigurationService) {
         this.sgxService = sgxService;
         this.smsClientProvider = smsClientProvider;
+        this.iexecHubService = iexecHubService;
         this.teeServicesConfigurationService = teeServicesConfigurationService;
     }
 
@@ -38,10 +42,11 @@ public abstract class TeeService {
             return Optional.of(TEE_NOT_SUPPORTED);
         }
 
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         try {
             // Try to load the `SmsClient` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
+            smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
         } catch (SmsClientCreationException e) {
             log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(UNKNOWN_SMS);

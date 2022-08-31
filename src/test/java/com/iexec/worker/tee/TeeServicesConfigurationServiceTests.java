@@ -1,10 +1,12 @@
 package com.iexec.worker.tee;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.GramineServicesConfiguration;
-import com.iexec.sms.api.config.SconeServicesConfiguration;
 import com.iexec.sms.api.config.TeeAppConfiguration;
 import com.iexec.sms.api.config.TeeServicesConfiguration;
 import com.iexec.worker.docker.DockerService;
@@ -21,6 +23,11 @@ import static org.mockito.Mockito.*;
 
 class TeeServicesConfigurationServiceTests {
     private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final TaskDescription TASK_DESCRIPTION = TaskDescription
+            .builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .teeEnclaveProvider(TeeEnclaveProvider.GRAMINE)
+            .build();
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP_SIZE = 1024L;
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
@@ -40,6 +47,8 @@ class TeeServicesConfigurationServiceTests {
     SmsClientProvider smsClientProvider;
     @Mock
     DockerService dockerService;
+    @Mock
+    IexecHubAbstractService iexecHubService;
 
     @Spy
     @InjectMocks
@@ -53,17 +62,18 @@ class TeeServicesConfigurationServiceTests {
     }
 
     @Test
-    void shouldBuildTeeWorkflowConfiguration() {
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(smsClient.getGramineServicesConfiguration()).thenReturn(GRAMINE_CONFIG);
+    void shouldRetrieveTeeServicesConfiguration() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(smsClient);
+        when(smsClient.getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE)).thenReturn(GRAMINE_CONFIG);
         when(dockerClient.isImagePresent(PRE_COMPUTE_IMAGE)).thenReturn(true);
         when(dockerClient.isImagePresent(POST_COMPUTE_IMAGE)).thenReturn(true);
 
-        final TeeServicesConfiguration teeWorkflowConfiguration = assertDoesNotThrow(
+        final TeeServicesConfiguration teeServicesConfiguration = assertDoesNotThrow(
                 () -> teeServicesConfigurationService.retrieveTeeServicesConfiguration(CHAIN_TASK_ID));
 
-        TeeAppConfiguration preComputeConfiguration = teeWorkflowConfiguration.getPreComputeConfiguration();
-        TeeAppConfiguration postComputeConfiguration = teeWorkflowConfiguration.getPostComputeConfiguration();
+        TeeAppConfiguration preComputeConfiguration = teeServicesConfiguration.getPreComputeConfiguration();
+        TeeAppConfiguration postComputeConfiguration = teeServicesConfiguration.getPostComputeConfiguration();
 
         assertNotNull(preComputeConfiguration);
         assertNotNull(postComputeConfiguration);
@@ -75,8 +85,8 @@ class TeeServicesConfigurationServiceTests {
         assertEquals(POST_COMPUTE_HEAP_SIZE, postComputeConfiguration.getHeapSize());
         assertEquals(POST_COMPUTE_ENTRYPOINT, postComputeConfiguration.getEntrypoint());
 
-        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
-        verify(smsClient).getGramineServicesConfiguration();
+        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
+        verify(smsClient).getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE);
         verify(dockerClient).isImagePresent(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient).isImagePresent(POST_COMPUTE_IMAGE);
@@ -84,16 +94,17 @@ class TeeServicesConfigurationServiceTests {
     }
 
     @Test
-    void shouldNotBuildTeeWorkflowConfigurationWhenNoConfigRetrieved() {
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(smsClient.getGramineServicesConfiguration()).thenReturn(null);
+    void shouldNotRetrieveTeeServicesConfigurationWhenNoConfigRetrieved() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(smsClient);
+        when(smsClient.getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE)).thenReturn(null);
 
         TeeServicesConfigurationCreationException exception = assertThrows(TeeServicesConfigurationCreationException.class,
                 () -> teeServicesConfigurationService.retrieveTeeServicesConfiguration(CHAIN_TASK_ID));
-        assertEquals("Missing tee workflow configuration [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
+        assertEquals("Missing TEE services configuration [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
 
-        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
-        verify(smsClient).getGramineServicesConfiguration();
+        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
+        verify(smsClient).getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE);
         verify(dockerClient, times(0)).isImagePresent(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).isImagePresent(POST_COMPUTE_IMAGE);
@@ -101,9 +112,10 @@ class TeeServicesConfigurationServiceTests {
     }
 
     @Test
-    void shouldNotBuildTeeWorkflowConfigurationWhenFailedToDownloadPreComputeImage() {
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(smsClient.getGramineServicesConfiguration()).thenReturn(GRAMINE_CONFIG);
+    void shouldNotRetrieveTeeServicesConfigurationWhenFailedToDownloadPreComputeImage() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(smsClient);
+        when(smsClient.getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE)).thenReturn(GRAMINE_CONFIG);
         when(dockerClient.isImagePresent(PRE_COMPUTE_IMAGE)).thenReturn(false);
         when(dockerClient.pullImage(PRE_COMPUTE_IMAGE)).thenReturn(false);
 
@@ -112,8 +124,8 @@ class TeeServicesConfigurationServiceTests {
         assertEquals("Failed to download image " +
                 "[chainTaskId:" + CHAIN_TASK_ID +", preComputeImage:" + PRE_COMPUTE_IMAGE + "]", exception.getMessage());
 
-        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
-        verify(smsClient).getGramineServicesConfiguration();
+        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
+        verify(smsClient).getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE);
         verify(dockerClient).isImagePresent(PRE_COMPUTE_IMAGE);
         verify(dockerClient).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).isImagePresent(POST_COMPUTE_IMAGE);
@@ -121,9 +133,10 @@ class TeeServicesConfigurationServiceTests {
     }
 
     @Test
-    void shouldNotBuildTeeWorkflowConfigurationWhenFailedToDownloadPostComputeImage() {
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(smsClient.getGramineServicesConfiguration()).thenReturn(GRAMINE_CONFIG);
+    void shouldNotRetrieveTeeServicesConfigurationWhenFailedToDownloadPostComputeImage() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(smsClient);
+        when(smsClient.getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE)).thenReturn(GRAMINE_CONFIG);
         when(dockerClient.isImagePresent(PRE_COMPUTE_IMAGE)).thenReturn(true);
         when(dockerClient.isImagePresent(POST_COMPUTE_IMAGE)).thenReturn(false);
         when(dockerClient.pullImage(POST_COMPUTE_IMAGE)).thenReturn(false);
@@ -133,8 +146,8 @@ class TeeServicesConfigurationServiceTests {
         assertEquals("Failed to download image " +
                 "[chainTaskId:" + CHAIN_TASK_ID +", postComputeImage:" + POST_COMPUTE_IMAGE + "]", exception.getMessage());
 
-        verify(smsClientProvider).getOrCreateSmsClientForTask(CHAIN_TASK_ID);
-        verify(smsClient).getGramineServicesConfiguration();
+        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
+        verify(smsClient).getTeeServicesConfiguration(TeeEnclaveProvider.GRAMINE);
         verify(dockerClient).isImagePresent(PRE_COMPUTE_IMAGE);
         verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient).isImagePresent(POST_COMPUTE_IMAGE);
