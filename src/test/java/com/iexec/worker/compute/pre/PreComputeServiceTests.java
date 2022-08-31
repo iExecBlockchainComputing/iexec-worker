@@ -32,7 +32,6 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
@@ -90,8 +89,6 @@ class PreComputeServiceTests {
     @Mock
     private SmsService smsService;
     @Mock
-    private DataService dataService;
-    @Mock
     private DockerService dockerService;
     @Mock
     private TeeServicesManager teeServicesManager;
@@ -122,10 +119,7 @@ class PreComputeServiceTests {
         when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId)).thenReturn(teeWorkflowConfig);
     }
 
-    /**
-     * Tee pre compute
-     */
-
+    //region runTeePreCompute
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() throws TeeSessionGenerationException {
         taskDescription.setInputFiles(List.of("input-file1"));
@@ -365,6 +359,7 @@ class PreComputeServiceTests {
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
     }
+    //endregion
 
     // region teeSessionGenerationErrorToReplicateStatusCause
     static Stream<Arguments> teeSessionGenerationErrorMap() {

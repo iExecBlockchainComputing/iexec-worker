@@ -45,8 +45,8 @@ public abstract class BaseFeignClient {
     /*
      * Retry configuration values (max attempts, back off delay...) 
      */
-    private final int MAX_ATTEMPTS = 3;
-    private final int BACK_OFF_DELAY = 2000; // 2s
+    private static final int MAX_ATTEMPTS = 3;
+    private static final int BACK_OFF_DELAY = 2000; // 2s
 
     /*
      * Generic method to make http calls.

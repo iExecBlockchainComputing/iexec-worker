@@ -32,11 +32,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
 
 @Slf4j
 @Service
@@ -71,12 +69,11 @@ public class ReplicateDemandService {
      * We use single thread executor to make sure the worker does not ask for more
      * than one replicate at the same time. The executor's queue is of size 1 to
      * avoid memory leak if the thread halts for any reason.
-     * @return A {@link CompletableFuture} representing the executing task.
      */
     @Scheduled(fixedDelayString = "#{publicConfigurationService.askForReplicatePeriod}")
-    CompletableFuture<Void> triggerAskForReplicate() {
+    void triggerAskForReplicate() {
         log.debug("Triggering ask for replicate action");
-        return AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
+        AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
     }
 
     /**

@@ -45,6 +45,8 @@ import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.*;
 
 import java.util.Collections;
@@ -120,6 +122,7 @@ class TaskManagerServiceTests {
                 .build();
     }
 
+    //region start
     @Test
     void shouldStart() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
@@ -163,6 +166,18 @@ class TaskManagerServiceTests {
     }
 
     @Test
+    void shouldNotStartSinceStandardTaskWithEncryption() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.empty());
+        TaskDescription taskDescription = TaskDescription.builder().isResultEncryption(true).build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(taskDescription);
+        ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
+        Assertions.assertThat(actionResponse.isSuccess()).isFalse();
+        Assertions.assertThat(actionResponse.getDetails().getCause()).isEqualTo(TASK_DESCRIPTION_INVALID);
+    }
+
+    @Test
     void shouldStartWithTee() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
@@ -196,7 +211,9 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
     }
+    //endregion
 
+    //region downloadApp
     @Test
     void shouldDownloadApp() {
         TaskDescription taskDescription = getStubTaskDescription(false);
@@ -303,8 +320,9 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
+    //endregion
 
-    // downloadData()
+    //region downloadData
 
     /**
      * Note : Remember dataset URI and input files are optional
@@ -623,7 +641,9 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.getDetails().getCause())
                 .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
+    //endregion
 
+    //region compute
     @Test
     void shouldComputeStandardTask() {
         TaskDescription taskDescription = TaskDescription.builder()
@@ -707,10 +727,11 @@ class TaskManagerServiceTests {
                                         .build()));
     }
 
-    @Test
-    void shouldNotComputeSinceCannotContributeStatusIsPresent() {
-        ReplicateStatusCause replicateStatusCause =
-                ReplicateStatusCause.CONTRIBUTION_AUTHORIZATION_NOT_FOUND;
+    @ParameterizedTest
+    @EnumSource(value = ReplicateStatusCause.class,
+            names = {"CHAIN_UNREACHABLE", "STAKE_TOO_LOW", "TASK_NOT_ACTIVE", "CONTRIBUTION_TIMEOUT",
+                    "CONTRIBUTION_ALREADY_SET", "WORKERPOOL_AUTHORIZATION_NOT_FOUND"})
+    void shouldNotComputeSinceCannotContributeStatusIsPresent(ReplicateStatusCause replicateStatusCause) {
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(replicateStatusCause));
@@ -718,10 +739,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .failure(replicateStatusCause));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(replicateStatusCause));
     }
 
     @Test
@@ -734,10 +754,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
-                        .failure(TASK_DESCRIPTION_NOT_FOUND));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND));
     }
 
     @Test
@@ -754,9 +773,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(APP_NOT_FOUND_LOCALLY));
     }
 
@@ -782,9 +801,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(PRE_COMPUTE_DATASET_URL_MISSING));
     }
 
@@ -808,9 +827,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(TEE_PREPARATION_FAILED));
     }
 
@@ -842,9 +861,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failureWithDetails(
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failureWithDetails(
                         ReplicateStatusDetails.builder()
                                 .cause(APP_COMPUTE_FAILED)
                                 .exitCode(5)
@@ -879,12 +898,14 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failureWithStdout(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, null));
     }
+    //endregion
 
+    //region contribute
     @Test
     void shouldContribute() {
         ComputedFile computedFile = mock(ComputedFile.class);
@@ -907,9 +928,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .success(chainReceipt));
     }
 
@@ -921,9 +942,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(CONTRIBUTION_TIMEOUT));
     }
 
@@ -937,9 +958,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(TASK_DESCRIPTION_NOT_FOUND));
     }
 
@@ -955,9 +976,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(OUT_OF_GAS));
     }
 
@@ -975,9 +996,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(DETERMINISM_HASH_NOT_FOUND));
     }
 
@@ -998,9 +1019,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse
                         .failure(ENCLAVE_SIGNATURE_NOT_FOUND));
     }
 
@@ -1024,11 +1045,10 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
-
 
     @Test
     void shouldNotContributeSinceInvalidContributeChainReceipt() {
@@ -1052,11 +1072,13 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
+    //endregion
 
+    //region reveal
     @Test
     void shouldReveal() {
         long consensusBlock = 20;
@@ -1078,9 +1100,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.success(chainReceipt));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.success(chainReceipt));
     }
 
     @Test
@@ -1091,9 +1113,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
     }
 
     @Test
@@ -1101,9 +1123,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, null);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CONSENSUS_BLOCK_MISSING));
     }
 
     @Test
@@ -1118,9 +1140,9 @@ class TaskManagerServiceTests {
                 taskManagerService.reveal(CHAIN_TASK_ID,
                         TaskNotificationExtra.builder().blockNumber(consensusBlock).build());
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
     }
 
     @Test
@@ -1137,9 +1159,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(BLOCK_NOT_REACHED));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(BLOCK_NOT_REACHED));
     }
 
     @Test
@@ -1158,9 +1180,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CANNOT_REVEAL));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CANNOT_REVEAL));
     }
 
 
@@ -1183,9 +1205,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
 
     @Test
@@ -1209,11 +1231,13 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.reveal(CHAIN_TASK_ID, extra);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
     }
+    //endregion
 
+    //region uploadResult
     @Test
     void shouldUploadResultWithResultUri() {
         String resultUri = "resultUri";
@@ -1225,9 +1249,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.uploadResult(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.success(resultUri, ""));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.success(resultUri, ""));
     }
 
     @Test
@@ -1245,9 +1269,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.uploadResult(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.success(resultUri, callbackData));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.success(resultUri, callbackData));
     }
 
     @Test
@@ -1258,11 +1282,13 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.uploadResult(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure(RESULT_LINK_MISSING));
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(RESULT_LINK_MISSING));
     }
+    //endregion
 
+    //region complete
     @Test
     void shouldComplete() {
         when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
@@ -1270,9 +1296,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.complete(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.success());
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.success());
     }
 
     @Test
@@ -1282,13 +1308,13 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.complete(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse).isNotNull();
-        Assertions.assertThat(replicateActionResponse).isEqualTo(
-                ReplicateActionResponse.failure());
+        Assertions.assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure());
     }
+    //endregion
 
-    //#region abort()
-
+    //region abort
     @Test
     void shouldAbortTask() {
         when(resultService.removeResult(CHAIN_TASK_ID)).thenReturn(true);
@@ -1301,7 +1327,7 @@ class TaskManagerServiceTests {
         assertThat(predicateCaptor.getValue().test(CHAIN_TASK_ID)).isTrue();
     }
 
-    //#endregion
+    //endregion
 
     //TODO clean theses
     //misc

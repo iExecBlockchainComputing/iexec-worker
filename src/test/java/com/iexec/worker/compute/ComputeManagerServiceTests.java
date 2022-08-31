@@ -24,7 +24,6 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
 import com.iexec.worker.compute.post.PostComputeResponse;
@@ -41,13 +40,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -61,9 +60,9 @@ class ComputeManagerServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
+    private final static String DIGEST = "digest";
     private final static String APP_URI = "APP_URI";
-    private final static String TEE_POST_COMPUTE_IMAGE =
-            "TEE_POST_COMPUTE_IMAGE";
+    private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
 
@@ -74,7 +73,6 @@ class ComputeManagerServiceTests {
             .datasetUri(DATASET_URI)
             .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
-            .developerLoggerEnabled(true)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true)
             .maxExecutionTime(3000)
@@ -106,8 +104,6 @@ class ComputeManagerServiceTests {
     @Mock
     private WorkerConfigurationService workerConfigurationService;
     @Mock
-    private IexecHubService iexecHubService;
-    @Mock
     private ResultService resultService;
 
     @BeforeEach
@@ -115,6 +111,7 @@ class ComputeManagerServiceTests {
         MockitoAnnotations.openMocks(this);
     }
 
+    //region downloadApp
     @Test
     void shouldDownloadApp() {
         when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(Duration.of(5, ChronoUnit.MINUTES));
@@ -161,9 +158,9 @@ class ComputeManagerServiceTests {
         when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isFalse();
     }
+    //endregion
 
-    // pre compute
-
+    //region runPreCompute
     @Test
     void shouldRunStandardPreCompute() {
         taskDescription.setTeeTask(false);
@@ -207,11 +204,11 @@ class ComputeManagerServiceTests {
         Assertions.assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
     }
+    //endregion
 
-    // compute
-
+    //region runCompute
     @Test
-    void shouldRunStandardCompute() throws IOException {
+    void shouldRunStandardCompute() {
         taskDescription.setTeeTask(false);
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
@@ -231,8 +228,7 @@ class ComputeManagerServiceTests {
         Assertions.assertThat(appComputeResponse.getStderr()).isEqualTo(
                 "stderr");
         verify(appComputeService, times(1))
-                .runCompute(taskDescription,
-                        null);
+                .runCompute(taskDescription, null);
     }
 
     @Test
@@ -257,7 +253,7 @@ class ComputeManagerServiceTests {
     }
 
     @Test
-    void shouldRunTeeCompute() throws IOException {
+    void shouldRunTeeCompute() {
         taskDescription.setTeeTask(true);
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
@@ -303,36 +299,61 @@ class ComputeManagerServiceTests {
         Assertions.assertThat(appComputeResponse.getStderr()).isEqualTo(
                 "stderr");
     }
+    //endregion
 
-    // pre compute
+    //region runPostCompute
+    @Test
+    void shouldNotBeSuccessfulWhenComputedFileNotFound() {
+        taskDescription.setTeeTask(false);
+        when(postComputeService.runStandardPostCompute(taskDescription))
+                .thenReturn(PostComputeResponse.builder().build());
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
+        PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
+        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
+    }
+
+    @Test
+    void shouldNotBeSuccessfulWhenResultDigestComputationFails() {
+        taskDescription.setTeeTask(false);
+        when(postComputeService.runStandardPostCompute(taskDescription))
+                .thenReturn(PostComputeResponse.builder().build());
+        ComputedFile computedFile = ComputedFile.builder().build();
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.computeResultDigest(computedFile)).thenReturn("");
+        PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
+        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
+    }
 
     @Test
     void shouldRunStandardPostCompute() {
         taskDescription.setTeeTask(false);
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(true);
+                .thenReturn(PostComputeResponse.builder().build());
         ComputedFile computedFile = mock(ComputedFile.class);
-        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.computeResultDigest(computedFile)).thenReturn(DIGEST);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription, null);
         Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
-        verify(postComputeService, times(1))
-                .runStandardPostCompute(taskDescription);
-        verify(resultService, times(1))
-                .saveResultInfo(anyString(), any(), any());
+        verify(postComputeService).runStandardPostCompute(taskDescription);
+        verify(resultService).readComputedFile(CHAIN_TASK_ID);
+        verify(resultService).computeResultDigest(computedFile);
+        verify(resultService).saveResultInfo(anyString(), any(), any());
     }
 
-    @Test
-    void shouldRunStandardPostComputeWithFailureResponse() {
+    @ParameterizedTest
+    @EnumSource(value = ReplicateStatusCause.class, names = "POST_COMPUTE_.*", mode = EnumSource.Mode.MATCH_ALL)
+    void shouldRunStandardPostComputeWithFailureResponse(ReplicateStatusCause statusCause) {
         taskDescription.setTeeTask(false);
-        when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(false);
+        PostComputeResponse postComputeResponse = PostComputeResponse.builder().exitCause(statusCause).build();
+        when(postComputeService.runStandardPostCompute(taskDescription)).thenReturn(postComputeResponse);
 
-        PostComputeResponse postComputeResponse =
-                computeManagerService.runPostCompute(taskDescription,
-                        null);
+        postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
+        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(statusCause);
     }
 
     @Test
@@ -347,7 +368,8 @@ class ComputeManagerServiceTests {
                 SECURE_SESSION))
                 .thenReturn(expectedDockerRunResponse);
         ComputedFile computedFile = mock(ComputedFile.class);
-        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(resultService.computeResultDigest(computedFile)).thenReturn(DIGEST);
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
@@ -357,10 +379,10 @@ class ComputeManagerServiceTests {
                 "stdout");
         Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
-        verify(postComputeService, times(1))
-                .runTeePostCompute(taskDescription, SECURE_SESSION);
-        verify(resultService, times(1))
-                .saveResultInfo(anyString(), any(), any());
+        verify(postComputeService).runTeePostCompute(taskDescription, SECURE_SESSION);
+        verify(resultService).readComputedFile(CHAIN_TASK_ID);
+        verify(resultService).computeResultDigest(computedFile);
+        verify(resultService).saveResultInfo(anyString(), any(), any());
     }
 
     @Test
@@ -385,8 +407,9 @@ class ComputeManagerServiceTests {
         Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
     }
+    //endregion
 
-    // computeImagePullTimeout
+    //region computeImagePullTimeout
     static Stream<Arguments> computeImagePullTimeoutValues() {
         return Stream.of(
                 // maxExecutionTime, minPullTimeout, maxPullTimeout, expectedTimeout
@@ -422,4 +445,5 @@ class ComputeManagerServiceTests {
         Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(expectedTimeout);
     }
+    //endregion
 }

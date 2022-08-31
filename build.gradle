@@ -16,6 +16,7 @@ ext {
     springCloudVersion = '2021.0.0'
     gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
     dockerJavaVersion = '3.2.12'
+    lombokVersion = '1.18.2'
 }
 
 if (gitBranch != 'main' && gitBranch != 'master' && ! (gitBranch ==~ '(release|hotfix|support)/.*')) {
@@ -92,8 +93,10 @@ dependencies {
     implementation 'biz.paluch.logging:logstash-gelf:1.5.1'
 
     // lombok
-    compileOnly "org.projectlombok:lombok:1.18.2"
-    annotationProcessor "org.projectlombok:lombok:1.18.2"
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
@@ -118,11 +121,6 @@ test {
             excludeTags 'slow'
         }
     }
-
-    // To avoid warnings on multiple SLF4J bindings,
-    // let's remove the Logback implementation
-    // and keep only SLF4j Test.
-    classpath = classpath.filter {!it.name.contains('logback-classic')}
 }
 
 task itest {

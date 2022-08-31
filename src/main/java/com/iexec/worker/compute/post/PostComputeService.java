@@ -69,28 +69,46 @@ public class PostComputeService {
         this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
     }
 
-    public boolean runStandardPostCompute(TaskDescription taskDescription) {
+    /**
+     * This method implements the post-compute part of the workflow dedicated to standard tasks.
+     * <p>
+     * The algorithm is almost the same as the one executed for TEE tasks in a tee-worker-post-compute container:
+     * <ul>
+     * <li>Creation of the archive containing results as in {@code Web2ResultService#encryptAndUploadResult}
+     * <li>Send {@code computed.json} to its final folder as in {@code FlowService#sendComputedFileToHost}
+     * </ul>
+     * <p>
+     * Classes names are inlined in comments for comparison.
+     * @param taskDescription description of a standard task
+     * @return a post compute response with a cause in case of error. The response is returned to
+     *         {@link com.iexec.worker.compute.ComputeManagerService}
+     * @see com.iexec.worker.compute.ComputeManagerService
+     */
+    public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
-        // result encryption is no more supported for standard tasks
-        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
-            log.error("Result encryption is not supported for standard tasks" +
-                    " [chainTaskId:{}]", chainTaskId);
-            return false;
-        }
 
-        // create /output/iexec_out.zip
-        ResultUtils.zipIexecOut(workerConfigService.getTaskIexecOutDir(chainTaskId)
-                , workerConfigService.getTaskOutputDir(chainTaskId));
-        // copy /output/iexec_out/computed.json to /output/computed.json to have the same workflow as TEE.
+        // create /output/iexec_out.zip as in Web2ResultService#encryptAndUploadResult
+        // return a POST_COMPUTE_OUT_FOLDER_ZIP_FAILED error on failure
+        String zipIexecOutPath = ResultUtils.zipIexecOut(
+                workerConfigService.getTaskIexecOutDir(chainTaskId),
+                workerConfigService.getTaskOutputDir(chainTaskId));
+        if (zipIexecOutPath.isEmpty()) {
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)
+                    .build();
+        }
+        // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
+        // return a POST_COMPUTE_SEND_COMPUTED_FILE_FAILED error on failure
         boolean isCopied = FileHelper.copyFile(
                 workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON,
                 workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON);
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
-            return false;
+            return PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED)
+                    .build();
         }
-
-        return true;
+        return PostComputeResponse.builder().build();
     }
 
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription,
@@ -139,7 +157,6 @@ public class PostComputeService {
                         .binds(binds)
                         .sgxDriverMode(sgxService.getSgxDriverMode())
                         .dockerNetwork(workerConfigService.getDockerNetworkName())
-                        .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                         .build());
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {

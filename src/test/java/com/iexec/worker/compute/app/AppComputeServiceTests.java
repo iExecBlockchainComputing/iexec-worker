@@ -68,7 +68,6 @@ class AppComputeServiceTests {
             .datasetUri(DATASET_URI)
             .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
-            .developerLoggerEnabled(true)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true)
             .build();
@@ -128,7 +127,6 @@ class AppComputeServiceTests {
                         .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
                         .binds(Arrays.asList(inputBind, iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.NONE)
-                        .shouldDisplayLogs(true)
                         .build()
         );
     }
@@ -177,7 +175,6 @@ class AppComputeServiceTests {
                         .binds(Arrays.asList(inputBind ,iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.LEGACY)
                         .dockerNetwork(lasNetworkName)
-                        .shouldDisplayLogs(true)
                         .build()
         );
     }

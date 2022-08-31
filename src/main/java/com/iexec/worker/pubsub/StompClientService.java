@@ -16,27 +16,15 @@
 
 package com.iexec.worker.pubsub;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.annotation.PostConstruct;
-
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.utils.AsyncUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
-import org.springframework.messaging.simp.stomp.StompCommand;
-import org.springframework.messaging.simp.stomp.StompFrameHandler;
-import org.springframework.messaging.simp.stomp.StompHeaders;
-import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.*;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
@@ -52,7 +40,16 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import lombok.extern.slf4j.Slf4j;
+import javax.annotation.PostConstruct;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This component handles STOMP websocket connection. First we create an instance of
@@ -66,7 +63,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-public class StompClient {
+public class StompClientService {
 
     // All session requests coming in this time interval
     // will be treated together.
@@ -84,8 +81,8 @@ public class StompClient {
     private final WebSocketStompClient stompClient;
     private StompSession session;
 
-    public StompClient(ApplicationEventPublisher applicationEventPublisher,
-                       CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
+    public StompClientService(ApplicationEventPublisher applicationEventPublisher,
+                              CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
         this.eventPublisher = applicationEventPublisher;
         this.webSocketServerUrl = coreConfigService.getUrl() + "/connect";
         log.info("Creating STOMP client");
@@ -207,9 +204,9 @@ public class StompClient {
                 // Properly handle InterruptedException.
                 Thread.currentThread().interrupt();
                 // The thread will stop
-            } catch(Throwable t) {
+            } catch(Exception e) {
                 // Ignore all errors and continue
-                log.error("An error occurred while listening to STOMP session requests", t);
+                log.error("An error occurred while listening to STOMP session requests", e);
                 // The thread will continue
             }
         }
@@ -233,7 +230,7 @@ public class StompClient {
     }
 
     /**
-     * Sleep {@link StompClient#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
+     * Sleep {@link StompClientService#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
      * 
      * @throws InterruptedException
      */
@@ -251,7 +248,7 @@ public class StompClient {
         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
             log.info("Connected to STOMP session [session: {}, isConnected: {}]",
                     session.getSessionId(), session.isConnected());
-            StompClient.this.session = session;
+            StompClientService.this.session = session;
             // notify subscribers
             eventPublisher.publishEvent(new SessionCreatedEvent());
         }
