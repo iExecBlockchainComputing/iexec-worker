@@ -2,7 +2,7 @@ package com.iexec.worker.tee.scone;
 
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.TeeWorkflowConfiguration;
+import com.iexec.sms.api.config.SconeServicesConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
@@ -52,9 +52,9 @@ public class LasServicesManager {
         // So the following won't throw an exception.
         final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
 
-        final TeeWorkflowConfiguration config = smsClient.getTeeWorkflowConfiguration();
+        final SconeServicesConfiguration config = smsClient.getSconeServicesConfiguration();
         if (config == null) {
-            log.error("Missing tee workflow configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
+            log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
             return false;
         }
         final String lasImageUri = !StringUtils.isEmpty(config.getLasImage())

@@ -29,7 +29,8 @@ import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
 import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.sms.api.TeeWorkflowConfiguration;
+import com.iexec.sms.api.config.TeeAppConfiguration;
+import com.iexec.sms.api.config.TeeServicesConfiguration;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -38,7 +39,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeWorkflowConfigurationService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,7 +96,11 @@ class PreComputeServiceTests {
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
-    private TeeWorkflowConfiguration teeWorkflowConfig;
+    TeeAppConfiguration preComputeConfiguration;
+    @Mock
+    TeeAppConfiguration postComputeConfiguration;
+    @Mock
+    private TeeServicesConfiguration config;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
     @Mock
@@ -103,7 +108,7 @@ class PreComputeServiceTests {
     @Mock
     private ComputeExitCauseService computeExitCauseService;
     @Mock
-    private TeeWorkflowConfigurationService teeWorkflowConfigurationService;
+    private TeeServicesConfigurationService teeServicesConfigurationService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -116,7 +121,9 @@ class PreComputeServiceTests {
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId)).thenReturn(teeWorkflowConfig);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId)).thenReturn(config);
+        when(config.getPreComputeConfiguration()).thenReturn(preComputeConfiguration);
+        when(config.getPostComputeConfiguration()).thenReturn(postComputeConfiguration);
     }
 
     //region runTeePreCompute
@@ -125,9 +132,9 @@ class PreComputeServiceTests {
         taskDescription.setInputFiles(List.of("input-file1"));
 
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
-        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(preComputeConfiguration.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeConfiguration.getHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(preComputeConfiguration.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
@@ -163,9 +170,9 @@ class PreComputeServiceTests {
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
-        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(preComputeConfiguration.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeConfiguration.getHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(preComputeConfiguration.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
@@ -203,9 +210,9 @@ class PreComputeServiceTests {
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
-        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(preComputeConfiguration.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeConfiguration.getHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(preComputeConfiguration.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
@@ -277,9 +284,9 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
-        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(preComputeConfiguration.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeConfiguration.getHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(preComputeConfiguration.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -297,9 +304,9 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
-        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(preComputeConfiguration.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeConfiguration.getHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(preComputeConfiguration.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
@@ -338,9 +345,9 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(teeWorkflowConfig.getPreComputeImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(teeWorkflowConfig.getPreComputeHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
-        when(teeWorkflowConfig.getPreComputeEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(preComputeConfiguration.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeConfiguration.getHeapSize()).thenReturn(PRE_COMPUTE_HEAP);
+        when(preComputeConfiguration.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");

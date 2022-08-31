@@ -28,7 +28,7 @@ class TeeServiceTests {
     @Mock
     SmsClientProvider smsClientProvider;
     @Mock
-    TeeWorkflowConfigurationService teeWorkflowConfigurationService;
+    TeeServicesConfigurationService teeServicesConfigurationService;
 
     @Spy
     @InjectMocks
@@ -64,7 +64,7 @@ class TeeServiceTests {
     void shouldTeePrerequisitesBeMet() {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(null);
-        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenReturn(null);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID)).thenReturn(null);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
@@ -96,7 +96,7 @@ class TeeServiceTests {
     void shouldTeePrerequisitesNotBeMetSinceTeeWorkflowConfigurationCantBeLoaded() {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(null);
-        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 

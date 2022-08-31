@@ -21,10 +21,10 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.sms.api.TeeWorkflowConfiguration;
+import com.iexec.sms.api.config.TeeServicesConfiguration;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
-import com.iexec.worker.tee.TeeWorkflowConfigurationService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,9 +55,9 @@ public class TeeSconeService extends TeeService {
     public TeeSconeService(
             SgxService sgxService,
             SmsClientProvider smsClientProvider,
-            TeeWorkflowConfigurationService teeWorkflowConfigurationService,
+            TeeServicesConfigurationService teeServicesConfigurationService,
             LasServicesManager lasServicesManager) {
-        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
+        super(sgxService, smsClientProvider, teeServicesConfigurationService);
         this.lasServicesManager = lasServicesManager;
 
         if (isTeeEnabled()) {
@@ -87,9 +87,9 @@ public class TeeSconeService extends TeeService {
             @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
         String chainTaskId = taskDescription.getChainTaskId();
-        TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
-        return getDockerEnv(chainTaskId, sconeConfigId, teeWorkflowConfig.getPreComputeHeapSize(), session.getSecretProvisioningUrl());
+        TeeServicesConfiguration config =
+                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
+        return getDockerEnv(chainTaskId, sconeConfigId, config.getPreComputeConfiguration().getHeapSize(), session.getSecretProvisioningUrl());
     }
 
     @Override
@@ -109,9 +109,9 @@ public class TeeSconeService extends TeeService {
             @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/post-compute";
         String chainTaskId = taskDescription.getChainTaskId();
-        TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
-        return getDockerEnv(chainTaskId, sconeConfigId, teeWorkflowConfig.getPostComputeHeapSize(), session.getSecretProvisioningUrl());
+        TeeServicesConfiguration config =
+                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
+        return getDockerEnv(chainTaskId, sconeConfigId, config.getPostComputeConfiguration().getHeapSize(), session.getSecretProvisioningUrl());
     }
 
     @Override

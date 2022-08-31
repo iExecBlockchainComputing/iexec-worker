@@ -25,14 +25,15 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.config.TeeAppConfiguration;
+import com.iexec.sms.api.config.TeeServicesConfiguration;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.sms.api.TeeWorkflowConfiguration;
-import com.iexec.worker.tee.TeeWorkflowConfigurationService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -52,7 +53,7 @@ public class PostComputeService {
     private final TeeServicesManager teeServicesManager;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
-    private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
+    private final TeeServicesConfigurationService teeServicesConfigurationService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
@@ -60,13 +61,13 @@ public class PostComputeService {
             TeeServicesManager teeServicesManager,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService,
-            TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
+            TeeServicesConfigurationService teeServicesConfigurationService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
-        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
+        this.teeServicesConfigurationService = teeServicesConfigurationService;
     }
 
     /**
@@ -115,10 +116,11 @@ public class PostComputeService {
                                                  TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
 
-        TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
+        TeeServicesConfiguration config =
+                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
 
-        String postComputeImage = teeWorkflowConfig.getPostComputeImage();
+        final TeeAppConfiguration postComputeConfig = config.getPostComputeConfiguration();
+        String postComputeImage = postComputeConfig.getImage();
         // ###############################################################################
         // TODO: activate this when user specific post-compute is properly
         // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
@@ -151,7 +153,7 @@ public class PostComputeService {
                         .chainTaskId(chainTaskId)
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                         .imageUri(postComputeImage)
-                        .entrypoint(teeWorkflowConfig.getPostComputeEntrypoint())
+                        .entrypoint(postComputeConfig.getEntrypoint())
                         .maxExecutionTime(taskDescription.getMaxExecutionTime())
                         .env(env)
                         .binds(binds)

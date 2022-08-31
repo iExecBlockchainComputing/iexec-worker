@@ -23,6 +23,7 @@ import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.sms.api.*;
+import com.iexec.sms.api.config.TeeServicesConfiguration;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -115,26 +116,6 @@ public class SmsService {
             log.info("Saved enclave secret [chainTaskId:{}]", chainTaskId);
         } else {
             log.info("No enclave secret for this task [chainTaskId:{}]", chainTaskId);
-        }
-    }
-
-    /**
-     * Get the configuration needed for TEE workflow from the SMS. This
-     * configuration contains: las image, pre-compute image uri, pre-compute heap
-     * size, post-compute image uri, post-compute heap size.
-     *
-     * @return configuration if success, null otherwise
-     */
-    public TeeWorkflowConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
-        // SMS client should already have been created once before.
-        // If it couldn't be created, then the task would have been aborted.
-        // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
-        try {
-            return smsClient.getTeeWorkflowConfiguration();
-        } catch (FeignException e) {
-            log.error("Failed to get tee workflow configuration from sms", e);
-            return null;
         }
     }
 

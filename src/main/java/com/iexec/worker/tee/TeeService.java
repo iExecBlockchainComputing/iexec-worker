@@ -19,14 +19,14 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 public abstract class TeeService {
     private final SgxService sgxService;
     private final SmsClientProvider smsClientProvider;
-    protected final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
+    protected final TeeServicesConfigurationService teeServicesConfigurationService;
 
     protected TeeService(SgxService sgxService,
                          SmsClientProvider smsClientProvider,
-                         TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
+                         TeeServicesConfigurationService teeServicesConfigurationService) {
         this.sgxService = sgxService;
         this.smsClientProvider = smsClientProvider;
-        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
+        this.teeServicesConfigurationService = teeServicesConfigurationService;
     }
 
     public boolean isTeeEnabled() {
@@ -47,12 +47,12 @@ public abstract class TeeService {
             return Optional.of(UNKNOWN_SMS);
         }
         try {
-            // Try to load the `TeeWorkflowConfiguration` relative to the task.
+            // Try to load the `TeeServicesConfiguration` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
+            teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
         } catch (RuntimeException e) {
-            log.error("Couldn't get TeeWorkflowConfiguration [chainTaskId: {}]", chainTaskId, e);
-            return Optional.of(GET_TEE_WORKFLOW_CONFIGURATION_FAILED);
+            log.error("Couldn't get TeeServicesConfiguration [chainTaskId: {}]", chainTaskId, e);
+            return Optional.of(GET_TEE_WORKFLOW_CONFIGURATION_FAILED);  // FIXME: update member name
         }
 
         return Optional.empty();
