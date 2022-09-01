@@ -1,13 +1,13 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.SconeServicesConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,15 +62,13 @@ class LasServicesManagerTests {
     @Mock
     SconeConfiguration sconeConfiguration;
     @Mock
-    SmsClientProvider smsClientProvider;
+    TeeServicesConfigurationService teeServicesConfigurationService;
     @Mock
     WorkerConfigurationService workerConfigService;
     @Mock
     SgxService sgxService;
     @Mock
     DockerService dockerService;
-    @Mock
-    IexecHubAbstractService iexecHubService;
     @InjectMocks
     @Spy
     LasServicesManager lasServicesManager;
@@ -88,9 +86,7 @@ class LasServicesManagerTests {
     @Test
     void shouldStartLasServiceWhenLasNotYetCreated() {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration()).thenReturn(CONFIG_1);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(CONFIG_1);
         when(mockedLasService1.start()).thenReturn(true);
 
         Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
@@ -103,7 +99,7 @@ class LasServicesManagerTests {
 
         Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
 
-        verifyNoInteractions(smsClientProvider, mockedSmsClient);
+        verifyNoInteractions(teeServicesConfigurationService, mockedSmsClient);
     }
 
     @Test
@@ -114,20 +110,15 @@ class LasServicesManagerTests {
 
         Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
 
-        verifyNoInteractions(smsClientProvider, mockedSmsClient);
+        verifyNoInteractions(teeServicesConfigurationService, mockedSmsClient);
     }
 
     @Test
     void shouldStartTwoLasServicesForDifferentLasImageUri() {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
         when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_2)).thenReturn(TASK_DESCRIPTION_2);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_2)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration())
-                .thenReturn(CONFIG_1)
-                .thenReturn(CONFIG_2);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(CONFIG_1);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_2)).thenReturn(CONFIG_2);
         when(mockedLasService1.start()).thenReturn(true);
         when(mockedLasService2.start()).thenReturn(true);
 
@@ -143,11 +134,9 @@ class LasServicesManagerTests {
     void shouldStartOnlyOneLasServiceForSameLasImageUri() {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
         when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_2)).thenReturn(TASK_DESCRIPTION_2);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_2)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration())
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(CONFIG_1);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_2)).thenReturn(CONFIG_3);
+        when(mockedSmsClient.getTeeServicesConfiguration(TeeEnclaveProvider.SCONE))
                 .thenReturn(CONFIG_1)
                 .thenReturn(CONFIG_3);
         when(mockedLasService1.start()).thenReturn(true);
@@ -161,9 +150,7 @@ class LasServicesManagerTests {
     @Test
     void shouldNotStartLasServiceSinceMissingTeeWorkflowConfiguration() {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration()).thenReturn(null);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(null);
 
         Assertions.assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
 
@@ -183,8 +170,8 @@ class LasServicesManagerTests {
                 CHAIN_TASK_ID_2, false
         ));
 
-        startLasService(CHAIN_TASK_ID_1, TASK_DESCRIPTION_1, CONFIG_1, mockedSmsClient, mockedLasService1, areStarted);
-        startLasService(CHAIN_TASK_ID_2, TASK_DESCRIPTION_2,CONFIG_2, mockedSmsClient, mockedLasService2, areStarted);
+        startLasService(CHAIN_TASK_ID_1, CONFIG_1, mockedLasService1, areStarted);
+        startLasService(CHAIN_TASK_ID_2, CONFIG_2, mockedLasService2, areStarted);
 
         lasServicesManager.stopLasServices();
         Assertions.assertFalse(areStarted.get(CHAIN_TASK_ID_1));
@@ -192,14 +179,10 @@ class LasServicesManagerTests {
     }
 
     private void startLasService(String chainTaskId,
-                                 TaskDescription taskDescription,
                                  SconeServicesConfiguration config,
-                                 SmsClient smsClient,
                                  LasService lasService,
                                  Map<String, Boolean> areStarted) {
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
-        when(smsClientProvider.getOrCreateSmsClientForTask(taskDescription)).thenReturn(smsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration()).thenReturn(config);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId)).thenReturn(config);
 
         when(lasService.start()).then(invocation -> {
             areStarted.put(chainTaskId, true);
@@ -215,9 +198,7 @@ class LasServicesManagerTests {
     // region getLas
     @Test
     void shouldGetLas() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration()).thenReturn(CONFIG_1);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(CONFIG_1);
         when(mockedLasService1.start()).thenReturn(true);
 
         lasServicesManager.startLasService(CHAIN_TASK_ID_1); // Filling the LAS map
@@ -227,9 +208,7 @@ class LasServicesManagerTests {
 
     @Test
     void shouldNotGetLasSinceNoLasInMap() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration()).thenReturn(CONFIG_1);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(CONFIG_1);
         when(mockedLasService1.start()).thenReturn(true);
 
         Assertions.assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_1));
@@ -237,9 +216,7 @@ class LasServicesManagerTests {
 
     @Test
     void shouldNotGetLasSinceNoLasInMapForGivenTask() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID_1)).thenReturn(TASK_DESCRIPTION_1);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION_1)).thenReturn(mockedSmsClient);
-        when(mockedSmsClient.getSconeServicesConfiguration()).thenReturn(CONFIG_1);
+        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID_1)).thenReturn(CONFIG_1);
         when(mockedLasService1.start()).thenReturn(true);
 
         lasServicesManager.startLasService(CHAIN_TASK_ID_1); // Filling the LAS map

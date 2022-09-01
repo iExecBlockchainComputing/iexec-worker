@@ -1,13 +1,10 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.chain.IexecHubAbstractService;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.SconeServicesConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -21,28 +18,25 @@ import java.util.Map;
 @Slf4j
 public class LasServicesManager {
     private final SconeConfiguration sconeConfiguration;
-    private final SmsClientProvider smsClientProvider;
+    private final TeeServicesConfigurationService teeServicesConfigurationService;
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final DockerService dockerService;
-    private final IexecHubAbstractService iexecHubService;
 
     //TODO: Purge entry when task is over (completed/failed)
     private final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
-                              SmsClientProvider smsClientProvider,
+                              TeeServicesConfigurationService teeServicesConfigurationService,
                               WorkerConfigurationService workerConfigService,
                               SgxService sgxService,
-                              DockerService dockerService,
-                              IexecHubAbstractService iexecHubService) {
+                              DockerService dockerService) {
         this.sconeConfiguration = sconeConfiguration;
-        this.smsClientProvider = smsClientProvider;
+        this.teeServicesConfigurationService = teeServicesConfigurationService;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.dockerService = dockerService;
-        this.iexecHubService = iexecHubService;
     }
 
     public boolean startLasService(String chainTaskId) {
@@ -52,13 +46,7 @@ public class LasServicesManager {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
-        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
-        // SMS client should already have been created once before.
-        // If it couldn't be created, then the task would have been aborted.
-        // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
-
-        final SconeServicesConfiguration config = smsClient.getSconeServicesConfiguration();
+        final SconeServicesConfiguration config = teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
         if (config == null) {
             log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
             return false;

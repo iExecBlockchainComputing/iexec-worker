@@ -36,11 +36,12 @@ public class TeeServicesConfigurationService {
         this.iexecHubService = iexecHubService;
     }
 
-    public TeeServicesConfiguration getTeeServicesConfiguration(String chainTaskId) {
-        return configurationForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesConfiguration);
+    public <T extends TeeServicesConfiguration> T getTeeServicesConfiguration(String chainTaskId) {
+        //noinspection unchecked
+        return (T) configurationForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesConfiguration);
     }
 
-    TeeServicesConfiguration retrieveTeeServicesConfiguration(String chainTaskId) {
+    <T extends TeeServicesConfiguration> T retrieveTeeServicesConfiguration(String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         // SMS client should already have been created once before.
@@ -49,7 +50,7 @@ public class TeeServicesConfigurationService {
         final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
         final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
 
-        final TeeServicesConfiguration config = smsClient.getTeeServicesConfiguration(teeEnclaveProvider);
+        final T config = smsClient.getTeeServicesConfiguration(teeEnclaveProvider);
         log.info("Received TEE services configuration [config:{}]", config);
         if (config == null) {
             throw new TeeServicesConfigurationCreationException(
