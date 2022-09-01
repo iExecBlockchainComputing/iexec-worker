@@ -13,9 +13,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.ECKeyPair;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import static org.mockito.Mockito.*;
 
@@ -185,6 +189,20 @@ class LasServicesManagerTests {
 
         lasServicesManager.startLasService(chainTaskId);
         Assertions.assertTrue(areStarted.get(chainTaskId));
+    }
+    // endregion
+
+    // region createLasContainerName
+    @Test
+    void shouldCreateLasContainerNameWithProperCharLength() {
+        LasServicesManager lasServicesManager = new LasServicesManager(
+                sconeConfiguration, smsClientProvider, workerConfigService,
+                sgxService, dockerService);
+        ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
+        when(workerConfigService.getWorkerWalletAddress())
+                .thenReturn(Credentials.create(keyPair).getAddress());
+        Assertions.assertTrue(
+                lasServicesManager.createLasContainerName().length() < 64);
     }
     // endregion
 

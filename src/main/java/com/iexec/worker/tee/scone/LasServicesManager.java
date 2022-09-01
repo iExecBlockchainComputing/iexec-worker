@@ -7,11 +7,12 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.util.Date;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,15 +25,15 @@ public class LasServicesManager {
     private final SgxService sgxService;
     private final DockerService dockerService;
 
-    //TODO: Purge entry when task is over (completed/failed)
+    // TODO: Purge entry when task is over (completed/failed)
     private final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
-                              SmsClientProvider smsClientProvider,
-                              WorkerConfigurationService workerConfigService,
-                              SgxService sgxService,
-                              DockerService dockerService) {
+            SmsClientProvider smsClientProvider,
+            WorkerConfigurationService workerConfigService,
+            SgxService sgxService,
+            DockerService dockerService) {
         this.sconeConfiguration = sconeConfiguration;
         this.smsClientProvider = smsClientProvider;
         this.workerConfigService = workerConfigService;
@@ -69,11 +70,14 @@ public class LasServicesManager {
     }
 
     /**
-     * "iexec-las-0xWalletAddress-timestamp" as lasContainerName to avoid naming conflict
+     * Create LAS container name with a random salt to avoid naming conflicts
      * when running multiple workers on the same machine or using multiple SMS.
+     * Note: Starting from 64 characters, `failed to lookup address
+     * information: Name does not resolve` error occures.
      */
     String createLasContainerName() {
-        return "iexec-las-" + workerConfigService.getWorkerWalletAddress() + "-" + new Date().getTime();
+        return "iexec-las-" + workerConfigService.getWorkerWalletAddress()
+                + "-" + RandomStringUtils.random(10, true, true);
     }
 
     LasService createLasService(String lasImageUri) {
@@ -88,7 +92,8 @@ public class LasServicesManager {
 
     @PreDestroy
     void stopLasServices() {
-        lasImageUriToLasService.values().forEach(LasService::stopAndRemoveContainer);
+        lasImageUriToLasService.values()
+                .forEach(LasService::stopAndRemoveContainer);
     }
 
     public LasService getLas(String chainTaskId) {
