@@ -63,8 +63,7 @@ public class StompClientService {
 
     // All session requests coming in this time interval
     // will be treated together.
-    private static final int SESSION_REFRESH_BACK_OFF_DELAY = 5;
-
+    static final int SESSION_REFRESH_BACK_OFF_DELAY = 5;
     // A semaphore used to guarantee that only one thread is listening to session requests.
     private final Semaphore listenerLock = new Semaphore(1);
     // A latch used to wait for session requests.

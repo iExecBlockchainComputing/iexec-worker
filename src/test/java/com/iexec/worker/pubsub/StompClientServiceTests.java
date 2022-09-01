@@ -18,10 +18,12 @@ import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
@@ -142,15 +144,24 @@ class StompClientServiceTests {
     }
 
     @Test
-    void shouldNoRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
+    void shouldNotRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
         stompClientService.startSessionRequestListenerIfAbsent();
-        TimeUnit.MILLISECONDS.sleep(10);
         // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClientService).listenToSessionRequests();
+        verify(stompClientService, timeout(10)).listenToSessionRequests();
         stompClientService.restartSessionRequestListenerIfStopped();
-        TimeUnit.MILLISECONDS.sleep(10);
         // Make sure listenToSessionRequests() method is still called only 1 time
-        verify(stompClientService).listenToSessionRequests();
+        verify(stompClientService, timeout(10)).listenToSessionRequests();
+    }
+
+    @Test
+    void shouldDestroySessionRequestListenerOnInterruptedException(CapturedOutput output) throws InterruptedException {
+        doThrow(InterruptedException.class).when(stompClientService).backOff();
+        CompletableFuture<Void> sessionRequestListener = stompClientService.startSessionRequestListenerIfAbsent();
+        stompClientService.requestNewSession();
+        await().atMost(1, TimeUnit.SECONDS).until(sessionRequestListener::isDone);
+        assertThat(output.getOut())
+                .contains("Listening to incoming STOMP session requests")
+                .contains("STOMP session request listener got interrupted");
     }
 
     @Test
@@ -171,6 +182,26 @@ class StompClientServiceTests {
         // Make sure createSession() method is called only 1 time
         verify(stompClientService).createSession();
     }
+
+    //region backOff
+    @Test
+    void shouldNotBackOffWhenSessionDoesNotExist() throws InterruptedException {
+        Date reference = new Date();
+        stompClientService.backOff();
+        assertThat(new Date().getTime() - reference.getTime())
+                .isLessThan(StompClientService.SESSION_REFRESH_BACK_OFF_DELAY);
+    }
+
+    @Test
+    void shouldBackOffWhenSessionExists() throws InterruptedException {
+        StompSession stompSession = mock(StompSession.class);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
+        Date reference = new Date();
+        stompClientService.backOff();
+        assertThat(new Date().getTime() - reference.getTime())
+                .isGreaterThan(StompClientService.SESSION_REFRESH_BACK_OFF_DELAY);
+    }
+    //endregion
 
     private void waitForListener() throws InterruptedException {
         TimeUnit.MILLISECONDS.sleep(10);
