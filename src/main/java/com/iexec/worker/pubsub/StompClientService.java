@@ -152,7 +152,7 @@ public class StompClientService {
      * requests in a fixed time interval {@code SESSION_REFRESH_DELAY}
      * will be processed only once.
      * <p>
-     * <b>Note:</b> We use an latch because the method
+     * <b>Note:</b> We use a latch because the method
      * {@link SessionHandler#handleTransportError(StompSession, Throwable)} is called
      * two times to handle connectivity issues when the websocket
      * connection is, for whatever reason, brutally terminated while
