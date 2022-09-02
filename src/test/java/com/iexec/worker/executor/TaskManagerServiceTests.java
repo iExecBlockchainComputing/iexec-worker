@@ -27,6 +27,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.purge.PurgeService;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -88,6 +89,8 @@ class TaskManagerServiceTests {
     private DockerService dockerService;
     @Mock
     private SubscriptionService subscriptionService;
+    @Mock
+    private PurgeService purgeService;
 
     @Mock
     private TeeService teeMockedService;
@@ -1299,6 +1302,8 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
                 .isEqualTo(ReplicateActionResponse.success());
+
+        verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
     }
 
     @Test
@@ -1311,6 +1316,8 @@ class TaskManagerServiceTests {
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
                 .isEqualTo(ReplicateActionResponse.failure());
+
+        verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
     }
     //endregion
 
@@ -1323,6 +1330,7 @@ class TaskManagerServiceTests {
         verify(dockerService).stopRunningContainersWithNamePredicate(predicateCaptor.capture());
         verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(resultService).removeResult(CHAIN_TASK_ID);
+        verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
         // Check the predicate
         assertThat(predicateCaptor.getValue().test(CHAIN_TASK_ID)).isTrue();
     }

@@ -1,11 +1,13 @@
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.utils.purge.Purgeable;
 import com.iexec.sms.api.config.SconeServicesConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeServicesConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.expiringmap.ExpiringMap;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -13,18 +15,21 @@ import javax.annotation.PreDestroy;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
-public class LasServicesManager {
+public class LasServicesManager implements Purgeable {
     private final SconeConfiguration sconeConfiguration;
     private final TeeServicesConfigurationService teeServicesConfigurationService;
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final DockerService dockerService;
 
-    //TODO: Purge entry when task is over (completed/failed)
-    private final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
+    private final Map<String, LasService> chainTaskIdToLasService = ExpiringMap
+            .builder()
+            .expiration(100, TimeUnit.HOURS)
+            .build();
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
@@ -87,5 +92,10 @@ public class LasServicesManager {
 
     public LasService getLas(String chainTaskId) {
         return chainTaskIdToLasService.get(chainTaskId);
+    }
+
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        return chainTaskIdToLasService.remove(chainTaskId) != null;
     }
 }

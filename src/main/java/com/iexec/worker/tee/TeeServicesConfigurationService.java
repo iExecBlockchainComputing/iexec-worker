@@ -4,6 +4,7 @@ import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.utils.purge.Purgeable;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.TeeServicesConfiguration;
@@ -20,12 +21,11 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-public class TeeServicesConfigurationService {
+public class TeeServicesConfigurationService implements Purgeable {
     private final SmsClientProvider smsClientProvider;
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
 
-    // TODO: purge this map when a task has been completed
     private final Map<String, TeeServicesConfiguration> configurationForTask = new HashMap<>();
 
     public TeeServicesConfigurationService(SmsClientProvider smsClientProvider,
@@ -82,5 +82,10 @@ public class TeeServicesConfigurationService {
                     "Failed to download image " +
                             "[chainTaskId:" + chainTaskId +", " + imageType + ":" + image + "]");
         }
+    }
+
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        return configurationForTask.remove(chainTaskId) != null;
     }
 }

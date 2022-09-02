@@ -20,6 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
+import com.iexec.common.utils.purge.Purgeable;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
-public class WorkerpoolAuthorizationService {
+public class WorkerpoolAuthorizationService implements Purgeable {
 
     private final PublicConfigurationService publicConfigurationService;
     private Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
@@ -72,5 +73,10 @@ public class WorkerpoolAuthorizationService {
 
     WorkerpoolAuthorization getWorkerpoolAuthorization(String chainTaskId) {
         return workerpoolAuthorizations.get(chainTaskId);
+    }
+
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        return workerpoolAuthorizations.remove(chainTaskId) != null;
     }
 }
