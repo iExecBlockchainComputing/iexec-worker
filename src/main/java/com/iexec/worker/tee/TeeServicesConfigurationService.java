@@ -49,6 +49,14 @@ public class TeeServicesConfigurationService {
         // So the following won't throw an exception.
         final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
         final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
+        final TeeEnclaveProvider smsTeeEnclaveProvider = smsClient.getTeeEnclaveProvider();
+        if (smsTeeEnclaveProvider != teeEnclaveProvider) {
+            throw new TeeServicesConfigurationCreationException(
+                    "SMS is configured for another TEE enclave provider" +
+                            " [chainTaskId:" + chainTaskId +
+                            ", requiredProvider:" + teeEnclaveProvider +
+                            ", actualProvider:" + smsTeeEnclaveProvider + "]");
+        }
 
         final T config = smsClient.getTeeServicesConfiguration(teeEnclaveProvider);
         log.info("Received TEE services configuration [config:{}]", config);
