@@ -128,8 +128,9 @@ class TeeSconeServiceTests {
         final Optional<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
-        assertThat(teePrerequisitesIssue).isPresent();
-        assertThat(teePrerequisitesIssue.get()).isEqualTo(TEE_NOT_SUPPORTED);
+        assertThat(teePrerequisitesIssue)
+                .isPresent()
+                .contains(TEE_NOT_SUPPORTED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsClientProvider, times(0)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
@@ -146,8 +147,9 @@ class TeeSconeServiceTests {
         final Optional<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
-        assertThat(teePrerequisitesIssue).isPresent();
-        assertThat(teePrerequisitesIssue.get()).isEqualTo(UNKNOWN_SMS);
+        assertThat(teePrerequisitesIssue)
+                .isPresent()
+                .contains(UNKNOWN_SMS);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
@@ -165,8 +167,9 @@ class TeeSconeServiceTests {
         final Optional<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
-        assertThat(teePrerequisitesIssue).isPresent();
-        assertThat(teePrerequisitesIssue.get()).isEqualTo(GET_TEE_SERVICES_CONFIGURATION_FAILED);
+        assertThat(teePrerequisitesIssue)
+                .isPresent()
+                .contains(GET_TEE_SERVICES_CONFIGURATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
@@ -185,8 +188,9 @@ class TeeSconeServiceTests {
         final Optional<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
-        assertThat(teePrerequisitesIssue).isPresent();
-        assertThat(teePrerequisitesIssue.get()).isEqualTo(TEE_PREPARATION_FAILED);
+        assertThat(teePrerequisitesIssue)
+                .isPresent()
+                .contains(TEE_PREPARATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsClientProvider, times(1)).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
