@@ -91,7 +91,7 @@ public class TeeSconeService extends TeeService {
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesConfiguration config =
                 teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
-        return getDockerEnv(chainTaskId, sconeConfigId, config.getPreComputeConfiguration().getHeapSize(), session.getSecretProvisioningUrl());
+        return getDockerEnv(chainTaskId, sconeConfigId, config.getPreComputeConfiguration().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 
     @Override
@@ -113,7 +113,7 @@ public class TeeSconeService extends TeeService {
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesConfiguration config =
                 teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
-        return getDockerEnv(chainTaskId, sconeConfigId, config.getPostComputeConfiguration().getHeapSize(), session.getSecretProvisioningUrl());
+        return getDockerEnv(chainTaskId, sconeConfigId, config.getPostComputeConfiguration().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 
     @Override

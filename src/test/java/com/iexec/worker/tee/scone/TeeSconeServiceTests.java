@@ -88,8 +88,8 @@ class TeeSconeServiceTests {
         when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
         when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
 
-        when(preComputeConfiguration.getHeapSize()).thenReturn(HEAP_SIZE);
-        when(postComputeConfiguration.getHeapSize()).thenReturn(HEAP_SIZE);
+        when(preComputeConfiguration.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
+        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
         when(config.getPreComputeConfiguration()).thenReturn(preComputeConfiguration);
         when(config.getPostComputeConfiguration()).thenReturn(postComputeConfiguration);
         when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID))
