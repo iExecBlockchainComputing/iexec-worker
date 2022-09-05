@@ -179,7 +179,7 @@ class PostComputeServiceTests {
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
@@ -231,7 +231,7 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(false);
@@ -254,7 +254,7 @@ class PostComputeServiceTests {
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
@@ -301,7 +301,7 @@ class PostComputeServiceTests {
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);

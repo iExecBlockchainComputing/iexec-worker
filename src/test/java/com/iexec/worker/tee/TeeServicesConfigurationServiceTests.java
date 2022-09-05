@@ -81,10 +81,10 @@ class TeeServicesConfigurationServiceTests {
         assertNotNull(postComputeConfiguration);
 
         assertEquals(PRE_COMPUTE_IMAGE, preComputeConfiguration.getImage());
-        assertEquals(PRE_COMPUTE_HEAP_SIZE, preComputeConfiguration.getHeapSize());
+        assertEquals(PRE_COMPUTE_HEAP_SIZE, preComputeConfiguration.getHeapSizeInBytes());
         assertEquals(PRE_COMPUTE_ENTRYPOINT, preComputeConfiguration.getEntrypoint());
         assertEquals(POST_COMPUTE_IMAGE, postComputeConfiguration.getImage());
-        assertEquals(POST_COMPUTE_HEAP_SIZE, postComputeConfiguration.getHeapSize());
+        assertEquals(POST_COMPUTE_HEAP_SIZE, postComputeConfiguration.getHeapSizeInBytes());
         assertEquals(POST_COMPUTE_ENTRYPOINT, postComputeConfiguration.getEntrypoint());
 
         verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
