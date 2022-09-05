@@ -29,16 +29,7 @@ class LasServicesManagerTests {
     private static final String CONTAINER_NAME = "containerName";
 
     private static final String CHAIN_TASK_ID_1 = "chainTaskId1";
-    private static final TaskDescription TASK_DESCRIPTION_1 = TaskDescription
-            .builder()
-            .chainTaskId(CHAIN_TASK_ID_1)
-            .build();
     private static final String CHAIN_TASK_ID_2 = "chainTaskId2";
-    private static final TaskDescription TASK_DESCRIPTION_2 = TaskDescription
-            .builder()
-            .chainTaskId(CHAIN_TASK_ID_2)
-            .build();
-
 
     private static final String LAS_IMAGE_URI_1 = "lasImage1";
     private static final String LAS_IMAGE_URI_2 = "lasImage2";
@@ -203,7 +194,7 @@ class LasServicesManagerTests {
     @Test
     void shouldCreateLasContainerNameWithProperCharLength() {
         LasServicesManager lasServicesManager = new LasServicesManager(
-                sconeConfiguration, smsClientProvider, workerConfigService,
+                sconeConfiguration, teeServicesConfigurationService, workerConfigService,
                 sgxService, dockerService);
         ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
         when(workerConfigService.getWorkerWalletAddress())
@@ -224,7 +215,7 @@ class LasServicesManagerTests {
     @Test
     void shouldCreateLasContainerNameWithRandomness() {
         LasServicesManager lasServicesManager = new LasServicesManager(
-                sconeConfiguration, smsClientProvider, workerConfigService,
+                sconeConfiguration, teeServicesConfigurationService, workerConfigService,
                 sgxService, dockerService);
         ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
         when(workerConfigService.getWorkerWalletAddress())
