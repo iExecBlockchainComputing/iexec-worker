@@ -7,7 +7,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +14,7 @@ import javax.annotation.PreDestroy;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -76,8 +76,8 @@ public class LasServicesManager {
      * information: Name does not resolve` error occures.
      */
     String createLasContainerName() {
-        return "iexec-las-" + workerConfigService.getWorkerWalletAddress()
-                + "-" + RandomStringUtils.random(10, true, true);
+        return "iexec-las-" + workerConfigService.getWorkerWalletAddress() + "-" 
+            + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
     LasService createLasService(String lasImageUri) {
