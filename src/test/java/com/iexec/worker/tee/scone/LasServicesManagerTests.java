@@ -1,6 +1,5 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.SconeServicesConfiguration;
