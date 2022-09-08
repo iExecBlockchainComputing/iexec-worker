@@ -1,6 +1,6 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.sms.api.config.SconeServicesConfiguration;
+import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
@@ -46,13 +46,13 @@ public class LasServicesManager {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
-        final SconeServicesConfiguration config = teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
-        if (config == null) {
+        final SconeServicesProperties properties = teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+        if (properties == null) {
             log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
             return false;
         }
-        final String lasImageUri = !StringUtils.isEmpty(config.getLasImage())
-                ? config.getLasImage()
+        final String lasImageUri = !StringUtils.isEmpty(properties.getLasImage())
+                ? properties.getLasImage()
                 : "";
 
         final LasService lasService = lasImageUriToLasService.computeIfAbsent(

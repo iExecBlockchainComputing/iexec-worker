@@ -25,8 +25,8 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.sms.api.config.TeeAppConfiguration;
-import com.iexec.sms.api.config.TeeServicesConfiguration;
+import com.iexec.sms.api.config.TeeAppProperties;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -222,12 +222,12 @@ public class PreComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
-        TeeServicesConfiguration config =
-                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
+        TeeServicesProperties properties =
+                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
 
         // check that docker image is present
-        final TeeAppConfiguration preComputeConfig = config.getPreComputeConfiguration();
-        String preComputeImage = preComputeConfig.getImage();
+        final TeeAppProperties preComputeProperties = properties.getPreComputeProperties();
+        String preComputeImage = preComputeProperties.getImage();
         if (!dockerService.getClient().isImagePresent(preComputeImage)) {
             log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
             return null;
@@ -240,7 +240,7 @@ public class PreComputeService {
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
                 .imageUri(preComputeImage)
-                .entrypoint(preComputeConfig.getEntrypoint())
+                .entrypoint(preComputeProperties.getEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)
