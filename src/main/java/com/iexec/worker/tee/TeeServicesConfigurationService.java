@@ -58,7 +58,7 @@ public class TeeServicesConfigurationService {
                             ", actualProvider:" + smsTeeEnclaveProvider + "]");
         }
 
-        final T properties = smsClient.getTeeServicesConfiguration(teeEnclaveProvider);
+        final T properties = smsClient.getTeeServicesProperties(teeEnclaveProvider);
         log.info("Received TEE services configuration [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(

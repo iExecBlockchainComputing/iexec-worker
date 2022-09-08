@@ -71,9 +71,9 @@ class TeeSconeServiceTests {
     @Mock
     private IexecHubAbstractService iexecHubService;
     @Mock
-    private TeeAppProperties preComputeConfiguration;
+    private TeeAppProperties preComputeProperties;
     @Mock
-    private TeeAppProperties postComputeConfiguration;
+    private TeeAppProperties postComputeProperties;
     @Mock
     private SconeServicesProperties properties;
     @Mock
@@ -88,10 +88,10 @@ class TeeSconeServiceTests {
         when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
         when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
 
-        when(preComputeConfiguration.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
-        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
-        when(properties.getPreComputeProperties()).thenReturn(preComputeConfiguration);
-        when(properties.getPostComputeProperties()).thenReturn(postComputeConfiguration);
+        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
+        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
+        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
         when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID))
                 .thenReturn(properties);
 

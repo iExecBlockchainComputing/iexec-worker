@@ -130,7 +130,7 @@ class LasServicesManagerTests {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
         when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
         when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID_2)).thenReturn(PROPERTIES_3);
-        when(mockedSmsClient.getTeeServicesConfiguration(TeeEnclaveProvider.SCONE))
+        when(mockedSmsClient.getTeeServicesProperties(TeeEnclaveProvider.SCONE))
                 .thenReturn(PROPERTIES_1)
                 .thenReturn(PROPERTIES_3);
         when(mockedLasService1.start()).thenReturn(true);
