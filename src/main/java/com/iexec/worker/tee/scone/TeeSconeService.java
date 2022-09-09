@@ -22,7 +22,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.sms.api.config.TeeServicesConfiguration;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesConfigurationService;
@@ -89,9 +89,9 @@ public class TeeSconeService extends TeeService {
             @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
         String chainTaskId = taskDescription.getChainTaskId();
-        TeeServicesConfiguration config =
-                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
-        return getDockerEnv(chainTaskId, sconeConfigId, config.getPreComputeConfiguration().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
+        TeeServicesProperties properties =
+                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+        return getDockerEnv(chainTaskId, sconeConfigId, properties.getPreComputeProperties().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 
     @Override
@@ -111,9 +111,9 @@ public class TeeSconeService extends TeeService {
             @Nonnull TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/post-compute";
         String chainTaskId = taskDescription.getChainTaskId();
-        TeeServicesConfiguration config =
-                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
-        return getDockerEnv(chainTaskId, sconeConfigId, config.getPostComputeConfiguration().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
+        TeeServicesProperties properties =
+                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+        return getDockerEnv(chainTaskId, sconeConfigId, properties.getPostComputeProperties().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 
     @Override

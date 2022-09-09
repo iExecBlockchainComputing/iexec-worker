@@ -52,11 +52,11 @@ public abstract class TeeService {
             return Optional.of(UNKNOWN_SMS);
         }
         try {
-            // Try to load the `TeeServicesConfiguration` relative to the task.
+            // Try to load the `TeeServicesProperties` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
+            teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
         } catch (RuntimeException e) {
-            log.error("Couldn't get TeeServicesConfiguration [chainTaskId: {}]", chainTaskId, e);
+            log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
         }
 

@@ -25,8 +25,8 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.sms.api.config.TeeAppConfiguration;
-import com.iexec.sms.api.config.TeeServicesConfiguration;
+import com.iexec.sms.api.config.TeeAppProperties;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -116,11 +116,11 @@ public class PostComputeService {
                                                  TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
 
-        TeeServicesConfiguration config =
-                teeServicesConfigurationService.getTeeServicesConfiguration(chainTaskId);
+        TeeServicesProperties properties =
+                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
 
-        final TeeAppConfiguration postComputeConfig = config.getPostComputeConfiguration();
-        String postComputeImage = postComputeConfig.getImage();
+        final TeeAppProperties postComputeProperties = properties.getPostComputeProperties();
+        String postComputeImage = postComputeProperties.getImage();
         // ###############################################################################
         // TODO: activate this when user specific post-compute is properly
         // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
@@ -153,7 +153,7 @@ public class PostComputeService {
                         .chainTaskId(chainTaskId)
                         .containerName(getTaskTeePostComputeContainerName(chainTaskId))
                         .imageUri(postComputeImage)
-                        .entrypoint(postComputeConfig.getEntrypoint())
+                        .entrypoint(postComputeProperties.getEntrypoint())
                         .maxExecutionTime(taskDescription.getMaxExecutionTime())
                         .env(env)
                         .binds(binds)

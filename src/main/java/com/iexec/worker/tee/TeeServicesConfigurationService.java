@@ -7,7 +7,7 @@ import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.common.utils.purge.Purgeable;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.config.TeeServicesConfiguration;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,8 +16,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Manages the {@link TeeServicesConfiguration}, providing an easy way to get a configuration for a task
- * and avoiding the need to create a new {@link TeeServicesConfiguration} instance each time.
+ * Manages the {@link TeeServicesProperties}, providing an easy way to get a configuration for a task
+ * and avoiding the need to create a new {@link TeeServicesProperties} instance each time.
  */
 @Slf4j
 @Service
@@ -26,7 +26,7 @@ public class TeeServicesConfigurationService implements Purgeable {
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
 
-    private final Map<String, TeeServicesConfiguration> configurationForTask = new HashMap<>();
+    private final Map<String, TeeServicesProperties> propertiesForTask = new HashMap<>();
 
     public TeeServicesConfigurationService(SmsClientProvider smsClientProvider,
                                            DockerService dockerService,
@@ -36,12 +36,12 @@ public class TeeServicesConfigurationService implements Purgeable {
         this.iexecHubService = iexecHubService;
     }
 
-    public <T extends TeeServicesConfiguration> T getTeeServicesConfiguration(String chainTaskId) {
+    public <T extends TeeServicesProperties> T getTeeServicesProperties(String chainTaskId) {
         //noinspection unchecked
-        return (T) configurationForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesConfiguration);
+        return (T) propertiesForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesProperties);
     }
 
-    <T extends TeeServicesConfiguration> T retrieveTeeServicesConfiguration(String chainTaskId) {
+    <T extends TeeServicesProperties> T retrieveTeeServicesProperties(String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         // SMS client should already have been created once before.
@@ -51,34 +51,34 @@ public class TeeServicesConfigurationService implements Purgeable {
         final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
         final TeeEnclaveProvider smsTeeEnclaveProvider = smsClient.getTeeEnclaveProvider();
         if (smsTeeEnclaveProvider != teeEnclaveProvider) {
-            throw new TeeServicesConfigurationCreationException(
+            throw new TeeServicesPropertiesCreationException(
                     "SMS is configured for another TEE enclave provider" +
                             " [chainTaskId:" + chainTaskId +
                             ", requiredProvider:" + teeEnclaveProvider +
                             ", actualProvider:" + smsTeeEnclaveProvider + "]");
         }
 
-        final T config = smsClient.getTeeServicesConfiguration(teeEnclaveProvider);
-        log.info("Received TEE services configuration [config:{}]", config);
-        if (config == null) {
-            throw new TeeServicesConfigurationCreationException(
+        final T properties = smsClient.getTeeServicesProperties(teeEnclaveProvider);
+        log.info("Received TEE services configuration [properties:{}]", properties);
+        if (properties == null) {
+            throw new TeeServicesPropertiesCreationException(
                     "Missing TEE services configuration [chainTaskId:" + chainTaskId +"]");
         }
 
-        final String preComputeImage = config.getPreComputeConfiguration().getImage();
-        final String postComputeImage = config.getPostComputeConfiguration().getImage();
+        final String preComputeImage = properties.getPreComputeProperties().getImage();
+        final String postComputeImage = properties.getPostComputeProperties().getImage();
 
         checkImageIsPresentOrDownload(preComputeImage, chainTaskId, "preComputeImage");
         checkImageIsPresentOrDownload(postComputeImage, chainTaskId, "postComputeImage");
 
-        return config;
+        return properties;
     }
 
     private void checkImageIsPresentOrDownload(String image, String chainTaskId, String imageType) {
         final DockerClientInstance client = dockerService.getClient(image);
         if (!client.isImagePresent(image)
                 && !client.pullImage(image)) {
-            throw new TeeServicesConfigurationCreationException(
+            throw new TeeServicesPropertiesCreationException(
                     "Failed to download image " +
                             "[chainTaskId:" + chainTaskId +", " + imageType + ":" + image + "]");
         }
@@ -86,6 +86,6 @@ public class TeeServicesConfigurationService implements Purgeable {
 
     @Override
     public boolean purgeTask(String chainTaskId) {
-        return configurationForTask.remove(chainTaskId) != null;
+        return propertiesForTask.remove(chainTaskId) != null;
     }
 }

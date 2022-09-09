@@ -26,8 +26,8 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.sms.api.config.TeeAppConfiguration;
-import com.iexec.sms.api.config.TeeServicesConfiguration;
+import com.iexec.sms.api.config.TeeAppProperties;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -90,11 +90,11 @@ class PostComputeServiceTests {
     @Mock
     private TeeServicesManager teeServicesManager;
     @Mock
-    private TeeAppConfiguration preComputeConfiguration;
+    private TeeAppProperties preComputeProperties;
     @Mock
-    private TeeAppConfiguration postComputeConfiguration;
+    private TeeAppProperties postComputeProperties;
     @Mock
-    private TeeServicesConfiguration config;
+    private TeeServicesProperties properties;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
     @Mock
@@ -112,9 +112,9 @@ class PostComputeServiceTests {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(config.getPreComputeConfiguration()).thenReturn(preComputeConfiguration);
-        when(config.getPostComputeConfiguration()).thenReturn(postComputeConfiguration);
-        when(teeServicesConfigurationService.getTeeServicesConfiguration(CHAIN_TASK_ID)).thenReturn(config);
+        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
+        when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
 
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -178,9 +178,9 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
-        when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
+        when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
@@ -230,9 +230,9 @@ class PostComputeServiceTests {
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
-        when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
-        when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
+        when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -253,9 +253,9 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
-        when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
+        when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
@@ -300,9 +300,9 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
-        when(postComputeConfiguration.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeConfiguration.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
-        when(postComputeConfiguration.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
+        when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
+        when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
