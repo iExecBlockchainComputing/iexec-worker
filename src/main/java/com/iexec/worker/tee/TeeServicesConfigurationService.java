@@ -20,6 +20,7 @@ import java.util.Map;
  */
 @Slf4j
 @Service
+// FIXME: rename to `TeeServicesPropertiesService` and remove all mentions to `Configuration`
 public class TeeServicesConfigurationService {
     private final SmsClientProvider smsClientProvider;
     private final DockerService dockerService;
