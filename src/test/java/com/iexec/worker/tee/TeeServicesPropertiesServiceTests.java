@@ -193,24 +193,24 @@ class TeeServicesPropertiesServiceTests {
     @Test
     void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
         final Map<String, TeeServicesProperties> propertiesForTask =
-                ReflectionUtils.getFieldAndSetAccessible(teeServicesConfigurationService, "propertiesForTask");
+                ReflectionUtils.getFieldAndSetAccessible(teeServicesPropertiesService, "propertiesForTask");
         propertiesForTask.put(CHAIN_TASK_ID, GRAMINE_PROPERTIES);
 
-        assertTrue(teeServicesConfigurationService.purgeTask(CHAIN_TASK_ID));
+        assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
     }
 
     @Test
     void shouldNotPurgeTaskSinceEmptyMap() {
-        assertFalse(teeServicesConfigurationService.purgeTask(CHAIN_TASK_ID));
+        assertFalse(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
     }
 
     @Test
     void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
         final Map<String, TeeServicesProperties> propertiesForTask =
-                ReflectionUtils.getFieldAndSetAccessible(teeServicesConfigurationService, "propertiesForTask");
+                ReflectionUtils.getFieldAndSetAccessible(teeServicesPropertiesService, "propertiesForTask");
         propertiesForTask.put(CHAIN_TASK_ID + "-wrong", GRAMINE_PROPERTIES);
 
-        assertFalse(teeServicesConfigurationService.purgeTask(CHAIN_TASK_ID));
+        assertFalse(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
     }
     // endregion
 }
