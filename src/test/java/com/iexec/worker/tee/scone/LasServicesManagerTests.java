@@ -7,6 +7,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class LasServicesManagerTests {
@@ -252,6 +255,31 @@ class LasServicesManagerTests {
         lasServicesManager.startLasService(CHAIN_TASK_ID_1); // Filling the LAS map
 
         Assertions.assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_2));
+    }
+    // endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, LasService> chainTaskIdToLasService = ReflectionUtils
+                .getFieldAndSetAccessible(lasServicesManager, "chainTaskIdToLasService");
+        chainTaskIdToLasService.put(CHAIN_TASK_ID_1, mockedLasService1);
+
+        assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceEmptyMap() {
+        assertFalse(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, LasService> chainTaskIdToLasService = ReflectionUtils
+                .getFieldAndSetAccessible(lasServicesManager, "chainTaskIdToLasService");
+        chainTaskIdToLasService.put(CHAIN_TASK_ID_2, mockedLasService2);
+
+        assertFalse(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
     }
     // endregion
 }

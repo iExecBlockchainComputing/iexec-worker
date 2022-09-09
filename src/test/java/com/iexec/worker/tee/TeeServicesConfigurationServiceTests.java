@@ -10,12 +10,15 @@ import com.iexec.sms.api.config.GramineServicesProperties;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -183,6 +186,31 @@ class TeeServicesConfigurationServiceTests {
         verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient).isImagePresent(POST_COMPUTE_IMAGE);
         verify(dockerClient).pullImage(POST_COMPUTE_IMAGE);
+    }
+    // endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, TeeServicesProperties> propertiesForTask =
+                ReflectionUtils.getFieldAndSetAccessible(teeServicesConfigurationService, "propertiesForTask");
+        propertiesForTask.put(CHAIN_TASK_ID, GRAMINE_PROPERTIES);
+
+        assertTrue(teeServicesConfigurationService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceEmptyMap() {
+        assertFalse(teeServicesConfigurationService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, TeeServicesProperties> propertiesForTask =
+                ReflectionUtils.getFieldAndSetAccessible(teeServicesConfigurationService, "propertiesForTask");
+        propertiesForTask.put(CHAIN_TASK_ID + "-wrong", GRAMINE_PROPERTIES);
+
+        assertFalse(teeServicesConfigurationService.purgeTask(CHAIN_TASK_ID));
     }
     // endregion
 }

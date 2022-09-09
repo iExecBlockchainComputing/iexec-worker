@@ -19,14 +19,27 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
+import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class WorkerpoolAuthorizationServiceTests {
+    private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final String SCHEDULER_PUBLIC_ADDRESS = "schedulerPublicAddress";
+
+    @Mock
+    private PublicConfigurationService publicConfigurationService;
 
     @InjectMocks
     private WorkerpoolAuthorizationService workerpoolAuthorizationService;
@@ -34,6 +47,8 @@ class WorkerpoolAuthorizationServiceTests {
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
+        when(publicConfigurationService.getSchedulerPublicAddress()).thenReturn(SCHEDULER_PUBLIC_ADDRESS);
+        workerpoolAuthorizationService.initIt();
     }
 
     /**
@@ -65,4 +80,29 @@ class WorkerpoolAuthorizationServiceTests {
 
         assertTrue(workerpoolAuthorizationService.isWorkerpoolAuthorizationValid(workerpoolAuthorization, signingAddress));
     }
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
+                ReflectionUtils.getFieldAndSetAccessible(workerpoolAuthorizationService, "workerpoolAuthorizations");
+        workerpoolAuthorizations.put(CHAIN_TASK_ID, mock(WorkerpoolAuthorization.class));
+
+        assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceEmptyMap() {
+        assertFalse(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
+                ReflectionUtils.getFieldAndSetAccessible(workerpoolAuthorizationService, "workerpoolAuthorizations");
+        workerpoolAuthorizations.put(CHAIN_TASK_ID + "-wrong", mock(WorkerpoolAuthorization.class));
+
+        assertFalse(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+    // endregion
 }
