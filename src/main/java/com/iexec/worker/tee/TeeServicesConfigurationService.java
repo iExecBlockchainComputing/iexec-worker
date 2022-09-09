@@ -4,6 +4,7 @@ import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.utils.purge.ExpiringTaskMapFactory;
 import com.iexec.common.utils.purge.Purgeable;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
@@ -12,7 +13,6 @@ import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -26,7 +26,7 @@ public class TeeServicesConfigurationService implements Purgeable {
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
 
-    private final Map<String, TeeServicesProperties> propertiesForTask = new HashMap<>();
+    private final Map<String, TeeServicesProperties> propertiesForTask = ExpiringTaskMapFactory.getExpiringTaskMap();
 
     public TeeServicesConfigurationService(SmsClientProvider smsClientProvider,
                                            DockerService dockerService,

@@ -19,12 +19,10 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.Map;
@@ -32,14 +30,9 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class WorkerpoolAuthorizationServiceTests {
     private static final String CHAIN_TASK_ID = "chainTaskId";
-    private static final String SCHEDULER_PUBLIC_ADDRESS = "schedulerPublicAddress";
-
-    @Mock
-    private PublicConfigurationService publicConfigurationService;
 
     @InjectMocks
     private WorkerpoolAuthorizationService workerpoolAuthorizationService;
@@ -47,8 +40,6 @@ class WorkerpoolAuthorizationServiceTests {
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
-        when(publicConfigurationService.getSchedulerPublicAddress()).thenReturn(SCHEDULER_PUBLIC_ADDRESS);
-        workerpoolAuthorizationService.initIt();
     }
 
     /**

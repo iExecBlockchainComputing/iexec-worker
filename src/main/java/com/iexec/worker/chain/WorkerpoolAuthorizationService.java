@@ -20,6 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
+import com.iexec.common.utils.purge.ExpiringTaskMapFactory;
 import com.iexec.common.utils.purge.Purgeable;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 
 @Slf4j
@@ -35,17 +35,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WorkerpoolAuthorizationService implements Purgeable {
 
     private final PublicConfigurationService publicConfigurationService;
-    private Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
+    private final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
     private String corePublicAddress;
 
     public WorkerpoolAuthorizationService(PublicConfigurationService publicConfigurationService) {
         this.publicConfigurationService = publicConfigurationService;
+        workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
     }
 
     @PostConstruct
     public void initIt() {
         corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
-        workerpoolAuthorizations = new ConcurrentHashMap<>();
     }
 
 
