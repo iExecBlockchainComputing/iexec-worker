@@ -4,7 +4,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,7 +33,7 @@ class TeeGramineServiceTests {
     @Mock
     SmsClientProvider smsClientProvider;
     @Mock
-    TeeServicesConfigurationService teeServicesConfigurationService;
+    TeeServicesPropertiesService teeServicesPropertiesService;
 
     @InjectMocks
     TeeGramineService teeGramineService;
@@ -50,7 +50,7 @@ class TeeGramineServiceTests {
     void shouldPrepareTeeForTask(String chainTaskId) {
         assertTrue(teeGramineService.prepareTeeForTask(chainTaskId));
 
-        verifyNoInteractions(sgxService, smsClientProvider, teeServicesConfigurationService);
+        verifyNoInteractions(sgxService, smsClientProvider, teeServicesPropertiesService);
     }
     // endregion
 

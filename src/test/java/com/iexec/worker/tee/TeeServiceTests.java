@@ -36,7 +36,7 @@ class TeeServiceTests {
     @Mock
     IexecHubAbstractService iexecHubService;
     @Mock
-    TeeServicesConfigurationService teeServicesConfigurationService;
+    TeeServicesPropertiesService teeServicesPropertiesService;
 
     @Spy
     @InjectMocks
@@ -73,7 +73,7 @@ class TeeServiceTests {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(null);
-        when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
@@ -107,7 +107,7 @@ class TeeServiceTests {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(null);
-        when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 

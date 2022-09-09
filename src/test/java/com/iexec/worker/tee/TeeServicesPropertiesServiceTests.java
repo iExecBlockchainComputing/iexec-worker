@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class TeeServicesConfigurationServiceTests {
+class TeeServicesPropertiesServiceTests {
     private static final String CHAIN_TASK_ID = "chainTaskId";
     private static final TaskDescription TASK_DESCRIPTION = TaskDescription
             .builder()
@@ -52,7 +52,7 @@ class TeeServicesConfigurationServiceTests {
 
     @Spy
     @InjectMocks
-    TeeServicesConfigurationService teeServicesConfigurationService;
+    TeeServicesPropertiesService teeServicesPropertiesService;
 
     @BeforeEach
     void init() {
@@ -72,7 +72,7 @@ class TeeServicesConfigurationServiceTests {
         when(dockerClient.isImagePresent(POST_COMPUTE_IMAGE)).thenReturn(true);
 
         final TeeServicesProperties teeServicesProperties = assertDoesNotThrow(
-                () -> teeServicesConfigurationService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
+                () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
 
         TeeAppProperties preComputeProperties = teeServicesProperties.getPreComputeProperties();
         TeeAppProperties postComputeProperties = teeServicesProperties.getPostComputeProperties();
@@ -103,7 +103,7 @@ class TeeServicesConfigurationServiceTests {
         when(smsClient.getTeeEnclaveProvider()).thenReturn(TeeEnclaveProvider.SCONE);
 
         TeeServicesPropertiesCreationException exception = assertThrows(TeeServicesPropertiesCreationException.class,
-                () -> teeServicesConfigurationService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
+                () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
         assertEquals("SMS is configured for another TEE enclave provider" +
                 " [chainTaskId:" + CHAIN_TASK_ID +
                 ", requiredProvider:" + TeeEnclaveProvider.GRAMINE +
@@ -126,7 +126,7 @@ class TeeServicesConfigurationServiceTests {
         when(smsClient.getTeeServicesProperties(TeeEnclaveProvider.GRAMINE)).thenReturn(null);
 
         TeeServicesPropertiesCreationException exception = assertThrows(TeeServicesPropertiesCreationException.class,
-                () -> teeServicesConfigurationService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
+                () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
         assertEquals("Missing TEE services configuration [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
 
         verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
@@ -148,7 +148,7 @@ class TeeServicesConfigurationServiceTests {
         when(dockerClient.pullImage(PRE_COMPUTE_IMAGE)).thenReturn(false);
 
         TeeServicesPropertiesCreationException exception = assertThrows(TeeServicesPropertiesCreationException.class,
-                () -> teeServicesConfigurationService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
+                () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
         assertEquals("Failed to download image " +
                 "[chainTaskId:" + CHAIN_TASK_ID +", preComputeImage:" + PRE_COMPUTE_IMAGE + "]", exception.getMessage());
 
@@ -172,7 +172,7 @@ class TeeServicesConfigurationServiceTests {
         when(dockerClient.pullImage(POST_COMPUTE_IMAGE)).thenReturn(false);
 
         TeeServicesPropertiesCreationException exception = assertThrows(TeeServicesPropertiesCreationException.class,
-                () -> teeServicesConfigurationService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
+                () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
         assertEquals("Failed to download image " +
                 "[chainTaskId:" + CHAIN_TASK_ID +", postComputeImage:" + POST_COMPUTE_IMAGE + "]", exception.getMessage());
 

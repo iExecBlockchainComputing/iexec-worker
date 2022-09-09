@@ -15,13 +15,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Manages the {@link TeeServicesProperties}, providing an easy way to get a configuration for a task
+ * Manages the {@link TeeServicesProperties}, providing an easy way to get properties for a task
  * and avoiding the need to create a new {@link TeeServicesProperties} instance each time.
  */
 @Slf4j
 @Service
-// FIXME: rename to `TeeServicesPropertiesService` and remove all mentions to `Configuration`
-public class TeeServicesConfigurationService {
+public class TeeServicesPropertiesService {
     private final SmsClientProvider smsClientProvider;
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
@@ -29,9 +28,9 @@ public class TeeServicesConfigurationService {
     // TODO: purge this map when a task has been completed
     private final Map<String, TeeServicesProperties> propertiesForTask = new HashMap<>();
 
-    public TeeServicesConfigurationService(SmsClientProvider smsClientProvider,
-                                           DockerService dockerService,
-                                           IexecHubAbstractService iexecHubService) {
+    public TeeServicesPropertiesService(SmsClientProvider smsClientProvider,
+                                        DockerService dockerService,
+                                        IexecHubAbstractService iexecHubService) {
         this.smsClientProvider = smsClientProvider;
         this.dockerService = dockerService;
         this.iexecHubService = iexecHubService;
@@ -60,10 +59,10 @@ public class TeeServicesConfigurationService {
         }
 
         final T properties = smsClient.getTeeServicesProperties(teeEnclaveProvider);
-        log.info("Received TEE services configuration [properties:{}]", properties);
+        log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(
-                    "Missing TEE services configuration [chainTaskId:" + chainTaskId +"]");
+                    "Missing TEE services properties [chainTaskId:" + chainTaskId +"]");
         }
 
         final String preComputeImage = properties.getPreComputeProperties().getImage();

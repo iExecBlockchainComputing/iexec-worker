@@ -21,16 +21,16 @@ public abstract class TeeService {
     private final SgxService sgxService;
     private final SmsClientProvider smsClientProvider;
     private final IexecHubAbstractService iexecHubService;
-    protected final TeeServicesConfigurationService teeServicesConfigurationService;
+    protected final TeeServicesPropertiesService teeServicesPropertiesService;
 
     protected TeeService(SgxService sgxService,
                          SmsClientProvider smsClientProvider,
                          IexecHubAbstractService iexecHubService,
-                         TeeServicesConfigurationService teeServicesConfigurationService) {
+                         TeeServicesPropertiesService teeServicesPropertiesService) {
         this.sgxService = sgxService;
         this.smsClientProvider = smsClientProvider;
         this.iexecHubService = iexecHubService;
-        this.teeServicesConfigurationService = teeServicesConfigurationService;
+        this.teeServicesPropertiesService = teeServicesPropertiesService;
     }
 
     public boolean isTeeEnabled() {
@@ -54,7 +54,7 @@ public abstract class TeeService {
         try {
             // Try to load the `TeeServicesProperties` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+            teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);

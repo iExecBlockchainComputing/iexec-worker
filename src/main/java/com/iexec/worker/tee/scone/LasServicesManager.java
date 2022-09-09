@@ -4,7 +4,7 @@ import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.UUID;
 @Slf4j
 public class LasServicesManager {
     private final SconeConfiguration sconeConfiguration;
-    private final TeeServicesConfigurationService teeServicesConfigurationService;
+    private final TeeServicesPropertiesService teeServicesPropertiesService;
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final DockerService dockerService;
@@ -28,12 +28,12 @@ public class LasServicesManager {
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
-            TeeServicesConfigurationService teeServicesConfigurationService,
+            TeeServicesPropertiesService teeServicesPropertiesService,
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
             DockerService dockerService) {
         this.sconeConfiguration = sconeConfiguration;
-        this.teeServicesConfigurationService = teeServicesConfigurationService;
+        this.teeServicesPropertiesService = teeServicesPropertiesService;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.dockerService = dockerService;
@@ -46,7 +46,7 @@ public class LasServicesManager {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
-        final SconeServicesProperties properties = teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+        final SconeServicesProperties properties = teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         if (properties == null) {
             log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
             return false;

@@ -39,7 +39,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -108,7 +108,7 @@ class PreComputeServiceTests {
     @Mock
     private ComputeExitCauseService computeExitCauseService;
     @Mock
-    private TeeServicesConfigurationService teeServicesConfigurationService;
+    private TeeServicesPropertiesService teeServicesPropertiesService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -121,7 +121,7 @@ class PreComputeServiceTests {
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeServicesConfigurationService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
+        when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
     }

@@ -33,7 +33,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -53,7 +53,7 @@ public class PostComputeService {
     private final TeeServicesManager teeServicesManager;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
-    private final TeeServicesConfigurationService teeServicesConfigurationService;
+    private final TeeServicesPropertiesService teeServicesPropertiesService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
@@ -61,13 +61,13 @@ public class PostComputeService {
             TeeServicesManager teeServicesManager,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService,
-            TeeServicesConfigurationService teeServicesConfigurationService) {
+            TeeServicesPropertiesService teeServicesPropertiesService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
-        this.teeServicesConfigurationService = teeServicesConfigurationService;
+        this.teeServicesPropertiesService = teeServicesPropertiesService;
     }
 
     /**
@@ -117,7 +117,7 @@ public class PostComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
 
         TeeServicesProperties properties =
-                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
 
         final TeeAppProperties postComputeProperties = properties.getPostComputeProperties();
         String postComputeImage = postComputeProperties.getImage();
