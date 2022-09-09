@@ -1,6 +1,8 @@
 package com.iexec.worker.tee;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.worker.sgx.SgxService;
@@ -22,13 +24,19 @@ import static org.mockito.Mockito.when;
 
 class TeeServiceTests {
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final TaskDescription TASK_DESCRIPTION = TaskDescription
+            .builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .build();
 
     @Mock
     SgxService sgxService;
     @Mock
     SmsClientProvider smsClientProvider;
     @Mock
-    TeeWorkflowConfigurationService teeWorkflowConfigurationService;
+    IexecHubAbstractService iexecHubService;
+    @Mock
+    TeeServicesConfigurationService teeServicesConfigurationService;
 
     @Spy
     @InjectMocks
@@ -57,14 +65,15 @@ class TeeServiceTests {
 
         verify(sgxService).isSgxEnabled();
     }
-    //
+    // endregion
 
     // region areTeePrerequisitesMetForTask
     @Test
     void shouldTeePrerequisitesBeMet() {
         when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(null);
-        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenReturn(null);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(null);
+        when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
@@ -84,7 +93,8 @@ class TeeServiceTests {
     @Test
     void shouldTeePrerequisitesNotBeMetSinceSmsClientCantBeLoaded() {
         when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenThrow(SmsClientCreationException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
@@ -95,13 +105,14 @@ class TeeServiceTests {
     @Test
     void shouldTeePrerequisitesNotBeMetSinceTeeWorkflowConfigurationCantBeLoaded() {
         when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsClientProvider.getOrCreateSmsClientForTask(CHAIN_TASK_ID)).thenReturn(null);
-        when(teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
+        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(null);
+        when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         Assertions.assertTrue(teePrerequisitesIssue.isPresent());
-        Assertions.assertEquals(GET_TEE_WORKFLOW_CONFIGURATION_FAILED, teePrerequisitesIssue.get());
+        Assertions.assertEquals(GET_TEE_SERVICES_CONFIGURATION_FAILED, teePrerequisitesIssue.get());
     }
     // endregion
 }

@@ -1,5 +1,6 @@
 package com.iexec.worker.tee;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -13,8 +14,9 @@ class TeeServiceMock extends TeeService {
 
     protected TeeServiceMock(SgxService sgxService,
                              SmsClientProvider smsClientProvider,
-                             TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
-        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
+                             IexecHubAbstractService iexecHubService,
+                             TeeServicesConfigurationService teeServicesConfigurationService) {
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
     }
 
     @Override

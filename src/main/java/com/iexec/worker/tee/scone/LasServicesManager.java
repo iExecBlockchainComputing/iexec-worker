@@ -1,11 +1,10 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.TeeWorkflowConfiguration;
+import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,7 @@ import java.util.UUID;
 @Slf4j
 public class LasServicesManager {
     private final SconeConfiguration sconeConfiguration;
-    private final SmsClientProvider smsClientProvider;
+    private final TeeServicesConfigurationService teeServicesConfigurationService;
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final DockerService dockerService;
@@ -29,12 +28,12 @@ public class LasServicesManager {
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
-            SmsClientProvider smsClientProvider,
+            TeeServicesConfigurationService teeServicesConfigurationService,
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
             DockerService dockerService) {
         this.sconeConfiguration = sconeConfiguration;
-        this.smsClientProvider = smsClientProvider;
+        this.teeServicesConfigurationService = teeServicesConfigurationService;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.dockerService = dockerService;
@@ -47,18 +46,13 @@ public class LasServicesManager {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
-        // SMS client should already have been created once before.
-        // If it couldn't be created, then the task would have been aborted.
-        // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
-
-        final TeeWorkflowConfiguration config = smsClient.getTeeWorkflowConfiguration();
-        if (config == null) {
-            log.error("Missing tee workflow configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
+        final SconeServicesProperties properties = teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+        if (properties == null) {
+            log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
             return false;
         }
-        final String lasImageUri = !StringUtils.isEmpty(config.getLasImage())
-                ? config.getLasImage()
+        final String lasImageUri = !StringUtils.isEmpty(properties.getLasImage())
+                ? properties.getLasImage()
                 : "";
 
         final LasService lasService = lasImageUriToLasService.computeIfAbsent(
@@ -75,7 +69,7 @@ public class LasServicesManager {
      * information: Name does not resolve` error occures.
      */
     String createLasContainerName() {
-        return "iexec-las-" + workerConfigService.getWorkerWalletAddress() + "-" 
+        return "iexec-las-" + workerConfigService.getWorkerWalletAddress() + "-"
             + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 

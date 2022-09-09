@@ -1,11 +1,12 @@
 package com.iexec.worker.tee.gramine;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
-import com.iexec.worker.tee.TeeWorkflowConfigurationService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +25,9 @@ public class TeeGramineService extends TeeService {
 
     public TeeGramineService(SgxService sgxService,
                              SmsClientProvider smsClientProvider,
-                             TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
-        super(sgxService, smsClientProvider, teeWorkflowConfigurationService);
+                             IexecHubAbstractService iexecHubService,
+                             TeeServicesConfigurationService teeServicesConfigurationService) {
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
     }
 
     @Override

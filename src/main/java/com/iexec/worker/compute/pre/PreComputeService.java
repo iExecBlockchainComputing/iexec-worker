@@ -25,15 +25,16 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.config.TeeAppProperties;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.sms.api.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeWorkflowConfigurationService;
+import com.iexec.worker.tee.TeeServicesConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
@@ -56,7 +57,7 @@ public class PreComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
-    private final TeeWorkflowConfigurationService teeWorkflowConfigurationService;
+    private final TeeServicesConfigurationService teeServicesConfigurationService;
 
     public PreComputeService(
             SmsService smsService,
@@ -65,14 +66,14 @@ public class PreComputeService {
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService,
-            TeeWorkflowConfigurationService teeWorkflowConfigurationService) {
+            TeeServicesConfigurationService teeServicesConfigurationService) {
         this.smsService = smsService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
-        this.teeWorkflowConfigurationService = teeWorkflowConfigurationService;
+        this.teeServicesConfigurationService = teeServicesConfigurationService;
     }
 
     /**
@@ -221,11 +222,12 @@ public class PreComputeService {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
-        TeeWorkflowConfiguration teeWorkflowConfig =
-                teeWorkflowConfigurationService.getOrCreateTeeWorkflowConfiguration(chainTaskId);
+        TeeServicesProperties properties =
+                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
 
         // check that docker image is present
-        String preComputeImage = teeWorkflowConfig.getPreComputeImage();
+        final TeeAppProperties preComputeProperties = properties.getPreComputeProperties();
+        String preComputeImage = preComputeProperties.getImage();
         if (!dockerService.getClient().isImagePresent(preComputeImage)) {
             log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
             return null;
@@ -238,7 +240,7 @@ public class PreComputeService {
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
                 .imageUri(preComputeImage)
-                .entrypoint(teeWorkflowConfig.getPreComputeEntrypoint())
+                .entrypoint(preComputeProperties.getEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)

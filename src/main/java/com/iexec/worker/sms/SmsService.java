@@ -16,10 +16,12 @@
 
 package com.iexec.worker.sms;
 
+import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.sms.secret.SmsSecret;
 import com.iexec.common.sms.secret.SmsSecretResponse;
 import com.iexec.common.sms.secret.TaskSecrets;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.sms.api.*;
@@ -39,11 +41,14 @@ public class SmsService {
 
     private final CredentialsService credentialsService;
     private final SmsClientProvider smsClientProvider;
+    private final IexecHubAbstractService iexecHubService;
 
     public SmsService(CredentialsService credentialsService,
-                      SmsClientProvider smsClientProvider) {
+                      SmsClientProvider smsClientProvider,
+                      IexecHubAbstractService iexecHubService) {
         this.credentialsService = credentialsService;
         this.smsClientProvider = smsClientProvider;
+        this.iexecHubService = iexecHubService;
     }
 
     @Retryable(value = FeignException.class)
@@ -52,10 +57,12 @@ public class SmsService {
         String authorization = getAuthorizationString(workerpoolAuthorization);
         SmsSecretResponse smsResponse;
 
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
         smsResponse = smsClient.getUnTeeSecrets(authorization, workerpoolAuthorization);
 
         if (smsResponse == null) {
@@ -118,36 +125,17 @@ public class SmsService {
         }
     }
 
-    /**
-     * Get the configuration needed for TEE workflow from the SMS. This
-     * configuration contains: las image, pre-compute image uri, pre-compute heap
-     * size, post-compute image uri, post-compute heap size.
-     *
-     * @return configuration if success, null otherwise
-     */
-    public TeeWorkflowConfiguration getTeeWorkflowConfiguration(String chainTaskId) {
-        // SMS client should already have been created once before.
-        // If it couldn't be created, then the task would have been aborted.
-        // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
-        try {
-            return smsClient.getTeeWorkflowConfiguration();
-        } catch (FeignException e) {
-            log.error("Failed to get tee workflow configuration from sms", e);
-            return null;
-        }
-    }
-
     // TODO: use the below method with retry.
     public TeeSessionGenerationResponse createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) throws TeeSessionGenerationException {
         String chainTaskId = workerpoolAuthorization.getChainTaskId();
         log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
         String authorization = getAuthorizationString(workerpoolAuthorization);
 
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(chainTaskId);
+        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
 
         try {
             TeeSessionGenerationResponse session = smsClient.generateTeeSession(authorization, workerpoolAuthorization)
