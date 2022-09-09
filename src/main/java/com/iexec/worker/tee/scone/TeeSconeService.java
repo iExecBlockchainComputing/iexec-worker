@@ -25,7 +25,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -57,9 +57,9 @@ public class TeeSconeService extends TeeService {
             SgxService sgxService,
             SmsClientProvider smsClientProvider,
             IexecHubAbstractService iexecHubService,
-            TeeServicesConfigurationService teeServicesConfigurationService,
+            TeeServicesPropertiesService teeServicesPropertiesService,
             LasServicesManager lasServicesManager) {
-        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesPropertiesService);
         this.lasServicesManager = lasServicesManager;
 
         if (isTeeEnabled()) {
@@ -90,7 +90,7 @@ public class TeeSconeService extends TeeService {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesProperties properties =
-                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         return getDockerEnv(chainTaskId, sconeConfigId, properties.getPreComputeProperties().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 
@@ -112,7 +112,7 @@ public class TeeSconeService extends TeeService {
         String sconeConfigId = session.getSessionId() + "/post-compute";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesProperties properties =
-                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         return getDockerEnv(chainTaskId, sconeConfigId, properties.getPostComputeProperties().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 

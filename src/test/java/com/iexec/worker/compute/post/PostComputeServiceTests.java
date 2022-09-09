@@ -34,7 +34,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,7 +102,7 @@ class PostComputeServiceTests {
     @Mock
     private ComputeExitCauseService computeExitCauseService;
     @Mock
-    private TeeServicesConfigurationService teeServicesConfigurationService;
+    private TeeServicesPropertiesService teeServicesPropertiesService;
 
     @Mock
     private TeeService teeMockedService;
@@ -114,7 +114,7 @@ class PostComputeServiceTests {
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
-        when(teeServicesConfigurationService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
 
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;

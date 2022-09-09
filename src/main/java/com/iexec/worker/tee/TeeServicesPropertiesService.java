@@ -16,21 +16,21 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 /**
- * Manages the {@link TeeServicesProperties}, providing an easy way to get a configuration for a task
+ * Manages the {@link TeeServicesProperties}, providing an easy way to get properties for a task
  * and avoiding the need to create a new {@link TeeServicesProperties} instance each time.
  */
 @Slf4j
 @Service
-public class TeeServicesConfigurationService implements Purgeable {
+public class TeeServicesPropertiesService implements Purgeable {
     private final SmsClientProvider smsClientProvider;
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
 
     private final Map<String, TeeServicesProperties> propertiesForTask = ExpiringTaskMapFactory.getExpiringTaskMap();
 
-    public TeeServicesConfigurationService(SmsClientProvider smsClientProvider,
-                                           DockerService dockerService,
-                                           IexecHubAbstractService iexecHubService) {
+    public TeeServicesPropertiesService(SmsClientProvider smsClientProvider,
+                                        DockerService dockerService,
+                                        IexecHubAbstractService iexecHubService) {
         this.smsClientProvider = smsClientProvider;
         this.dockerService = dockerService;
         this.iexecHubService = iexecHubService;
@@ -59,10 +59,10 @@ public class TeeServicesConfigurationService implements Purgeable {
         }
 
         final T properties = smsClient.getTeeServicesProperties(teeEnclaveProvider);
-        log.info("Received TEE services configuration [properties:{}]", properties);
+        log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(
-                    "Missing TEE services configuration [chainTaskId:" + chainTaskId +"]");
+                    "Missing TEE services properties [chainTaskId:" + chainTaskId +"]");
         }
 
         final String preComputeImage = properties.getPreComputeProperties().getImage();

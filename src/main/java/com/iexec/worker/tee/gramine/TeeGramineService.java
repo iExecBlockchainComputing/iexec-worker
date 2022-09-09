@@ -6,7 +6,7 @@ import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +26,8 @@ public class TeeGramineService extends TeeService {
     public TeeGramineService(SgxService sgxService,
                              SmsClientProvider smsClientProvider,
                              IexecHubAbstractService iexecHubService,
-                             TeeServicesConfigurationService teeServicesConfigurationService) {
-        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
+                             TeeServicesPropertiesService teeServicesPropertiesService) {
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesPropertiesService);
     }
 
     @Override

@@ -15,8 +15,8 @@ class TeeServiceMock extends TeeService {
     protected TeeServiceMock(SgxService sgxService,
                              SmsClientProvider smsClientProvider,
                              IexecHubAbstractService iexecHubService,
-                             TeeServicesConfigurationService teeServicesConfigurationService) {
-        super(sgxService, smsClientProvider, iexecHubService, teeServicesConfigurationService);
+                             TeeServicesPropertiesService teeServicesPropertiesService) {
+        super(sgxService, smsClientProvider, iexecHubService, teeServicesPropertiesService);
     }
 
     @Override

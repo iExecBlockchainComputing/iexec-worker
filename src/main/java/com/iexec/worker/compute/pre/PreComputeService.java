@@ -34,7 +34,7 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.tee.TeeServicesConfigurationService;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
@@ -57,7 +57,7 @@ public class PreComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
-    private final TeeServicesConfigurationService teeServicesConfigurationService;
+    private final TeeServicesPropertiesService teeServicesPropertiesService;
 
     public PreComputeService(
             SmsService smsService,
@@ -66,14 +66,14 @@ public class PreComputeService {
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService,
-            TeeServicesConfigurationService teeServicesConfigurationService) {
+            TeeServicesPropertiesService teeServicesPropertiesService) {
         this.smsService = smsService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
-        this.teeServicesConfigurationService = teeServicesConfigurationService;
+        this.teeServicesPropertiesService = teeServicesPropertiesService;
     }
 
     /**
@@ -223,7 +223,7 @@ public class PreComputeService {
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
         TeeServicesProperties properties =
-                teeServicesConfigurationService.getTeeServicesProperties(chainTaskId);
+                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
 
         // check that docker image is present
         final TeeAppProperties preComputeProperties = properties.getPreComputeProperties();
