@@ -130,7 +130,7 @@ class TeeServicesPropertiesServiceTests {
 
         TeeServicesPropertiesCreationException exception = assertThrows(TeeServicesPropertiesCreationException.class,
                 () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
-        assertEquals("Missing TEE services configuration [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
+        assertEquals("Missing TEE services properties [chainTaskId:" + CHAIN_TASK_ID +"]", exception.getMessage());
 
         verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(smsClient).getTeeEnclaveProvider();
