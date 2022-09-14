@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -269,17 +268,17 @@ class LasServicesManagerTests {
     }
 
     @Test
-    void shouldNotPurgeTaskSinceEmptyMap() {
-        assertFalse(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    void shouldPurgeTaskEvenThoughEmptyMap() {
+        assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
     }
 
     @Test
-    void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
         final Map<String, LasService> chainTaskIdToLasService = ReflectionUtils
                 .getFieldAndSetAccessible(lasServicesManager, "chainTaskIdToLasService");
         chainTaskIdToLasService.put(CHAIN_TASK_ID_2, mockedLasService2);
 
-        assertFalse(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+        assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
     }
     // endregion
 }

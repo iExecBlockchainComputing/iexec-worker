@@ -84,8 +84,15 @@ public class TeeServicesPropertiesService implements Purgeable {
         }
     }
 
+    /**
+     * Try and remove properties related to given task ID.
+     * @param chainTaskId Task ID whose related properties should be purged
+     * @return {@literal true} if key is not stored anymore,
+     * {@literal false} otherwise.
+     */
     @Override
     public boolean purgeTask(String chainTaskId) {
-        return propertiesForTask.remove(chainTaskId) != null;
+        propertiesForTask.remove(chainTaskId);
+        return !propertiesForTask.containsKey(chainTaskId);
     }
 }

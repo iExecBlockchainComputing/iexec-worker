@@ -75,8 +75,15 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         return workerpoolAuthorizations.get(chainTaskId);
     }
 
+    /**
+     * Try and remove workerpool authorization related to given task ID.
+     * @param chainTaskId Task ID whose related workerpool authorization should be purged
+     * @return {@literal true} if key is not stored anymore,
+     * {@literal false} otherwise.
+     */
     @Override
     public boolean purgeTask(String chainTaskId) {
-        return workerpoolAuthorizations.remove(chainTaskId) != null;
+        workerpoolAuthorizations.remove(chainTaskId);
+        return !workerpoolAuthorizations.containsKey(chainTaskId);
     }
 }

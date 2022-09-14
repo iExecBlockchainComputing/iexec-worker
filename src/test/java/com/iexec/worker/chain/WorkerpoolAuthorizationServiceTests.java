@@ -27,7 +27,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -83,17 +82,17 @@ class WorkerpoolAuthorizationServiceTests {
     }
 
     @Test
-    void shouldNotPurgeTaskSinceEmptyMap() {
-        assertFalse(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    void shouldPurgeTaskEvenThoughEmptyMap() {
+        assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
     }
 
     @Test
-    void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
         final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
                 ReflectionUtils.getFieldAndSetAccessible(workerpoolAuthorizationService, "workerpoolAuthorizations");
         workerpoolAuthorizations.put(CHAIN_TASK_ID + "-wrong", mock(WorkerpoolAuthorization.class));
 
-        assertFalse(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+        assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
     }
     // endregion
 }

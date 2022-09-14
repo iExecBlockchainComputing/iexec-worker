@@ -200,17 +200,17 @@ class TeeServicesPropertiesServiceTests {
     }
 
     @Test
-    void shouldNotPurgeTaskSinceEmptyMap() {
-        assertFalse(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
+    void shouldPurgeTaskEvenThoughEmptyMap() {
+        assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
     }
 
     @Test
-    void shouldNotPurgeTaskSinceNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
         final Map<String, TeeServicesProperties> propertiesForTask =
                 ReflectionUtils.getFieldAndSetAccessible(teeServicesPropertiesService, "propertiesForTask");
         propertiesForTask.put(CHAIN_TASK_ID + "-wrong", GRAMINE_PROPERTIES);
 
-        assertFalse(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
+        assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
     }
     // endregion
 }

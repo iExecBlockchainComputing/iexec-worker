@@ -94,8 +94,15 @@ public class LasServicesManager implements Purgeable {
         return chainTaskIdToLasService.get(chainTaskId);
     }
 
+    /**
+     * Try and remove LAS service related to given task ID.
+     * @param chainTaskId Task ID whose related LAS service should be purged
+     * @return {@literal true} if key is not stored anymore,
+     * {@literal false} otherwise.
+     */
     @Override
     public boolean purgeTask(String chainTaskId) {
-        return chainTaskIdToLasService.remove(chainTaskId) != null;
+        chainTaskIdToLasService.remove(chainTaskId);
+        return !chainTaskIdToLasService.containsKey(chainTaskId);
     }
 }
