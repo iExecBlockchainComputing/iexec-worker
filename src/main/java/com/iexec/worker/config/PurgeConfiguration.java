@@ -1,7 +1,7 @@
 package com.iexec.worker.config;
 
-import com.iexec.common.utils.purge.PurgeService;
-import com.iexec.common.utils.purge.Purgeable;
+import com.iexec.common.lifecycle.purge.PurgeService;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

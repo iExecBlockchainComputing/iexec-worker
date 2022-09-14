@@ -1,7 +1,7 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.utils.purge.ExpiringTaskMapFactory;
-import com.iexec.common.utils.purge.Purgeable;
+import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;

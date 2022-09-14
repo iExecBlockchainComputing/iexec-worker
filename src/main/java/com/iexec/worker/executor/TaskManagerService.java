@@ -23,7 +23,7 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.purge.PurgeService;
+import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
