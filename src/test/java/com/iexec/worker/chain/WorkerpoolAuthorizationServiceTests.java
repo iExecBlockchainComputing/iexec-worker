@@ -27,6 +27,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -93,6 +94,13 @@ class WorkerpoolAuthorizationServiceTests {
         workerpoolAuthorizations.put(CHAIN_TASK_ID + "-wrong", mock(WorkerpoolAuthorization.class));
 
         assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(workerpoolAuthorizationService::purgeAllTasksData);
     }
     // endregion
 }

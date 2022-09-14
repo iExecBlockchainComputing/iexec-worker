@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -279,6 +280,13 @@ class LasServicesManagerTests {
         chainTaskIdToLasService.put(CHAIN_TASK_ID_2, mockedLasService2);
 
         assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(lasServicesManager::purgeAllTasksData);
     }
     // endregion
 }

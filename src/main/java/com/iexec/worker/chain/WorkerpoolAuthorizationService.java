@@ -86,4 +86,9 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         workerpoolAuthorizations.remove(chainTaskId);
         return !workerpoolAuthorizations.containsKey(chainTaskId);
     }
+
+    @Override
+    public void purgeAllTasksData() {
+        workerpoolAuthorizations.clear();
+    }
 }

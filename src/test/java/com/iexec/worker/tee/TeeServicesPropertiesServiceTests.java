@@ -213,4 +213,11 @@ class TeeServicesPropertiesServiceTests {
         assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
     }
     // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(teeServicesPropertiesService::purgeAllTasksData);
+    }
+    // endregion
 }

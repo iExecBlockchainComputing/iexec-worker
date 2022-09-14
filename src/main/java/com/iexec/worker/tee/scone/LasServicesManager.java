@@ -105,4 +105,9 @@ public class LasServicesManager implements Purgeable {
         chainTaskIdToLasService.remove(chainTaskId);
         return !chainTaskIdToLasService.containsKey(chainTaskId);
     }
+
+    @Override
+    public void purgeAllTasksData() {
+        chainTaskIdToLasService.clear();
+    }
 }

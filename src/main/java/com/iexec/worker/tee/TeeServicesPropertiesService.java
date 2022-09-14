@@ -95,4 +95,9 @@ public class TeeServicesPropertiesService implements Purgeable {
         propertiesForTask.remove(chainTaskId);
         return !propertiesForTask.containsKey(chainTaskId);
     }
+
+    @Override
+    public void purgeAllTasksData() {
+        propertiesForTask.clear();
+    }
 }
