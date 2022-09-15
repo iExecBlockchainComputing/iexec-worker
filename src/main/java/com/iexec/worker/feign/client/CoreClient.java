@@ -16,11 +16,11 @@
 
 package com.iexec.worker.feign.client;
 
-import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.replicate.ReplicateDemandResponse;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.security.Signature;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -59,7 +59,7 @@ public interface CoreClient {
 
     //region /replicates
     @GetMapping("/replicates/available")
-    ResponseEntity<WorkerpoolAuthorization> getAvailableReplicate(
+    ResponseEntity<ReplicateDemandResponse> getAvailableReplicate(
             @RequestHeader String authorization,
             @RequestParam long blockNumber);
 

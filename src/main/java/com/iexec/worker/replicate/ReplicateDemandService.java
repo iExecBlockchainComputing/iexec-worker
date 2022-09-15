@@ -20,6 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
+import com.iexec.common.replicate.ReplicateDemandResponse;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -112,8 +113,8 @@ public class ReplicateDemandService {
      * @param authorization required authorization for later contribution
      * @return true if task is initialized
      */
-    private boolean isNewTaskInitialized(WorkerpoolAuthorization authorization) {
-        String chainTaskId = authorization.getChainTaskId();
+    private boolean isNewTaskInitialized(ReplicateDemandResponse authorization) {
+        String chainTaskId = authorization.getWorkerpoolAuthorization().getChainTaskId();
         log.info("Received new task [chainTaskId:{}]", chainTaskId);
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
             log.info("Incoming task exists on-chain [chainTaskId:{}]", chainTaskId);
@@ -128,10 +129,13 @@ public class ReplicateDemandService {
      *
      * @param authorization required authorization for later contribution
      */
-    void startTask(WorkerpoolAuthorization authorization) {
+    void startTask(ReplicateDemandResponse replicateDemandResponse) {
+        WorkerpoolAuthorization authorization = 
+            replicateDemandResponse.getWorkerpoolAuthorization();
         String chainTaskId = authorization.getChainTaskId();
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
                 .workerpoolAuthorization(authorization)
+                .smsUrl(replicateDemandResponse.getSmsUrl())
                 .build();
         TaskNotification taskNotification = TaskNotification.builder()
                 .chainTaskId(chainTaskId)

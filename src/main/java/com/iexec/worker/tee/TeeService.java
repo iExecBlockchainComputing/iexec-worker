@@ -1,15 +1,16 @@
 package com.iexec.worker.tee;
 
-import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
-import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nonnull;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -19,17 +20,14 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 @Slf4j
 public abstract class TeeService {
     private final SgxService sgxService;
-    private final SmsClientProvider smsClientProvider;
-    private final IexecHubAbstractService iexecHubService;
+    private final SmsService smsService;
     protected final TeeServicesPropertiesService teeServicesPropertiesService;
 
     protected TeeService(SgxService sgxService,
-                         SmsClientProvider smsClientProvider,
-                         IexecHubAbstractService iexecHubService,
+                         SmsService smsService,
                          TeeServicesPropertiesService teeServicesPropertiesService) {
         this.sgxService = sgxService;
-        this.smsClientProvider = smsClientProvider;
-        this.iexecHubService = iexecHubService;
+        this.smsService = smsService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
     }
 
@@ -42,11 +40,14 @@ public abstract class TeeService {
             return Optional.of(TEE_NOT_SUPPORTED);
         }
 
-        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         try {
             // Try to load the `SmsClient` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
+            //smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
+            SmsClient smsClient = smsService.getSmsClient(chainTaskId);
+            if(smsClient == null){
+                return Optional.of(UNKNOWN_SMS);
+            }
         } catch (SmsClientCreationException e) {
             log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(UNKNOWN_SMS);

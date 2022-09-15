@@ -24,14 +24,20 @@ import com.iexec.common.sms.secret.TaskSecrets;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.web.ApiResponseBodyDecoder;
-import com.iexec.sms.api.*;
+import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.SmsClientProvider;
+import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 
@@ -42,6 +48,8 @@ public class SmsService {
     private final CredentialsService credentialsService;
     private final SmsClientProvider smsClientProvider;
     private final IexecHubAbstractService iexecHubService;
+    // TODO: purge once task has been completed
+    private final Map<String, String> taskIdToSmsUrl = new HashMap<>();
 
     public SmsService(CredentialsService credentialsService,
                       SmsClientProvider smsClientProvider,
@@ -51,6 +59,7 @@ public class SmsService {
         this.iexecHubService = iexecHubService;
     }
 
+    //TODO: Remove untee
     @Retryable(value = FeignException.class)
     public Optional<TaskSecrets> fetchTaskSecrets(WorkerpoolAuthorization workerpoolAuthorization) {
         String chainTaskId = workerpoolAuthorization.getChainTaskId();
@@ -125,17 +134,30 @@ public class SmsService {
         }
     }
 
+    public void attachSmsUrlToTask(String chainTaskId, String smsUrl) {
+        taskIdToSmsUrl.put(chainTaskId, smsUrl);
+    }
+
+    public SmsClient getSmsClient(String chainTaskId) {
+        String url = taskIdToSmsUrl.get(chainTaskId);
+        if(StringUtils.isEmpty(url)){
+            // if url is not here anymore, worker should hit core on GET /tasks 
+            // to retrieve SMS URL. 
+            return null;
+        }
+        return smsClientProvider.getSmsClient(url);
+    }
+
     // TODO: use the below method with retry.
     public TeeSessionGenerationResponse createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) throws TeeSessionGenerationException {
         String chainTaskId = workerpoolAuthorization.getChainTaskId();
         log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
         String authorization = getAuthorizationString(workerpoolAuthorization);
 
-        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
+        SmsClient smsClient = getSmsClient(chainTaskId);
 
         try {
             TeeSessionGenerationResponse session = smsClient.generateTeeSession(authorization, workerpoolAuthorization)
