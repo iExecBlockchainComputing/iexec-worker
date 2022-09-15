@@ -240,14 +240,14 @@ class ReplicateDemandServiceTests {
                 .thenReturn(Optional.of(workerpoolAuthorization));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
 
-        doAnswer((invocation) -> null).when(askForReplicateLock).unlock();
+        doNothing().when(askForReplicateLock).unlock();
 
         // Trigger 2 times
         CompletableFuture.runAsync(replicateDemandService::askForReplicate);
         CompletableFuture.runAsync(replicateDemandService::askForReplicate);
 
         // Make sure askForReplicate method is called 1 time
-        verify(replicateDemandService, after(1000)).startTask(any());
+        verify(replicateDemandService, after(100)).startTask(any());
         // Make sure getLatestBlockNumber method is called 1 time
         verify(iexecHubService).getLatestBlockNumber();
     }
