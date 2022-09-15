@@ -33,8 +33,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.concurrent.Executor;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -46,28 +44,12 @@ public class ReplicateDemandService {
     private final ContributionService contributionService;
     private final SubscriptionService subscriptionService;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final Lock askForReplicateLock;
 
     public ReplicateDemandService(IexecHubService iexecHubService,
                                   CustomCoreFeignClient coreFeignClient,
                                   ContributionService contributionService,
                                   SubscriptionService subscriptionService,
                                   ApplicationEventPublisher applicationEventPublisher) {
-        this(
-                iexecHubService,
-                coreFeignClient,
-                contributionService,
-                subscriptionService,
-                applicationEventPublisher,
-                new ReentrantLock());
-    }
-
-    public ReplicateDemandService(IexecHubService iexecHubService,
-                                  CustomCoreFeignClient coreFeignClient,
-                                  ContributionService contributionService,
-                                  SubscriptionService subscriptionService,
-                                  ApplicationEventPublisher applicationEventPublisher,
-                                  Lock askForReplicateLock) {
         executor = ExecutorUtils
                 .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-");
         this.iexecHubService = iexecHubService;
@@ -75,7 +57,6 @@ public class ReplicateDemandService {
         this.contributionService = contributionService;
         this.subscriptionService = subscriptionService;
         this.applicationEventPublisher = applicationEventPublisher;
-        this.askForReplicateLock = askForReplicateLock;
     }
 
     /**
@@ -97,29 +78,21 @@ public class ReplicateDemandService {
      * to execute the task.
      */
     void askForReplicate() {
-        if (!askForReplicateLock.tryLock()) {
+        log.debug("Asking for a new replicate");
+        // TODO check blocknumber only once a replicate is received.
+        long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
+        if (lastAvailableBlockNumber == 0) {
+            log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
             return;
         }
-
-        try {
-            log.debug("Asking for a new replicate");
-            // TODO check blocknumber only once a replicate is received.
-            long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
-            if (lastAvailableBlockNumber == 0) {
-                log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
-                return;
-            }
-            // TODO check gas only once a replicate is received.
-            if (!iexecHubService.hasEnoughGas()) {
-                log.error("Cannot ask for new tasks, your wallet is dry");
-                return;
-            }
-            coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
-                    .filter(this::isNewTaskInitialized)
-                    .ifPresent(this::startTask);
-        } finally {
-            askForReplicateLock.unlock();
+        // TODO check gas only once a replicate is received.
+        if (!iexecHubService.hasEnoughGas()) {
+            log.error("Cannot ask for new tasks, your wallet is dry");
+            return;
         }
+        coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
+                .filter(this::isNewTaskInitialized)
+                .ifPresent(this::startTask);
     }
 
     /**
