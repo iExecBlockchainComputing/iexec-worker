@@ -24,9 +24,11 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -37,6 +39,7 @@ import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 class ReplicateDemandServiceTests {
 
     private final static String ASK_FOR_REPLICATE_THREAD_NAME = "ask-for-rep-1";
@@ -61,8 +64,10 @@ class ReplicateDemandServiceTests {
     private ReplicateDemandService replicateDemandService;
 
     @BeforeEach
-    void init() {
+    void init(TestInfo testInfo) {
         MockitoAnnotations.openMocks(this);
+        log.info("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+        log.info("Testing {}", testInfo.getDisplayName());
     }
 
     // region triggerAskForReplicate()
