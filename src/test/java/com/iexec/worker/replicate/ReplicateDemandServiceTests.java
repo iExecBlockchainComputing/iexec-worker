@@ -24,6 +24,7 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.utils.ExecutorUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -242,9 +244,14 @@ class ReplicateDemandServiceTests {
 
         doNothing().when(askForReplicateLock).unlock();
 
+        final Executor executor1 = ExecutorUtils
+                .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-1");
+        final Executor executor2 = ExecutorUtils
+                .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-2");
+
         // Trigger 2 times
-        CompletableFuture.runAsync(replicateDemandService::askForReplicate);
-        CompletableFuture.runAsync(replicateDemandService::askForReplicate);
+        CompletableFuture.runAsync(replicateDemandService::askForReplicate, executor1);
+        CompletableFuture.runAsync(replicateDemandService::askForReplicate, executor2);
 
         // Make sure askForReplicate method is called 1 time
         verify(replicateDemandService, after(100)).startTask(any());
