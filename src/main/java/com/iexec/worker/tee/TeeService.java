@@ -43,7 +43,6 @@ public abstract class TeeService {
         try {
             // Try to load the `SmsClient` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            //smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
             SmsClient smsClient = smsService.getSmsClient(chainTaskId);
             if(smsClient == null){
                 return Optional.of(UNKNOWN_SMS);
