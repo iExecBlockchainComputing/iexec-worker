@@ -19,11 +19,11 @@ package com.iexec.worker.chain;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.BytesUtils;
-import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 
@@ -74,9 +74,9 @@ class WorkerpoolAuthorizationServiceTests {
 
     // region purgeTask
     @Test
-    void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTask() {
         final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
-                ReflectionUtils.getFieldAndSetAccessible(workerpoolAuthorizationService, "workerpoolAuthorizations");
+                (Map<String, WorkerpoolAuthorization>) ReflectionTestUtils.getField(workerpoolAuthorizationService, "workerpoolAuthorizations");
         workerpoolAuthorizations.put(CHAIN_TASK_ID, mock(WorkerpoolAuthorization.class));
 
         assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
@@ -88,9 +88,9 @@ class WorkerpoolAuthorizationServiceTests {
     }
 
     @Test
-    void shouldPurgeTaskEvenThoughNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
         final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
-                ReflectionUtils.getFieldAndSetAccessible(workerpoolAuthorizationService, "workerpoolAuthorizations");
+                (Map<String, WorkerpoolAuthorization>) ReflectionTestUtils.getField(workerpoolAuthorizationService, "workerpoolAuthorizations");
         workerpoolAuthorizations.put(CHAIN_TASK_ID + "-wrong", mock(WorkerpoolAuthorization.class));
 
         assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));

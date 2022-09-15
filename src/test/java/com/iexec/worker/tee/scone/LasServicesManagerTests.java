@@ -7,7 +7,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
 
@@ -260,9 +260,9 @@ class LasServicesManagerTests {
 
     // region purgeTask
     @Test
-    void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
-        final Map<String, LasService> chainTaskIdToLasService = ReflectionUtils
-                .getFieldAndSetAccessible(lasServicesManager, "chainTaskIdToLasService");
+    void shouldPurgeTask() {
+        final Map<String, LasService> chainTaskIdToLasService =
+                (Map<String, LasService>) ReflectionTestUtils.getField(lasServicesManager, "chainTaskIdToLasService");
         chainTaskIdToLasService.put(CHAIN_TASK_ID_1, mockedLasService1);
 
         assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
@@ -274,9 +274,9 @@ class LasServicesManagerTests {
     }
 
     @Test
-    void shouldPurgeTaskEvenThoughNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
-        final Map<String, LasService> chainTaskIdToLasService = ReflectionUtils
-                .getFieldAndSetAccessible(lasServicesManager, "chainTaskIdToLasService");
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
+        final Map<String, LasService> chainTaskIdToLasService =
+                (Map<String, LasService>) ReflectionTestUtils.getField(lasServicesManager, "chainTaskIdToLasService");
         chainTaskIdToLasService.put(CHAIN_TASK_ID_2, mockedLasService2);
 
         assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));

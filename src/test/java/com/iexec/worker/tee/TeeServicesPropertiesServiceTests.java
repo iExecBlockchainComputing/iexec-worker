@@ -10,13 +10,13 @@ import com.iexec.sms.api.config.GramineServicesProperties;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
-import com.iexec.worker.utils.ReflectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 
@@ -191,9 +191,9 @@ class TeeServicesPropertiesServiceTests {
 
     // region purgeTask
     @Test
-    void shouldPurgeTask() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTask() {
         final Map<String, TeeServicesProperties> propertiesForTask =
-                ReflectionUtils.getFieldAndSetAccessible(teeServicesPropertiesService, "propertiesForTask");
+                (Map<String, TeeServicesProperties>) ReflectionTestUtils.getField(teeServicesPropertiesService, "propertiesForTask");
         propertiesForTask.put(CHAIN_TASK_ID, GRAMINE_PROPERTIES);
 
         assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
@@ -205,9 +205,9 @@ class TeeServicesPropertiesServiceTests {
     }
 
     @Test
-    void shouldPurgeTaskEvenThoughNoMatchingTaskId() throws NoSuchFieldException, IllegalAccessException {
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
         final Map<String, TeeServicesProperties> propertiesForTask =
-                ReflectionUtils.getFieldAndSetAccessible(teeServicesPropertiesService, "propertiesForTask");
+                (Map<String, TeeServicesProperties>) ReflectionTestUtils.getField(teeServicesPropertiesService, "propertiesForTask");
         propertiesForTask.put(CHAIN_TASK_ID + "-wrong", GRAMINE_PROPERTIES);
 
         assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
