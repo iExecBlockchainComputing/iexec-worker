@@ -24,21 +24,15 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-import com.iexec.worker.utils.ExecutorUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,8 +57,6 @@ class ReplicateDemandServiceTests {
     private SubscriptionService subscriptionService;
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
-    @Spy
-    private Lock askForReplicateLock = new ReentrantLock();
 
     @Spy
     @InjectMocks
@@ -78,29 +70,27 @@ class ReplicateDemandServiceTests {
     }
 
     // region triggerAskForReplicate()
-    @Test
+    @RepeatedTest(100)
     void shouldRunAskForReplicateAsynchronouslyWhenTriggeredOneTime() {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
+        doAnswer(invocation -> TestUtils.saveThreadName(threadNameWrapper))
                 .when(replicateDemandService).askForReplicate();
 
         replicateDemandService.triggerAskForReplicate();
         // Make sure askForReplicate method is called 1 time
         verify(replicateDemandService, timeout(1000)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 1 time
-        verify(iexecHubService).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
     }
 
-    @Test
+    @RepeatedTest(100)
     void shouldRunAskForReplicateTwoConsecutiveTimesWhenTriggeredTwoConsecutiveTimes() {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(
-                threadNameWrapper, invocation))
+        doAnswer(invocation -> TestUtils.saveThreadName(threadNameWrapper))
                 .when(replicateDemandService).askForReplicate();
 
         // Trigger 1st time
@@ -108,7 +98,6 @@ class ReplicateDemandServiceTests {
         // Make sure askForReplicate method is called 1st time
         verify(replicateDemandService, timeout(1000)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 1st time
-        verify(iexecHubService).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -119,7 +108,6 @@ class ReplicateDemandServiceTests {
         // Make sure askForReplicate method is called 2nd time
         verify(replicateDemandService, timeout(1000).times(2)).askForReplicate();
         // Make sure getLatestBlockNumber method is called 2nd time
-        verify(iexecHubService, times(2)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -133,12 +121,12 @@ class ReplicateDemandServiceTests {
      * 1 time. That's because the queue is instantly emptied the first time so the queue
      * can accept the second request. So 2 is the least we can have.
      */
-    @Test
+    @RepeatedTest(100)
     void shouldDropThirdAndForthAskForReplicateRequestsWhenTriggeredMultipleTimes() {
         ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
         String mainThreadName = Thread.currentThread().getName();
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
-                threadNameWrapper, invocation, 10))
+        doAnswer(invocation -> TestUtils.saveThreadNameThenSleepSomeMillis(
+                threadNameWrapper, 10))
                 .when(replicateDemandService).askForReplicate();
 
         // Trigger 4 times
@@ -149,7 +137,6 @@ class ReplicateDemandServiceTests {
         // Make sure askForReplicate method is called only 2 times
         verify(replicateDemandService, after(1000).times(2)).askForReplicate();
         // Make sure getLatestBlockNumber method is called only 2 times
-        verify(iexecHubService, times(2)).getLatestBlockNumber();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(ASK_FOR_REPLICATE_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -157,7 +144,7 @@ class ReplicateDemandServiceTests {
     // endregion
 
     // region askForReplicate()
-    @Test
+    @RepeatedTest(100)
     void shouldAskForReplicate() {
         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
@@ -180,7 +167,7 @@ class ReplicateDemandServiceTests {
                 .getWorkerpoolAuthorization()).isEqualTo(workerpoolAuthorization);
     }
 
-    @Test
+    @RepeatedTest(100)
     void shouldNotAskForReplicateSinceLocalBlockchainNotSynchronized() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
 
@@ -190,7 +177,7 @@ class ReplicateDemandServiceTests {
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
-    @Test
+    @RepeatedTest(100)
     void shouldNotAskForReplicateSinceWalletIsDry() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
@@ -201,7 +188,7 @@ class ReplicateDemandServiceTests {
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
-    @Test
+    @RepeatedTest(100)
     void shouldNotAskForReplicateSinceNoAvailableReplicate() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -214,7 +201,7 @@ class ReplicateDemandServiceTests {
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
-    @Test
+    @RepeatedTest(100)
     void shouldNotAskForReplicateSinceTaskIsNotInitialized() {
         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
@@ -227,36 +214,6 @@ class ReplicateDemandServiceTests {
 
         verify(subscriptionService, never()).subscribeToTopic(anyString());
         verify(applicationEventPublisher, never()).publishEvent(any());
-    }
-
-    /**
-     * In this test the thread that runs "{@link ReplicateDemandService#startTask(WorkerpoolAuthorization)}"
-     * method will not release the lock to avoid for the second call to acquire the lock.
-     */
-    @RepeatedTest(100)
-    void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously() {
-        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
-        when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(workerpoolAuthorization));
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
-
-        doNothing().when(askForReplicateLock).unlock();
-
-        final Executor executor1 = ExecutorUtils
-                .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-1");
-        final Executor executor2 = ExecutorUtils
-                .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-2");
-
-        // Trigger 2 times
-        CompletableFuture.runAsync(replicateDemandService::askForReplicate, executor1);
-        CompletableFuture.runAsync(replicateDemandService::askForReplicate, executor2);
-
-        // Make sure askForReplicate method is called 1 time
-        verify(replicateDemandService, after(100)).startTask(any());
-        // Make sure getLatestBlockNumber method is called 1 time
-        verify(iexecHubService).getLatestBlockNumber();
     }
 
     private WorkerpoolAuthorization getStubAuth() {
