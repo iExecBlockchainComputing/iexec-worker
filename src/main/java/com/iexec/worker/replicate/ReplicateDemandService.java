@@ -33,8 +33,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.concurrent.Executor;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -46,7 +44,6 @@ public class ReplicateDemandService {
     private final ContributionService contributionService;
     private final SubscriptionService subscriptionService;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final Lock askForReplicateLock = new ReentrantLock();
 
     public ReplicateDemandService(IexecHubService iexecHubService,
                                   CustomCoreFeignClient coreFeignClient,
@@ -81,29 +78,21 @@ public class ReplicateDemandService {
      * to execute the task.
      */
     void askForReplicate() {
-        if (!askForReplicateLock.tryLock()) {
+        log.debug("Asking for a new replicate");
+        // TODO check blocknumber only once a replicate is received.
+        long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
+        if (lastAvailableBlockNumber == 0) {
+            log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
             return;
         }
-
-        try {
-            log.debug("Asking for a new replicate");
-            // TODO check blocknumber only once a replicate is received.
-            long lastAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
-            if (lastAvailableBlockNumber == 0) {
-                log.error("Cannot ask for new tasks, your blockchain node is not synchronized");
-                return;
-            }
-            // TODO check gas only once a replicate is received.
-            if (!iexecHubService.hasEnoughGas()) {
-                log.error("Cannot ask for new tasks, your wallet is dry");
-                return;
-            }
-            coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
-                    .filter(this::isNewTaskInitialized)
-                    .ifPresent(this::startTask);
-        } finally {
-            askForReplicateLock.unlock();
+        // TODO check gas only once a replicate is received.
+        if (!iexecHubService.hasEnoughGas()) {
+            log.error("Cannot ask for new tasks, your wallet is dry");
+            return;
         }
+        coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
+                .filter(this::isNewTaskInitialized)
+                .ifPresent(this::startTask);
     }
 
     /**
