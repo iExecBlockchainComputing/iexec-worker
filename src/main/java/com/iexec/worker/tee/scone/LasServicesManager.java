@@ -25,7 +25,15 @@ public class LasServicesManager implements Purgeable {
     private final SgxService sgxService;
     private final DockerService dockerService;
 
+    /**
+     * Memoize Task-LAS container association.
+     * As a LAS can be used by multiple task, no LAS can be stopped when a task is completed.
+     */
     private final Map<String, LasService> chainTaskIdToLasService = ExpiringTaskMapFactory.getExpiringTaskMap();
+    /**
+     * Memoize LAS image-LAS container association.
+     * This avoids starting multiple instances of the same LAS when used by different tasks.
+     */
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
     public LasServicesManager(SconeConfiguration sconeConfiguration,
