@@ -46,13 +46,28 @@ public class ReplicateDemandService {
     private final ContributionService contributionService;
     private final SubscriptionService subscriptionService;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final Lock askForReplicateLock = new ReentrantLock();
+    private final Lock askForReplicateLock;
 
     public ReplicateDemandService(IexecHubService iexecHubService,
                                   CustomCoreFeignClient coreFeignClient,
                                   ContributionService contributionService,
                                   SubscriptionService subscriptionService,
                                   ApplicationEventPublisher applicationEventPublisher) {
+        this(
+                iexecHubService,
+                coreFeignClient,
+                contributionService,
+                subscriptionService,
+                applicationEventPublisher,
+                new ReentrantLock());
+    }
+
+    public ReplicateDemandService(IexecHubService iexecHubService,
+                                  CustomCoreFeignClient coreFeignClient,
+                                  ContributionService contributionService,
+                                  SubscriptionService subscriptionService,
+                                  ApplicationEventPublisher applicationEventPublisher,
+                                  Lock askForReplicateLock) {
         executor = ExecutorUtils
                 .newSingleThreadExecutorWithFixedSizeQueue(1, "ask-for-rep-");
         this.iexecHubService = iexecHubService;
@@ -60,6 +75,7 @@ public class ReplicateDemandService {
         this.contributionService = contributionService;
         this.subscriptionService = subscriptionService;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.askForReplicateLock = askForReplicateLock;
     }
 
     /**

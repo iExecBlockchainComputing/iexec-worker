@@ -26,7 +26,9 @@ import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.mockito.*;
@@ -34,6 +36,9 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +63,8 @@ class ReplicateDemandServiceTests {
     private SubscriptionService subscriptionService;
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+    @Spy
+    private Lock askForReplicateLock = new ReentrantLock();
 
     @Spy
     @InjectMocks
@@ -224,10 +231,10 @@ class ReplicateDemandServiceTests {
 
     /**
      * In this test the thread that runs "{@link ReplicateDemandService#startTask(WorkerpoolAuthorization)}"
-     * method will sleep after its execution to make sure that is considered busy.
-     * The second call to the method "askForReplicate" should not be executed.
+     * method will wait for second thread to be started and lock tried to be acquired before releasing the lock.
+     * The second call to the method "askForReplicate" should then not be executed as the lock couldn't be acquired.
      */
-    @Test
+    @RepeatedTest(100)
     void shouldRunAskForReplicateOnlyOnceWhenTriggeredTwoTimesSimultaneously() {
         WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
@@ -235,6 +242,13 @@ class ReplicateDemandServiceTests {
         when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
                 .thenReturn(Optional.of(workerpoolAuthorization));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
+
+        doAnswer((invocation) -> {
+            Awaitility
+                    .waitAtMost(100, TimeUnit.MILLISECONDS)
+                    .untilAsserted(() -> verify(askForReplicateLock, times(2)).tryLock());
+            return invocation.callRealMethod();
+        }).when(askForReplicateLock).unlock();
 
         // Trigger 2 times
         CompletableFuture.runAsync(replicateDemandService::askForReplicate);
