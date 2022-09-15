@@ -51,6 +51,7 @@ import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.utils.BytesUtils.stringToBytes;
 
+// TODO: implement `Purgeable` and rename `removeResult` into `purgeTask`
 @Slf4j
 @Service
 public class ResultService {
