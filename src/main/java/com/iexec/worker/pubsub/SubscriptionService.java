@@ -105,7 +105,7 @@ public class SubscriptionService {
         log.debug("Received new SessionCreatedEvent");
         Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
         log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds);
-        chainTaskIds.forEach((chainTaskId) -> {
+        chainTaskIds.forEach(chainTaskId -> {
             this.chainTaskIdToSubscription.remove(chainTaskId);
             subscribeToTopic(chainTaskId);    
         });
