@@ -144,13 +144,13 @@ class StompClientServiceTests {
     }
 
     @Test
-    void shouldNotRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
+    void shouldNotRestartListenerThreadWhenAnotherOneIsAlreadyFound() {
         stompClientService.startSessionRequestListenerIfAbsent();
         // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClientService, timeout(10)).listenToSessionRequests();
+        verify(stompClientService, timeout(100)).listenToSessionRequests();
         stompClientService.restartSessionRequestListenerIfStopped();
         // Make sure listenToSessionRequests() method is still called only 1 time
-        verify(stompClientService, timeout(10)).listenToSessionRequests();
+        verify(stompClientService, timeout(100)).listenToSessionRequests();
     }
 
     @Test
