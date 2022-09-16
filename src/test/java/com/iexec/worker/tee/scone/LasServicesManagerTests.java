@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
 
@@ -22,6 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class LasServicesManagerTests {
@@ -252,6 +255,38 @@ class LasServicesManagerTests {
         lasServicesManager.startLasService(CHAIN_TASK_ID_1); // Filling the LAS map
 
         Assertions.assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_2));
+    }
+    // endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() {
+        final Map<String, LasService> chainTaskIdToLasService =
+                (Map<String, LasService>) ReflectionTestUtils.getField(lasServicesManager, "chainTaskIdToLasService");
+        chainTaskIdToLasService.put(CHAIN_TASK_ID_1, mockedLasService1);
+
+        assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughEmptyMap() {
+        assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
+        final Map<String, LasService> chainTaskIdToLasService =
+                (Map<String, LasService>) ReflectionTestUtils.getField(lasServicesManager, "chainTaskIdToLasService");
+        chainTaskIdToLasService.put(CHAIN_TASK_ID_2, mockedLasService2);
+
+        assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(lasServicesManager::purgeAllTasksData);
     }
     // endregion
 }

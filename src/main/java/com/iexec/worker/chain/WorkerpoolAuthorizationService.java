@@ -20,31 +20,32 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.SignatureUtils;
+import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.worker.config.PublicConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 
 @Slf4j
 @Service
-public class WorkerpoolAuthorizationService {
+public class WorkerpoolAuthorizationService implements Purgeable {
 
     private final PublicConfigurationService publicConfigurationService;
-    private Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
+    private final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
     private String corePublicAddress;
 
     public WorkerpoolAuthorizationService(PublicConfigurationService publicConfigurationService) {
         this.publicConfigurationService = publicConfigurationService;
+        workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
     }
 
     @PostConstruct
     public void initIt() {
         corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
-        workerpoolAuthorizations = new ConcurrentHashMap<>();
     }
 
 
@@ -72,5 +73,22 @@ public class WorkerpoolAuthorizationService {
 
     WorkerpoolAuthorization getWorkerpoolAuthorization(String chainTaskId) {
         return workerpoolAuthorizations.get(chainTaskId);
+    }
+
+    /**
+     * Try and remove workerpool authorization related to given task ID.
+     * @param chainTaskId Task ID whose related workerpool authorization should be purged
+     * @return {@literal true} if key is not stored anymore,
+     * {@literal false} otherwise.
+     */
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        workerpoolAuthorizations.remove(chainTaskId);
+        return !workerpoolAuthorizations.containsKey(chainTaskId);
+    }
+
+    @Override
+    public void purgeAllTasksData() {
+        workerpoolAuthorizations.clear();
     }
 }

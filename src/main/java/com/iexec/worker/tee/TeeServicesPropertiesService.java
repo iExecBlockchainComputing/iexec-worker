@@ -4,6 +4,8 @@ import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.TeeServicesProperties;
@@ -11,7 +13,6 @@ import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -20,13 +21,12 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-public class TeeServicesPropertiesService {
+public class TeeServicesPropertiesService implements Purgeable {
     private final SmsClientProvider smsClientProvider;
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
 
-    // TODO: purge this map when a task has been completed
-    private final Map<String, TeeServicesProperties> propertiesForTask = new HashMap<>();
+    private final Map<String, TeeServicesProperties> propertiesForTask = ExpiringTaskMapFactory.getExpiringTaskMap();
 
     public TeeServicesPropertiesService(SmsClientProvider smsClientProvider,
                                         DockerService dockerService,
@@ -82,5 +82,22 @@ public class TeeServicesPropertiesService {
                     "Failed to download image " +
                             "[chainTaskId:" + chainTaskId +", " + imageType + ":" + image + "]");
         }
+    }
+
+    /**
+     * Try and remove properties related to given task ID.
+     * @param chainTaskId Task ID whose related properties should be purged
+     * @return {@literal true} if key is not stored anymore,
+     * {@literal false} otherwise.
+     */
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        propertiesForTask.remove(chainTaskId);
+        return !propertiesForTask.containsKey(chainTaskId);
+    }
+
+    @Override
+    public void purgeAllTasksData() {
+        propertiesForTask.clear();
     }
 }
