@@ -16,20 +16,17 @@
 
 package com.iexec.worker.feign;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.CoreClient;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
-import lombok.extern.slf4j.Slf4j;
-
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -81,7 +78,7 @@ public class LoginService extends BaseFeignClient {
     private String getLoginChallenge(String workerAddress) {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("workerAddress", workerAddress);
-        HttpCall<String> httpCall = (args) -> coreClient.getChallenge((String) args.get("workerAddress"));
+        HttpCall<String> httpCall = args -> coreClient.getChallenge((String) args.get("workerAddress"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getLoginChallenge");
         return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
@@ -90,7 +87,7 @@ public class LoginService extends BaseFeignClient {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("workerAddress", workerAddress);
         arguments.put("signature", signature);
-        HttpCall<String> httpCall = (args) -> coreClient.login((String) args.get("workerAddress"), (Signature) args.get("signature"));
+        HttpCall<String> httpCall = args -> coreClient.login((String) args.get("workerAddress"), (Signature) args.get("signature"));
         ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "requestLogin");
         return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }

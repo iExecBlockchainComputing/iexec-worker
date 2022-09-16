@@ -5,21 +5,29 @@ import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.config.CoreConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(OutputCaptureExtension.class)
 class StompClientServiceTests {
 
     @Mock
@@ -40,6 +48,7 @@ class StompClientServiceTests {
         MockitoAnnotations.openMocks(this);
     }
 
+    //region subscribeToTopic
     @Test
     void shouldNotSubscribeToTopicWhenOneParamIsNull() {
         assertThrows(NullPointerException.class,
@@ -52,6 +61,45 @@ class StompClientServiceTests {
     void shouldNotSubscribeToTopicWhenSessionIsNull() {
         assertThat(stompClientService.subscribeToTopic("topic", mock(StompFrameHandler.class))).isEmpty();
     }
+
+    @Test
+    void shouldSubscribeToTopic() {
+        StompSession stompSession = mock(StompSession.class);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
+        StompFrameHandler messageHandler = mock(SubscriptionService.MessageHandler.class);
+        StompSession.Subscription subscription = mock(StompSession.Subscription.class);
+        when(stompSession.subscribe("topic", messageHandler)).thenReturn(subscription);
+        assertThat(stompClientService.subscribeToTopic("topic", messageHandler))
+                .isNotEmpty()
+                .contains(subscription);
+    }
+    //endregion
+
+    //region requestNewSession
+    @Test
+    void shouldRequestSessionWhenStompSessionIsNull(CapturedOutput output) {
+        stompClientService.requestNewSession();
+        assertThat(output.getOut()).contains("Requested a new STOMP session");
+    }
+
+    @Test
+    void shouldRequestSessionWhenStompSessionIsNotConnected(CapturedOutput output) {
+        StompSession stompSession = mock(StompSession.class);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
+        when(stompSession.isConnected()).thenReturn(false);
+        stompClientService.requestNewSession();
+        assertThat(output.getOut()).contains("Requested a new STOMP session");
+    }
+
+    @Test
+    void shouldNotRequestSessionWhenStompSessionIsConnected(CapturedOutput output) {
+        StompSession stompSession = mock(StompSession.class);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
+        when(stompSession.isConnected()).thenReturn(true);
+        stompClientService.requestNewSession();
+        assertThat(output.getOut()).contains("A valid STOMP session exists, ignoring this request");
+    }
+    //endregion
 
     @Test
     void shouldListenToSessionRequestsAsynchronouslyAndRequestAFirstSessionWhenInit()
@@ -96,22 +144,30 @@ class StompClientServiceTests {
     }
 
     @Test
-    void shouldNoRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
+    void shouldNotRestartListenerThreadWhenAnotherOneIsAlreadyFound() throws Exception {
         stompClientService.startSessionRequestListenerIfAbsent();
-        TimeUnit.MILLISECONDS.sleep(10);
         // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClientService).listenToSessionRequests();
+        verify(stompClientService, timeout(10)).listenToSessionRequests();
         stompClientService.restartSessionRequestListenerIfStopped();
-        TimeUnit.MILLISECONDS.sleep(10);
         // Make sure listenToSessionRequests() method is still called only 1 time
-        verify(stompClientService).listenToSessionRequests();
+        verify(stompClientService, timeout(10)).listenToSessionRequests();
     }
 
     @Test
-    void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived()
-            throws Exception {
+    void shouldDestroySessionRequestListenerOnInterruptedException(CapturedOutput output) throws InterruptedException {
+        doThrow(InterruptedException.class).when(stompClientService).backOff();
+        CompletableFuture<Void> sessionRequestListener = stompClientService.startSessionRequestListenerIfAbsent();
+        stompClientService.requestNewSession();
+        await().atMost(1, TimeUnit.SECONDS).until(sessionRequestListener::isDone);
+        assertThat(output.getOut())
+                .contains("Listening to incoming STOMP session requests")
+                .contains("STOMP session request listener got interrupted");
+    }
+
+    @Test
+    void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived() throws Exception {
         // Reduce session refresh back off duration to make test faster.
-        doAnswer((invocation) -> backOffBriefly()).when(stompClientService).backOff();
+        doAnswer(invocation -> backOffBriefly()).when(stompClientService).backOff();
         // Don't execute session creation with remote server.
         doNothing().when(stompClientService).createSession();
         // Start listener
@@ -126,6 +182,26 @@ class StompClientServiceTests {
         // Make sure createSession() method is called only 1 time
         verify(stompClientService).createSession();
     }
+
+    //region backOff
+    @Test
+    void shouldNotBackOffWhenSessionDoesNotExist() throws InterruptedException {
+        Date reference = new Date();
+        stompClientService.backOff();
+        assertThat(new Date().getTime() - reference.getTime())
+                .isLessThan(StompClientService.SESSION_REFRESH_BACK_OFF_DELAY);
+    }
+
+    @Test
+    void shouldBackOffWhenSessionExists() throws InterruptedException {
+        StompSession stompSession = mock(StompSession.class);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
+        Date reference = new Date();
+        stompClientService.backOff();
+        assertThat(new Date().getTime() - reference.getTime())
+                .isGreaterThan(StompClientService.SESSION_REFRESH_BACK_OFF_DELAY);
+    }
+    //endregion
 
     private void waitForListener() throws InterruptedException {
         TimeUnit.MILLISECONDS.sleep(10);
