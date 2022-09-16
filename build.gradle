@@ -100,6 +100,9 @@ dependencies {
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
+
+    // awaitility
+    testImplementation "org.awaitility:awaitility:4.2.0"
 }
 
 // ./gradlew build -Pdev
