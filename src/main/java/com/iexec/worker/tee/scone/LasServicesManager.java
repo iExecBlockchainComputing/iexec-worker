@@ -27,7 +27,7 @@ public class LasServicesManager implements Purgeable {
 
     /**
      * Memoize Task-LAS container association.
-     * As a LAS can be used by multiple task, no LAS can be stopped when a task is completed.
+     * As a LAS can be used by multiple tasks, no LAS can be stopped when a task is completed.
      */
     private final Map<String, LasService> chainTaskIdToLasService = ExpiringTaskMapFactory.getExpiringTaskMap();
     /**
