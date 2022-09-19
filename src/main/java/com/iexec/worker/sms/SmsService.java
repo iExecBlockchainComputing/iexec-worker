@@ -142,7 +142,8 @@ public class SmsService {
         String url = taskIdToSmsUrl.get(chainTaskId);
         if(StringUtils.isEmpty(url)){
             // if url is not here anymore, worker should hit core on GET /tasks 
-            // to retrieve SMS URL. 
+            // to retrieve SMS URL
+            // or throw SmsClientCreationException
             return null;
         }
         return smsClientProvider.getSmsClient(url);
@@ -160,7 +161,8 @@ public class SmsService {
         SmsClient smsClient = getSmsClient(chainTaskId);
 
         try {
-            TeeSessionGenerationResponse session = smsClient.generateTeeSession(authorization, workerpoolAuthorization)
+            TeeSessionGenerationResponse session = smsClient
+                    .generateTeeSession(authorization, workerpoolAuthorization)
                     .getData();
             log.info("Created TEE session [chainTaskId:{}, session:{}]",
                     chainTaskId, session);

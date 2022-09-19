@@ -49,6 +49,7 @@ public class TeeServicesPropertiesService {
         // So the following won't throw an exception.
         final SmsClient smsClient = smsService.getSmsClient(chainTaskId);
         final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
+        //TODO: Use checkTeeProvider in sms-library
         final TeeEnclaveProvider smsTeeEnclaveProvider = smsClient.getTeeEnclaveProvider();
         if (smsTeeEnclaveProvider != teeEnclaveProvider) {
             throw new TeeServicesPropertiesCreationException(

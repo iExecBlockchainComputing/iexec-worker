@@ -22,7 +22,10 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.web.ApiResponseBody;
-import com.iexec.sms.api.*;
+import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.SmsClientProvider;
+import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import feign.FeignException;
@@ -55,6 +58,7 @@ class SmsServiceTests {
     private final static TeeSessionGenerationResponse SESSION = mock(TeeSessionGenerationResponse.class);
 
     private static final String SIGNATURE = "random-signature";
+    private static final String smsUrl = "smsUrl";
 
     @Mock
     private CredentialsService credentialsService;
@@ -78,14 +82,15 @@ class SmsServiceTests {
         Signature signatureStub = new Signature(SIGNATURE);
         when(credentialsService.hashAndSignMessage(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(smsClient);
 
         TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
         Assertions.assertThat(returnedSessionId).isEqualTo(SESSION);
-        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
+        verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
     }
 
     @Test
@@ -98,6 +103,8 @@ class SmsServiceTests {
         Signature signatureStub = new Signature(SIGNATURE);
         when(credentialsService.hashAndSignMessage(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenThrow(new FeignException.InternalServerError("", request, responseBody, null ));   //FIXME
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
@@ -105,7 +112,6 @@ class SmsServiceTests {
 
         final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(WORKERPOOL_AUTHORIZATION), TeeSessionGenerationException.class);
         Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
-        verify(smsClientProvider).getOrCreateSmsClientForTask(TASK_DESCRIPTION);
         verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
     }
 }
