@@ -9,7 +9,6 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -73,15 +72,15 @@ public abstract class TeeService {
 
     public abstract List<String> buildPreComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session);
+            TeeSessionGenerationResponse session);
 
     public abstract List<String> buildComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session);
+            TeeSessionGenerationResponse session);
 
     public abstract List<String> buildPostComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session);
+            TeeSessionGenerationResponse session);
 
     public abstract Collection<String> getAdditionalBindings();
 }

@@ -30,7 +30,6 @@ import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -86,7 +85,7 @@ public class TeeSconeService extends TeeService {
     @Override
     public List<String> buildPreComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session) {
+            TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesProperties properties =
@@ -97,7 +96,7 @@ public class TeeSconeService extends TeeService {
     @Override
     public List<String> buildComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session) {
+            TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/app";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
@@ -108,7 +107,7 @@ public class TeeSconeService extends TeeService {
     @Override
     public List<String> buildPostComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session) {
+            TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/post-compute";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesProperties properties =
