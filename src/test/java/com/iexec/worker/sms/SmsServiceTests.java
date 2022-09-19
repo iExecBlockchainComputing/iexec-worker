@@ -27,7 +27,6 @@ import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.chain.IexecHubService;
 import feign.FeignException;
 import feign.Request;
 import feign.RequestTemplate;
@@ -66,8 +65,6 @@ class SmsServiceTests {
     private SmsClient smsClient;
     @Mock
     private SmsClientProvider smsClientProvider;
-    @Mock
-    private IexecHubService iexecHubService;
     @InjectMocks
     private SmsService smsService;
 
@@ -86,7 +83,6 @@ class SmsServiceTests {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
 
         TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
         Assertions.assertThat(returnedSessionId).isEqualTo(SESSION);
@@ -107,8 +103,6 @@ class SmsServiceTests {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenThrow(new FeignException.InternalServerError("", request, responseBody, null ));   //FIXME
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
-        when(smsClientProvider.getOrCreateSmsClientForTask(TASK_DESCRIPTION)).thenReturn(smsClient);
 
         final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(WORKERPOOL_AUTHORIZATION), TeeSessionGenerationException.class);
         Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
