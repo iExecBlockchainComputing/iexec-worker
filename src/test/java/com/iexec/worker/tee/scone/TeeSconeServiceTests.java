@@ -47,7 +47,7 @@ class TeeSconeServiceTests {
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
-    private final static TeeSessionGenerationResponse SESSION = new TeeSessionGenerationResponse(SESSION_ID, CAS_URL);
+    private static final TeeSessionGenerationResponse SESSION = new TeeSessionGenerationResponse(SESSION_ID, CAS_URL);
     private static final boolean SHOW_VERSION = true;
     private static final String LOG_LEVEL = "debug";
     private static final String CHAIN_TASK_ID = "chainTaskId";
