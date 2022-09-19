@@ -23,6 +23,7 @@ import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
+import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -65,6 +66,7 @@ public class TaskManagerService {
     private final ResultService resultService;
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
+    private final PurgeService purgeService;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -76,7 +78,8 @@ public class TaskManagerService {
             DataService dataService,
             ResultService resultService,
             DockerService dockerService,
-            SubscriptionService subscriptionService) {
+            SubscriptionService subscriptionService,
+            PurgeService purgeService) {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
@@ -87,6 +90,7 @@ public class TaskManagerService {
         this.resultService = resultService;
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
+        this.purgeService = purgeService;
     }
 
     ReplicateActionResponse start(String chainTaskId) {
@@ -423,6 +427,8 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse complete(String chainTaskId) {
+        purgeService.purgeAllServices(chainTaskId);
+
         if (!resultService.removeResult(chainTaskId)) {
             return ReplicateActionResponse.failure();
         }
@@ -444,6 +450,7 @@ public class TaskManagerService {
         dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
         log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
+        purgeService.purgeAllServices(chainTaskId);
         boolean isSuccess = resultService.removeResult(chainTaskId);
         if (!isSuccess) {
             log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);

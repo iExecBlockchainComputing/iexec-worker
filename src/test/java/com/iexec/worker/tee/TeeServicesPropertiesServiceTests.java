@@ -16,6 +16,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -183,6 +186,38 @@ class TeeServicesPropertiesServiceTests {
         verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
         verify(dockerClient).isImagePresent(POST_COMPUTE_IMAGE);
         verify(dockerClient).pullImage(POST_COMPUTE_IMAGE);
+    }
+    // endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() {
+        final Map<String, TeeServicesProperties> propertiesForTask =
+                (Map<String, TeeServicesProperties>) ReflectionTestUtils.getField(teeServicesPropertiesService, "propertiesForTask");
+        propertiesForTask.put(CHAIN_TASK_ID, GRAMINE_PROPERTIES);
+
+        assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughEmptyMap() {
+        assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
+        final Map<String, TeeServicesProperties> propertiesForTask =
+                (Map<String, TeeServicesProperties>) ReflectionTestUtils.getField(teeServicesPropertiesService, "propertiesForTask");
+        propertiesForTask.put(CHAIN_TASK_ID + "-wrong", GRAMINE_PROPERTIES);
+
+        assertTrue(teeServicesPropertiesService.purgeTask(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(teeServicesPropertiesService::purgeAllTasksData);
     }
     // endregion
 }

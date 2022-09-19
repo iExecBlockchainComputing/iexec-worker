@@ -73,6 +73,7 @@ dependencies {
     implementation  "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation  "org.springframework.retry:spring-retry"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testImplementation "org.mockito:mockito-inline:4.8.0" // activates mocking final classes/methods
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // Web3j issues, see core build.gradle
@@ -100,6 +101,9 @@ dependencies {
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
+
+    // awaitility
+    testImplementation "org.awaitility:awaitility:4.2.0"
 }
 
 // ./gradlew build -Pdev
