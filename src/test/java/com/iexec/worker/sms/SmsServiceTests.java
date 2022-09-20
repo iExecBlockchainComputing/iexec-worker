@@ -43,18 +43,18 @@ import static org.mockito.Mockito.*;
 
 class SmsServiceTests {
 
-    private final static String CHAIN_TASK_ID = "chainTaskId";
-    private final static TaskDescription TASK_DESCRIPTION = TaskDescription
+    private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final TaskDescription TASK_DESCRIPTION = TaskDescription
             .builder()
             .chainTaskId(CHAIN_TASK_ID)
             .build();
-    private final static String HASH = "hash";
-    private final static WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION = spy(WorkerpoolAuthorization
+    private static final String HASH = "hash";
+    private static final WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION = spy(WorkerpoolAuthorization
             .builder()
             .chainTaskId(CHAIN_TASK_ID)
             .build());
 
-    private final static TeeSessionGenerationResponse SESSION = mock(TeeSessionGenerationResponse.class);
+    private static final TeeSessionGenerationResponse SESSION = mock(TeeSessionGenerationResponse.class);
 
     private static final String SIGNATURE = "random-signature";
     private static final String smsUrl = "smsUrl";

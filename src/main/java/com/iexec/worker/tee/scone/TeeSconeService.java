@@ -17,7 +17,6 @@
 package com.iexec.worker.tee.scone;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeServicesProperties;
@@ -27,9 +26,8 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.actuate.scheduling.ScheduledTasksEndpoint.TaskDescription;
 import org.springframework.stereotype.Service;
-
-import javax.annotation.Nonnull;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -85,7 +83,7 @@ public class TeeSconeService extends TeeService {
     @Override
     public List<String> buildPreComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session) {
+            TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/pre-compute";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesProperties properties =
@@ -96,7 +94,7 @@ public class TeeSconeService extends TeeService {
     @Override
     public List<String> buildComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session) {
+            TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/app";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
@@ -107,7 +105,7 @@ public class TeeSconeService extends TeeService {
     @Override
     public List<String> buildPostComputeDockerEnv(
             TaskDescription taskDescription,
-            @Nonnull TeeSessionGenerationResponse session) {
+            TeeSessionGenerationResponse session) {
         String sconeConfigId = session.getSessionId() + "/post-compute";
         String chainTaskId = taskDescription.getChainTaskId();
         TeeServicesProperties properties =

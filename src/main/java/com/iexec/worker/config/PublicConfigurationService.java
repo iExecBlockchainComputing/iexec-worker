@@ -21,7 +21,7 @@ import com.iexec.blockchain.api.BlockchainAdapterApiClientBuilder;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
- import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.feign.CustomCoreFeignClient;
 import feign.Logger;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
