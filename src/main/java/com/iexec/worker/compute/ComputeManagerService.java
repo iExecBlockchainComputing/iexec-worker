@@ -22,6 +22,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
 import com.iexec.worker.compute.post.PostComputeResponse;
@@ -161,13 +162,13 @@ public class ComputeManagerService {
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
-                                         String secureSessionId) {
+                                         TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId,
                 taskDescription.isTeeTask());
 
         AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription, secureSessionId);
+                appComputeService.runCompute(taskDescription, secureSession);
 
         if (appComputeResponse.isSuccessful()) {
             writeLogs(chainTaskId, STDOUT_FILENAME, appComputeResponse.getStdout());
@@ -195,7 +196,7 @@ public class ComputeManagerService {
      * - Save stdout file
      */
     public PostComputeResponse runPostCompute(TaskDescription taskDescription,
-                                              String secureSessionId) {
+                                              TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
@@ -205,8 +206,8 @@ public class ComputeManagerService {
 
         if (!taskDescription.isTeeTask()) {
             postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
-        } else if (!secureSessionId.isEmpty()) {
-            postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSessionId);
+        } else if (secureSession != null) {
+            postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSession);
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;

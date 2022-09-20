@@ -38,9 +38,9 @@ import static org.mockito.Mockito.*;
 @Slf4j
 class ReplicateDemandServiceTests {
 
-    private final static String ASK_FOR_REPLICATE_CONTEXT = "ask-for-replicate";
-    private final static String CHAIN_TASK_ID = "chainTaskId";
-    private final static long BLOCK_NUMBER = 5;
+    private static final String ASK_FOR_REPLICATE_CONTEXT = "ask-for-replicate";
+    private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final long BLOCK_NUMBER = 5;
 
     @Captor
     ArgumentCaptor<TaskNotification> taskNotificationCaptor;

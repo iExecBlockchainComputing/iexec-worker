@@ -17,15 +17,10 @@
 package com.iexec.worker.tee.scone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
-import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.sms.SmsService;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Configuration;
 
 /**
  * LAS: local attestation service.
@@ -33,15 +28,18 @@ import org.springframework.stereotype.Service;
  * (eg compute enclave measurement - MREnclave - and attest it through Intel
  * Attestation Service).
  * It must be on the same machine as the attested program/enclave.
- *
+ * <p>
  * MREnclave: an enclave identifier, created by hashing all its
  * code. It guarantees that a code behaves exactly as expected.
+ *
+ * <p>
+ * The following assumes Scontain provides a single registry,
+ * within which every LAS image is stored.
+ * It also assumes every LAS uses the same port.
  */
 @Slf4j
-@Service
+@Configuration
 public class SconeConfiguration {
-
-    private final SmsService smsService;
 
     @Getter
     @Value("${scone.show-version}")
@@ -67,38 +65,4 @@ public class SconeConfiguration {
     @Getter
     @Value("${scone.las-port}")
     private int lasPort;
-
-    @Getter
-    private final String lasContainerName;
-
-    @Getter
-    private final String casUrl;
-
-    public SconeConfiguration(WorkerConfigurationService workerConfigService,
-                              SmsService smsService) {
-        this.smsService = smsService;
-        // "iexec-las-0xWalletAddress" as lasContainerName to avoid naming conflict
-        // when running multiple workers on the same machine.
-        lasContainerName = "iexec-las-" + workerConfigService.getWorkerWalletAddress();
-        // Get cas url from sms
-        casUrl = smsService.getSconeCasUrl();
-        log.info("Received cas url [casUrl:{}]", casUrl);
-        if (StringUtils.isEmpty(casUrl)) {
-            throw new BeanInstantiationException(this.getClass(), "Missing cas url");
-        }
-        TeeWorkflowSharedConfiguration config = smsService.getTeeWorkflowConfiguration();
-        if (config == null) {
-            throw new RuntimeException("Missing tee workflow configuration");
-        }
-    }
-
-    public String getLasImageUri() {
-        TeeWorkflowSharedConfiguration config = smsService.getTeeWorkflowConfiguration();
-        return config != null && !StringUtils.isEmpty(config.getLasImage()) ?
-                config.getLasImage() : "";
-    }
-
-    public String getLasUrl() {
-        return lasContainerName + ":" + lasPort;
-    }
 }

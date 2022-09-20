@@ -17,6 +17,7 @@
 package com.iexec.worker.compute.pre;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
@@ -29,7 +30,7 @@ public class PreComputeResponse implements ComputeResponse {
 
     private ReplicateStatusCause exitCause;
     private boolean isTeeTask;
-    private String secureSessionId;
+    private TeeSessionGenerationResponse secureSession;
     private String stdout;
     private String stderr;
 
@@ -37,7 +38,7 @@ public class PreComputeResponse implements ComputeResponse {
     @Override
     public boolean isSuccessful() {
         if (isTeeTask) {
-            return ComputeResponse.super.isSuccessful() && !secureSessionId.isEmpty();
+            return ComputeResponse.super.isSuccessful() && secureSession != null;
         }
         return ComputeResponse.super.isSuccessful();
     }
