@@ -204,11 +204,15 @@ public class TaskNotificationService {
     }
 
     private boolean storeWorkerpoolAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
-        if(extra != null && extra.getWorkerpoolAuthorization() != null && extra.getSmsUrl() != null){
-            smsService.attachSmsUrlToTask(extra.getWorkerpoolAuthorization().getChainTaskId(), extra.getSmsUrl());
-            return contributionService.putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+        boolean success = true;
+        if(extra != null && extra.getWorkerpoolAuthorization() != null){
+            success = contributionService.putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+            if(extra.getSmsUrl() != null){
+                String chainTaskId = extra.getWorkerpoolAuthorization().getChainTaskId();
+                smsService.attachSmsUrlToTask(chainTaskId, extra.getSmsUrl());
+            }
         }
-        return true;
+        return success;
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,

@@ -17,6 +17,7 @@
 package com.iexec.worker.tee.scone;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeServicesProperties;
@@ -26,7 +27,6 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.utils.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.actuate.scheduling.ScheduledTasksEndpoint.TaskDescription;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;

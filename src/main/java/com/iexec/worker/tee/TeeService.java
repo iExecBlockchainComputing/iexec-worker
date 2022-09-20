@@ -1,13 +1,13 @@
 package com.iexec.worker.tee;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.actuate.scheduling.ScheduledTasksEndpoint.TaskDescription;
 
 import java.util.Collection;
 import java.util.List;
