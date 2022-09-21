@@ -4,6 +4,7 @@ import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.sms.api.SmsClient;
+import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import org.junit.jupiter.api.Assertions;
@@ -96,7 +97,7 @@ class TeeServiceTests {
     void shouldTeePrerequisitesNotBeMetSinceSmsClientCantBeLoaded() {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
-        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(null);
+        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 

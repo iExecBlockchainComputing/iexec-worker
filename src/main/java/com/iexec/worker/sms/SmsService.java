@@ -17,12 +17,11 @@
 package com.iexec.worker.sms;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.web.ApiResponseBodyDecoder;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.TeeSessionGenerationError;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
+import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -35,15 +34,15 @@ import java.util.Optional;
 
 @Slf4j
 @Service
-public class SmsService {
+public class SmsService implements Purgeable {
 
     private final CredentialsService credentialsService;
     private final SmsClientProvider smsClientProvider;
-    // TODO: purge once task has been completed
     private final Map<String, String> taskIdToSmsUrl = new HashMap<>();
 
     public SmsService(CredentialsService credentialsService,
-                      SmsClientProvider smsClientProvider) {
+                      SmsClientProvider smsClientProvider,
+                      CoreClient coreClient) {
         this.credentialsService = credentialsService;
         this.smsClientProvider = smsClientProvider;
     }
@@ -55,10 +54,10 @@ public class SmsService {
     public SmsClient getSmsClient(String chainTaskId) {
         String url = taskIdToSmsUrl.get(chainTaskId);
         if(StringUtils.isEmpty(url)){
-            // if url is not here anymore, worker should hit core on GET /tasks 
+            // if url is not here anymore, worker might hit core on GET /tasks 
             // to retrieve SMS URL
-            // or throw SmsClientCreationException
-            return null;
+            throw new SmsClientCreationException("No SMS URL defined for " +
+                "given task [chainTaskId: " + chainTaskId +"]");
         }
         return smsClientProvider.getSmsClient(url);
     }
@@ -93,4 +92,16 @@ public class SmsService {
         String challenge = workerpoolAuthorization.getHash();
         return credentialsService.hashAndSignMessage(challenge).getValue();
     }
+
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        taskIdToSmsUrl.remove(chainTaskId);
+        return !taskIdToSmsUrl.containsKey(chainTaskId);
+    }
+
+    @Override
+    public void purgeAllTasksData() {
+        taskIdToSmsUrl.clear();  
+    }
+
 }

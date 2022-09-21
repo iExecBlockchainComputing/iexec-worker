@@ -20,12 +20,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.task.TaskDescription;
 import com.iexec.common.web.ApiResponseBody;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
-import com.iexec.sms.api.TeeSessionGenerationError;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import feign.Request;
@@ -39,15 +35,12 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SmsServiceTests {
 
     private static final String CHAIN_TASK_ID = "chainTaskId";
-    private static final TaskDescription TASK_DESCRIPTION = TaskDescription
-            .builder()
-            .chainTaskId(CHAIN_TASK_ID)
-            .build();
     private static final String HASH = "hash";
     private static final WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION = spy(WorkerpoolAuthorization
             .builder()
@@ -74,6 +67,25 @@ class SmsServiceTests {
         doReturn(HASH).when(WORKERPOOL_AUTHORIZATION).getHash();
     }
 
+    // region getSmsClient
+    @Test
+    void shouldGetSmsClient() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        Assertions.assertThat(smsService.getSmsClient(CHAIN_TASK_ID))
+            .isEqualTo(smsClient);
+    }
+
+    @Test
+    void shouldNotAndGetSmsClientIfNoSmsUrlForTask() {
+        // no SMS URL attached to taskId
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        assertThrows(SmsClientCreationException.class, 
+            () -> smsService.getSmsClient(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region createTeeSession
     @Test
     void shouldCreateTeeSession() throws TeeSessionGenerationException {
         Signature signatureStub = new Signature(SIGNATURE);
@@ -108,4 +120,29 @@ class SmsServiceTests {
         Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
         verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
     }
+    // endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() {
+        // Attach sms URL to task
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+
+        // Purging the task
+        boolean purged = smsService.purgeTask(CHAIN_TASK_ID);
+        assertTrue(purged);
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughTaskNeverAccessed() {
+        assertTrue(smsService.purgeTask(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(smsService::purgeAllTasksData);
+    }
+    // endregion
 }

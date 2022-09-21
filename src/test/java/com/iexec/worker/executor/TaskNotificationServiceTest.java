@@ -86,7 +86,28 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStoreWorkerpoolAuthorizationIfPresent() {
+    void shouldStoreWorkerpoolAuthorization() {
+        WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .build();
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_CONTINUE)
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                    .workerpoolAuthorization(auth)
+                    .build())
+                .build();
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(contributionService, Mockito.times(1))
+                .putWorkerpoolAuthorization(any());
+        verify(smsService, times(0))
+            .attachSmsUrlToTask(anyString(), anyString());
+    }
+
+    @Test
+    void shouldStoreWorkerpoolAuthorizationAndSmsUrlIfPresent() {
         String smsUrl = "smsUrl";
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
             .chainTaskId(CHAIN_TASK_ID)
