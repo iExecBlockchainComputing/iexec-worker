@@ -20,7 +20,7 @@ import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateDemandResponse;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -91,7 +91,7 @@ public class ReplicateDemandService {
             log.error("Cannot ask for new tasks, your wallet is dry");
             return;
         }
-        coreFeignClient.getAvailableReplicate(lastAvailableBlockNumber)
+        coreFeignClient.getAvailableReplicateTaskSummary(lastAvailableBlockNumber)
                 .filter(this::isNewTaskInitialized)
                 .ifPresent(this::startTask);
     }
@@ -99,11 +99,11 @@ public class ReplicateDemandService {
     /**
      * Checks if task is initialized
      *
-     * @param authorization required authorization for later contribution
+     * @param replicateTaskSummary required authorization for later contribution
      * @return true if task is initialized
      */
-    private boolean isNewTaskInitialized(ReplicateDemandResponse authorization) {
-        String chainTaskId = authorization.getWorkerpoolAuthorization().getChainTaskId();
+    private boolean isNewTaskInitialized(ReplicateTaskSummary replicateTaskSummary) {
+        String chainTaskId = replicateTaskSummary.getWorkerpoolAuthorization().getChainTaskId();
         log.info("Received new task [chainTaskId:{}]", chainTaskId);
         if (contributionService.isChainTaskInitialized(chainTaskId)) {
             log.info("Incoming task exists on-chain [chainTaskId:{}]", chainTaskId);
@@ -116,15 +116,15 @@ public class ReplicateDemandService {
     /**
      * Starts task
      *
-     * @param authorization required authorization for later contribution
+     * @param replicateTaskSummary required authorization for later contribution
      */
-    void startTask(ReplicateDemandResponse replicateDemandResponse) {
+    void startTask(ReplicateTaskSummary replicateTaskSummary) {
         WorkerpoolAuthorization authorization = 
-            replicateDemandResponse.getWorkerpoolAuthorization();
+            replicateTaskSummary.getWorkerpoolAuthorization();
         String chainTaskId = authorization.getChainTaskId();
         TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
                 .workerpoolAuthorization(authorization)
-                .smsUrl(replicateDemandResponse.getSmsUrl())
+                .smsUrl(replicateTaskSummary.getSmsUrl())
                 .build();
         TaskNotification taskNotification = TaskNotification.builder()
                 .chainTaskId(chainTaskId)

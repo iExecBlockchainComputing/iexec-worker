@@ -18,7 +18,7 @@ package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
-import com.iexec.common.replicate.ReplicateDemandResponse;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -82,11 +82,11 @@ class ReplicateDemandServiceTests {
     // region askForReplicate()
     @Test
     void shouldAskForReplicate() {
-        ReplicateDemandResponse replicate = getStubReplicateDemand();
+        ReplicateTaskSummary replicateTaskSummary = getStubReplicateTaskSummary();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(replicate));
+        when(coreFeignClient.getAvailableReplicateTaskSummary(BLOCK_NUMBER))
+                .thenReturn(Optional.of(replicateTaskSummary));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
 
         replicateDemandService.askForReplicate();
@@ -100,9 +100,9 @@ class ReplicateDemandServiceTests {
         Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationType())
                 .isEqualTo(PLEASE_START);
         Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationExtra()
-                .getWorkerpoolAuthorization()).isEqualTo(replicate.getWorkerpoolAuthorization());
+                .getWorkerpoolAuthorization()).isEqualTo(replicateTaskSummary.getWorkerpoolAuthorization());
         Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationExtra()
-                .getSmsUrl()).isEqualTo(replicate.getSmsUrl());
+                .getSmsUrl()).isEqualTo(replicateTaskSummary.getSmsUrl());
     }
 
     @Test
@@ -130,7 +130,7 @@ class ReplicateDemandServiceTests {
     void shouldNotAskForReplicateSinceNoAvailableReplicate() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
+        when(coreFeignClient.getAvailableReplicateTaskSummary(BLOCK_NUMBER))
                 .thenReturn(Optional.empty());
 
         replicateDemandService.askForReplicate();
@@ -141,11 +141,11 @@ class ReplicateDemandServiceTests {
 
     @Test
     void shouldNotAskForReplicateSinceTaskIsNotInitialized() {
-        ReplicateDemandResponse replicate = getStubReplicateDemand();
+        ReplicateTaskSummary replicateTaskSummary = getStubReplicateTaskSummary();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(replicate));
+        when(coreFeignClient.getAvailableReplicateTaskSummary(BLOCK_NUMBER))
+                .thenReturn(Optional.of(replicateTaskSummary));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(false);
 
         replicateDemandService.askForReplicate();
@@ -160,8 +160,8 @@ class ReplicateDemandServiceTests {
                 .build();
     }
 
-    private ReplicateDemandResponse getStubReplicateDemand() {
-        return ReplicateDemandResponse.builder()
+    private ReplicateTaskSummary getStubReplicateTaskSummary() {
+        return ReplicateTaskSummary.builder()
                 .workerpoolAuthorization(getStubAuth())
                 .smsUrl(SMS_URL)
                 .build();

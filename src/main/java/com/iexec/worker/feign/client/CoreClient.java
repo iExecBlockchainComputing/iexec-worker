@@ -20,8 +20,8 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateDemandResponse;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.common.security.Signature;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
@@ -59,7 +59,7 @@ public interface CoreClient {
 
     //region /replicates
     @GetMapping("/replicates/available")
-    ResponseEntity<ReplicateDemandResponse> getAvailableReplicate(
+    ResponseEntity<ReplicateTaskSummary> getAvailableReplicateTaskSummary(
             @RequestHeader String authorization,
             @RequestParam long blockNumber);
 
