@@ -21,7 +21,6 @@ import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -41,8 +40,7 @@ public class SmsService implements Purgeable {
     private final Map<String, String> taskIdToSmsUrl = new HashMap<>();
 
     public SmsService(CredentialsService credentialsService,
-                      SmsClientProvider smsClientProvider,
-                      CoreClient coreClient) {
+                      SmsClientProvider smsClientProvider) {
         this.credentialsService = credentialsService;
         this.smsClientProvider = smsClientProvider;
     }

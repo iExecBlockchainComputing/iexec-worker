@@ -2,7 +2,6 @@ package com.iexec.worker.tee;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
@@ -41,10 +40,7 @@ public abstract class TeeService {
         try {
             // Try to load the `SmsClient` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
-            SmsClient smsClient = smsService.getSmsClient(chainTaskId);
-            if(smsClient == null){
-                return Optional.of(UNKNOWN_SMS);
-            }
+            smsService.getSmsClient(chainTaskId);
         } catch (SmsClientCreationException e) {
             log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(UNKNOWN_SMS);
