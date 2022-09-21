@@ -99,7 +99,7 @@ public class ReplicateDemandService {
     /**
      * Checks if task is initialized
      *
-     * @param replicateTaskSummary required authorization for later contribution
+     * @param replicateTaskSummary replicate task summary for computing and contribution
      * @return true if task is initialized
      */
     private boolean isNewTaskInitialized(ReplicateTaskSummary replicateTaskSummary) {
@@ -116,7 +116,7 @@ public class ReplicateDemandService {
     /**
      * Starts task
      *
-     * @param replicateTaskSummary required authorization for later contribution
+     * @param replicateTaskSummary replicate task summary for computing and contribution
      */
     void startTask(ReplicateTaskSummary replicateTaskSummary) {
         WorkerpoolAuthorization authorization = 
