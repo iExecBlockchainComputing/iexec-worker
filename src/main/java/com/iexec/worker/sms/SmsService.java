@@ -69,7 +69,7 @@ public class SmsService implements Purgeable {
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        SmsClient smsClient = getSmsClient(chainTaskId);
+        final SmsClient smsClient = getSmsClient(chainTaskId);
 
         try {
             TeeSessionGenerationResponse session = smsClient
