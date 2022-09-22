@@ -86,7 +86,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStoreWorkerpoolAuthorization() {
+    void shouldStoreWorkerpoolAuthorizationOnly() {
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .build();
@@ -110,8 +110,8 @@ class TaskNotificationServiceTest {
     void shouldStoreWorkerpoolAuthorizationAndSmsUrlIfPresent() {
         String smsUrl = "smsUrl";
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
-            .chainTaskId(CHAIN_TASK_ID)
-            .build();
+                .chainTaskId(CHAIN_TASK_ID)
+                .build();
         TaskNotification currentNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTINUE)
@@ -120,12 +120,40 @@ class TaskNotificationServiceTest {
                     .smsUrl(smsUrl)
                     .build())
                 .build();
+                when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+                .thenReturn(false);
+        when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+                .thenReturn(true);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(workerpoolAuthorizationService, Mockito.times(1))
                 .putWorkerpoolAuthorization(any());
         verify(smsService, times(1))
+            .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+    }
+
+
+    @Test
+    void shouldNotStoreSmsUrlIfWorkerpoolAuthorizationIsMissing() {
+        String smsUrl = "smsUrl";
+        WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .build();
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_CONTINUE)
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                    .workerpoolAuthorization(auth)
+                    .smsUrl(smsUrl)
+                    .build())
+                .build();
+        when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+                .thenReturn(false);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(smsService, times(0))
             .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
     }
 

@@ -208,7 +208,7 @@ public class TaskNotificationService {
         if(extra != null && extra.getWorkerpoolAuthorization() != null){
             success = workerpoolAuthorizationService
                 .putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
-            if(extra.getSmsUrl() != null){
+            if(success && extra.getSmsUrl() != null){
                 String chainTaskId = extra.getWorkerpoolAuthorization().getChainTaskId();
                 smsService.attachSmsUrlToTask(chainTaskId, extra.getSmsUrl());
             }
