@@ -17,6 +17,7 @@
 package com.iexec.worker.sms;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
+import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.sms.api.*;
@@ -26,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -37,7 +37,8 @@ public class SmsService implements Purgeable {
 
     private final CredentialsService credentialsService;
     private final SmsClientProvider smsClientProvider;
-    private final Map<String, String> taskIdToSmsUrl = new HashMap<>();
+    private final Map<String, String> taskIdToSmsUrl = 
+        ExpiringTaskMapFactory.getExpiringTaskMap();
 
     public SmsService(CredentialsService credentialsService,
                       SmsClientProvider smsClientProvider) {
