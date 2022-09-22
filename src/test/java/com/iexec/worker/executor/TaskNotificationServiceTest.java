@@ -26,8 +26,8 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.sms.SmsService;
@@ -55,7 +55,7 @@ class TaskNotificationServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
     @Mock
-    private ContributionService contributionService;
+    private WorkerpoolAuthorizationService workerpoolAuthorizationService;
     @Mock
     private IexecHubService iexecHubService;
     @Mock
@@ -100,7 +100,7 @@ class TaskNotificationServiceTest {
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(contributionService, Mockito.times(1))
+        verify(workerpoolAuthorizationService, Mockito.times(1))
                 .putWorkerpoolAuthorization(any());
         verify(smsService, times(0))
             .attachSmsUrlToTask(anyString(), anyString());
@@ -123,7 +123,7 @@ class TaskNotificationServiceTest {
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(contributionService, Mockito.times(1))
+        verify(workerpoolAuthorizationService, Mockito.times(1))
                 .putWorkerpoolAuthorization(any());
         verify(smsService, times(1))
             .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
