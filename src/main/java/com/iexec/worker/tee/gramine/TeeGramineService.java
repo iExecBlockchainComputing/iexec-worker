@@ -1,10 +1,9 @@
 package com.iexec.worker.tee.gramine;
 
-import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +21,9 @@ public class TeeGramineService extends TeeService {
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
 
     public TeeGramineService(SgxService sgxService,
-                             SmsClientProvider smsClientProvider,
-                             IexecHubAbstractService iexecHubService,
+                             SmsService smsService,
                              TeeServicesPropertiesService teeServicesPropertiesService) {
-        super(sgxService, smsClientProvider, iexecHubService, teeServicesPropertiesService);
+        super(sgxService, smsService, teeServicesPropertiesService);
     }
 
     @Override

@@ -19,18 +19,14 @@ package com.iexec.worker.executor;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateActionResponse;
-import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.replicate.ReplicateStatusDetails;
-import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.replicate.*;
 import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-
+import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -38,7 +34,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND;
 
 
 @Slf4j
@@ -49,8 +45,9 @@ public class TaskNotificationService {
     private final CustomCoreFeignClient customCoreFeignClient;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SubscriptionService subscriptionService;
-    private final ContributionService contributionService;
+    private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private final IexecHubService iexecHubService;
+    private final SmsService smsService;
 
 
     public TaskNotificationService(
@@ -58,14 +55,16 @@ public class TaskNotificationService {
             CustomCoreFeignClient customCoreFeignClient,
             ApplicationEventPublisher applicationEventPublisher,
             SubscriptionService subscriptionService,
-            ContributionService contributionService,
-            IexecHubService iexecHubService) {
+            WorkerpoolAuthorizationService workerpoolAuthorizationService,
+            IexecHubService iexecHubService,
+            SmsService smsService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
-        this.contributionService = contributionService;
+        this.workerpoolAuthorizationService = workerpoolAuthorizationService;
         this.iexecHubService = iexecHubService;
+        this.smsService = smsService;
     }
 
     /**
@@ -88,7 +87,7 @@ public class TaskNotificationService {
 
         TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
-        if (!storeWorkerpoolAuthorizationFromExtraIfPresent(extra)){
+        if (!storeWorkerpoolAuthAndSmsFromExtraIfPresent(extra)){
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
@@ -204,11 +203,17 @@ public class TaskNotificationService {
 
     }
 
-    private boolean storeWorkerpoolAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
-        if (extra != null && extra.getWorkerpoolAuthorization() != null){
-            return contributionService.putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+    private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(TaskNotificationExtra extra) {
+        boolean success = true;
+        if(extra != null && extra.getWorkerpoolAuthorization() != null){
+            success = workerpoolAuthorizationService
+                .putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+            if(success && extra.getSmsUrl() != null){
+                String chainTaskId = extra.getWorkerpoolAuthorization().getChainTaskId();
+                smsService.attachSmsUrlToTask(chainTaskId, extra.getSmsUrl());
+            }
         }
-        return true;
+        return success;
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,

@@ -16,12 +16,12 @@
 
 package com.iexec.worker.feign;
 
-import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.feign.client.CoreClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -119,15 +119,15 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return is2xxSuccess(response) ? response.getBody() : Collections.emptyList();
     }
 
-    public Optional<WorkerpoolAuthorization> getAvailableReplicate(long lastAvailableBlockNumber) {
+    public Optional<ReplicateTaskSummary> getAvailableReplicateTaskSummary(long lastAvailableBlockNumber) {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put(JWTOKEN, loginService.getToken());
         arguments.put(BLOCK_NUMBER, lastAvailableBlockNumber);
 
-        HttpCall<WorkerpoolAuthorization> httpCall = args ->
-                coreClient.getAvailableReplicate((String) args.get(JWTOKEN), (long) args.get(BLOCK_NUMBER));
+        HttpCall<ReplicateTaskSummary> httpCall = args ->
+                coreClient.getAvailableReplicateTaskSummary((String) args.get(JWTOKEN), (long) args.get(BLOCK_NUMBER));
 
-        ResponseEntity<WorkerpoolAuthorization> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
+        ResponseEntity<ReplicateTaskSummary> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
         if (!is2xxSuccess(response) || response.getBody() == null) {
             return Optional.empty();
         }

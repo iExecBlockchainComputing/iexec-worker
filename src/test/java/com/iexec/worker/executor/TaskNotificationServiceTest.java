@@ -26,18 +26,20 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-
+import com.iexec.worker.sms.SmsService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class TaskNotificationServiceTest {
@@ -53,9 +55,11 @@ class TaskNotificationServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
     @Mock
-    private ContributionService contributionService;
+    private WorkerpoolAuthorizationService workerpoolAuthorizationService;
     @Mock
     private IexecHubService iexecHubService;
+    @Mock
+    private SmsService smsService;
     @InjectMocks
     private TaskNotificationService taskNotificationService;
     @Captor
@@ -82,16 +86,75 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStoreWorkerpoolAuthorizationIfPresent() {
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
+    void shouldStoreWorkerpoolAuthorizationOnly() {
+        WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .build();
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTINUE)
-                .taskNotificationExtra(TaskNotificationExtra.builder().workerpoolAuthorization(new WorkerpoolAuthorization()).build())
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                    .workerpoolAuthorization(auth)
+                    .build())
                 .build();
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(contributionService, Mockito.times(1))
+        verify(workerpoolAuthorizationService, Mockito.times(1))
                 .putWorkerpoolAuthorization(any());
+        verify(smsService, times(0))
+            .attachSmsUrlToTask(anyString(), anyString());
+    }
+
+    @Test
+    void shouldStoreWorkerpoolAuthorizationAndSmsUrlIfPresent() {
+        String smsUrl = "smsUrl";
+        WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .build();
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_CONTINUE)
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                    .workerpoolAuthorization(auth)
+                    .smsUrl(smsUrl)
+                    .build())
+                .build();
+                when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+                .thenReturn(false);
+        when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+                .thenReturn(true);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(workerpoolAuthorizationService, Mockito.times(1))
+                .putWorkerpoolAuthorization(any());
+        verify(smsService, times(1))
+            .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+    }
+
+
+    @Test
+    void shouldNotStoreSmsUrlIfWorkerpoolAuthorizationIsMissing() {
+        String smsUrl = "smsUrl";
+        WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .build();
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_CONTINUE)
+                .taskNotificationExtra(TaskNotificationExtra.builder()
+                    .workerpoolAuthorization(auth)
+                    .smsUrl(smsUrl)
+                    .build())
+                .build();
+        when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+                .thenReturn(false);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(smsService, times(0))
+            .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
     }
 
     @Test

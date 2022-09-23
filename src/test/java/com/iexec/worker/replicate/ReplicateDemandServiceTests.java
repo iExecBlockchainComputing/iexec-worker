@@ -18,6 +18,7 @@ package com.iexec.worker.replicate;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -33,6 +34,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.util.Optional;
 
 import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @Slf4j
@@ -40,6 +42,7 @@ class ReplicateDemandServiceTests {
 
     private static final String ASK_FOR_REPLICATE_CONTEXT = "ask-for-replicate";
     private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final String SMS_URL = "smsUrl";
     private static final long BLOCK_NUMBER = 5;
 
     @Captor
@@ -79,11 +82,11 @@ class ReplicateDemandServiceTests {
     // region askForReplicate()
     @Test
     void shouldAskForReplicate() {
-        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
+        ReplicateTaskSummary replicateTaskSummary = getStubReplicateTaskSummary();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(workerpoolAuthorization));
+        when(coreFeignClient.getAvailableReplicateTaskSummary(BLOCK_NUMBER))
+                .thenReturn(Optional.of(replicateTaskSummary));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(true);
 
         replicateDemandService.askForReplicate();
@@ -97,7 +100,9 @@ class ReplicateDemandServiceTests {
         Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationType())
                 .isEqualTo(PLEASE_START);
         Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationExtra()
-                .getWorkerpoolAuthorization()).isEqualTo(workerpoolAuthorization);
+                .getWorkerpoolAuthorization()).isEqualTo(replicateTaskSummary.getWorkerpoolAuthorization());
+        Assertions.assertThat(taskNotificationCaptor.getValue().getTaskNotificationExtra()
+                .getSmsUrl()).isEqualTo(replicateTaskSummary.getSmsUrl());
     }
 
     @Test
@@ -125,7 +130,7 @@ class ReplicateDemandServiceTests {
     void shouldNotAskForReplicateSinceNoAvailableReplicate() {
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
+        when(coreFeignClient.getAvailableReplicateTaskSummary(BLOCK_NUMBER))
                 .thenReturn(Optional.empty());
 
         replicateDemandService.askForReplicate();
@@ -136,11 +141,11 @@ class ReplicateDemandServiceTests {
 
     @Test
     void shouldNotAskForReplicateSinceTaskIsNotInitialized() {
-        WorkerpoolAuthorization workerpoolAuthorization = getStubAuth();
+        ReplicateTaskSummary replicateTaskSummary = getStubReplicateTaskSummary();
         when(iexecHubService.getLatestBlockNumber()).thenReturn(BLOCK_NUMBER);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(coreFeignClient.getAvailableReplicate(BLOCK_NUMBER))
-                .thenReturn(Optional.of(workerpoolAuthorization));
+        when(coreFeignClient.getAvailableReplicateTaskSummary(BLOCK_NUMBER))
+                .thenReturn(Optional.of(replicateTaskSummary));
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID)).thenReturn(false);
 
         replicateDemandService.askForReplicate();
@@ -152,6 +157,13 @@ class ReplicateDemandServiceTests {
     private WorkerpoolAuthorization getStubAuth() {
         return WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
+                .build();
+    }
+
+    private ReplicateTaskSummary getStubReplicateTaskSummary() {
+        return ReplicateTaskSummary.builder()
+                .workerpoolAuthorization(getStubAuth())
+                .smsUrl(SMS_URL)
                 .build();
     }
     // endregion

@@ -2,14 +2,14 @@ package com.iexec.worker.tee;
 
 import com.iexec.common.chain.IexecHubAbstractService;
 import com.iexec.common.docker.client.DockerClientInstance;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
+import com.iexec.common.task.TaskDescription;
+import com.iexec.common.tee.TeeEnclaveProvider;
 import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -22,16 +22,16 @@ import java.util.Map;
 @Slf4j
 @Service
 public class TeeServicesPropertiesService implements Purgeable {
-    private final SmsClientProvider smsClientProvider;
+    private final SmsService smsService;
     private final DockerService dockerService;
     private final IexecHubAbstractService iexecHubService;
 
     private final Map<String, TeeServicesProperties> propertiesForTask = ExpiringTaskMapFactory.getExpiringTaskMap();
 
-    public TeeServicesPropertiesService(SmsClientProvider smsClientProvider,
+    public TeeServicesPropertiesService(SmsService smsService,
                                         DockerService dockerService,
                                         IexecHubAbstractService iexecHubService) {
-        this.smsClientProvider = smsClientProvider;
+        this.smsService = smsService;
         this.dockerService = dockerService;
         this.iexecHubService = iexecHubService;
     }
@@ -47,7 +47,7 @@ public class TeeServicesPropertiesService implements Purgeable {
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
-        final SmsClient smsClient = smsClientProvider.getOrCreateSmsClientForTask(taskDescription);
+        final SmsClient smsClient = smsService.getSmsClient(chainTaskId);
         final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
         final TeeEnclaveProvider smsTeeEnclaveProvider = smsClient.getTeeEnclaveProvider();
         if (smsTeeEnclaveProvider != teeEnclaveProvider) {

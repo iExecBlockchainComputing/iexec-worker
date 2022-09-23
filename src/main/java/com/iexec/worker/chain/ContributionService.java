@@ -143,10 +143,6 @@ public class ContributionService {
         return Optional.of(chainReceipt);
     }
 
-    public boolean putWorkerpoolAuthorization(WorkerpoolAuthorization workerpoolAuthorization) {
-        return workerpoolAuthorizationService.putWorkerpoolAuthorization(workerpoolAuthorization);
-    }
-
     public WorkerpoolAuthorization getWorkerpoolAuthorization(String chainTaskId) {
         return workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId);
     }
