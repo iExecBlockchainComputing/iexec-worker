@@ -22,6 +22,8 @@ import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.chain.eip712.EIP712Domain;
 import com.iexec.common.chain.eip712.entity.EIP712Challenge;
+import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
@@ -37,6 +39,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -51,10 +54,9 @@ import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.utils.BytesUtils.stringToBytes;
 
-// TODO: implement `Purgeable` and rename `removeResult` into `purgeTask`
 @Slf4j
 @Service
-public class ResultService {
+public class ResultService implements Purgeable {
     public static final String ERROR_FILENAME = "error.txt";
     public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
@@ -63,7 +65,8 @@ public class ResultService {
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
     private final ResultProxyClient resultProxyClient;
-    private final Map<String, ResultInfo> resultInfoMap;
+    private final Map<String, ResultInfo> resultInfoMap
+            = ExpiringTaskMapFactory.getExpiringTaskMap();
 
     public ResultService(
             WorkerConfigurationService workerConfigService,
@@ -76,7 +79,6 @@ public class ResultService {
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.resultProxyClient = resultProxyClient;
-        this.resultInfoMap = new ConcurrentHashMap<>();
     }
 
     public ResultInfo getResultInfos(String chainTaskId) {
@@ -161,26 +163,10 @@ public class ResultService {
                 .build();
     }
 
-    public boolean removeResult(String chainTaskId) {
-        boolean deletedInMap = resultInfoMap.remove(chainTaskId) != null;
-        boolean deletedTaskFolder = FileHelper.deleteFolder(workerConfigService.getTaskBaseDir(chainTaskId));
-
-        boolean deleted = deletedInMap && deletedTaskFolder;
-        if (deletedTaskFolder) {
-            log.info("The result of the chainTaskId has been deleted [chainTaskId:{}]", chainTaskId);
-        } else {
-            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, " +
-                            "deletedTaskFolder:{}]",
-                    chainTaskId, deletedInMap, deletedTaskFolder);
-        }
-
-        return deleted;
-    }
-
     public void cleanUnusedResultFolders(List<String> recoveredTasks) {
         for (String chainTaskId : getAllChainTaskIdsInResultFolder()) {
             if (!recoveredTasks.contains(chainTaskId)) {
-                removeResult(chainTaskId);
+                purgeTask(chainTaskId);
             }
         }
     }
@@ -443,4 +429,49 @@ public class ResultService {
         }
         return resultDigest;
     }
+
+    // region Purge
+
+    /**
+     * Purge results from given task, especially its result folder.
+     *
+     * @param chainTaskId ID of the task to purge.
+     * @return {@literal true} if task folder has been deleted
+     * and task data has been cleared from this service;
+     * {@literal false} otherwise.
+     */
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        final String taskBaseDir = workerConfigService.getTaskBaseDir(chainTaskId);
+
+        resultInfoMap.remove(chainTaskId);
+        FileHelper.deleteFolder(taskBaseDir);
+
+        final boolean deletedInMap = !resultInfoMap.containsKey(chainTaskId);
+        final boolean deletedTaskFolder = !new File(taskBaseDir).exists();
+
+        boolean deleted = deletedInMap && deletedTaskFolder;
+        if (deletedTaskFolder) {
+            log.info("The result of the chainTaskId has been deleted [chainTaskId:{}]", chainTaskId);
+        } else {
+            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, " +
+                            "deletedTaskFolder:{}]",
+                    chainTaskId, deletedInMap, deletedTaskFolder);
+        }
+
+        return deleted;
+    }
+
+    /**
+     * Purge results from all known tasks, especially their result folders;
+     */
+    @Override
+    public void purgeAllTasksData() {
+        // `resultInfoMap.keyset()` needs to be wrapped.
+        // Otherwise, it'll be cleared when `resultInfoMap.clear` is called.
+        final Set<String> chainTaskIds = new HashSet<>(resultInfoMap.keySet());
+        resultInfoMap.clear();
+        chainTaskIds.forEach(chainTaskId -> FileHelper.deleteFolder(workerConfigService.getTaskBaseDir(chainTaskId)));
+    }
+    // endregion
 }
