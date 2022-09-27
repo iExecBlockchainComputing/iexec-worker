@@ -463,7 +463,7 @@ public class ResultService implements Purgeable {
     }
 
     /**
-     * Purge results from all known tasks, especially their result folders;
+     * Purge results from all known tasks, especially their result folders.
      */
     @Override
     public void purgeAllTasksData() {
