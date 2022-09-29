@@ -39,7 +39,6 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +47,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
