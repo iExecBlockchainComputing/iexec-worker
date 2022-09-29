@@ -450,8 +450,7 @@ public class TaskManagerService {
         dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
         log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
-        purgeService.purgeAllServices(chainTaskId);
-        boolean isSuccess = resultService.purgeTask(chainTaskId);
+        boolean isSuccess = purgeService.purgeAllServices(chainTaskId);
         if (!isSuccess) {
             log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
         }
