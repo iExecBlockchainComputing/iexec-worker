@@ -1324,12 +1324,11 @@ class TaskManagerServiceTests {
     //region abort
     @Test
     void shouldAbortTask() {
-        when(resultService.purgeTask(CHAIN_TASK_ID)).thenReturn(true);
+        when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(true);
 
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isTrue();
         verify(dockerService).stopRunningContainersWithNamePredicate(predicateCaptor.capture());
         verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
-        verify(resultService).purgeTask(CHAIN_TASK_ID);
         verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
         // Check the predicate
         assertThat(predicateCaptor.getValue().test(CHAIN_TASK_ID)).isTrue();
