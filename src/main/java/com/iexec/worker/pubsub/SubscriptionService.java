@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+// FIXME: implement `Purgeable`
 public class SubscriptionService {
 
     private final Map<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>();
