@@ -105,26 +105,6 @@ public class DataService {
     }
 
     /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean isDatasetDecryptionNeeded(String chainTaskId) {
-        throw new UnsupportedOperationException(
-            "Dataset decryption is not supported for standard tasks");
-    }
-
-    /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean decryptDataset(String chainTaskId, String datasetUri) {
-        throw new UnsupportedOperationException(
-            "Dataset decryption is not supported for standard tasks");
-    }
-
-    /**
      * Download a file from a URI in the provided parent
      * directory and save it with the provided filename.
      * 
