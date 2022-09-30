@@ -465,11 +465,7 @@ public class ResultService implements Purgeable {
      */
     @Override
     public void purgeAllTasksData() {
-        // `resultInfoMap.keyset()` needs to be wrapped.
-        // Otherwise, it'll be cleared when `resultInfoMap.clear` is called.
-        final Set<String> chainTaskIds = new HashSet<>(resultInfoMap.keySet());
-        resultInfoMap.clear();
-        chainTaskIds.forEach(chainTaskId -> FileHelper.deleteFolder(workerConfigService.getTaskBaseDir(chainTaskId)));
+        resultInfoMap.keySet().forEach(this::purgeTask);
     }
     // endregion
 }
