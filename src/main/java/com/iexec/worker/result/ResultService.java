@@ -465,7 +465,8 @@ public class ResultService implements Purgeable {
      */
     @Override
     public void purgeAllTasksData() {
-        resultInfoMap.keySet().forEach(this::purgeTask);
+        final List<String> tasksIds = new ArrayList<>(resultInfoMap.keySet());
+        tasksIds.forEach(this::purgeTask);
     }
     // endregion
 }
