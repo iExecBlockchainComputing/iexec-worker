@@ -46,6 +46,7 @@ import org.mockito.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -661,10 +662,11 @@ class ResultServiceTests {
     // region purgeAllTasksData
     @Test
     void shouldPurgeAllTasksData() {
-        final Map<String, ResultInfo> resultInfoMap =
-                (Map<String, ResultInfo>) ReflectionTestUtils.getField(resultService, "resultInfoMap");
-        resultInfoMap.put(CHAIN_TASK_ID, ResultInfo.builder().build());
-        resultInfoMap.put(CHAIN_TASK_ID_2, ResultInfo.builder().build());
+        final Map<String, ResultInfo> resultInfoMap = new HashMap<>(Map.of(
+                CHAIN_TASK_ID, ResultInfo.builder().build(),
+                CHAIN_TASK_ID_2, ResultInfo.builder().build()
+        ));
+        ReflectionTestUtils.setField(resultService, "resultInfoMap", resultInfoMap);
 
         when(workerConfigurationService.getTaskBaseDir(CHAIN_TASK_ID))
                 .thenReturn(tmp);
