@@ -429,7 +429,7 @@ public class TaskManagerService {
     ReplicateActionResponse complete(String chainTaskId) {
         purgeService.purgeAllServices(chainTaskId);
 
-        if (!resultService.removeResult(chainTaskId)) {
+        if (!resultService.purgeTask(chainTaskId)) {
             return ReplicateActionResponse.failure();
         }
 
@@ -450,8 +450,7 @@ public class TaskManagerService {
         dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
         log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
-        purgeService.purgeAllServices(chainTaskId);
-        boolean isSuccess = resultService.removeResult(chainTaskId);
+        boolean isSuccess = purgeService.purgeAllServices(chainTaskId);
         if (!isSuccess) {
             log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
         }
