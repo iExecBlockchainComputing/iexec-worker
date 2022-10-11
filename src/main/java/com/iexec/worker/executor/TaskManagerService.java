@@ -19,11 +19,11 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
+import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -119,7 +119,7 @@ public class TaskManagerService {
             // If any TEE prerequisite is not met,
             // then we won't be able to run the task.
             // So it should be aborted right now.
-            final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+            final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             final Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
             if (teePrerequisitesIssue.isPresent()) {
                 log.error("TEE prerequisites are not met [chainTaskId: {}, issue: {}]", chainTaskId, teePrerequisitesIssue.get());
@@ -251,7 +251,7 @@ public class TaskManagerService {
         }
 
         if (taskDescription.isTeeTask()) {
-            TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+            TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             if (!teeService.prepareTeeForTask(chainTaskId)) {
                 return getFailureResponseAndPrintError(TEE_PREPARATION_FAILED,
                         context, chainTaskId);

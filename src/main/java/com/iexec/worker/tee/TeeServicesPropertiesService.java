@@ -5,7 +5,7 @@ import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.tee.TeeFramework;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
@@ -48,17 +48,17 @@ public class TeeServicesPropertiesService implements Purgeable {
         // If it couldn't be created, then the task would have been aborted.
         // So the following won't throw an exception.
         final SmsClient smsClient = smsService.getSmsClient(chainTaskId);
-        final TeeEnclaveProvider teeEnclaveProvider = taskDescription.getTeeEnclaveProvider();
-        final TeeEnclaveProvider smsTeeEnclaveProvider = smsClient.getTeeEnclaveProvider();
-        if (smsTeeEnclaveProvider != teeEnclaveProvider) {
+        final TeeFramework teeFramework = taskDescription.getTeeFramework();
+        final TeeFramework smsTeeFramework = smsClient.getTeeFramework();
+        if (smsTeeFramework != teeFramework) {
             throw new TeeServicesPropertiesCreationException(
-                    "SMS is configured for another TEE enclave provider" +
+                    "SMS is configured for another TEE framework" +
                             " [chainTaskId:" + chainTaskId +
-                            ", requiredProvider:" + teeEnclaveProvider +
-                            ", actualProvider:" + smsTeeEnclaveProvider + "]");
+                            ", requiredFramework:" + teeFramework +
+                            ", actualFramework:" + smsTeeFramework + "]");
         }
 
-        final T properties = smsClient.getTeeServicesProperties(teeEnclaveProvider);
+        final T properties = smsClient.getTeeServicesProperties(teeFramework);
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(

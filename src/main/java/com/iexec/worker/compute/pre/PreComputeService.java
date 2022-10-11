@@ -233,7 +233,7 @@ public class PreComputeService {
             return null;
         }
         // run container
-        List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider())
+        List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeFramework())
             .buildPreComputeDockerEnv(taskDescription, secureSession);
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()

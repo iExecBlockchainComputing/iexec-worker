@@ -26,7 +26,7 @@ import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
-import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.tee.TeeFramework;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
@@ -73,7 +73,7 @@ class PreComputeServiceTests {
             .datasetName("datasetName")
             .datasetChecksum("datasetChecksum")
             .teePostComputeImage("teePostComputeImage")
-            .teeEnclaveProvider(TeeEnclaveProvider.SCONE)
+            .teeFramework(TeeFramework.SCONE)
             .appEnclaveConfiguration(TeeEnclaveConfiguration.builder()
                     .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
                     .heapSize(1024)

@@ -1,6 +1,6 @@
 package com.iexec.worker.tee;
 
-import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.tee.TeeFramework;
 import com.iexec.worker.tee.gramine.TeeGramineService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.springframework.stereotype.Service;
@@ -16,18 +16,18 @@ public class TeeServicesManager {
         this.teeGramineService = teeGramineService;
     }
 
-    public TeeService getTeeService(TeeEnclaveProvider teeEnclaveProvider) {
-        if (teeEnclaveProvider == null) {
-            throw new IllegalArgumentException("TEE enclave provider can't be null.");
+    public TeeService getTeeService(TeeFramework teeFramework) {
+        if (teeFramework == null) {
+            throw new IllegalArgumentException("TEE framework can't be null.");
         }
 
-        switch (teeEnclaveProvider) {
+        switch (teeFramework) {
             case SCONE:
                 return teeSconeService;
             case GRAMINE:
                 return teeGramineService;
             default:
-                throw new IllegalArgumentException("No TEE service defined for this enclave provider.");
+                throw new IllegalArgumentException("No TEE service defined for this TEE framework.");
         }
     }
 }
