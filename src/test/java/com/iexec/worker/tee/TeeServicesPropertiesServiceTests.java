@@ -100,7 +100,7 @@ class TeeServicesPropertiesServiceTests {
     }
 
     @Test
-    void shouldNotRetrieveTeeServicesConfigurationWhenWrongTeeEnclaveProvider() {
+    void shouldNotRetrieveTeeServicesConfigurationWhenWrongTeeFramework() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeFramework()).thenReturn(TeeFramework.SCONE);
