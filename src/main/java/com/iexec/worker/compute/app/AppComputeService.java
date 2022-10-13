@@ -66,7 +66,7 @@ public class AppComputeService {
 
         if (taskDescription.isTeeTask()) {
             final TeeService teeService = teeServicesManager
-                    .getTeeService(taskDescription.getTeeEnclaveProvider());
+                    .getTeeService(taskDescription.getTeeFramework());
 
             final List<String> strings = teeService
                     .buildComputeDockerEnv(taskDescription, secureSession);

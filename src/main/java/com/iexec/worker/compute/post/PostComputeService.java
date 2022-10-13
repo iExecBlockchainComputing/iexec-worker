@@ -139,7 +139,7 @@ public class PostComputeService {
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
                     .build();
         }
-        TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeEnclaveProvider());
+        TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
         List<String> env = teeService
                 .buildPostComputeDockerEnv(taskDescription, secureSession);
         List<String> binds = Stream.of(

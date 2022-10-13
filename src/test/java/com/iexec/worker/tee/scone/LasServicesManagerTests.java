@@ -1,6 +1,6 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.tee.TeeFramework;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -133,7 +133,7 @@ class LasServicesManagerTests {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_2)).thenReturn(PROPERTIES_3);
-        when(mockedSmsClient.getTeeServicesProperties(TeeEnclaveProvider.SCONE))
+        when(mockedSmsClient.getTeeServicesProperties(TeeFramework.SCONE))
                 .thenReturn(PROPERTIES_1)
                 .thenReturn(PROPERTIES_3);
         when(mockedLasService1.start()).thenReturn(true);
@@ -261,9 +261,9 @@ class LasServicesManagerTests {
     // region purgeTask
     @Test
     void shouldPurgeTask() {
-        final Map<String, LasService> chainTaskIdToLasService =
-                (Map<String, LasService>) ReflectionTestUtils.getField(lasServicesManager, "chainTaskIdToLasService");
+        final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
         chainTaskIdToLasService.put(CHAIN_TASK_ID_1, mockedLasService1);
+        ReflectionTestUtils.setField(lasServicesManager, "chainTaskIdToLasService", chainTaskIdToLasService);
 
         assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
     }
@@ -275,9 +275,9 @@ class LasServicesManagerTests {
 
     @Test
     void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
-        final Map<String, LasService> chainTaskIdToLasService =
-                (Map<String, LasService>) ReflectionTestUtils.getField(lasServicesManager, "chainTaskIdToLasService");
+        final Map<String, LasService> chainTaskIdToLasService = new HashMap<>();
         chainTaskIdToLasService.put(CHAIN_TASK_ID_2, mockedLasService2);
+        ReflectionTestUtils.setField(lasServicesManager, "chainTaskIdToLasService", chainTaskIdToLasService);
 
         assertTrue(lasServicesManager.purgeTask(CHAIN_TASK_ID_1));
     }

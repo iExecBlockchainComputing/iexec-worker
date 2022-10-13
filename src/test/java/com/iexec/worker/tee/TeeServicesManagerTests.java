@@ -1,6 +1,6 @@
 package com.iexec.worker.tee;
 
-import com.iexec.common.tee.TeeEnclaveProvider;
+import com.iexec.common.tee.TeeFramework;
 import com.iexec.worker.tee.gramine.TeeGramineService;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,15 +33,15 @@ class TeeServicesManagerTests {
 
     static Stream<Arguments> teeServices() {
         return Stream.of(
-                Arguments.of(TeeEnclaveProvider.SCONE, TeeSconeService.class),
-                Arguments.of(TeeEnclaveProvider.GRAMINE, TeeGramineService.class)
+                Arguments.of(TeeFramework.SCONE, TeeSconeService.class),
+                Arguments.of(TeeFramework.GRAMINE, TeeGramineService.class)
         );
     }
 
     @ParameterizedTest
     @MethodSource("teeServices")
-    void shouldReturnTeeService(TeeEnclaveProvider provider, Class<? super TeeService> teeService) {
-        assertInstanceOf(teeService, teeServicesManager.getTeeService(provider));
+    void shouldReturnTeeService(TeeFramework framework, Class<? super TeeService> teeService) {
+        assertInstanceOf(teeService, teeServicesManager.getTeeService(framework));
     }
 
     @Test
