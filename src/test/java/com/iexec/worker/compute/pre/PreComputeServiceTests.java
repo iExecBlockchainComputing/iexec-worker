@@ -202,7 +202,9 @@ class PreComputeServiceTests {
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder
-                .datasetAddress("").inputFiles(List.of("input-file1")).build();
+                .datasetAddress("")
+                .inputFiles(List.of("input-file1"))
+                .build();
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
