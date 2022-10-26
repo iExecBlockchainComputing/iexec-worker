@@ -25,7 +25,6 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
-import com.iexec.common.tee.TeeEnclaveConfigurationValidator;
 import com.iexec.common.tee.TeeFramework;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -49,7 +48,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -66,7 +64,7 @@ class PreComputeServiceTests {
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
     private final String chainTaskId = "chainTaskId";
     private final String datasetUri = "datasetUri";
-    private final TaskDescription taskDescription = TaskDescription.builder()
+    private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(chainTaskId)
             .datasetAddress("datasetAddress")
             .datasetUri(datasetUri)
@@ -78,8 +76,7 @@ class PreComputeServiceTests {
                     .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
                     .heapSize(1024)
                     .entrypoint("python /app/app.py")
-                    .build())
-            .build();
+                    .build());
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
     private final static TeeSessionGenerationResponse secureSession = mock(TeeSessionGenerationResponse.class);
@@ -129,7 +126,7 @@ class PreComputeServiceTests {
     //region runTeePreCompute
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() throws TeeSessionGenerationException {
-        taskDescription.setInputFiles(List.of("input-file1"));
+        final TaskDescription taskDescription = taskDescriptionBuilder.inputFiles(List.of("input-file1")).build();
 
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -150,7 +147,7 @@ class PreComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
-        Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
+        Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
@@ -165,7 +162,7 @@ class PreComputeServiceTests {
 
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() throws TeeSessionGenerationException {
-        // taskDescription.setInputFiles(List.of("input-file1")); <--
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -188,7 +185,7 @@ class PreComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
-        Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();        
+        Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
@@ -204,8 +201,10 @@ class PreComputeServiceTests {
 
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() throws TeeSessionGenerationException {
-        taskDescription.setDatasetAddress("");
-        taskDescription.setInputFiles(List.of("input-file1"));
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .datasetAddress("")
+                .inputFiles(List.of("input-file1"))
+                .build();
 
         when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -228,7 +227,7 @@ class PreComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isFalse();
-        Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();        
+        Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();
         Assertions.assertThat(preComputeService
                 .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
@@ -243,21 +242,24 @@ class PreComputeServiceTests {
 
     @Test
     void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() throws TeeSessionGenerationException {
-        TeeEnclaveConfiguration enclaveConfig = mock(TeeEnclaveConfiguration.class);
-        taskDescription.setAppEnclaveConfiguration(enclaveConfig);
-        TeeEnclaveConfigurationValidator validator = mock(TeeEnclaveConfigurationValidator.class);
-        when(enclaveConfig.getValidator()).thenReturn(validator);
-        when(validator.isValid()).thenReturn(false);
-        when(validator.validate()).thenReturn(Collections.singletonList("validation error"));
+        final TeeEnclaveConfiguration enclaveConfig = TeeEnclaveConfiguration.builder().build();
+        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfig).build();
+        Assertions.assertThat(enclaveConfig.getValidator().isValid()).isFalse();
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
-                .isFalse();
+        final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+        Assertions.assertThat(response.isSuccessful()).isFalse();
+        Assertions.assertThat(response.getExitCause()).isEqualTo(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
         verify(smsService, never()).createTeeSession(workerpoolAuthorization);
     }
 
     @Test
     void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() throws TeeSessionGenerationException {
-        taskDescription.getAppEnclaveConfiguration().setHeapSize(DataSize.ofGigabytes(8).toBytes() + 1);
+        final TeeEnclaveConfiguration enclaveConfiguration = TeeEnclaveConfiguration.builder()
+                .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
+                .heapSize(DataSize.ofGigabytes(8).toBytes() + 1)
+                .entrypoint("python /app/app.py")
+                .build();
+        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfiguration).build();
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
                 .isFalse();
@@ -266,6 +268,7 @@ class PreComputeServiceTests {
 
     @Test
     void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -279,6 +282,7 @@ class PreComputeServiceTests {
 
     @Test
     void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -299,6 +303,7 @@ class PreComputeServiceTests {
     @ParameterizedTest
     @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
     void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
@@ -340,6 +345,7 @@ class PreComputeServiceTests {
 
     @Test
     void shouldFailToRunTeePreComputeSinceTimeout() throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
         when(dockerClientInstanceMock
                 .pullImage(taskDescription.getTeePostComputeImage()))
                 .thenReturn(true);
