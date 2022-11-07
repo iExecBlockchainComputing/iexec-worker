@@ -324,13 +324,13 @@ class RevealServiceTests {
     }
 
     @Test
-    void shouldNotRevealWithEmptyDeterministHash() throws Exception {
+    void shouldNotRevealWithEmptyDeterministHash() {
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-        assertThat(revealService.reveal(chainTaskId, "")).isEqualTo(Optional.empty());
+        assertThat(revealService.reveal(chainTaskId, "")).isEmpty();
     }
 
     @Test
-    void shouldTriggerExceptionIfTransactionFails() throws Exception {
+    void shouldTriggerExceptionIfTransactionFails() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
@@ -339,7 +339,7 @@ class RevealServiceTests {
     }
 
     @Test
-    void shouldRevealIfTransactionSucceeds() throws Exception {
+    void shouldRevealIfTransactionSucceeds() {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
