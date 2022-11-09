@@ -11,7 +11,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.info.BuildProperties;
 
-class VersionServiceTest {
+class VersionServiceTests {
 
     @Mock
     private BuildProperties buildProperties;
