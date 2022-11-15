@@ -85,14 +85,10 @@ public class DataService {
      * 
      * @param chainTaskId
      * @param uriList
-     * @throws WorkflowException
+     * @throws WorkflowException if download fails.
      */
     public void downloadStandardInputFiles(String chainTaskId, @Nonnull List<String> uriList)
             throws WorkflowException {
-        if (uriList == null) {
-            log.error("Null input files uri list [chainTaskId:{}]", chainTaskId);
-            throw new WorkflowException(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
-        }
         for (String uri: uriList) {
             String filename = !StringUtils.isEmpty(uri)
                     ? Paths.get(uri).getFileName().toString()
@@ -115,7 +111,7 @@ public class DataService {
      * @return absolute path of the saved file
      */
     private String downloadFile(String chainTaskId, String uri,
-            String parentDirectoryPath, String filename) {
+                                String parentDirectoryPath, String filename) {
         if (StringUtils.isEmpty(chainTaskId) ||
                 StringUtils.isEmpty(uri) ||
                 StringUtils.isEmpty(parentDirectoryPath) ||
