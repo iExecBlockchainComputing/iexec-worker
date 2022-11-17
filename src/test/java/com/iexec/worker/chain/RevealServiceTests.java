@@ -351,7 +351,7 @@ class RevealServiceTests {
                         "blockHash", "0x200", "address", "data", "type", new ArrayList<>());
 
         when(iexecHubService.reveal(chainTaskId, deterministHash)).thenReturn(response);
-        assertThat(revealService.reveal(chainTaskId, deterministHash).get().getBlockNumber()).isEqualTo(512);
+        assertThat(revealService.reveal(chainTaskId, deterministHash).orElseThrow().getBlockNumber()).isEqualTo(512);
     }
 
     @Test
