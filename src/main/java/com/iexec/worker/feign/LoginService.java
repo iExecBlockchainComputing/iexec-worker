@@ -32,7 +32,7 @@ import java.util.Map;
 @Service
 public class LoginService extends BaseFeignClient {
 
-    private static final String TOKEN_PREFIX = "Bearer ";
+    static final String TOKEN_PREFIX = "Bearer ";
     private String jwtToken;
 
     private final CredentialsService credentialsService;
