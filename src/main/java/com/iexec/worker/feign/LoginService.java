@@ -55,14 +55,14 @@ public class LoginService extends BaseFeignClient {
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
         String challenge = getLoginChallenge(workerAddress);
-        if (challenge.isEmpty()) {
+        if (challenge == null || challenge.isEmpty()) {
             log.error("Cannot login since challenge is empty [challenge:{}]", challenge);
             return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
         String token = requestLogin(workerAddress, signature);
-        if (token.isEmpty()) {
+        if (token == null || token.isEmpty()) {
             log.error("Cannot login since token is empty [token:{}]", token);
             return "";
         }
