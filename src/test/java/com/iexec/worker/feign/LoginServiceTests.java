@@ -23,6 +23,9 @@ import com.iexec.worker.feign.client.CoreClient;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -56,24 +59,28 @@ class LoginServiceTests {
         return Credentials.create(ecKeyPair);
     }
 
-    @Test
-    void shouldNotLoginOnEmptyChallenge() {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "")
+    void shouldNotLoginOnEmptyChallenge(String challenge) {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok(null));
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok(challenge));
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress())
         );
     }
 
-    @Test
-    void shouldNotLoginOnEmptyToken() {
+    @NullSource
+    @ValueSource(strings = "")
+    @ParameterizedTest
+    void shouldNotLoginOnEmptyToken(String token) {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok("challenge"));
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
-        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(ResponseEntity.ok(null));
+        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(ResponseEntity.ok(token));
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress()),
