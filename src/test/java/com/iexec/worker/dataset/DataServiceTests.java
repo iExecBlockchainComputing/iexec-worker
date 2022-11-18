@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-class DataServiceTest {
+class DataServiceTests {
 
     public static final String CHAIN_TASK_ID = "chainTaskId";
     public static final String URI =
