@@ -21,6 +21,7 @@ import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.CoreClient;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
@@ -55,14 +56,14 @@ public class LoginService extends BaseFeignClient {
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
         String challenge = getLoginChallenge(workerAddress);
-        if (challenge == null || challenge.isEmpty()) {
+        if (StringUtils.isEmpty(challenge)) {
             log.error("Cannot login since challenge is empty [challenge:{}]", challenge);
             return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
         String token = requestLogin(workerAddress, signature);
-        if (token == null || token.isEmpty()) {
+        if (StringUtils.isEmpty(token)) {
             log.error("Cannot login since token is empty [token:{}]", token);
             return "";
         }
