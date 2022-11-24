@@ -14,8 +14,11 @@ targetCompatibility = 11
 
 ext {
     springCloudVersion = '2021.0.0'
-    gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
     dockerJavaVersion = '3.2.12'
+}
+
+if (!project.hasProperty('gitBranch')) {
+    ext.gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
 }
 
 if (gitBranch != 'main' && gitBranch != 'master' && ! (gitBranch ==~ '(release|hotfix|support)/.*')) {
