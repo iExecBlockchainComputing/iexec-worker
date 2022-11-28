@@ -239,7 +239,10 @@ public class TaskNotificationService {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
-        TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
+        TaskNotificationType next = null;
+        while (next == null && !contributionService.isContributionDeadlineReached(chainTaskId)) {
+            next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
+        }
 
         log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]",
                 chainTaskId, statusUpdate.getStatus(), next);

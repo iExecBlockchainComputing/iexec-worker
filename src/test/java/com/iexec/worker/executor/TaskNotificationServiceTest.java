@@ -308,5 +308,49 @@ class TaskNotificationServiceTest {
         verify(customCoreFeignClient).updateReplicateStatus(anyString(), any());
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
+
+    @Test
+    void shouldRetryCompleteUntilAchieved() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_COMPLETE)
+                .build();
+        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
+                .thenReturn(null)
+                .thenReturn(null)
+                .thenReturn(PLEASE_WAIT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(customCoreFeignClient, Mockito.times(4)).updateReplicateStatus(anyString(), any());
+        verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
+        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
+        verify(applicationEventPublisher, Mockito.times(0))
+                .publishEvent(any());
+    }
+
+    @Test
+    void shouldRetryCompleteUntilContributionDeadlineReached() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_COMPLETE)
+                .build();
+        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(contributionService.isContributionDeadlineReached(CHAIN_TASK_ID))
+                .thenReturn(false)
+                .thenReturn(true);
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
+                .thenReturn(null);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(contributionService, Mockito.times(3)).isContributionDeadlineReached(CHAIN_TASK_ID);
+        verify(customCoreFeignClient, Mockito.times(1)).updateReplicateStatus(anyString(), any());
+        verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
+        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
+        verify(applicationEventPublisher, Mockito.times(0))
+                .publishEvent(any());
+    }
 }
 
