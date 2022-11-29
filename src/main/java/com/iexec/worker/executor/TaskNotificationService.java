@@ -34,7 +34,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.Clock;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +53,6 @@ public class TaskNotificationService {
     private final SubscriptionService subscriptionService;
     private final ContributionService contributionService;
     private final IexecHubService iexecHubService;
-    private final Clock clock;
 
     private final Map<String, Long> finalDeadlineForTask = ExpiringMap
             .builder()
@@ -66,15 +65,13 @@ public class TaskNotificationService {
             ApplicationEventPublisher applicationEventPublisher,
             SubscriptionService subscriptionService,
             ContributionService contributionService,
-            IexecHubService iexecHubService,
-            Clock clock) {
+            IexecHubService iexecHubService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
         this.iexecHubService = iexecHubService;
-        this.clock = clock;
     }
 
     /**
@@ -249,7 +246,7 @@ public class TaskNotificationService {
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = null;
-        while (next == null && !isFinalDeadlineReached(chainTaskId)) {
+        while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
 
@@ -266,12 +263,13 @@ public class TaskNotificationService {
      * Note that if the task is unknown on the chain, then the final deadline is considered as reached.
      *
      * @param chainTaskId Task ID whose final deadline should be checked.
+     * @param now         Time to check final deadline against.
      * @return {@literal true} if the final deadline is met or the task is unknown on-chain,
      * {@literal false} otherwise.
      */
-    private boolean isFinalDeadlineReached(String chainTaskId) {
+    boolean isFinalDeadlineReached(String chainTaskId, long now) {
         if (finalDeadlineForTask.containsKey(chainTaskId)) {
-            return clock.millis() >= finalDeadlineForTask.get(chainTaskId);
+            return now >= finalDeadlineForTask.get(chainTaskId);
         }
 
         final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
@@ -281,6 +279,6 @@ public class TaskNotificationService {
 
         final long finalDeadline = oTask.get().getFinalDeadline();
         finalDeadlineForTask.put(chainTaskId, finalDeadline);
-        return clock.millis() >= finalDeadline;
+        return now >= finalDeadline;
     }
 }

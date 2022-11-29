@@ -31,20 +31,18 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.Optional;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class TaskNotificationServiceTest {
@@ -63,6 +61,7 @@ class TaskNotificationServiceTest {
     private ContributionService contributionService;
     @Mock
     private IexecHubService iexecHubService;
+    @InjectMocks
     private TaskNotificationService taskNotificationService;
     @Captor
     private ArgumentCaptor<ReplicateStatusUpdate> replicateStatusUpdateCaptor;
@@ -72,16 +71,6 @@ class TaskNotificationServiceTest {
     void init() {
         MockitoAnnotations.openMocks(this);
         taskDescription = mock(TaskDescription.class);
-
-        taskNotificationService = new TaskNotificationService(
-                taskManagerService,
-                customCoreFeignClient,
-                applicationEventPublisher,
-                subscriptionService,
-                contributionService,
-                iexecHubService,
-                Clock.systemDefaultZone()
-        );
     }
 
     @Test
@@ -365,41 +354,55 @@ class TaskNotificationServiceTest {
                 .publishEvent(any());
     }
 
+    // region isFinalDeadlineReached
     @Test
-    void shouldNotUpdateStatusSinceFinalDeadlineReached() {
-        // Let's build a `taskNotificationService` whose clock will always return a future date.
-        final TaskNotificationService taskNotificationService = new TaskNotificationService(
-                taskManagerService,
-                customCoreFeignClient,
-                applicationEventPublisher,
-                subscriptionService,
-                contributionService,
-                iexecHubService,
-                Clock.fixed(Instant.ofEpochMilli(Long.MAX_VALUE), ZoneId.systemDefault())
-        );
+    void shouldFinalDeadlineBeReached() {
+        final ChainTask chainTask = getChainTask();
+        final long afterFinalDeadline = chainTask.getFinalDeadline() + 1;
 
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_COMPLETE)
-                .build();
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+                .thenReturn(Optional.of(chainTask));
 
-        taskNotificationService.onTaskNotification(currentNotification);
+        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, afterFinalDeadline);
 
-        verify(customCoreFeignClient, Mockito.times(0)).updateReplicateStatus(anyString(), any());
-        verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
-        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
-        verify(applicationEventPublisher, Mockito.times(0))
-                .publishEvent(any());
+        assertTrue(finalDeadlineReached);
+        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
     }
+
+    @Test
+    void shouldFinalDeadlineNotBeReached() {
+        final ChainTask chainTask = getChainTask();
+        final long beforeFinalDeadline = chainTask.getFinalDeadline() - 1;
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
+
+        assertFalse(finalDeadlineReached);
+        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldGetChainTaskOnlyOnce() {
+        final ChainTask chainTask = getChainTask();
+        final long beforeFinalDeadline = chainTask.getFinalDeadline() - 1;
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
+        taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
+
+        verify(iexecHubService, times(1)).getChainTask(CHAIN_TASK_ID);
+    }
+    // endregion
 
     private ChainTask getChainTask() {
         return ChainTask
                 .builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .finalDeadline(new Date().getTime() + 100_000)  // 100 seconds from now
+                .finalDeadline(Instant.now().toEpochMilli() + 100_000)  // 100 seconds from now
                 .build();
     }
 }
