@@ -276,6 +276,7 @@ public class TaskNotificationService {
         } else {
             final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
             if (oTask.isEmpty()) {
+                //TODO: Handle case where task exists on-chain but call on Ethereum node failed
                 return true;
             }
 
