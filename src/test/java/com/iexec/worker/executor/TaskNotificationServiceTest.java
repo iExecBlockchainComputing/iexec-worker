@@ -16,6 +16,7 @@
 
 package com.iexec.worker.executor;
 
+import com.iexec.common.chain.ChainTask;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
@@ -30,14 +31,18 @@ import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Instant;
+import java.util.Optional;
+
 import static com.iexec.common.notification.TaskNotificationType.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class TaskNotificationServiceTest {
@@ -100,6 +105,8 @@ class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
                 .build();
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_WAIT);
 
@@ -119,6 +126,8 @@ class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_START)
                 .build();
         when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
                 .thenReturn(PLEASE_DOWNLOAD_APP);
 
@@ -140,6 +149,8 @@ class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
                 .build();
         when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
                 .thenReturn(PLEASE_DOWNLOAD_DATA);
 
@@ -167,6 +178,8 @@ class TaskNotificationServiceTest {
                 .thenReturn(taskDescription);
         when(taskManagerService.downloadData(taskDescription))
                 .thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
 
@@ -188,6 +201,8 @@ class TaskNotificationServiceTest {
                 .taskNotificationType(PLEASE_COMPUTE)
                 .build();
         when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -210,6 +225,8 @@ class TaskNotificationServiceTest {
                 .build();
         when(taskManagerService.contribute(CHAIN_TASK_ID))
                 .thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // CONTRIBUTED
                 .thenReturn(PLEASE_WAIT);
 
@@ -233,6 +250,7 @@ class TaskNotificationServiceTest {
                 .build();
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
                 .thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // REVEALED
                 .thenReturn(PLEASE_WAIT);
 
@@ -257,6 +275,8 @@ class TaskNotificationServiceTest {
 
         when(taskManagerService.uploadResult(CHAIN_TASK_ID))
                 .thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
                 .thenReturn(PLEASE_WAIT);
 
@@ -300,6 +320,8 @@ class TaskNotificationServiceTest {
                         .build())
                 .build();
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -307,6 +329,81 @@ class TaskNotificationServiceTest {
         verify(taskManagerService).abort(CHAIN_TASK_ID);
         verify(customCoreFeignClient).updateReplicateStatus(anyString(), any());
         verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void shouldRetryCompleteUntilAchieved() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_COMPLETE)
+                .build();
+        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(getChainTask()));
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
+                .thenReturn(null)
+                .thenReturn(null)
+                .thenReturn(PLEASE_WAIT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(customCoreFeignClient, Mockito.times(4)).updateReplicateStatus(anyString(), any());
+        verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
+        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
+        verify(applicationEventPublisher, Mockito.times(0))
+                .publishEvent(any());
+    }
+
+    // region isFinalDeadlineReached
+    @Test
+    void shouldFinalDeadlineBeReached() {
+        final ChainTask chainTask = getChainTask();
+        final long afterFinalDeadline = chainTask.getFinalDeadline() + 1;
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, afterFinalDeadline);
+
+        assertTrue(finalDeadlineReached);
+        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldFinalDeadlineNotBeReached() {
+        final ChainTask chainTask = getChainTask();
+        final long beforeFinalDeadline = chainTask.getFinalDeadline() - 1;
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
+
+        assertFalse(finalDeadlineReached);
+        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldGetChainTaskOnlyOnce() {
+        final ChainTask chainTask = getChainTask();
+        final long beforeFinalDeadline = chainTask.getFinalDeadline() - 1;
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
+        taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
+
+        verify(iexecHubService, times(1)).getChainTask(CHAIN_TASK_ID);
+    }
+    // endregion
+
+    private ChainTask getChainTask() {
+        return ChainTask
+                .builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .finalDeadline(Instant.now().toEpochMilli() + 100_000)  // 100 seconds from now
+                .build();
     }
 }
 
