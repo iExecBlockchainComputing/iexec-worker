@@ -145,7 +145,6 @@ public class CustomCoreFeignClient extends BaseFeignClient {
                 coreClient.updateReplicateStatus((String) args.get(JWTOKEN), (String) args.get("chainTaskId"),
                         (ReplicateStatusUpdate) args.get("statusUpdate"));
 
-        // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
         ResponseEntity<TaskNotificationType> response = makeHttpCall(httpCall, arguments, "updateReplicateStatus");
         if (!is2xxSuccess(response)) {
             return null;

@@ -246,6 +246,7 @@ public class TaskNotificationService {
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = null;
+        // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
