@@ -38,6 +38,7 @@ import java.util.Optional;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ContributionServiceTests {
@@ -283,4 +284,92 @@ class ContributionServiceTests {
 
     }
 
+    // region isContributionDeadlineReached
+    @Test
+    void shouldContributionDeadlineBeReached() {
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final ChainTask chainTask = ChainTask
+                .builder()
+                .chainTaskId(chainTaskId)
+                .contributionDeadline(new Date().getTime() - 1000)  // deadline reached 1s ago
+                .build();
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+
+        final boolean contributionDeadlineReached = contributionService.isContributionDeadlineReached(chainTaskId);
+        assertThat(contributionDeadlineReached).isTrue();
+
+        verify(iexecHubService).getChainTask(chainTaskId);
+    }
+
+    @Test
+    void shouldContributionDeadlineNotBeReached() {
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final ChainTask chainTask = ChainTask
+                .builder()
+                .chainTaskId(chainTaskId)
+                .contributionDeadline(new Date().getTime() + 100_000)  // deadline in 100s
+                .build();
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+
+        final boolean contributionDeadlineReached = contributionService.isContributionDeadlineReached(chainTaskId);
+        assertThat(contributionDeadlineReached).isFalse();
+
+        verify(iexecHubService).getChainTask(chainTaskId);
+    }
+
+    @Test
+    void shouldContributionDeadlineBeReachedWhenNoChainTask() {
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
+
+        final boolean contributionDeadlineReached = contributionService.isContributionDeadlineReached(chainTaskId);
+        assertThat(contributionDeadlineReached).isTrue();
+
+        verify(iexecHubService).getChainTask(chainTaskId);
+    }
+
+    @Test
+    void shouldContributionDeadlineBeReachedWithCache() {
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final ChainTask chainTask = ChainTask
+                .builder()
+                .chainTaskId(chainTaskId)
+                .contributionDeadline(new Date().getTime() - 1000)  // deadline reached 1s ago
+                .build();
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+
+        // The first call should get the task from the chain
+        final boolean firstCall = contributionService.isContributionDeadlineReached(chainTaskId);
+        // The second call should get the deadline from the cache
+        final boolean secondCall = contributionService.isContributionDeadlineReached(chainTaskId);
+
+        assertThat(firstCall).isTrue();
+        assertThat(secondCall).isTrue();
+
+        // Chain called a single time
+        verify(iexecHubService).getChainTask(chainTaskId);
+    }
+
+    @Test
+    void shouldContributionDeadlineNotBeReachedWithCache() {
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final ChainTask chainTask = ChainTask
+                .builder()
+                .chainTaskId(chainTaskId)
+                .contributionDeadline(new Date().getTime() + 100_000)  // deadline in 100s
+                .build();
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+
+        // The first call should get the task from the chain
+        final boolean firstCall = contributionService.isContributionDeadlineReached(chainTaskId);
+        // The second call should get the deadline from the cache
+        final boolean secondCall = contributionService.isContributionDeadlineReached(chainTaskId);
+
+        assertThat(firstCall).isFalse();
+        assertThat(secondCall).isFalse();
+
+        // Chain called a single time
+        verify(iexecHubService).getChainTask(chainTaskId);
+    }
+    // endregion
 }
