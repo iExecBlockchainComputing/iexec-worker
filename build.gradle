@@ -100,6 +100,9 @@ dependencies {
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
+
+    // expiring map
+    implementation 'net.jodah:expiringmap:0.5.10'
 }
 
 // ./gradlew build -Pdev

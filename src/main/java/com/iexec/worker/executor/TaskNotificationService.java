@@ -16,29 +16,31 @@
 
 package com.iexec.worker.executor;
 
+import com.iexec.common.chain.ChainTask;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
-import com.iexec.common.replicate.ReplicateActionResponse;
-import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.replicate.ReplicateStatusDetails;
-import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.replicate.*;
 import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
-
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.expiringmap.ExpiringMap;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
 import static com.iexec.common.replicate.ReplicateStatus.*;
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND;
 
 
 @Slf4j
@@ -51,7 +53,12 @@ public class TaskNotificationService {
     private final SubscriptionService subscriptionService;
     private final ContributionService contributionService;
     private final IexecHubService iexecHubService;
+    private final Clock clock;
 
+    private final Map<String, Long> finalDeadlineForTask = ExpiringMap
+            .builder()
+            .expiration(1, TimeUnit.HOURS)
+            .build();
 
     public TaskNotificationService(
             TaskManagerService taskManagerService,
@@ -59,13 +66,15 @@ public class TaskNotificationService {
             ApplicationEventPublisher applicationEventPublisher,
             SubscriptionService subscriptionService,
             ContributionService contributionService,
-            IexecHubService iexecHubService) {
+            IexecHubService iexecHubService,
+            Clock clock) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
         this.contributionService = contributionService;
         this.iexecHubService = iexecHubService;
+        this.clock = clock;
     }
 
     /**
@@ -240,12 +249,38 @@ public class TaskNotificationService {
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = null;
-        while (next == null && !contributionService.isContributionDeadlineReached(chainTaskId)) {
+        while (next == null && !isFinalDeadlineReached(chainTaskId)) {
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
 
         log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]",
                 chainTaskId, statusUpdate.getStatus(), next);
         return next;
+    }
+
+    /**
+     * Checks whether the final deadline is reached.
+     * If never called before for this task, retrieves the final deadline from the chain and caches it.
+     * If already called, then retrieves the final deadline from the cache.
+     * <p>
+     * Note that if the task is unknown on the chain, then the final deadline is considered as reached.
+     *
+     * @param chainTaskId Task ID whose final deadline should be checked.
+     * @return {@literal true} if the final deadline is met or the task is unknown on-chain,
+     * {@literal false} otherwise.
+     */
+    private boolean isFinalDeadlineReached(String chainTaskId) {
+        if (finalDeadlineForTask.containsKey(chainTaskId)) {
+            return clock.millis() >= finalDeadlineForTask.get(chainTaskId);
+        }
+
+        final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
+        if (oTask.isEmpty()) {
+            return true;
+        }
+
+        final long finalDeadline = oTask.get().getFinalDeadline();
+        finalDeadlineForTask.put(chainTaskId, finalDeadline);
+        return clock.millis() >= finalDeadline;
     }
 }
