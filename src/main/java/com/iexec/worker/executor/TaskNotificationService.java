@@ -268,17 +268,20 @@ public class TaskNotificationService {
      * {@literal false} otherwise.
      */
     boolean isFinalDeadlineReached(String chainTaskId, long now) {
+        final Long finalDeadline;
+
         if (finalDeadlineForTask.containsKey(chainTaskId)) {
-            return now >= finalDeadlineForTask.get(chainTaskId);
+            finalDeadline = finalDeadlineForTask.get(chainTaskId);
+        } else {
+            final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
+            if (oTask.isEmpty()) {
+                return true;
+            }
+
+            finalDeadline = oTask.get().getFinalDeadline();
+            finalDeadlineForTask.put(chainTaskId, finalDeadline);
         }
 
-        final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-        if (oTask.isEmpty()) {
-            return true;
-        }
-
-        final long finalDeadline = oTask.get().getFinalDeadline();
-        finalDeadlineForTask.put(chainTaskId, finalDeadline);
         return now >= finalDeadline;
     }
 }
