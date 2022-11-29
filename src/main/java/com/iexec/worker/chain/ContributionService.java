@@ -24,13 +24,10 @@ import com.iexec.common.result.ComputedFile;
 import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.worker.result.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.expiringmap.ExpiringMap;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
@@ -43,11 +40,6 @@ public class ContributionService {
     private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private final EnclaveAuthorizationService enclaveAuthorizationService;
     private final CredentialsService credentialsService;
-
-    private final Map<String, Long> contributionDeadlineForTask = ExpiringMap
-            .builder()
-            .expiration(1, TimeUnit.HOURS)
-            .build();
 
     public ContributionService(IexecHubService iexecHubService,
                                WorkerpoolAuthorizationService workerpoolAuthorizationService,
@@ -118,11 +110,7 @@ public class ContributionService {
     }
 
     private boolean isBeforeContributionDeadlineToContribute(ChainTask chainTask) {
-        return isBeforeContributionDeadlineToContribute(chainTask.getContributionDeadline());
-    }
-
-    private boolean isBeforeContributionDeadlineToContribute(long contributionDeadline) {
-        return new Date().getTime() < contributionDeadline;
+        return new Date().getTime() < chainTask.getContributionDeadline();
     }
 
     private boolean isContributionUnsetToContribute(ChainTask chainTask) {
@@ -134,20 +122,9 @@ public class ContributionService {
     }
 
     public boolean isContributionDeadlineReached(String chainTaskId) {
-        if (contributionDeadlineForTask.containsKey(chainTaskId)) {
-            long contributionDeadline = contributionDeadlineForTask.get(chainTaskId);
-            return !isBeforeContributionDeadlineToContribute(contributionDeadline);
-        }
-
         Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-        if (oTask.isEmpty()) {
-            return true;
-        }
 
-        long contributionDeadline = oTask.get().getContributionDeadline();
-        contributionDeadlineForTask.put(chainTaskId, contributionDeadline);
-
-        return !isBeforeContributionDeadlineToContribute(contributionDeadline);
+        return oTask.isEmpty() || !isBeforeContributionDeadlineToContribute(oTask.get());
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
