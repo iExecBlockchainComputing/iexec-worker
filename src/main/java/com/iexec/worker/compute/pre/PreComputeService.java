@@ -109,21 +109,6 @@ public class PreComputeService {
             preComputeResponseBuilder.exitCause(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION);
             return preComputeResponseBuilder.build();
         }
-        // ###############################################################################
-        // TODO: activate this when user specific post-compute is properly
-        // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
-        // ###############################################################################
-        // Download specific post-compute image if requested.
-        // Otherwise the default one will be used.
-        // if (taskDescription.containsPostCompute() &&
-        //         !dockerService.getClient()
-        //                 .pullImage(taskDescription.getTeePostComputeImage())) {
-        //     log.error("Failed to pull specified tee post-compute image " +
-        //             "[chainTaskId:{}, imageUri:{}]", chainTaskId,
-        //             taskDescription.getTeePostComputeImage());
-        //     return "";
-        // }
-        // ###############################################################################
         // create secure session
         TeeSessionGenerationResponse secureSession = null;
         TeeSessionGenerationError teeSessionGenerationError = null;

@@ -182,25 +182,24 @@ public class TaskManagerService {
             return getFailureResponseAndPrintError(errorStatus.get(),
                     context, chainTaskId);
         }
+        // Return early if TEE task
+        if (taskDescription.isTeeTask()) {
+            log.info("Dataset and input files will be downloaded by the pre-compute enclave [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.success();
+        }
         try {
-            // download dataset
+            // download dataset for standard task
             if (!taskDescription.containsDataset()) {
                 log.info("No dataset for this task [chainTaskId:{}]", chainTaskId);
-            } else if (taskDescription.isTeeTask()) {
-                log.info("Dataset will be downloaded by the pre-compute enclave " +
-                        "[chainTaskId:{}", chainTaskId);
             } else {
                 String datasetUri = taskDescription.getDatasetUri();
                 log.info("Downloading dataset [chainTaskId:{}, uri:{}, name:{}]",
                         chainTaskId, datasetUri, taskDescription.getDatasetName());
                 dataService.downloadStandardDataset(taskDescription);
             }
-            // download input files
+            // download input files for standard task
             if (!taskDescription.containsInputFiles()) {
                 log.info("No input files for this task [chainTaskId:{}]", chainTaskId);
-            } else if (taskDescription.isTeeTask()) {
-                log.info("Input files will be downloaded by the pre-compute enclave " +
-                        "[chainTaskId:{}", chainTaskId);
             } else {
                 log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
                 dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getInputFiles());

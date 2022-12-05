@@ -100,8 +100,7 @@ class LasServiceTests {
                 lasService::start
         );
 
-        Assertions.assertThat(exception.getMessage().contains("not from a known registry"))
-                .isTrue();
+        Assertions.assertThat(exception.getMessage()).contains("not from a known registry");
         assertFalse(lasService.isStarted());
     }
 

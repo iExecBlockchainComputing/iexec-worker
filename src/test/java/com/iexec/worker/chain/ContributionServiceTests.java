@@ -329,12 +329,12 @@ class ContributionServiceTests {
         Contribution contribution = contributionService.getContribution(computedFile);
 
         Assertions.assertNotNull(contribution);
-        Assertions.assertEquals(contribution.getChainTaskId(), chainTaskId);
-        Assertions.assertEquals(contribution.getResultDigest(), resultDigest);
-        Assertions.assertEquals(contribution.getResultSeal(), resultSeal);
-        Assertions.assertEquals(contribution.getEnclaveChallenge(), TestUtils.ENCLAVE_ADDRESS);
+        Assertions.assertEquals(chainTaskId, contribution.getChainTaskId());
+        Assertions.assertEquals(resultDigest, contribution.getResultDigest());
+        Assertions.assertEquals(resultSeal, contribution.getResultSeal());
+        Assertions.assertEquals(TestUtils.ENCLAVE_ADDRESS, contribution.getEnclaveChallenge());
         Assertions.assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
-        Assertions.assertEquals(contribution.getWorkerPoolSignature(), teeWorkerpoolAuth.getSignature().getValue());
+        Assertions.assertEquals(teeWorkerpoolAuth.getSignature().getValue(), contribution.getWorkerPoolSignature());
 
         Contribution expectedContribution = Contribution.builder()
                 .chainTaskId(chainTaskId)

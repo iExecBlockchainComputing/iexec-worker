@@ -121,17 +121,6 @@ public class PostComputeService {
 
         final TeeAppProperties postComputeProperties = properties.getPostComputeProperties();
         String postComputeImage = postComputeProperties.getImage();
-        // ###############################################################################
-        // TODO: activate this when user specific post-compute is properly
-        // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
-        // ###############################################################################
-        // // Use specific post-compute image if requested.
-        // if (taskDescription.containsPostCompute()) {
-        //     postComputeImage = taskDescription.getTeePostComputeImage();
-        //     postComputeHeapSize = taskDescription.getTeePostComputeHeapSize();
-        //     pull image
-        // }
-        // ###############################################################################
         if (!dockerService.getClient().isImagePresent(postComputeImage)) {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
