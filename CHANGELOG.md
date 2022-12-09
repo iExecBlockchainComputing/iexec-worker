@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[7.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.2.0) 2022-12-08
+
+* To conform to Task Feedback API, return a `PostComputeResponse` at the end of the post-compute stage of a standard task.
+* `iexec_developper_logger` property defined in Deal parameters is now ignored.
+  The requester must use the Task Feedback API to retrieve the logs of an execution they requested.
+* Miscellaneous code quality improvements.
+* Never return `null` when fetching pre-compute or post-compute exit cause on failure.
+  On unknown failure, exit cause will be `PRE_COMPUTE_FAILED_UNKNOWN_ISSUE` or `POST_COMPUTE_FAILED_UNKNOWN_ISSUE`.
+* Create first STOMP session before the application is ready and begins to execute replicates. The implementation has been improved to avoid fast polling in the session request listener.
+* Remove unnecessary lock on `ReplicateDemandService`.
+* Increments of jenkins-library up to version 2.2.3. Enable SonarCloud analyses on branches and Pull Requests.
+* Update `iexec-common` version to [6.1.0](https://github.com/iExecBlockchainComputing/iexec-common/releases/tag/v6.1.0).
+
 ## [[7.1.2]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.1.2) 2022-11-29
 
 * Retry updating replicate status until the core-scheduler responds successfully or until the final deadline is reached.
