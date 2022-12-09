@@ -15,6 +15,7 @@ targetCompatibility = 11
 ext {
     springCloudVersion = '2021.0.0'
     dockerJavaVersion = '3.2.12'
+    lombokVersion = '1.18.2'
 }
 
 if (!project.hasProperty('gitBranch')) {
@@ -75,6 +76,7 @@ dependencies {
     implementation  "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation  "org.springframework.retry:spring-retry"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testImplementation "org.mockito:mockito-inline:4.8.0" // activates mocking final classes/methods
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // Web3j issues, see core build.gradle
@@ -95,14 +97,19 @@ dependencies {
     implementation 'biz.paluch.logging:logstash-gelf:1.5.1'
 
     // lombok
-    compileOnly "org.projectlombok:lombok:1.18.2"
-    annotationProcessor "org.projectlombok:lombok:1.18.2"
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 
     // expiring map
     implementation 'net.jodah:expiringmap:0.5.10'
+
+    // awaitility
+    testImplementation "org.awaitility:awaitility:4.2.0"
 }
 
 // ./gradlew build -Pdev
@@ -124,11 +131,6 @@ test {
             excludeTags 'slow'
         }
     }
-
-    // To avoid warnings on multiple SLF4J bindings,
-    // let's remove the Logback implementation
-    // and keep only SLF4j Test.
-    classpath = classpath.filter {!it.name.contains('logback-classic')}
 }
 
 task itest {

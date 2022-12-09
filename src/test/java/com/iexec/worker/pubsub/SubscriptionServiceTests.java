@@ -16,18 +16,7 @@
 
 package com.iexec.worker.pubsub;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.atMost;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.iexec.worker.config.WorkerConfigurationService;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -38,6 +27,11 @@ import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
 class SubscriptionServiceTests {
 
     @Mock
@@ -45,7 +39,7 @@ class SubscriptionServiceTests {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
     @Mock
-    private StompClient stompClient;
+    private StompClientService stompClientService;
 
     @InjectMocks
     SubscriptionService subscriptionService;
@@ -64,27 +58,27 @@ class SubscriptionServiceTests {
 
     @Test
     void shouldSubscribeToTopic() {
-        when(stompClient.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
 
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
-        verify(stompClient, times(1)).subscribeToTopic(anyString(), any());
+        verify(stompClientService, times(1)).subscribeToTopic(anyString(), any());
     }
 
     @Test
     void shouldNotSubscribeToExistingTopic() {
-        when(stompClient.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
         
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
-        verify(stompClient, atMost(1)).subscribeToTopic(anyString(), any());
+        verify(stompClientService, atMost(1)).subscribeToTopic(anyString(), any());
     }
 
     @Test
     void shouldUnsubscribeFromTopic() {
-        when(stompClient.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
 
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();

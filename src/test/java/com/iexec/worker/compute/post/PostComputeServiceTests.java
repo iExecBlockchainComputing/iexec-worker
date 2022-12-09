@@ -30,8 +30,8 @@ import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.tee.scone.SconeConfiguration;
 import com.iexec.worker.tee.scone.TeeSconeService;
+import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,11 +54,11 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 class PostComputeServiceTests {
 
     private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private final static String DATASET_URI = "DATASET_URI";
-    private final static String SCONE_CAS_URL = "SCONE_CAS_URL";
     private final static String WORKER_NAME = "WORKER_NAME";
     private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private final static long TEE_POST_COMPUTE_HEAP = 1024;
@@ -85,8 +85,6 @@ class PostComputeServiceTests {
     @Mock
     private TeeSconeService teeSconeService;
     @Mock
-    private SconeConfiguration sconeConfig;
-    @Mock
     private TeeWorkflowConfiguration teeWorkflowConfig;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
@@ -96,29 +94,29 @@ class PostComputeServiceTests {
     private ComputeExitCauseService computeExitCauseService;
 
     @BeforeEach
-    void beforeEach() throws IOException {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(sconeConfig.getCasUrl()).thenReturn(SCONE_CAS_URL);
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
     }
 
-    /**
-     * Standard post compute
-     */
+    //region runStandardPostCompute
+    private void logDirectoryTree(String path) {
+        log.info("\n{}", FileHelper.printDirectoryTree(new File(path)));
+    }
 
     @Test
     void shouldRunStandardPostCompute() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isTrue();
+        logDirectoryTree(output);
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
         Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
     }
@@ -127,32 +125,30 @@ class PostComputeServiceTests {
     void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("dummyIexecOut");
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
+        logDirectoryTree(output);
     }
 
     @Test
     void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
         Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
         //don't create iexec_out.zip
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription)).isFalse();
-        System.out.println(FileHelper.printDirectoryTree(new File(output)));
+        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
+        logDirectoryTree(output);
         Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
-        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON).exists()).isFalse();
+        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).doesNotExist();
     }
+    //endregion
 
-    /**
-     * Tee post compute
-     */
-
+    //region runTeePostCompute
     @Test
     void shouldRunTeePostComputeAndConnectToLasNetwork() {
         String lasNetworkName = "networkName";
@@ -161,7 +157,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -204,7 +199,6 @@ class PostComputeServiceTests {
                         .binds(Collections.singletonList(iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.LEGACY)
                         .dockerNetwork(lasNetworkName)
-                        .shouldDisplayLogs(true)
                         .build()
         );
     }
@@ -216,7 +210,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
         when(teeWorkflowConfig.getPostComputeHeapSize()).thenReturn(TEE_POST_COMPUTE_HEAP);
@@ -239,7 +232,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -287,7 +279,6 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .developerLoggerEnabled(true)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
         when(teeWorkflowConfig.getPostComputeImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -316,4 +307,5 @@ class PostComputeServiceTests {
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
         verify(dockerService, times(1)).run(any());
     }
+    //endregion
 }

@@ -16,27 +16,15 @@
 
 package com.iexec.worker.pubsub;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.annotation.PostConstruct;
-
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.utils.AsyncUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
-import org.springframework.messaging.simp.stomp.StompCommand;
-import org.springframework.messaging.simp.stomp.StompFrameHandler;
-import org.springframework.messaging.simp.stomp.StompHeaders;
-import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.*;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
@@ -52,13 +40,18 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import lombok.extern.slf4j.Slf4j;
+import javax.annotation.PostConstruct;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.*;
 
 /**
  * This component handles STOMP websocket connection. First we create an instance of
  * {@link WebSocketStompClient} then we start one and only one listener thread that
  * creates a STOMP session used to subscribe to topics. If an issue occurs with the
- * session the same thread is responsible of refreshing it. The detector of the issue
+ * session the same thread is responsible for refreshing it. The detector of the issue
  * instructs the listener thread to refresh the session by switching an AtomicBoolean
  * flag. This avoids creating multiple sessions at the same time.
  * A scheduled task will periodically check if the watchdog thread is interrupted.
@@ -66,26 +59,24 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-public class StompClient {
+public class StompClientService {
 
     // All session requests coming in this time interval
     // will be treated together.
-    private static final int SESSION_REFRESH_BACK_OFF_DELAY = 5;
-
-    // A lock used to guarantee that only one thread
-    // is listening to session requests.
-    private final Lock listenerLock = new Lock();
-    // A flag used to watch session requests.
-    private final AtomicBoolean isSessionRequested = new AtomicBoolean(false);
+    static final int SESSION_REFRESH_BACK_OFF_DELAY = 5;
+    // A semaphore used to guarantee that only one thread is listening to session requests.
+    private final Semaphore listenerLock = new Semaphore(1);
+    // A latch used to wait for session requests.
+    private CountDownLatch sessionRequest = new CountDownLatch(1);
     // A dedicated thread executor that handles STOMP session creation
     private final Executor singleThreadExecutor = Executors.newSingleThreadExecutor();
     private final ApplicationEventPublisher eventPublisher;
     private final String webSocketServerUrl;
     private final WebSocketStompClient stompClient;
-    private StompSession session;
+    private StompSession stompSession;
 
-    public StompClient(ApplicationEventPublisher applicationEventPublisher,
-                       CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
+    public StompClientService(ApplicationEventPublisher applicationEventPublisher,
+                              CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
         this.eventPublisher = applicationEventPublisher;
         this.webSocketServerUrl = coreConfigService.getUrl() + "/connect";
         log.info("Creating STOMP client");
@@ -95,7 +86,7 @@ public class StompClient {
                 new RestTemplateXhrTransport(restTemplate)
         );
         SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-        // without SockJS: new WebSocketStompClient(webSocketClient);
+        // without SockJS: new WebSocketStompClient(webSocketClient)
         this.stompClient = new WebSocketStompClient(sockJsClient);
         this.stompClient.setAutoStartup(true);
         this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
@@ -116,8 +107,8 @@ public class StompClient {
         Objects.requireNonNull(messageHandler, "messageHandler must not be null");
         // Should not let other threads subscribe
         // when the session is not ready yet.
-        return this.session != null
-                ? Optional.of(this.session.subscribe(topic, messageHandler))
+        return stompSession != null
+                ? Optional.of(stompSession.subscribe(topic, messageHandler))
                 : Optional.empty();
     }
 
@@ -145,13 +136,10 @@ public class StompClient {
      * @return A {@link CompletableFuture} representing the listener task.
      */
     CompletableFuture<Void> startSessionRequestListenerIfAbsent() {
-        synchronized(listenerLock) {
-            if (listenerLock.isLocked()) {
-                // Another thread is already listening.
-                log.debug("Cannot start a second session request listener");
-                return null;
-            }
-            listenerLock.lock();
+        if (!listenerLock.tryAcquire()) {
+            // Another thread is already listening.
+            log.debug("Cannot start a second session request listener");
+            return null;
         }
         return AsyncUtils.runAsyncTask("listen-to-stomp-session",
                 this::listenToSessionRequests, singleThreadExecutor);
@@ -162,10 +150,9 @@ public class StompClient {
      * connection by establishing a new STOMP session. All received 
      * requests in a fixed time interval {@code SESSION_REFRESH_DELAY}
      * will be processed only once.
-     * <br>
-     * 
-     * <p><b>Note:</b> the reason we use an AtomicBoolean is because the
-     * method {@link SessionHandler#handleTransportError(StompSession, Throwable)} is called
+     * <p>
+     * <b>Note:</b> We use a latch because the method
+     * {@link SessionHandler#handleTransportError(StompSession, Throwable)} is called
      * two times to handle connectivity issues when the websocket
      * connection is, for whatever reason, brutally terminated while
      * a message is being transmitted.
@@ -178,49 +165,55 @@ public class StompClient {
      * {@link SessionHandler#handleTransportError(StompSession, Throwable)} would result
      * in parallel zombie threads trying to establish a new session
      * each.
-     * Instead, each call to this method changes the flag
-     * {@code isSessionRequested} to true. We wait for a short
-     * period of time to collect all these requests coming from
+     * Instead, each call to this method decrements the latch {@code sessionRequest}
+     * which reaches {@literal 0} after the first call and stays at this value.
+     * We wait for a short period of time to collect all these requests coming from
      * different calls (and possibly different threads), then we send
      * only one request to the server. This process is repeated until
-     * the websocket connection is reestablished again.
+     * the websocket connection is reestablished.
      */
     void listenToSessionRequests() {
         log.info("Listening to incoming STOMP session requests");
         while (!Thread.interrupted()) {
             try {
-                if (!isSessionRequested.get()) {
-                    // No requests
-                    continue;
-                }
+                // Wait until the latch reaches 0 or the thread is interrupted
+                // This avoids the fast looping thread of the previous implementation
+                sessionRequest.await();
                 // wait some time for the wave of request events coming
                 // from possibly different threads to finish
                 backOff();
-                // Switch the flag back to mark requests as treated.
-                isSessionRequested.set(false);
+                // Reset the latch to mark requests as treated.
+                sessionRequest = new CountDownLatch(1);
                 // Send one request to the server.
                 createSession();
             } catch(InterruptedException e) {
                 log.error("STOMP session request listener got interrupted", e);
-                // Unlock flag so another thread can be started.
-                listenerLock.unlock();
+                // Release semaphore so another thread can be started.
+                listenerLock.release();
                 // Properly handle InterruptedException.
                 Thread.currentThread().interrupt();
                 // The thread will stop
-            } catch(Throwable t) {
+            } catch(Exception e) {
                 // Ignore all errors and continue
-                log.error("An error occurred while listening to STOMP session requests", t);
+                log.error("An error occurred while listening to STOMP session requests", e);
                 // The thread will continue
             }
         }
     }
 
     /**
-     * Change the flag {@code isSessionRequested} to true. A listener
-     * that is watching this flag will create a new STOMP session.
+     * Checks if a new STOMP session must be created.
+     * <p>
+     * If a session exists and is connected, nothing is done.
+     * Otherwise, the latch is decremented and reaches {@literal 0}.
+     * This unblocks {@code sessionRequest.await()}.
      */
     void requestNewSession() {
-        isSessionRequested.set(true);
+        if (stompSession != null && stompSession.isConnected()) {
+            log.info("A valid STOMP session exists, ignoring this request");
+            return;
+        }
+        sessionRequest.countDown();
         log.info("Requested a new STOMP session");
     }
 
@@ -229,16 +222,19 @@ public class StompClient {
      */
     void createSession() {
         log.info("Creating new STOMP session");
-        this.stompClient.connect(webSocketServerUrl, new SessionHandler());
+        stompClient.connect(webSocketServerUrl, new SessionHandler());
     }
 
     /**
-     * Sleep {@link StompClient#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
-     * 
-     * @throws InterruptedException
+     * Sleep {@link StompClientService#SESSION_REFRESH_BACK_OFF_DELAY} seconds.
+     * <p>
+     * If no STOMP session exists, we are creating the first session and there is no need to wait.
+     * @throws InterruptedException if thread is interrupted.
      */
     void backOff() throws InterruptedException {
-        TimeUnit.SECONDS.sleep(SESSION_REFRESH_BACK_OFF_DELAY);
+        if (stompSession != null) {
+            TimeUnit.SECONDS.sleep(SESSION_REFRESH_BACK_OFF_DELAY);
+        }
     }
 
     /**
@@ -251,7 +247,7 @@ public class StompClient {
         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
             log.info("Connected to STOMP session [session: {}, isConnected: {}]",
                     session.getSessionId(), session.isConnected());
-            StompClient.this.session = session;
+            stompSession = session;
             // notify subscribers
             eventPublisher.publishEvent(new SessionCreatedEvent());
         }
@@ -295,19 +291,4 @@ public class StompClient {
         }
     }
 
-    private static class Lock {
-        private final AtomicBoolean value = new AtomicBoolean(false);
-
-        boolean isLocked() {
-            return value.get();
-        }
-
-        void lock() {
-            value.set(true);
-        }
-
-        void unlock() {
-            value.set(false);
-        }
-    }
 }

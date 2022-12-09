@@ -82,7 +82,6 @@ public class AppComputeService {
                                 ? sgxService.getSgxDriverMode()
                                 : SgxDriverMode.NONE
                 )
-                .shouldDisplayLogs(taskDescription.isDeveloperLoggerEnabled())
                 .build();
         // Enclave should be able to connect to the LAS
         if (taskDescription.isTeeTask()) {
