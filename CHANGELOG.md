@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [[7.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.2.0) 2022-12-08
+## [[7.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.2.0) 2022-12-09
 
 * To conform to Task Feedback API, return a `PostComputeResponse` at the end of the post-compute stage of a standard task.
 * `iexec_developper_logger` property defined in Deal parameters is now ignored.
