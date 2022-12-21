@@ -16,6 +16,7 @@
 
 package com.iexec.worker.executor;
 
+import com.iexec.common.chain.ChainTask;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.notification.TaskNotificationType;
@@ -28,10 +29,16 @@ import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.expiringmap.ExpiringMap;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
 import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND;
@@ -49,6 +56,10 @@ public class TaskNotificationService {
     private final IexecHubService iexecHubService;
     private final SmsService smsService;
 
+    private final Map<String, Long> finalDeadlineForTask = ExpiringMap
+            .builder()
+            .expiration(1, TimeUnit.HOURS)
+            .build();
 
     public TaskNotificationService(
             TaskManagerService taskManagerService,
@@ -244,10 +255,45 @@ public class TaskNotificationService {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
-        TaskNotificationType next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
+        TaskNotificationType next = null;
+        // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
+        while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
+            next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
+        }
 
         log.info("update replicate response [chainTaskId:{}, status:{}, next:{}]",
                 chainTaskId, statusUpdate.getStatus(), next);
         return next;
+    }
+
+    /**
+     * Checks whether the final deadline is reached.
+     * If never called before for this task, retrieves the final deadline from the chain and caches it.
+     * If already called, then retrieves the final deadline from the cache.
+     * <p>
+     * Note that if the task is unknown on the chain, then the final deadline is considered as reached.
+     *
+     * @param chainTaskId Task ID whose final deadline should be checked.
+     * @param now         Time to check final deadline against.
+     * @return {@literal true} if the final deadline is met or the task is unknown on-chain,
+     * {@literal false} otherwise.
+     */
+    boolean isFinalDeadlineReached(String chainTaskId, long now) {
+        final Long finalDeadline;
+
+        if (finalDeadlineForTask.containsKey(chainTaskId)) {
+            finalDeadline = finalDeadlineForTask.get(chainTaskId);
+        } else {
+            final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
+            if (oTask.isEmpty()) {
+                //TODO: Handle case where task exists on-chain but call on Ethereum node failed
+                return true;
+            }
+
+            finalDeadline = oTask.get().getFinalDeadline();
+            finalDeadlineForTask.put(chainTaskId, finalDeadline);
+        }
+
+        return now >= finalDeadline;
     }
 }
