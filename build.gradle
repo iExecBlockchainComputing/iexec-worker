@@ -9,8 +9,6 @@ plugins {
 }
 
 group = 'com.iexec.worker'
-sourceCompatibility = 11
-targetCompatibility = 11
 
 ext {
     springCloudVersion = '2021.0.0'
@@ -106,6 +104,12 @@ dependencies {
 
     // awaitility
     testImplementation "org.awaitility:awaitility:4.2.0"
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(11))
+    }
 }
 
 // ./gradlew build -Pdev
