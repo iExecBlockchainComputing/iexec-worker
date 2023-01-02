@@ -24,7 +24,6 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.utils.AsyncUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +36,6 @@ import static com.iexec.common.notification.TaskNotificationType.PLEASE_START;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@Slf4j
 class ReplicateDemandServiceTests {
 
     private static final String ASK_FOR_REPLICATE_CONTEXT = "ask-for-replicate";

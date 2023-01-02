@@ -20,6 +20,7 @@ import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.dapp.DappType;
+import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateActionResponse;
@@ -27,7 +28,6 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -524,7 +524,7 @@ class TaskManagerServiceTests {
     // DATASET_FILE_BAD_CHECKSUM exception
 
     @Test
-    void shouldHandleWorflowExceptionInDownloadDataAndTriggerPostComputeHookWithSuccess()
+    void shouldHandleWorkflowExceptionInDownloadDataAndTriggerPostComputeHookWithSuccess()
             throws Exception {
         TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
@@ -815,8 +815,6 @@ class TaskManagerServiceTests {
         TaskDescription taskDescription = TaskDescription.builder()
                 .isTeeTask(true)
                 .build();
-        WorkerpoolAuthorization workerpoolAuthorization =
-                WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
