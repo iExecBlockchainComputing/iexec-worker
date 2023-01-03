@@ -1,16 +1,14 @@
 plugins {
     id 'java'
+    id 'io.freefair.lombok' version '6.6.1'
     id 'org.springframework.boot' version '2.6.2'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
-    id 'eclipse'
+    id 'io.spring.dependency-management' version '1.1.0'
     id 'jacoco'
     id 'org.sonarqube' version '3.3'
     id 'maven-publish'
 }
 
 group = 'com.iexec.worker'
-sourceCompatibility = 11
-targetCompatibility = 11
 
 ext {
     springCloudVersion = '2021.0.0'
@@ -98,12 +96,6 @@ dependencies {
     //graylog
     implementation 'biz.paluch.logging:logstash-gelf:1.5.1'
 
-    // lombok
-    compileOnly "org.projectlombok:lombok:${lombokVersion}"
-    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
-    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
-    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
-
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 
@@ -112,6 +104,12 @@ dependencies {
 
     // awaitility
     testImplementation "org.awaitility:awaitility:4.2.0"
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(11))
+    }
 }
 
 // ./gradlew build -Pdev
@@ -146,7 +144,7 @@ jacoco {
 // sonarqube code coverage requires jacoco XML report
 jacocoTestReport {
     reports {
-        xml.enabled true
+        xml.required = true
     }
 }
 tasks.test.finalizedBy    tasks.jacocoTestReport
