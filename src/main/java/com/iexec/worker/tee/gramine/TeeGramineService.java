@@ -6,7 +6,6 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,7 +13,6 @@ import java.util.Collection;
 import java.util.List;
 
 @Service
-@Slf4j
 public class TeeGramineService extends TeeService {
     private static final String SPS_URL_ENV_VAR = "sps";
     private static final String SPS_SESSION_ENV_VAR = "session";
