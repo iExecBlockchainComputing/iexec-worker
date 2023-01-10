@@ -89,7 +89,7 @@ dependencies {
     // Required for com.iexec.worker.feign.config.RestTemplateConfig
     implementation 'org.apache.httpcomponents:httpclient'
 
-    implementation 'org.glassfish.jersey.inject:jersey-hk2:'
+    implementation 'org.glassfish.jersey.inject:jersey-hk2'
     implementation 'org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1'
     implementation 'javax.activation:activation:1.1.1'
 
