@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '6.6.1'
-    id 'org.springframework.boot' version '2.6.2'
+    id 'org.springframework.boot' version '2.6.14'
     id 'io.spring.dependency-management' version '1.1.0'
     id 'jacoco'
     id 'org.sonarqube' version '3.3'
@@ -11,7 +11,7 @@ plugins {
 group = 'com.iexec.worker'
 
 ext {
-    springCloudVersion = '2021.0.0'
+    springCloudVersion = '2021.0.5'
     dockerJavaVersion = '3.2.12'
     lombokVersion = '1.18.2'
 }
@@ -84,9 +84,9 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.9.0' // Web3j issue: https://github.com/web3j/web3j/issues/1180
 
     // Required for com.iexec.worker.feign.config.RestTemplateConfig
-    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'org.apache.httpcomponents:httpclient'
 
-    implementation 'org.glassfish.jersey.inject:jersey-hk2:2.26'
+    implementation 'org.glassfish.jersey.inject:jersey-hk2:'
     implementation 'org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1'
     implementation 'javax.activation:activation:1.1.1'
 
