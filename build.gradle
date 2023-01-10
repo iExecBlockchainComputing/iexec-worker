@@ -77,6 +77,9 @@ dependencies {
     testImplementation "org.mockito:mockito-inline:4.8.0" // activates mocking final classes/methods
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // apache commons.lang3
+    implementation 'org.apache.commons:commons-lang3'
+
     // Web3j issues, see core build.gradle
     // NoSuchMethodError: 'okhttp3.RequestBody okhttp3.RequestBody.create(java.lang.String, okhttp3.MediaType)'
     // Spring Boot dependencies BOM enforces okhttp3 3.14.9 in 2.6.X
