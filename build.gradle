@@ -69,15 +69,15 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter") {
         exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging' //required for Graylog
     }
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.boot:spring-boot-starter-websocket"
-    implementation "org.springframework.boot:spring-boot-starter-actuator"
     implementation  "org.springframework.cloud:spring-cloud-starter"
     implementation  "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation  "org.springframework.retry:spring-retry"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.mockito:mockito-inline:4.8.0" // activates mocking final classes/methods
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // Web3j issues, see core build.gradle
     implementation 'com.squareup.okhttp3:okhttp:4.3.1'
