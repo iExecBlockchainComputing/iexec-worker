@@ -46,6 +46,12 @@ You can configure the _iExec Worker_ with the following properties:
 | `IEXEC_CORE_GRAYLOG_PORT` | Graylog server port. | Positive integer | `12201` |
 | `IEXEC_WORKER_SGX_DRIVER_MODE` | Intel® SGX driver that should be used. | { NONE, LEGACY, NATIVE } | `NONE` |
 
+## Health checks
+
+A health endpoint (`/actuator/health`) is enabled by default and can be accessed on the `IEXEC_WORKER_PORT`.
+This endpoint allows to define health checks in an orchestrator or a [compose file](https://github.com/compose-spec/compose-spec/blob/master/spec.md#healthcheck).
+No default strategy has been implemented in the [Dockerfile](Dockerfile) at the moment.
+
 ## Build from sources
 
 *Please first update your config located in `./src/main/resources/application.yml`*

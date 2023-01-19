@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[7.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.3.0) 2022-12-18
+
+* Add endpoint to allow health checks.
+
 ## [[7.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.2.0) 2022-12-09
 
 * To conform to Task Feedback API, return a `PostComputeResponse` at the end of the post-compute stage of a standard task.
