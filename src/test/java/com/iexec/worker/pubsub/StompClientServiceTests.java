@@ -1,7 +1,5 @@
 package com.iexec.worker.pubsub;
 
-import com.iexec.worker.TestUtils;
-import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.config.CoreConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,19 +14,19 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.util.concurrent.SettableListenableFuture;
+import org.springframework.web.socket.messaging.WebSocketStompClient;
 
-import java.util.Date;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(OutputCaptureExtension.class)
 class StompClientServiceTests {
+    private final static String SESSION_ID = "SESSION_ID";
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
@@ -37,7 +35,10 @@ class StompClientServiceTests {
     CoreConfigurationService coreConfigService;
 
     @Mock
-    RestTemplate restTemplate;
+    WebSocketStompClient stompClient;
+
+    @Mock
+    StompSession mockedStompSession;
 
     @Spy
     @InjectMocks
@@ -46,6 +47,7 @@ class StompClientServiceTests {
     @BeforeEach
     void init() {
         MockitoAnnotations.openMocks(this);
+        when(mockedStompSession.getSessionId()).thenReturn(SESSION_ID);
     }
 
     //region subscribeToTopic
@@ -75,146 +77,68 @@ class StompClientServiceTests {
     }
     //endregion
 
-    //region requestNewSession
+    // region createStompSessionIfDisconnected
     @Test
-    void shouldRequestSessionWhenStompSessionIsNull(CapturedOutput output) {
-        stompClientService.requestNewSession();
-        assertThat(output.getOut()).contains("Requested a new STOMP session");
-    }
+    void shouldNotCreateStompSessionIfAlreadyConnected(CapturedOutput output) throws Exception {
+        final StompSession connectedSession = mock(StompSession.class);
+        when(connectedSession.isConnected()).thenReturn(true);
+        when(connectedSession.getSessionId()).thenReturn(SESSION_ID);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", connectedSession);
 
-    @Test
-    void shouldRequestSessionWhenStompSessionIsNotConnected(CapturedOutput output) {
-        StompSession stompSession = mock(StompSession.class);
-        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
-        when(stompSession.isConnected()).thenReturn(false);
-        stompClientService.requestNewSession();
-        assertThat(output.getOut()).contains("Requested a new STOMP session");
-    }
-
-    @Test
-    void shouldNotRequestSessionWhenStompSessionIsConnected(CapturedOutput output) {
-        StompSession stompSession = mock(StompSession.class);
-        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
-        when(stompSession.isConnected()).thenReturn(true);
-        stompClientService.requestNewSession();
+        final String sessionId = stompClientService.createStompSessionIfDisconnected();
+        assertThat(sessionId).isEqualTo(SESSION_ID);
         assertThat(output.getOut()).contains("A valid STOMP session exists, ignoring this request");
     }
-    //endregion
 
     @Test
-    void shouldListenToSessionRequestsAsynchronouslyAndRequestAFirstSessionWhenInit()
-            throws Exception {
-        String mainThreadName = Thread.currentThread().getName();
-        ThreadNameWrapper threadNameWrapper = new ThreadNameWrapper();
-        // Get the name of the thread that runs listenToSessionRequests()
-        doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(
-                threadNameWrapper, invocation))
-                .when(stompClientService).listenToSessionRequests();
-        // Reduce session refresh back off duration to make test faster.
-        doAnswer((invocation) -> backOffBriefly()).when(stompClientService).backOff();
-        // Don't execute session creation with remote server.
-        doNothing().when(stompClientService).createSession();
-        
-        stompClientService.init();
-        waitSessionRequestExecution();
-        // Make sure listenToSessionRequests() runs asynchronously
-        assertThat(threadNameWrapper.value).isNotEqualTo(mainThreadName);
-        // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClientService).listenToSessionRequests();
-        // Make sure requestNewSession() method is called only 1 time
-        verify(stompClientService).requestNewSession();
-        // Make sure createSession() method is called only 1 time
-        verify(stompClientService).createSession();
+    void shouldCreateStompSessionIfNoSession(CapturedOutput output) throws Exception {
+        final SettableListenableFuture<StompSession> futureSession = new SettableListenableFuture<>();
+        futureSession.set(mockedStompSession);
+        when(stompClient.connect(any(), any())).thenReturn(futureSession);
+
+        final String sessionId = stompClientService.createStompSessionIfDisconnected();
+        assertThat(sessionId).isEqualTo(SESSION_ID);
+        assertThat(output.getOut()).contains("Creating new STOMP session");
     }
 
     @Test
-    void shouldStartOnlyOneListenerThread() {
-        final CompletableFuture<Void> firstListener =
-                stompClientService.startSessionRequestListenerIfAbsent();
-        final CompletableFuture<Void> secondListener =
-                stompClientService.startSessionRequestListenerIfAbsent();
+    void shouldCreateStompSessionIfDisconnected(CapturedOutput output) throws Exception {
+        final StompSession disconnectedSession = mock(StompSession.class);
+        when(disconnectedSession.isConnected()).thenReturn(false);
+        ReflectionTestUtils.setField(stompClientService, "stompSession", disconnectedSession);
 
-        assertThat(secondListener).isNull();
-        assertThat(firstListener).isNotNull();
+        final SettableListenableFuture<StompSession> futureSession = new SettableListenableFuture<>();
+        futureSession.set(mockedStompSession);
+        when(stompClient.connect(any(), any())).thenReturn(futureSession);
+
+        final String sessionId = stompClientService.createStompSessionIfDisconnected();
+        assertThat(sessionId).isEqualTo(SESSION_ID);
+        assertThat(output.getOut()).contains("Creating new STOMP session");
     }
 
     @Test
-    void shouldRestartListenerThreadWhenNoOneIsFound() {
-        assertThat(stompClientService.restartSessionRequestListenerIfStopped()).isNotNull();
+    void shouldNotCreateStompSessionButThrowIfTimeout(CapturedOutput output) throws ExecutionException, InterruptedException, TimeoutException {
+        final SettableListenableFuture<StompSession> futureSession = getMockedFutureSession();
+        when(stompClient.connect(any(), any())).thenReturn(futureSession);
+        when(futureSession.get(anyLong(), any())).thenThrow(TimeoutException.class);
+
+        assertThrows(TimeoutException.class, stompClientService::createStompSessionIfDisconnected);
+        assertThat(output.getOut()).contains("STOMP session creation timed out");
     }
 
     @Test
-    void shouldNotRestartListenerThreadWhenAnotherOneIsAlreadyFound() {
-        stompClientService.startSessionRequestListenerIfAbsent();
-        // Make sure listenToSessionRequests() method is called only 1 time
-        verify(stompClientService, timeout(100)).listenToSessionRequests();
-        stompClientService.restartSessionRequestListenerIfStopped();
-        // Make sure listenToSessionRequests() method is still called only 1 time
-        verify(stompClientService, timeout(100)).listenToSessionRequests();
+    void shouldNotCreateStompSessionButThrowIfAnyException(CapturedOutput output) throws ExecutionException, InterruptedException, TimeoutException {
+        final SettableListenableFuture<StompSession> futureSession = getMockedFutureSession();
+        when(stompClient.connect(any(), any())).thenReturn(futureSession);
+        when(futureSession.get(anyLong(), any())).thenThrow(InterruptedException.class);
+
+        assertThrows(Exception.class, stompClientService::createStompSessionIfDisconnected);
+        assertThat(output.getOut()).contains("An error occurred while listening to STOMP session requests");
     }
 
-    @Test
-    void shouldDestroySessionRequestListenerOnInterruptedException(CapturedOutput output) throws InterruptedException {
-        doThrow(InterruptedException.class).when(stompClientService).backOff();
-        CompletableFuture<Void> sessionRequestListener = stompClientService.startSessionRequestListenerIfAbsent();
-        stompClientService.requestNewSession();
-        await().atMost(1, TimeUnit.SECONDS).until(sessionRequestListener::isDone);
-        assertThat(output.getOut())
-                .contains("Listening to incoming STOMP session requests")
-                .contains("STOMP session request listener got interrupted");
+    @SuppressWarnings("unchecked")
+    private static SettableListenableFuture<StompSession> getMockedFutureSession() {
+        return mock(SettableListenableFuture.class);
     }
-
-    @Test
-    void shouldCreateSessionOnlyOnceWhenMultipleSessionRequestsAreReceived() throws Exception {
-        // Reduce session refresh back off duration to make test faster.
-        doAnswer(invocation -> backOffBriefly()).when(stompClientService).backOff();
-        // Don't execute session creation with remote server.
-        doNothing().when(stompClientService).createSession();
-        // Start listener
-        CompletableFuture.runAsync(() -> stompClientService.listenToSessionRequests());
-        waitForListener();
-
-        // Request multiple times
-        stompClientService.requestNewSession();
-        stompClientService.requestNewSession();
-        stompClientService.requestNewSession();
-        waitSessionRequestExecution();
-        // Make sure createSession() method is called only 1 time
-        verify(stompClientService).createSession();
-    }
-
-    //region backOff
-    @Test
-    void shouldNotBackOffWhenSessionDoesNotExist() throws InterruptedException {
-        Date reference = new Date();
-        stompClientService.backOff();
-        assertThat(new Date().getTime() - reference.getTime())
-                .isLessThan(StompClientService.SESSION_REFRESH_BACK_OFF_DELAY);
-    }
-
-    @Test
-    void shouldBackOffWhenSessionExists() throws InterruptedException {
-        StompSession stompSession = mock(StompSession.class);
-        ReflectionTestUtils.setField(stompClientService, "stompSession", stompSession);
-        Date reference = new Date();
-        stompClientService.backOff();
-        assertThat(new Date().getTime() - reference.getTime())
-                .isGreaterThan(StompClientService.SESSION_REFRESH_BACK_OFF_DELAY);
-    }
-    //endregion
-
-    private void waitForListener() throws InterruptedException {
-        TimeUnit.MILLISECONDS.sleep(10);
-    }
-
-    private Void backOffBriefly() throws InterruptedException {
-        TimeUnit.SECONDS.sleep(1);
-        return null;
-    }
-
-    private void waitSessionRequestExecution() throws InterruptedException {
-        // should wait more than StompClient#SESSION_REFRESH_DELAY
-        // which is changed to 1 second in backOffBriefly().
-        TimeUnit.SECONDS.sleep(2);
-    }
+    // endregion
 }
