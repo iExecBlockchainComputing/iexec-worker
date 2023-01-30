@@ -18,16 +18,21 @@ package com.iexec.worker.config;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
-import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+import org.springframework.web.socket.sockjs.client.SockJsClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.*;
 
 class StompClientConfigurationTests {
+    @Mock
+    RestTemplate restTemplate;
+
     StompClientConfiguration stompClientConfiguration = new StompClientConfiguration();
 
     @BeforeEach
@@ -37,13 +42,13 @@ class StompClientConfigurationTests {
 
     @Test
     void shouldCreateStompClient() {
-        final WebSocketStompClient stompClient = stompClientConfiguration.stompClient();
+        final WebSocketStompClient stompClient = stompClientConfiguration.stompClient(restTemplate);
         assertAll(
                 () -> assertThat(stompClient).isNotNull(),
                 () -> assertThat(stompClient).extracting(WebSocketStompClient::isAutoStartup).isEqualTo(true),
                 () -> assertThat(stompClient).extracting(WebSocketStompClient::getMessageConverter).isInstanceOf(MappingJackson2MessageConverter.class),
                 () -> assertThat(stompClient).extracting(WebSocketStompClient::getTaskScheduler).isInstanceOf(ConcurrentTaskScheduler.class),
-                () -> assertThat(stompClient).extracting(WebSocketStompClient::getWebSocketClient).isInstanceOf(StandardWebSocketClient.class)
+                () -> assertThat(stompClient).extracting(WebSocketStompClient::getWebSocketClient).isInstanceOf(SockJsClient.class)
         );
     }
 }
