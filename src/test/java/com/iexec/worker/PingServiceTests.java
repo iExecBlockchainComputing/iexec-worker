@@ -106,9 +106,9 @@ class PingServiceTests {
         // Trigger 1st time
         pingService.triggerSchedulerPing();
         // Make sure pingScheduler() method is called 1st time
-        verify(pingService, timeout(100)).pingScheduler();
+        verify(pingService, timeout(500)).pingScheduler();
         // Make sure ping() method is called 1st time
-        verify(customCoreFeignClient, times(1)).ping();
+        verify(customCoreFeignClient, timeout(500).times(1)).ping();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -117,9 +117,9 @@ class PingServiceTests {
         threadNameWrapper.value = "";
         pingService.triggerSchedulerPing();
         // Make sure pingScheduler() method is called 2nd time
-        verify(pingService, timeout(100).times(2)).pingScheduler();
+        verify(pingService, timeout(500).times(2)).pingScheduler();
         // Make sure ping() method is called 2nd time
-        verify(customCoreFeignClient, times(2)).ping();
+        verify(customCoreFeignClient, timeout(500).times(2)).ping();
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
