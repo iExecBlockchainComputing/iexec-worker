@@ -24,11 +24,13 @@ import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
@@ -60,6 +62,18 @@ class LoginServiceTests {
     }
 
     @ParameterizedTest
+    @EnumSource(value = HttpStatus.class, names = { "MOVED_PERMANENTLY", "BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "INTERNAL_SERVER_ERROR"})
+    void shouldNotLoginOnBadChallengeStatusCode(HttpStatus status) {
+        Credentials credentials = generateCredentials();
+        when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.status(status).build());
+        assertAll(
+                () -> assertEquals("", loginService.login()),
+                () -> verify(coreClient).getChallenge(credentials.getAddress())
+        );
+    }
+
+    @ParameterizedTest
     @NullSource
     @ValueSource(strings = "")
     void shouldNotLoginOnEmptyChallenge(String challenge) {
@@ -69,6 +83,21 @@ class LoginServiceTests {
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress())
+        );
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = HttpStatus.class, names = { "MOVED_PERMANENTLY", "BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "INTERNAL_SERVER_ERROR"})
+    void shouldNotLoginOnBadLoginStatusCode(HttpStatus status) {
+        Credentials credentials = generateCredentials();
+        when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok("challenge"));
+        Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(ResponseEntity.status(status).build());
+        assertAll(
+                () -> assertEquals("", loginService.login()),
+                () -> verify(coreClient).getChallenge(credentials.getAddress()),
+                () -> verify(coreClient).login(credentials.getAddress(), signature)
         );
     }
 
