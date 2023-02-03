@@ -24,6 +24,7 @@ import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.feign.client.CoreClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -52,7 +53,7 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     /*
      * How does it work?
      * We create an HttpCall<T>, T being the type of the response
-     * body and it can be Void. We send it along with the arguments
+     * body which can be Void. We send it along with the arguments
      * to the generic "makeHttpCall()" method. If the call was
      * successful, we return a ResponseEntity<T> with the response
      * body, otherwise, we return a ResponseEntity with the call's failure
@@ -79,10 +80,10 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     public String ping() {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-        HttpCall<String> httpCall = args -> coreClient.ping((String) args.get(JWTOKEN));
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "ping");
+        ResponseEntity<String> response = coreClient.ping(loginService.getToken());
+        if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            loginService.login();
+        }
         return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
 
