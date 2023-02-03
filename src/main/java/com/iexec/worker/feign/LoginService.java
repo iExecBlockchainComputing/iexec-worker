@@ -26,12 +26,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
 @Service
-public class LoginService extends BaseFeignClient {
+public class LoginService {
 
     static final String TOKEN_PREFIX = "Bearer ";
     private String jwtToken;
@@ -48,21 +45,30 @@ public class LoginService extends BaseFeignClient {
         return jwtToken;
     }
 
-    @Override
     public String login() {
-        expireToken();
+        jwtToken = "";
 
         String workerAddress = credentialsService.getCredentials().getAddress();
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
-        String challenge = getLoginChallenge(workerAddress);
+        ResponseEntity<String> challengeResponse = coreClient.getChallenge(workerAddress);
+        if (!challengeResponse.getStatusCode().is2xxSuccessful()) {
+            log.error("Failed to get challenge [status:{}]", challengeResponse.getStatusCode());
+            return "";
+        }
+        String challenge = challengeResponse.getBody();
         if (StringUtils.isEmpty(challenge)) {
             log.error("Cannot login since challenge is empty [challenge:{}]", challenge);
             return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
-        String token = requestLogin(workerAddress, signature);
+        ResponseEntity<String> tokenResponse = coreClient.login(workerAddress, signature);
+        if (!tokenResponse.getStatusCode().is2xxSuccessful()) {
+            log.error("Failed to login [status:{}]", tokenResponse.getStatusCode());
+            return "";
+        }
+        String token = tokenResponse.getBody();
         if (StringUtils.isEmpty(token)) {
             log.error("Cannot login since token is empty [token:{}]", token);
             return "";
@@ -70,26 +76,5 @@ public class LoginService extends BaseFeignClient {
 
         jwtToken = TOKEN_PREFIX + token;
         return jwtToken;
-    }
-
-    private void expireToken() {
-        jwtToken = "";
-    }
-
-    private String getLoginChallenge(String workerAddress) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("workerAddress", workerAddress);
-        HttpCall<String> httpCall = args -> coreClient.getChallenge((String) args.get("workerAddress"));
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getLoginChallenge");
-        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
-    }
-
-    private String requestLogin(String workerAddress, Signature signature) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("workerAddress", workerAddress);
-        arguments.put("signature", signature);
-        HttpCall<String> httpCall = args -> coreClient.login((String) args.get("workerAddress"), (Signature) args.get("signature"));
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "requestLogin");
-        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
 }
