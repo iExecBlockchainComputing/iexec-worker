@@ -53,27 +53,28 @@ public class LoginService {
 
         ResponseEntity<String> challengeResponse = coreClient.getChallenge(workerAddress);
         if (!challengeResponse.getStatusCode().is2xxSuccessful()) {
-            log.error("Failed to get challenge [status:{}]", challengeResponse.getStatusCode());
+            log.error("Cannot login, failed to get challenge [status:{}]", challengeResponse.getStatusCode());
             return "";
         }
         String challenge = challengeResponse.getBody();
         if (StringUtils.isEmpty(challenge)) {
-            log.error("Cannot login since challenge is empty [challenge:{}]", challenge);
+            log.error("Cannot login, challenge is empty [challenge:{}]", challenge);
             return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
         ResponseEntity<String> tokenResponse = coreClient.login(workerAddress, signature);
         if (!tokenResponse.getStatusCode().is2xxSuccessful()) {
-            log.error("Failed to login [status:{}]", tokenResponse.getStatusCode());
+            log.error("Cannot login, failed to get token [status:{}]", tokenResponse.getStatusCode());
             return "";
         }
         String token = tokenResponse.getBody();
         if (StringUtils.isEmpty(token)) {
-            log.error("Cannot login since token is empty [token:{}]", token);
+            log.error("Cannot login, token is empty [token:{}]", token);
             return "";
         }
 
+        log.info("Retrieved new token {}", token);
         jwtToken = TOKEN_PREFIX + token;
         return jwtToken;
     }
