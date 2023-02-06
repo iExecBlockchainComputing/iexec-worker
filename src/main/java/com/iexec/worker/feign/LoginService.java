@@ -46,7 +46,7 @@ public class LoginService {
     }
 
     public String login() {
-        jwtToken = "";
+        expireToken();
 
         String workerAddress = credentialsService.getCredentials().getAddress();
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
@@ -76,5 +76,9 @@ public class LoginService {
 
         jwtToken = TOKEN_PREFIX + token;
         return jwtToken;
+    }
+
+    public void expireToken() {
+        jwtToken = "";
     }
 }
