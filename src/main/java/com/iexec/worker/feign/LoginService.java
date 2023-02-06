@@ -26,6 +26,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
+import java.util.Objects;
+
 @Slf4j
 @Service
 public class LoginService {
@@ -46,6 +48,7 @@ public class LoginService {
     }
 
     public String login() {
+        final String oldToken = jwtToken;
         expireToken();
 
         String workerAddress = credentialsService.getCredentials().getAddress();
@@ -74,8 +77,8 @@ public class LoginService {
             return "";
         }
 
-        log.info("Retrieved new token {}", token);
         jwtToken = TOKEN_PREFIX + token;
+        log.info("Retrieved {} JWT token from scheduler", Objects.equals(oldToken, jwtToken) ? "existing" : "new");
         return jwtToken;
     }
 
