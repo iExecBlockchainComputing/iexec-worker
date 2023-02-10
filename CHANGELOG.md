@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 * Remove dataset decryption non-TEE workflow.
 * Purge result files and metadata when task is completed.
+* Update iconarchive RLC PNG hash in tests.
 ### Quality
 * Improve code quality.
 ### Dependency Upgrades
