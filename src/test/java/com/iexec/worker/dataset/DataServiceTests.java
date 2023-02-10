@@ -41,7 +41,7 @@ class DataServiceTests {
             "https://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/iExec-RLC-RLC-icon.png";
     public static final String FILENAME = "icon.png";
     public static final String CHECKSUM =
-            "0x240987ee1480e8e0b1b26fa806810fea04021191a8e6d8ab6325c15fa61fa9b6";
+            "0x4d8401fd4484f07c202c0a2b9ce6907eabd69efae0cec3956f1a56a6b19a9daa";
 
     @TempDir
     public File temporaryFolder;
