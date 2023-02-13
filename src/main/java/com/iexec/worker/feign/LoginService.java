@@ -82,7 +82,7 @@ public class LoginService {
         return jwtToken;
     }
 
-    public void expireToken() {
+    private void expireToken() {
         jwtToken = "";
     }
 }
