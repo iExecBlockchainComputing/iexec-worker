@@ -64,6 +64,7 @@ public abstract class BaseFeignClient {
 
         while (shouldRetry(infiniteRetry, attempt, status)) {
             try {
+                // FIXME: what happens when several authenticated REST calls are executed in parallel and get HTTP 4xx ?
                 return call.apply(args);
             } catch (FeignException e) {
                 status = e.status();
