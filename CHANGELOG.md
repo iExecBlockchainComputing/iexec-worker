@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 * Remove dataset decryption non-TEE workflow.
 * Purge result files and metadata when task is completed.
 * On _iExec Core Scheduler_ REST call failure, only try to log in once to avoid nested retry loops.
+* Update iconarchive RLC PNG hash in tests.
 ### Quality
 * Improve code quality.
 ### Dependency Upgrades
