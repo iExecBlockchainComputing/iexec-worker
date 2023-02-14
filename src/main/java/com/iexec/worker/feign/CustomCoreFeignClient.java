@@ -79,14 +79,6 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return is2xxSuccess(response) ? response.getBody() : null;
     }
 
-    public String ping() {
-        ResponseEntity<String> response = coreClient.ping(loginService.getToken());
-        if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            loginService.login();
-        }
-        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
-    }
-
     //TODO: Make registerWorker return Worker
     public boolean registerWorker(WorkerModel model) {
         Map<String, Object> arguments = new HashMap<>();
