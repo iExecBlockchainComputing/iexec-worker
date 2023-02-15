@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 * Purge result files and metadata when task is completed.
 * On _iExec Core Scheduler_ REST call failure, only try to log in once to avoid nested retry loops.
 * Update iconarchive RLC PNG hash in tests.
+* Do not try to send heartbeat more than scheduled on _iExec Core Scheduler_. Only try to log in once when the _iEXec Core Scheduler_ returns __HTTP 403__ status code.
 ### Quality
 * Improve code quality.
 ### Dependency Upgrades
