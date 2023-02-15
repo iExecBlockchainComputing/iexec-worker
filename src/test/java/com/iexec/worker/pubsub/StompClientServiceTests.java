@@ -122,7 +122,7 @@ class StompClientServiceTests {
         when(stompClient.connect(any(), any())).thenReturn(futureSession);
         when(futureSession.get(anyLong(), any())).thenThrow(TimeoutException.class);
 
-        assertThrows(TimeoutException.class, stompClientService::createStompSessionIfDisconnected);
+        assertThat(stompClientService.createStompSessionIfDisconnected()).isNull();
         assertThat(output.getOut()).contains("STOMP session creation timed out");
     }
 
@@ -132,7 +132,7 @@ class StompClientServiceTests {
         when(stompClient.connect(any(), any())).thenReturn(futureSession);
         when(futureSession.get(anyLong(), any())).thenThrow(InterruptedException.class);
 
-        assertThrows(Exception.class, stompClientService::createStompSessionIfDisconnected);
+        assertThat(stompClientService.createStompSessionIfDisconnected()).isNull();
         assertThat(output.getOut()).contains("An error occurred while listening to STOMP session requests");
     }
 

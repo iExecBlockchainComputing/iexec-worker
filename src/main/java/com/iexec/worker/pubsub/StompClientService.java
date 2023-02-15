@@ -17,6 +17,7 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.worker.config.CoreConfigurationService;
+import com.iexec.worker.utils.AsyncUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
@@ -29,6 +30,8 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -41,6 +44,7 @@ import java.util.concurrent.TimeoutException;
 @Component
 public class StompClientService {
     private static final int SESSION_REFRESH_DELAY_MS = 5000;
+    private final Executor singleThreadExecutor = Executors.newSingleThreadExecutor();
     private final ApplicationEventPublisher eventPublisher;
     private final String webSocketServerUrl;
     private final WebSocketStompClient stompClient;
@@ -72,13 +76,18 @@ public class StompClientService {
                 : Optional.empty();
     }
 
+    @Scheduled(fixedRate = SESSION_REFRESH_DELAY_MS)
+    void scheduleStompSessionCreation() {
+        AsyncUtils.runAsyncTask("listen-to-stomp-session",
+                this::createStompSessionIfDisconnected, singleThreadExecutor);
+    }
+
     /**
-     * This scheduler will create a new STOMP session
+     * Create a new STOMP session
      * if none exists or the last one is disconnected.
      * @return A {@link String} representing the session ID.
      */
-    @Scheduled(fixedRate = SESSION_REFRESH_DELAY_MS)
-    String createStompSessionIfDisconnected() throws Exception {
+    String createStompSessionIfDisconnected() {
         if (stompSession != null && stompSession.isConnected()) {
             log.debug("A valid STOMP session exists, ignoring this request");
             return stompSession.getSessionId();
@@ -91,11 +100,14 @@ public class StompClientService {
                     .get(SESSION_REFRESH_DELAY_MS, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             log.error("STOMP session creation timed out [timeout:{}ms]", SESSION_REFRESH_DELAY_MS, e);
-            throw e;
-        }
-        catch(Exception e) {
+            return null;
+        } catch (Exception e) {
+            // If any other error, we log it and interrupt current thread.
+            // This prevents anything else to execute
+            // because we may have encounter an InterruptedException.
             log.error("An error occurred while listening to STOMP session requests", e);
-            throw e;
+            Thread.currentThread().interrupt();
+            return null;
         }
 
         return stompSession.getSessionId();
