@@ -6,9 +6,9 @@ The _iExec Worker_ participates in a workerpool by computing tasks purchased by 
 The _iExec Worker_ must connect to the _iExec Core Scheduler_ of the workerpool to actively participate in the computation.
 
 After registration, the _iExec Worker_ sends a signal to the _iExec Core Scheduler_ at a fixed rate.
-This signal is used to let the _iExec Core Scheduler_ be aware af the _iExec Worker_ liveness.
+This signal is used to let the _iExec Core Scheduler_ be aware of the _iExec Worker_ liveness.
 At the moment, the rate is fixed and this signal is sent every 10 seconds.
-The _iExec Worker_ will be considered lost after 1 minute, which means 6 failures.
+The _iExec Worker_ will be considered as lost after several failures.
 
 The _iExec Worker_ is available as an OCI image on [Docker Hub](https://hub.docker.com/r/iexechub/iexec-worker/tags).
 
