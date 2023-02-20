@@ -30,6 +30,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.pubsub.StompClientService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.sms.SmsService;
 import org.junit.jupiter.api.Assertions;
@@ -66,6 +67,8 @@ class TaskNotificationServiceTest {
     private IexecHubService iexecHubService;
     @Mock
     private SmsService smsService;
+    @Mock
+    private StompClientService stompClientService;
     @InjectMocks
     private TaskNotificationService taskNotificationService;
     @Captor
@@ -79,7 +82,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldNotDoAnything() {
+    void shouldNotDoAnything() throws InterruptedException {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(null)
                 .build();
@@ -92,7 +95,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStoreWorkerpoolAuthorizationOnly() {
+    void shouldStoreWorkerpoolAuthorizationOnly() throws InterruptedException {
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .build();
@@ -113,7 +116,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStoreWorkerpoolAuthorizationAndSmsUrlIfPresent() {
+    void shouldStoreWorkerpoolAuthorizationAndSmsUrlIfPresent() throws InterruptedException {
         String smsUrl = "smsUrl";
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
@@ -141,7 +144,7 @@ class TaskNotificationServiceTest {
 
 
     @Test
-    void shouldNotStoreSmsUrlIfWorkerpoolAuthorizationIsMissing() {
+    void shouldNotStoreSmsUrlIfWorkerpoolAuthorizationIsMissing() throws InterruptedException {
         String smsUrl = "smsUrl";
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
@@ -164,13 +167,15 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldAbortSinceNoTaskDescription() {
+    void shouldAbortSinceNoTaskDescription() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
                 .build();
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_WAIT);
 
@@ -184,7 +189,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStart() {
+    void shouldStart() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
@@ -192,6 +197,8 @@ class TaskNotificationServiceTest {
         when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
                 .thenReturn(PLEASE_DOWNLOAD_APP);
 
@@ -207,7 +214,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldDownloadApp() {
+    void shouldDownloadApp() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
@@ -215,6 +222,8 @@ class TaskNotificationServiceTest {
         when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
                 .thenReturn(PLEASE_DOWNLOAD_DATA);
 
@@ -230,7 +239,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldDownloadData() {
+    void shouldDownloadData() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_DATA)
@@ -244,6 +253,8 @@ class TaskNotificationServiceTest {
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
 
@@ -259,7 +270,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldCompute() {
+    void shouldCompute() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPUTE)
@@ -267,6 +278,8 @@ class TaskNotificationServiceTest {
         when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -282,7 +295,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldContribute() {
+    void shouldContribute() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTRIBUTE)
@@ -291,6 +304,8 @@ class TaskNotificationServiceTest {
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // CONTRIBUTED
                 .thenReturn(PLEASE_WAIT);
 
@@ -306,7 +321,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldReveal() {
+    void shouldReveal() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_REVEAL)
@@ -315,6 +330,8 @@ class TaskNotificationServiceTest {
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // REVEALED
                 .thenReturn(PLEASE_WAIT);
 
@@ -330,7 +347,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldUpload() {
+    void shouldUpload() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_UPLOAD)
@@ -341,6 +358,8 @@ class TaskNotificationServiceTest {
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
                 .thenReturn(PLEASE_WAIT);
 
@@ -356,7 +375,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldComplete() {
+    void shouldComplete() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPLETE)
@@ -374,7 +393,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldAbort() {
+    void shouldAbort() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
@@ -386,6 +405,8 @@ class TaskNotificationServiceTest {
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -396,7 +417,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldRetryCompleteUntilAchieved() {
+    void shouldRetryCompleteUntilAchieved() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPLETE)
@@ -404,6 +425,8 @@ class TaskNotificationServiceTest {
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
                 .thenReturn(null)
                 .thenReturn(null)
