@@ -26,6 +26,7 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.pubsub.StompClientService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,9 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +50,8 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_N
 @Slf4j
 @Service
 public class TaskNotificationService {
+    private static final Duration STOMP_SESSION_WAIT_DURATION
+            = Duration.of(10, ChronoUnit.MINUTES);
 
     private final TaskManagerService taskManagerService;
     private final CustomCoreFeignClient customCoreFeignClient;
@@ -55,6 +60,7 @@ public class TaskNotificationService {
     private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private final IexecHubService iexecHubService;
     private final SmsService smsService;
+    private final StompClientService stompClientService;
 
     private final Map<String, Long> finalDeadlineForTask = ExpiringMap
             .builder()
@@ -68,7 +74,8 @@ public class TaskNotificationService {
             SubscriptionService subscriptionService,
             WorkerpoolAuthorizationService workerpoolAuthorizationService,
             IexecHubService iexecHubService,
-            SmsService smsService) {
+            SmsService smsService,
+            StompClientService stompClientService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -76,6 +83,7 @@ public class TaskNotificationService {
         this.workerpoolAuthorizationService = workerpoolAuthorizationService;
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
+        this.stompClientService = stompClientService;
     }
 
     /**
@@ -84,7 +92,8 @@ public class TaskNotificationService {
      */
     @EventListener
     @Async
-    protected void onTaskNotification(TaskNotification notification) {
+    protected void onTaskNotification(TaskNotification notification)
+            throws InterruptedException {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
         ReplicateActionResponse actionResponse;
@@ -228,21 +237,24 @@ public class TaskNotificationService {
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status) {
+                                                              ReplicateStatus status)
+            throws InterruptedException {
         ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
                                                               ReplicateStatus status,
-                                                              ReplicateStatusCause cause) {
+                                                              ReplicateStatusCause cause)
+            throws InterruptedException {
         ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status, cause);
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
                                                               ReplicateStatus status,
-                                                              ReplicateStatusDetails details) {
+                                                              ReplicateStatusDetails details)
+            throws InterruptedException {
         ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.builder()
                 .status(status)
                 .details(details)
@@ -251,13 +263,23 @@ public class TaskNotificationService {
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate)
+            throws InterruptedException {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = null;
+
         // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
+            // Let's wait for the STOMP session to be ready.
+            // Otherwise, an update could be lost.
+            if (!stompClientService.waitForSessionReady(STOMP_SESSION_WAIT_DURATION)) {
+                log.warn("STOMP session have been away for too long. Can't update replicate status" +
+                        " [chainTaskId:{}, status:{}, waitDuration:{}]",
+                        chainTaskId, statusUpdate.getStatus(), STOMP_SESSION_WAIT_DURATION);
+                return null;
+            }
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
 

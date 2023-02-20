@@ -18,6 +18,7 @@ package com.iexec.worker.pubsub;
 
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.utils.AsyncUtils;
+import com.iexec.worker.utils.ResettableCountDownLatch;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
@@ -41,6 +42,7 @@ import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import javax.annotation.PostConstruct;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -74,6 +76,8 @@ public class StompClientService {
     private final String webSocketServerUrl;
     private final WebSocketStompClient stompClient;
     private StompSession stompSession;
+
+    private final ResettableCountDownLatch sessionReady = new ResettableCountDownLatch(1);
 
     public StompClientService(ApplicationEventPublisher applicationEventPublisher,
                               CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
@@ -238,6 +242,20 @@ public class StompClientService {
     }
 
     /**
+     * Wait for the session to be ready.
+     * Useful to prevent actions to execute while the STOMP session is disconnected.
+     *
+     * @param duration Duration the method should wait for.
+     * @return {@code true} if session is ready and {@code false}
+     *         if the waiting time elapsed before the session is ready.
+     * @throws InterruptedException if the current thread is interrupted
+     *         while waiting.
+     */
+    public boolean waitForSessionReady(Duration duration) throws InterruptedException {
+        return sessionReady.await(duration.toNanos(), TimeUnit.NANOSECONDS);
+    }
+
+    /**
      * Provide callbacks to handle STOMP session establishment or
      * failure.
      */
@@ -250,6 +268,7 @@ public class StompClientService {
             stompSession = session;
             // notify subscribers
             eventPublisher.publishEvent(new SessionCreatedEvent());
+            sessionReady.countDown();
         }
 
         /**
@@ -287,6 +306,7 @@ public class StompClientService {
         public void handleTransportError(StompSession session, Throwable exception) {
             log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), exception.getMessage());
+            sessionReady.reset();
             requestNewSession();
         }
     }
