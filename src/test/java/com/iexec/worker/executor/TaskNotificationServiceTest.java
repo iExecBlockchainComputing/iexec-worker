@@ -40,11 +40,11 @@ import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 
 import static com.iexec.common.notification.TaskNotificationType.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -482,6 +482,49 @@ class TaskNotificationServiceTest {
         taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
 
         verify(iexecHubService, times(1)).getChainTask(CHAIN_TASK_ID);
+    }
+    // endregion
+
+    // region STOMP not ready
+    @Test
+    void shouldAbortUpdateStatusWhenStompNotReady() throws InterruptedException {
+        final ChainTask chainTask = getChainTask();
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(false);
+
+        final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
+                .builder()
+                .status(ReplicateStatus.COMPUTING)
+                .date(new Date())
+                .build();
+        final TaskNotificationType notification = taskNotificationService.updateStatusAndGetNextAction(CHAIN_TASK_ID, statusUpdate);
+
+        assertNull(notification);
+    }
+
+    @Test
+    void shouldResumeUpdateWhenStompReady() throws InterruptedException {
+        final ChainTask chainTask = getChainTask();
+        final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
+                .builder()
+                .status(ReplicateStatus.COMPUTING)
+                .date(new Date())
+                .build();
+
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(chainTask));
+
+        when(stompClientService.waitForSessionReady(any()))
+                .thenReturn(true);
+        when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate))
+                .thenReturn(PLEASE_CONTINUE);
+
+        final TaskNotificationType notification = taskNotificationService.updateStatusAndGetNextAction(CHAIN_TASK_ID, statusUpdate);
+
+        assertEquals(PLEASE_CONTINUE, notification);
     }
     // endregion
 
