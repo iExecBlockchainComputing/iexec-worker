@@ -19,7 +19,9 @@ package com.iexec.worker.pubsub;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.utils.AsyncUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -40,7 +42,6 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import javax.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -112,7 +113,7 @@ public class StompClientService {
                 : Optional.empty();
     }
 
-    @PostConstruct
+    @EventListener(ApplicationStartedEvent.class)
     void init() {
         // Start listener thread for the first time.
         startSessionRequestListenerIfAbsent();
