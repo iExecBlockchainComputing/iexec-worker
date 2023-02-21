@@ -16,6 +16,7 @@
 
 package com.iexec.worker.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Slf4j
 class ResettableCountDownLatchTests {
 
     // region await
@@ -144,7 +146,9 @@ class ResettableCountDownLatchTests {
         final ResettableCountDownLatch latch = new ResettableCountDownLatch(1);
         final List<CompletableFuture<Void>> waitingFutures = IntStream.range(0, 5).mapToObj(i -> CompletableFuture.runAsync(() -> {
             try {
+                log.info("Waiting future n°{}", i);
                 latch.await();
+                log.info("Completing future n°{}", i);
             } catch (InterruptedException e) {
                 fail("Interrupted while waiting");
             }
