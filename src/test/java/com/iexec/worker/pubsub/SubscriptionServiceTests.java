@@ -17,6 +17,7 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.utils.ResettableCountDownLatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -24,10 +25,16 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.concurrent.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -93,4 +100,50 @@ class SubscriptionServiceTests {
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(SUBSCRIPTION.get(), never()).unsubscribe();
     }
+
+    // region waitForSessionReady
+    @Test
+    void shouldWaitForGivenDuration() throws InterruptedException {
+        final boolean sessionReady = subscriptionService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
+        assertFalse(sessionReady);
+    }
+
+    @Test
+    void shouldNotWaitIfSessionReady() throws InterruptedException {
+        final ResettableCountDownLatch latch = (ResettableCountDownLatch)
+                ReflectionTestUtils.getField(subscriptionService, "sessionReadyLatch");
+        assertNotNull(latch);
+
+        latch.countDown();
+        final boolean sessionReady = subscriptionService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
+        assertTrue(sessionReady);
+    }
+
+    @Test
+    void shouldWaitUntilSessionReady() throws InterruptedException, ExecutionException, TimeoutException {
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        final ResettableCountDownLatch latch = (ResettableCountDownLatch)
+                ReflectionTestUtils.getField(subscriptionService, "sessionReadyLatch");
+        assertNotNull(latch);
+
+        // Simulating a thread waiting for the session to be ready
+        final CompletableFuture<Boolean> sessionReadyFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return subscriptionService.waitForSessionReady(Duration.of(1, ChronoUnit.SECONDS));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }, executor);
+
+        // Session should not be ready
+        assertThrows(TimeoutException.class, () -> sessionReadyFuture.get(100, TimeUnit.MILLISECONDS));
+
+        // Marking the session as ready
+        latch.countDown();
+
+        // Session should be ready
+        assertTrue(sessionReadyFuture.get(100, TimeUnit.MILLISECONDS));
+    }
+    // endregion
 }

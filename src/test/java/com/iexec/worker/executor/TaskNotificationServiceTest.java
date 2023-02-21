@@ -30,7 +30,6 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
-import com.iexec.worker.pubsub.StompClientService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.sms.SmsService;
 import org.junit.jupiter.api.Assertions;
@@ -67,8 +66,6 @@ class TaskNotificationServiceTest {
     private IexecHubService iexecHubService;
     @Mock
     private SmsService smsService;
-    @Mock
-    private StompClientService stompClientService;
     @InjectMocks
     private TaskNotificationService taskNotificationService;
     @Captor
@@ -174,7 +171,7 @@ class TaskNotificationServiceTest {
                 .build();
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_WAIT);
@@ -197,7 +194,7 @@ class TaskNotificationServiceTest {
         when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
                 .thenReturn(PLEASE_DOWNLOAD_APP);
@@ -222,7 +219,7 @@ class TaskNotificationServiceTest {
         when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
                 .thenReturn(PLEASE_DOWNLOAD_DATA);
@@ -253,7 +250,7 @@ class TaskNotificationServiceTest {
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
@@ -278,7 +275,7 @@ class TaskNotificationServiceTest {
         when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
                 .thenReturn(PLEASE_CONTINUE);
@@ -304,7 +301,7 @@ class TaskNotificationServiceTest {
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // CONTRIBUTED
                 .thenReturn(PLEASE_WAIT);
@@ -330,7 +327,7 @@ class TaskNotificationServiceTest {
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // REVEALED
                 .thenReturn(PLEASE_WAIT);
@@ -358,7 +355,7 @@ class TaskNotificationServiceTest {
                 .thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
                 .thenReturn(PLEASE_WAIT);
@@ -405,7 +402,7 @@ class TaskNotificationServiceTest {
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_CONTINUE);
@@ -425,7 +422,7 @@ class TaskNotificationServiceTest {
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
                 .thenReturn(null)
@@ -492,7 +489,7 @@ class TaskNotificationServiceTest {
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(chainTask));
 
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(false);
 
         final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
@@ -517,7 +514,7 @@ class TaskNotificationServiceTest {
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(chainTask));
 
-        when(stompClientService.waitForSessionReady(any()))
+        when(subscriptionService.waitForSessionReady(any()))
                 .thenReturn(true);
         when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate))
                 .thenReturn(PLEASE_CONTINUE);

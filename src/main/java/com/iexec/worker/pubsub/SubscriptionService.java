@@ -17,13 +17,16 @@
 package com.iexec.worker.pubsub;
 
 import java.lang.reflect.Type;
-import java.util.Map;
-import java.util.Set;
+import java.time.Duration;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.worker.config.WorkerConfigurationService;
 
+import com.iexec.worker.utils.ResettableCountDownLatch;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
@@ -45,12 +48,17 @@ public class SubscriptionService {
     private final ApplicationEventPublisher eventPublisher;
     private final StompClientService stompClientService;
 
+    private final ResettableCountDownLatch sessionReadyLatch;
+
     public SubscriptionService(WorkerConfigurationService workerConfigurationService,
                                ApplicationEventPublisher applicationEventPublisher,
                                StompClientService stompClientService) {
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.eventPublisher = applicationEventPublisher;
         this.stompClientService = stompClientService;
+        this.sessionReadyLatch = new ResettableCountDownLatch(1);
+
+        log.info("Created subscription service");
     }
 
     /**
@@ -110,7 +118,28 @@ public class SubscriptionService {
             this.chainTaskIdToSubscription.remove(chainTaskId);
             subscribeToTopic(chainTaskId);    
         });
+        sessionReadyLatch.countDown();
         log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
+    }
+
+    @EventListener(SessionLostEvent.class)
+    private synchronized void blockMessages() {
+        log.warn("STOMP session is down, blocking updates until it is restored.");
+        sessionReadyLatch.reset();
+    }
+
+    /**
+     * Wait for the session to be ready.
+     * Useful to prevent actions to execute while the STOMP session is disconnected.
+     *
+     * @param duration Duration the method should wait for.
+     * @return {@code true} if session is ready and {@code false}
+     *         if the waiting time elapsed before the session is ready.
+     * @throws InterruptedException if the current thread is interrupted
+     *         while waiting.
+     */
+    public boolean waitForSessionReady(Duration duration) throws InterruptedException {
+        return sessionReadyLatch.await(duration.toNanos(), TimeUnit.NANOSECONDS);
     }
 
     private String getTaskTopicName(String chainTaskId) {

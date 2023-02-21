@@ -26,7 +26,6 @@ import com.iexec.common.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
-import com.iexec.worker.pubsub.StompClientService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
@@ -60,7 +59,6 @@ public class TaskNotificationService {
     private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private final IexecHubService iexecHubService;
     private final SmsService smsService;
-    private final StompClientService stompClientService;
 
     private final Map<String, Long> finalDeadlineForTask = ExpiringMap
             .builder()
@@ -74,8 +72,7 @@ public class TaskNotificationService {
             SubscriptionService subscriptionService,
             WorkerpoolAuthorizationService workerpoolAuthorizationService,
             IexecHubService iexecHubService,
-            SmsService smsService,
-            StompClientService stompClientService) {
+            SmsService smsService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -83,7 +80,6 @@ public class TaskNotificationService {
         this.workerpoolAuthorizationService = workerpoolAuthorizationService;
         this.iexecHubService = iexecHubService;
         this.smsService = smsService;
-        this.stompClientService = stompClientService;
     }
 
     /**
@@ -274,7 +270,7 @@ public class TaskNotificationService {
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
             // Let's wait for the STOMP session to be ready.
             // Otherwise, an update could be lost.
-            if (!stompClientService.waitForSessionReady(STOMP_SESSION_WAIT_DURATION)) {
+            if (!subscriptionService.waitForSessionReady(STOMP_SESSION_WAIT_DURATION)) {
                 log.warn("STOMP session have been away for too long. Can't update replicate status" +
                         " [chainTaskId:{}, status:{}, waitDuration:{}]",
                         chainTaskId, statusUpdate.getStatus(), STOMP_SESSION_WAIT_DURATION);

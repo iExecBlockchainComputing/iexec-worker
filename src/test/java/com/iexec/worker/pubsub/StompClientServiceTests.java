@@ -205,52 +205,6 @@ class StompClientServiceTests {
     }
     //endregion
 
-    // region waitForSessionReady
-    @Test
-    void shouldWaitForGivenDuration() throws InterruptedException {
-        final boolean sessionReady = stompClientService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
-        assertFalse(sessionReady);
-    }
-
-    @Test
-    void shouldNotWaitIfSessionReady() throws InterruptedException {
-        final ResettableCountDownLatch latch = (ResettableCountDownLatch)
-                ReflectionTestUtils.getField(stompClientService, "sessionReady");
-        assertNotNull(latch);
-
-        latch.countDown();
-        final boolean sessionReady = stompClientService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
-        assertTrue(sessionReady);
-    }
-
-    @Test
-    void shouldWaitUntilSessionReady() throws InterruptedException, ExecutionException, TimeoutException {
-        final ExecutorService executor = Executors.newSingleThreadExecutor();
-
-        final ResettableCountDownLatch latch = (ResettableCountDownLatch)
-                ReflectionTestUtils.getField(stompClientService, "sessionReady");
-        assertNotNull(latch);
-
-        // Simulating a thread waiting for the session to be ready
-        final CompletableFuture<Boolean> sessionReadyFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return stompClientService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }, executor);
-
-        // Session should not be ready
-        assertThrows(TimeoutException.class, () -> sessionReadyFuture.get(100, TimeUnit.MILLISECONDS));
-
-        // Marking the session as ready
-        latch.countDown();
-
-        // Session should be ready
-        assertTrue(sessionReadyFuture.get(100, TimeUnit.MILLISECONDS));
-    }
-    // endregion
-
     private void waitForListener() throws InterruptedException {
         TimeUnit.MILLISECONDS.sleep(10);
     }
