@@ -141,7 +141,7 @@ class ResettableCountDownLatchTests {
 
     @Test
     void shouldReleaseAllThreadsOnReset() {
-        final ResettableCountDownLatch latch = new ResettableCountDownLatch(3);
+        final ResettableCountDownLatch latch = new ResettableCountDownLatch(1);
         final List<CompletableFuture<Void>> waitingFutures = IntStream.range(0, 5).mapToObj(i -> CompletableFuture.runAsync(() -> {
             try {
                 latch.await();
