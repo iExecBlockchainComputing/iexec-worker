@@ -140,23 +140,31 @@ class ResettableCountDownLatchTests {
 
     @Test
     void shouldReleaseAllThreadsOnReset() {
+        // Let's set a count greater than 1 to check the release algorithm works
+        final int countDownValue = 3;
+        final ResettableCountDownLatch latch = new ResettableCountDownLatch(countDownValue);
+
+        // Using a thread pool executor to avoid polluting the common pool
         final int threadsCount = 5;
         final ExecutorService executor = Executors.newFixedThreadPool(threadsCount);
-        final ResettableCountDownLatch latch = new ResettableCountDownLatch(3);
-        final List<CompletableFuture<Void>> waitingFutures = IntStream.range(0, threadsCount).mapToObj(i -> CompletableFuture.runAsync(() -> {
-            try {
-                log.info("Waiting future n°{}", i);
-                latch.await();
-                log.info("Completing future n°{}", i);
-            } catch (InterruptedException e) {
-                fail("Interrupted while waiting");
-            }
-        }, executor)).collect(Collectors.toList());
 
+        // Submitting multiple futures waiting on the latch
+        final List<CompletableFuture<Void>> waitingFutures = IntStream.range(0, threadsCount)
+                .mapToObj(i -> CompletableFuture.runAsync(() -> {
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        fail("Interrupted while waiting");
+                    }
+                }, executor)).collect(Collectors.toList());
+
+        // While the latch has not been released/reset,
+        // the futures should wait
         waitingFutures.forEach(future -> assertThrows(TimeoutException.class, () -> future.get(100, TimeUnit.MILLISECONDS)));
 
         latch.reset();
 
+        // Now, the futures should be completed
         waitingFutures.forEach(future -> assertDoesNotThrow(() -> future.get(1, TimeUnit.SECONDS)));
     }
     // endregion
