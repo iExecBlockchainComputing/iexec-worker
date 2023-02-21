@@ -20,10 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -143,8 +140,10 @@ class ResettableCountDownLatchTests {
 
     @Test
     void shouldReleaseAllThreadsOnReset() {
-        final ResettableCountDownLatch latch = new ResettableCountDownLatch(1);
-        final List<CompletableFuture<Void>> waitingFutures = IntStream.range(0, 5).mapToObj(i -> CompletableFuture.runAsync(() -> {
+        final int threadsCount = 5;
+        final ExecutorService executor = Executors.newFixedThreadPool(threadsCount);
+        final ResettableCountDownLatch latch = new ResettableCountDownLatch(3);
+        final List<CompletableFuture<Void>> waitingFutures = IntStream.range(0, threadsCount).mapToObj(i -> CompletableFuture.runAsync(() -> {
             try {
                 log.info("Waiting future n°{}", i);
                 latch.await();
@@ -152,7 +151,7 @@ class ResettableCountDownLatchTests {
             } catch (InterruptedException e) {
                 fail("Interrupted while waiting");
             }
-        })).collect(Collectors.toList());
+        }, executor)).collect(Collectors.toList());
 
         waitingFutures.forEach(future -> assertThrows(TimeoutException.class, () -> future.get(100, TimeUnit.MILLISECONDS)));
 
