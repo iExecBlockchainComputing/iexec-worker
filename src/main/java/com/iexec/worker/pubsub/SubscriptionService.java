@@ -102,9 +102,14 @@ public class SubscriptionService {
      * STOMP session is created.
      */
     @EventListener(SessionCreatedEvent.class)
-    private synchronized void reSubscribeToTopics() {
+    synchronized void reSubscribeToTopics() {
         log.debug("Received new SessionCreatedEvent");
         Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
+        if (chainTaskIds.isEmpty()) {
+            log.info("No topic to resubscribe to");
+            return;
+        }
+
         log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds);
         chainTaskIds.forEach(chainTaskId -> {
             this.chainTaskIdToSubscription.remove(chainTaskId);

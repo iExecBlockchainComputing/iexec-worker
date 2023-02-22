@@ -22,10 +22,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,11 +45,13 @@ class SubscriptionServiceTests {
     @Mock
     private StompClientService stompClientService;
 
+    @Spy
     @InjectMocks
     SubscriptionService subscriptionService;
 
     private static final String WORKER_WALLET_ADDRESS = "0x1234";
     private static final String CHAIN_TASK_ID = "chaintaskid";
+    private static final String CHAIN_TASK_ID_2 = "chaintaskid2";
     private static final Optional<Subscription> SUBSCRIPTION =
             Optional.of(mock(Subscription.class));
 
@@ -93,4 +99,29 @@ class SubscriptionServiceTests {
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(SUBSCRIPTION.get(), never()).unsubscribe();
     }
+
+    // region reSubscribeToTopics
+    @Test
+    void shouldResubscribeToNoTask() {
+        subscriptionService.reSubscribeToTopics();
+
+        verify(subscriptionService, never()).subscribeToTopic(any());
+    }
+
+    @Test
+    void shouldResubscribeToTasks() {
+        final ConcurrentHashMap<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>(Map.of(
+                CHAIN_TASK_ID, mock(Subscription.class),
+                CHAIN_TASK_ID_2, mock(Subscription.class)
+        ));
+        ReflectionTestUtils.setField(subscriptionService, "chainTaskIdToSubscription", chainTaskIdToSubscription);
+
+        doNothing().when(subscriptionService).subscribeToTopic(any());
+
+        subscriptionService.reSubscribeToTopics();
+
+        verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID);
+        verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID_2);
+    }
+    // endregion
 }
