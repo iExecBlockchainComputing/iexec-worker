@@ -129,21 +129,21 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-        arguments.put("chainTaskId", chainTaskId);
-        arguments.put("statusUpdate", replicateStatusUpdate);
+        final ResponseEntity<TaskNotificationType> response = coreClient.updateReplicateStatus(
+                loginService.getToken(),
+                chainTaskId,
+                replicateStatusUpdate
+        );
+        if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            login();
+        }
 
-        HttpCall<TaskNotificationType> httpCall = args ->
-                coreClient.updateReplicateStatus((String) args.get(JWTOKEN), (String) args.get("chainTaskId"),
-                        (ReplicateStatusUpdate) args.get("statusUpdate"));
-
-        ResponseEntity<TaskNotificationType> response = makeHttpCall(httpCall, arguments, "updateReplicateStatus");
-        if (!is2xxSuccess(response)) {
+        if (!response.getStatusCode().is2xxSuccessful()) {
             return null;
         }
 
+        final TaskNotificationType notificationType = response.getBody();
         log.info(replicateStatusUpdate.getStatus().toString() + " [chainTaskId:{}]", chainTaskId);
-        return response.getBody();
+        return notificationType;
     }
 }
