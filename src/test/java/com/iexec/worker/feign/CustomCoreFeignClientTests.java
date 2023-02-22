@@ -78,7 +78,7 @@ class CustomCoreFeignClientTests {
         when(loginService.getToken())
                 .thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
-                .thenThrow(new FeignException.Unauthorized("Unauthorized", mock(Request.class), new byte[]{}, null));
+                .thenThrow(FeignException.Unauthorized.class);
 
         final TaskNotificationType nextAction = customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate);
 
@@ -96,7 +96,7 @@ class CustomCoreFeignClientTests {
         when(loginService.getToken())
                 .thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
-                .thenThrow(new FeignException.Forbidden("Forbidden", mock(Request.class), new byte[]{}, null));
+                .thenThrow(FeignException.Forbidden.class);
 
         final TaskNotificationType nextAction = customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate);
 
