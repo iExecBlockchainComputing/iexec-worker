@@ -20,14 +20,13 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.feign.client.CoreClient;
+import feign.FeignException;
+import feign.Request;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Optional;
@@ -79,7 +78,7 @@ class CustomCoreFeignClientTests {
         when(loginService.getToken())
                 .thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
-                .thenReturn(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(TaskNotificationType.PLEASE_WAIT));
+                .thenThrow(new FeignException.Unauthorized("Unauthorized", mock(Request.class), new byte[]{}, null));
 
         final TaskNotificationType nextAction = customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate);
 
@@ -87,9 +86,8 @@ class CustomCoreFeignClientTests {
         verify(loginService).login();
     }
 
-    @ParameterizedTest
-    @EnumSource(value = HttpStatus.class, names = {"ALREADY_REPORTED", "FORBIDDEN"})
-    void shouldNotUpdateReplicatesStatusWhenError(HttpStatus httpStatus) {
+    @Test
+    void shouldNotUpdateReplicatesStatusWhenError() {
         final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
                 .builder()
                 .status(ReplicateStatus.COMPLETING)
@@ -98,7 +96,7 @@ class CustomCoreFeignClientTests {
         when(loginService.getToken())
                 .thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
-                .thenReturn(ResponseEntity.status(httpStatus).build());
+                .thenThrow(new FeignException.Forbidden("Forbidden", mock(Request.class), new byte[]{}, null));
 
         final TaskNotificationType nextAction = customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate);
 

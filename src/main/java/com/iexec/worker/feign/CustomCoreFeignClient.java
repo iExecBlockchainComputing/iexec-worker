@@ -23,6 +23,7 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.feign.client.CoreClient;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -129,16 +130,20 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
-        final ResponseEntity<TaskNotificationType> response = coreClient.updateReplicateStatus(
-                loginService.getToken(),
-                chainTaskId,
-                replicateStatusUpdate
-        );
-        if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            login();
-        }
-
-        if (!response.getStatusCode().is2xxSuccessful()) {
+        final ResponseEntity<TaskNotificationType> response;
+        try {
+            response = coreClient.updateReplicateStatus(
+                    loginService.getToken(),
+                    chainTaskId,
+                    replicateStatusUpdate
+            );
+        } catch (FeignException e) {
+            log.info("Exception while trying to update replicate status" +
+                    " [chainTaskId:{}, statusUpdate:{}, httpStatus:{}]",
+                    chainTaskId, replicateStatusUpdate, e.status());
+            if (e.status() == HttpStatus.UNAUTHORIZED.value()) {
+                login();
+            }
             return null;
         }
 
