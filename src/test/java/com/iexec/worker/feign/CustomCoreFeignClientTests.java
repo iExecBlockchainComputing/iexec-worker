@@ -51,6 +51,7 @@ class CustomCoreFeignClientTests {
         MockitoAnnotations.openMocks(this);
     }
 
+    // region updateReplicateStatus
     @Test
     void shouldUpdateReplicatesStatus() {
         final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
@@ -104,4 +105,5 @@ class CustomCoreFeignClientTests {
         assertThat(nextAction).isNull();
         verify(loginService, never()).login();
     }
+    // endregion
 }
