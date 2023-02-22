@@ -20,6 +20,9 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -44,6 +47,10 @@ public class SubscriptionService {
     private final String workerWalletAddress;
     private final ApplicationEventPublisher eventPublisher;
     private final StompClientService stompClientService;
+
+    private final Lock sessionLock = new ReentrantLock();
+    private final Condition sessionReadyCondition = sessionLock.newCondition();
+    private boolean sessionReady = false;
 
     public SubscriptionService(WorkerConfigurationService workerConfigurationService,
                                ApplicationEventPublisher applicationEventPublisher,
@@ -104,6 +111,14 @@ public class SubscriptionService {
     @EventListener(SessionCreatedEvent.class)
     synchronized void reSubscribeToTopics() {
         log.debug("Received new SessionCreatedEvent");
+        sessionReady = true;
+        sessionLock.lock();
+        try {
+            sessionReadyCondition.signalAll();
+        } finally {
+            sessionLock.unlock();
+        }
+
         Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
         if (chainTaskIds.isEmpty()) {
             log.info("No topic to resubscribe to");
@@ -116,6 +131,23 @@ public class SubscriptionService {
             subscribeToTopic(chainTaskId);    
         });
         log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
+    }
+
+    @EventListener(SessionLostEvent.class)
+    private synchronized void blockMessages() {
+        log.warn("STOMP session is down, blocking updates until it is restored.");
+        sessionReady = false;
+    }
+
+    public void waitForSessionReady() throws InterruptedException {
+        while (!sessionReady) {
+            sessionLock.lock();
+            try {
+                sessionReadyCondition.await();
+            } finally {
+                sessionLock.unlock();
+            }
+        }
     }
 
     private String getTaskTopicName(String chainTaskId) {

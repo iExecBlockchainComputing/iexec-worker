@@ -258,6 +258,14 @@ public class TaskNotificationService {
         TaskNotificationType next = null;
         // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
+            try {
+                subscriptionService.waitForSessionReady();
+            } catch (InterruptedException e) {
+                log.warn("Replicate status update has been interrupted" +
+                        " [chainTaskId:{}, statusUpdate:{}]",
+                        chainTaskId, statusUpdate);
+                Thread.currentThread().interrupt();
+            }
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
 

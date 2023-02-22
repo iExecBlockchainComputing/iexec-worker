@@ -288,6 +288,7 @@ public class StompClientService {
         public void handleTransportError(StompSession session, Throwable exception) {
             log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), exception.getMessage());
+            eventPublisher.publishEvent(new SessionLostEvent());
             requestNewSession();
         }
     }
