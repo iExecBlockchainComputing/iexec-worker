@@ -44,7 +44,7 @@ public interface CoreClient {
                                  @RequestBody Signature authorization);
 
     @PostMapping("/workers/ping")
-    ResponseEntity<String> ping(@RequestHeader String authorization);
+    String ping(@RequestHeader String authorization);
 
     @PostMapping("/workers/register")
     ResponseEntity<Void> registerWorker(@RequestHeader String authorization,
