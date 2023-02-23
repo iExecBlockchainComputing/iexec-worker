@@ -17,24 +17,21 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.utils.ResettableCountDownLatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -48,11 +45,13 @@ class SubscriptionServiceTests {
     @Mock
     private StompClientService stompClientService;
 
+    @Spy
     @InjectMocks
     SubscriptionService subscriptionService;
 
     private static final String WORKER_WALLET_ADDRESS = "0x1234";
     private static final String CHAIN_TASK_ID = "chaintaskid";
+    private static final String CHAIN_TASK_ID_2 = "chaintaskid2";
     private static final Optional<Subscription> SUBSCRIPTION =
             Optional.of(mock(Subscription.class));
 
@@ -101,49 +100,28 @@ class SubscriptionServiceTests {
         verify(SUBSCRIPTION.get(), never()).unsubscribe();
     }
 
-    // region waitForSessionReady
+    // region reSubscribeToTopics
     @Test
-    void shouldWaitForGivenDuration() throws InterruptedException {
-        final boolean sessionReady = subscriptionService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
-        assertFalse(sessionReady);
+    void shouldResubscribeToNoTask() {
+        subscriptionService.reSubscribeToTopics();
+
+        verify(subscriptionService, never()).subscribeToTopic(any());
     }
 
     @Test
-    void shouldNotWaitIfSessionReady() throws InterruptedException {
-        final ResettableCountDownLatch latch = (ResettableCountDownLatch)
-                ReflectionTestUtils.getField(subscriptionService, "sessionReadyLatch");
-        assertNotNull(latch);
+    void shouldResubscribeToTasks() {
+        final ConcurrentHashMap<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>(Map.of(
+                CHAIN_TASK_ID, mock(Subscription.class),
+                CHAIN_TASK_ID_2, mock(Subscription.class)
+        ));
+        ReflectionTestUtils.setField(subscriptionService, "chainTaskIdToSubscription", chainTaskIdToSubscription);
 
-        latch.countDown();
-        final boolean sessionReady = subscriptionService.waitForSessionReady(Duration.of(100, ChronoUnit.MILLIS));
-        assertTrue(sessionReady);
-    }
+        doNothing().when(subscriptionService).subscribeToTopic(any());
 
-    @Test
-    void shouldWaitUntilSessionReady() throws InterruptedException, ExecutionException, TimeoutException {
-        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        subscriptionService.reSubscribeToTopics();
 
-        final ResettableCountDownLatch latch = (ResettableCountDownLatch)
-                ReflectionTestUtils.getField(subscriptionService, "sessionReadyLatch");
-        assertNotNull(latch);
-
-        // Simulating a thread waiting for the session to be ready
-        final CompletableFuture<Boolean> sessionReadyFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return subscriptionService.waitForSessionReady(Duration.of(1, ChronoUnit.SECONDS));
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }, executor);
-
-        // Session should not be ready
-        assertThrows(TimeoutException.class, () -> sessionReadyFuture.get(100, TimeUnit.MILLISECONDS));
-
-        // Marking the session as ready
-        latch.countDown();
-
-        // Session should be ready
-        assertTrue(sessionReadyFuture.get(100, TimeUnit.MILLISECONDS));
+        verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID);
+        verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID_2);
     }
     // endregion
 }
