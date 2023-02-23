@@ -25,6 +25,7 @@ import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -135,9 +136,14 @@ public class CustomCoreFeignClient extends BaseFeignClient {
                     chainTaskId,
                     replicateStatusUpdate
             );
-            final TaskNotificationType notificationType = response.getBody();
-            log.info(replicateStatusUpdate.getStatus().toString() + " [chainTaskId:{}]", chainTaskId);
-            return notificationType;
+            if (response.getStatusCode() == HttpStatus.ALREADY_REPORTED) {
+                log.info("Replicate status already reported [status:{}, chainTaskId:{}]",
+                        replicateStatusUpdate.getStatus().toString(), chainTaskId);
+            } else {
+                log.info("Updated replicate status [status:{}, chainTaskId:{}]",
+                        replicateStatusUpdate.getStatus().toString(), chainTaskId);
+            }
+            return response.getBody();
         } catch (FeignException.Unauthorized e) {
             login();
             return null;
