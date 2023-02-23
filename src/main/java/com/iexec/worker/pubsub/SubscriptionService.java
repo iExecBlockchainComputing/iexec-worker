@@ -124,6 +124,10 @@ public class SubscriptionService {
             log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
         }
 
+        if (sessionReady) {
+            log.warn("STOMP session was already up before receiving this event");
+        }
+
         sessionReady = true;
         sessionLock.lock();
         try {
@@ -136,6 +140,9 @@ public class SubscriptionService {
     @EventListener(SessionLostEvent.class)
     synchronized void sessionLost() {
         log.warn("STOMP session is down, blocking updates until it is restored.");
+        if (!sessionReady) {
+            log.warn("STOMP session was already down before receiving this event");
+        }
         sessionReady = false;
     }
 
