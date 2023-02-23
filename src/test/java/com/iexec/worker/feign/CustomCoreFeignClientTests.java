@@ -21,15 +21,15 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
-import feign.Request;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -51,8 +51,9 @@ class CustomCoreFeignClientTests {
     }
 
     // region updateReplicateStatus
-    @Test
-    void shouldUpdateReplicatesStatus() {
+    @ParameterizedTest
+    @EnumSource(value = HttpStatus.class, names = {"OK", "ALREADY_REPORTED"})
+    void shouldUpdateReplicatesStatus(HttpStatus status) {
         final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
                 .builder()
                 .status(ReplicateStatus.COMPLETING)
@@ -61,7 +62,7 @@ class CustomCoreFeignClientTests {
         when(loginService.getToken())
                 .thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
-                .thenReturn(ResponseEntity.of(Optional.of(TaskNotificationType.PLEASE_CONTINUE)));
+                .thenReturn(ResponseEntity.status(status).body(TaskNotificationType.PLEASE_CONTINUE));
 
         final TaskNotificationType nextAction = customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate);
 
