@@ -23,6 +23,7 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.worker.feign.client.CoreClient;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,12 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         this.coreClient = coreClient;
     }
 
+    /**
+     * Log in the Scheduler.
+     * Caution: this is NOT thread-safe.
+     *
+     * @return An authentication token
+     */
     @Override
     String login() {
         return loginService.login();
@@ -129,21 +136,28 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-        arguments.put("chainTaskId", chainTaskId);
-        arguments.put("statusUpdate", replicateStatusUpdate);
-
-        HttpCall<TaskNotificationType> httpCall = args ->
-                coreClient.updateReplicateStatus((String) args.get(JWTOKEN), (String) args.get("chainTaskId"),
-                        (ReplicateStatusUpdate) args.get("statusUpdate"));
-
-        ResponseEntity<TaskNotificationType> response = makeHttpCall(httpCall, arguments, "updateReplicateStatus");
-        if (!is2xxSuccess(response)) {
+        try {
+            final ResponseEntity<TaskNotificationType> response = coreClient.updateReplicateStatus(
+                    loginService.getToken(),
+                    chainTaskId,
+                    replicateStatusUpdate
+            );
+            if (response.getStatusCode() == HttpStatus.ALREADY_REPORTED) {
+                log.info("Replicate status already reported [status:{}, chainTaskId:{}]",
+                        replicateStatusUpdate.getStatus().toString(), chainTaskId);
+            } else {
+                log.info("Updated replicate status [status:{}, chainTaskId:{}]",
+                        replicateStatusUpdate.getStatus().toString(), chainTaskId);
+            }
+            return response.getBody();
+        } catch (FeignException.Unauthorized e) {
+            login();
+            return null;
+        } catch (FeignException e) {
+            log.error("Exception while trying to update replicate status" +
+                    " [chainTaskId:{}, statusUpdate:{}, httpStatus:{}]",
+                    chainTaskId, replicateStatusUpdate, e.status());
             return null;
         }
-
-        log.info(replicateStatusUpdate.getStatus().toString() + " [chainTaskId:{}]", chainTaskId);
-        return response.getBody();
     }
 }

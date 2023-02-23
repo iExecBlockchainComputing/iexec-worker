@@ -47,6 +47,12 @@ public class LoginService {
         return jwtToken;
     }
 
+    /**
+     * Log in the Scheduler.
+     * Caution: this is NOT thread-safe.
+     *
+     * @return An authentication token
+     */
     public String login() {
         final String oldToken = jwtToken;
         expireToken();
