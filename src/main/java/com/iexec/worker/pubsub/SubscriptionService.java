@@ -16,17 +16,11 @@
 
 package com.iexec.worker.pubsub;
 
-import java.lang.reflect.Type;
-import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.worker.config.WorkerConfigurationService;
-
-import com.iexec.worker.utils.ResettableCountDownLatch;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
@@ -35,8 +29,13 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.stereotype.Service;
 
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -48,7 +47,10 @@ public class SubscriptionService {
     private final ApplicationEventPublisher eventPublisher;
     private final StompClientService stompClientService;
 
-    private final ResettableCountDownLatch sessionReadyLatch;
+    private final Lock sessionLock = new ReentrantLock();
+    private final Condition sessionReadyCondition = sessionLock.newCondition();
+    @Getter
+    private boolean sessionReady = false;
 
     public SubscriptionService(WorkerConfigurationService workerConfigurationService,
                                ApplicationEventPublisher applicationEventPublisher,
@@ -56,9 +58,6 @@ public class SubscriptionService {
         this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
         this.eventPublisher = applicationEventPublisher;
         this.stompClientService = stompClientService;
-        this.sessionReadyLatch = new ResettableCountDownLatch(1);
-
-        log.info("Created subscription service");
     }
 
     /**
@@ -115,36 +114,47 @@ public class SubscriptionService {
         Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
         if (chainTaskIds.isEmpty()) {
             log.info("No topic to resubscribe to");
-            return;
+        } else {
+            log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds);
+            chainTaskIds.forEach(chainTaskId -> {
+                this.chainTaskIdToSubscription.remove(chainTaskId);
+                subscribeToTopic(chainTaskId);
+            });
+
+            log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
         }
 
-        log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds);
-        chainTaskIds.forEach(chainTaskId -> {
-            this.chainTaskIdToSubscription.remove(chainTaskId);
-            subscribeToTopic(chainTaskId);    
-        });
-        sessionReadyLatch.countDown();
-        log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
+        sessionReady = true;
+        sessionLock.lock();
+        try {
+            sessionReadyCondition.signalAll();
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
     @EventListener(SessionLostEvent.class)
-    private synchronized void blockMessages() {
+    synchronized void sessionLost() {
         log.warn("STOMP session is down, blocking updates until it is restored.");
-        sessionReadyLatch.reset();
+        sessionReady = false;
     }
 
     /**
      * Wait for the session to be ready.
      * Useful to prevent actions to execute while the STOMP session is disconnected.
      *
-     * @param duration Duration the method should wait for.
-     * @return {@code true} if session is ready and {@code false}
-     *         if the waiting time elapsed before the session is ready.
      * @throws InterruptedException if the current thread is interrupted
      *         while waiting.
      */
-    public boolean waitForSessionReady(Duration duration) throws InterruptedException {
-        return sessionReadyLatch.await(duration.toNanos(), TimeUnit.NANOSECONDS);
+    public void waitForSessionReady() throws InterruptedException {
+        while (!sessionReady) {
+            sessionLock.lock();
+            try {
+                sessionReadyCondition.await();
+            } finally {
+                sessionLock.unlock();
+            }
+        }
     }
 
     private String getTaskTopicName(String chainTaskId) {

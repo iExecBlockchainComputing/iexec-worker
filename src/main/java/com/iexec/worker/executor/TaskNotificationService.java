@@ -35,9 +35,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -49,9 +47,6 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_N
 @Slf4j
 @Service
 public class TaskNotificationService {
-    private static final Duration STOMP_SESSION_WAIT_DURATION
-            = Duration.of(10, ChronoUnit.MINUTES);
-
     private final TaskManagerService taskManagerService;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -88,8 +83,7 @@ public class TaskNotificationService {
      */
     @EventListener
     @Async
-    protected void onTaskNotification(TaskNotification notification)
-            throws InterruptedException {
+    protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
         ReplicateActionResponse actionResponse;
@@ -233,24 +227,21 @@ public class TaskNotificationService {
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status)
-            throws InterruptedException {
+                                                              ReplicateStatus status) {
         ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
                                                               ReplicateStatus status,
-                                                              ReplicateStatusCause cause)
-            throws InterruptedException {
+                                                              ReplicateStatusCause cause) {
         ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status, cause);
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
                                                               ReplicateStatus status,
-                                                              ReplicateStatusDetails details)
-            throws InterruptedException {
+                                                              ReplicateStatusDetails details) {
         ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.builder()
                 .status(status)
                 .details(details)
@@ -259,8 +250,7 @@ public class TaskNotificationService {
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate)
-            throws InterruptedException {
+    TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
@@ -270,10 +260,13 @@ public class TaskNotificationService {
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
             // Let's wait for the STOMP session to be ready.
             // Otherwise, an update could be lost.
-            if (!subscriptionService.waitForSessionReady(STOMP_SESSION_WAIT_DURATION)) {
-                log.warn("STOMP session have been away for too long. Can't update replicate status" +
-                        " [chainTaskId:{}, status:{}, waitDuration:{}]",
-                        chainTaskId, statusUpdate.getStatus(), STOMP_SESSION_WAIT_DURATION);
+            try {
+                subscriptionService.waitForSessionReady();
+            } catch (InterruptedException e) {
+                log.warn("Replicate status update has been interrupted" +
+                                " [chainTaskId:{}, statusUpdate:{}]",
+                        chainTaskId, statusUpdate);
+                Thread.currentThread().interrupt();
                 return null;
             }
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);

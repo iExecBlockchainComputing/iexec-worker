@@ -29,9 +29,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -122,6 +123,70 @@ class SubscriptionServiceTests {
 
         verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID);
         verify(subscriptionService).subscribeToTopic(CHAIN_TASK_ID_2);
+    }
+    // endregion
+
+    // region blockMessages
+    @Test
+    void shouldToggleSessionLost() {
+        // Assuming session is ready
+        ReflectionTestUtils.setField(subscriptionService, "sessionReady", true);
+        assertThat(subscriptionService.isSessionReady()).isTrue();
+
+        // Now the session goes away
+        subscriptionService.sessionLost();
+        assertThat(subscriptionService.isSessionReady()).isFalse();
+    }
+    // endregion
+
+    // region waitForSessionReady
+    @Test
+    void shouldNotWaitIfSessionReady() throws InterruptedException, ExecutionException, TimeoutException {
+        // Assuming session is ready
+        ReflectionTestUtils.setField(subscriptionService, "sessionReady", true);
+        assertThat(subscriptionService.isSessionReady()).isTrue();
+
+        // Then we shouldn't wait for the following call
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        final CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            try {
+                subscriptionService.waitForSessionReady();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }, executor);
+        // 10 ms should be enough for the future to complete
+        // If it is not, then it is probably stuck somewhere
+        future.get(10, TimeUnit.MILLISECONDS);
+    }
+
+    @Test
+    void shouldWaitForSessionReady() throws ExecutionException, InterruptedException, TimeoutException {
+        // Assuming session is NOT ready
+        ReflectionTestUtils.setField(subscriptionService, "sessionReady", false);
+        assertThat(subscriptionService.isSessionReady()).isFalse();
+
+        // Then we should wait for the following call
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        final CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            try {
+                subscriptionService.waitForSessionReady();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }, executor);
+        // 10 ms should be enough for the future to complete
+        // If it is not, then it is waiting
+        assertThatThrownBy(() -> future.get(10, TimeUnit.MILLISECONDS))
+                .isInstanceOf(TimeoutException.class);
+
+        // Let's make session ready
+        subscriptionService.reSubscribeToTopics();
+        assertThat(subscriptionService.isSessionReady()).isTrue();
+
+        // 10 ms should now be enough for the future to complete
+        // If it is not, then it is probably stuck somewhere
+        future.get(10, TimeUnit.MILLISECONDS);
     }
     // endregion
 }

@@ -3,7 +3,6 @@ package com.iexec.worker.pubsub;
 import com.iexec.worker.TestUtils;
 import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.utils.ResettableCountDownLatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,14 +18,13 @@ import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(OutputCaptureExtension.class)
