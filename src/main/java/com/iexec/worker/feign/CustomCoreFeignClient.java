@@ -46,6 +46,12 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         this.coreClient = coreClient;
     }
 
+    /**
+     * Log in the Scheduler.
+     * Caution: this is NOT thread-safe.
+     *
+     * @return An authentication token
+     */
     @Override
     String login() {
         return loginService.login();
