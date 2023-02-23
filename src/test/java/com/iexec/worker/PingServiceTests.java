@@ -181,7 +181,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndDoNothingElseSincePongIsEmpty() {
-        when(coreClient.ping(anyString())).thenThrow(FeignException.Unauthorized.class);
+        when(coreClient.ping(anyString())).thenReturn("");
         pingService.pingScheduler();
         verifyNoInteractions(coreConfigurationService, workerService);
     }
