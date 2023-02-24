@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### New Features
 * Support Gramine framework for TEE tasks.
 * Bind SMS URL to task.
+* Show application version on banner.
 ### Bug Fixes
 * Remove dataset decryption non-TEE workflow.
 * Purge result files and metadata when task is completed.
