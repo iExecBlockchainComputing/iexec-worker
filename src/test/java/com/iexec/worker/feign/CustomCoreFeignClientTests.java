@@ -68,7 +68,7 @@ class CustomCoreFeignClientTests {
     }
     //endregion
 
-    //region getComputingTask
+    //region getComputingTasks
     @Test
     void shouldGetComputingTasks() {
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
