@@ -52,9 +52,25 @@ class CustomCoreFeignClientTests {
         MockitoAnnotations.openMocks(this);
     }
 
+    //region getCoreVersion
+    @Test
+    void shouldGetCoreVersion() {
+        when(coreClient.getCoreVersion()).thenReturn(ResponseEntity.ok("X.Y.Z"));
+        assertThat(customCoreFeignClient.getCoreVersion()).isEqualTo("X.Y.Z");
+        verifyNoInteractions(loginService);
+    }
+
+    @Test
+    void shouldNotGetCoreVersionWhenError() {
+        when(coreClient.getCoreVersion()).thenThrow(FeignException.class);
+        assertThat(customCoreFeignClient.getCoreVersion()).isNull();
+        verifyNoInteractions(loginService);
+    }
+    //endregion
+
     //region getComputingTask
     @Test
-    void shouldGetComputingTask() {
+    void shouldGetComputingTasks() {
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
         when(coreClient.getComputingTasks(AUTHORIZATION)).thenReturn(ResponseEntity.ok(List.of(CHAIN_TASK_ID)));
         final List<String> tasks = customCoreFeignClient.getComputingTasks();
@@ -63,7 +79,7 @@ class CustomCoreFeignClientTests {
     }
 
     @Test
-    void shouldNotGetComputingTaskWhenBadLogin() {
+    void shouldNotGetComputingTasksWhenBadLogin() {
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
         when(loginService.login()).thenReturn(AUTHORIZATION);
         when(coreClient.getComputingTasks(AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
@@ -73,7 +89,7 @@ class CustomCoreFeignClientTests {
     }
 
     @Test
-    void shouldNotGetComputingTaskWhenError() {
+    void shouldNotGetComputingTasksWhenError() {
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
         when(coreClient.getComputingTasks(AUTHORIZATION)).thenThrow(FeignException.class);
         final List<String> tasks = customCoreFeignClient.getComputingTasks();
