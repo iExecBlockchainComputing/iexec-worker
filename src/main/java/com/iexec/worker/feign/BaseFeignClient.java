@@ -69,7 +69,8 @@ public abstract class BaseFeignClient {
             } catch (FeignException e) {
                 status = e.status();
 
-                if (is4xxClientError(status) && args != null && args.containsKey("jwtoken")) {
+                final boolean containsJwt = args != null && args.containsKey("jwtoken");
+                if (e instanceof FeignException.Unauthorized && containsJwt) {
                     // login and update token for the next call
                     String newJwToken = login();
                     args.put("jwtoken", newJwToken);
@@ -102,15 +103,12 @@ public abstract class BaseFeignClient {
         return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
     }
 
-    boolean is4xxClientError(int status) {
-        return status > 0 && HttpStatus.valueOf(status).is4xxClientError();
-    }
-
     private void sleep(int millis) {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
-            log.error("Error while sleeping", e);
+            log.error("Thread has been interrupted while sleeping", e);
+            Thread.currentThread().interrupt();
         }
     }
 }
