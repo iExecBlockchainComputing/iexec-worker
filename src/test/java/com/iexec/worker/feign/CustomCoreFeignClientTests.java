@@ -48,7 +48,7 @@ class CustomCoreFeignClientTests {
     private CustomCoreFeignClient customCoreFeignClient;
 
     @BeforeEach
-    public void init() {
+    void init() {
         MockitoAnnotations.openMocks(this);
     }
 
