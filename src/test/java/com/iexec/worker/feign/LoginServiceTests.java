@@ -20,6 +20,7 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.CoreClient;
+import feign.FeignException;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,12 +62,11 @@ class LoginServiceTests {
         return Credentials.create(ecKeyPair);
     }
 
-    @ParameterizedTest
-    @EnumSource(value = HttpStatus.class, names = { "MOVED_PERMANENTLY", "BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "INTERNAL_SERVER_ERROR"})
-    void shouldNotLoginOnBadChallengeStatusCode(HttpStatus status) {
+    @Test
+    void shouldNotLoginOnBadChallengeStatusCode() {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.status(status).build());
+        when(coreClient.getChallenge(credentials.getAddress())).thenThrow(FeignException.class);
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress())
@@ -79,21 +79,20 @@ class LoginServiceTests {
     void shouldNotLoginOnEmptyChallenge(String challenge) {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok(challenge));
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(challenge);
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress())
         );
     }
 
-    @ParameterizedTest
-    @EnumSource(value = HttpStatus.class, names = { "MOVED_PERMANENTLY", "BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "INTERNAL_SERVER_ERROR"})
-    void shouldNotLoginOnBadLoginStatusCode(HttpStatus status) {
+    @Test
+    void shouldNotLoginOnBadLoginStatusCode() {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok("challenge"));
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
-        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(ResponseEntity.status(status).build());
+        when(coreClient.login(credentials.getAddress(), signature)).thenThrow(FeignException.class);
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress()),
@@ -107,9 +106,9 @@ class LoginServiceTests {
     void shouldNotLoginOnEmptyToken(String token) {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok("challenge"));
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
-        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(ResponseEntity.ok(token));
+        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(token);
         assertAll(
                 () -> assertEquals("", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress()),
@@ -121,9 +120,9 @@ class LoginServiceTests {
     void shouldLogin() {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn(ResponseEntity.ok("challenge"));
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
-        when(coreClient.login(credentials.getAddress(), signature)).thenReturn(ResponseEntity.ok("token"));
+        when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
         assertAll(
                 () -> assertEquals(TOKEN_PREFIX + "token", loginService.login()),
                 () -> verify(coreClient).getChallenge(credentials.getAddress()),

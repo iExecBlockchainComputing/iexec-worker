@@ -20,6 +20,7 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.CoreClient;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ResponseEntity;
@@ -60,24 +61,25 @@ public class LoginService {
         String workerAddress = credentialsService.getCredentials().getAddress();
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
-        ResponseEntity<String> challengeResponse = coreClient.getChallenge(workerAddress);
-        if (!challengeResponse.getStatusCode().is2xxSuccessful()) {
-            log.error("Cannot login, failed to get challenge [status:{}]", challengeResponse.getStatusCode());
-            return "";
+        String challenge = "";
+        try {
+            challenge = coreClient.getChallenge(workerAddress);
+        } catch (FeignException e) {
+            log.error("Cannot login, failed to get challenge [status:{}]", e.status());
         }
-        String challenge = challengeResponse.getBody();
         if (StringUtils.isEmpty(challenge)) {
             log.error("Cannot login, challenge is empty [challenge:{}]", challenge);
             return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
-        ResponseEntity<String> tokenResponse = coreClient.login(workerAddress, signature);
-        if (!tokenResponse.getStatusCode().is2xxSuccessful()) {
-            log.error("Cannot login, failed to get token [status:{}]", tokenResponse.getStatusCode());
+        String token = "";
+        try {
+            token = coreClient.login(workerAddress, signature);
+        } catch (FeignException e) {
+            log.error("Cannot login, failed to get token [status:{}]", e.status());
             return "";
         }
-        String token = tokenResponse.getBody();
         if (StringUtils.isEmpty(token)) {
             log.error("Cannot login, token is empty [token:{}]", token);
             return "";
