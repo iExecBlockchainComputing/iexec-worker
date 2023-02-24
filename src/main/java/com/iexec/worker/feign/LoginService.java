@@ -66,6 +66,7 @@ public class LoginService {
             challenge = coreClient.getChallenge(workerAddress);
         } catch (FeignException e) {
             log.error("Cannot login, failed to get challenge [status:{}]", e.status());
+            return "";
         }
         if (StringUtils.isEmpty(challenge)) {
             log.error("Cannot login, challenge is empty [challenge:{}]", challenge);
