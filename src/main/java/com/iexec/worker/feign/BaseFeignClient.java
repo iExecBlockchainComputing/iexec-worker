@@ -69,7 +69,8 @@ public abstract class BaseFeignClient {
             } catch (FeignException e) {
                 status = e.status();
 
-                if (e instanceof FeignException.Unauthorized && args != null && args.containsKey("jwtoken")) {
+                final boolean containsJwt = args != null && args.containsKey("jwtoken");
+                if (e instanceof FeignException.Unauthorized && containsJwt) {
                     // login and update token for the next call
                     String newJwToken = login();
                     args.put("jwtoken", newJwToken);
