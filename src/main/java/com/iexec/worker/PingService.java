@@ -22,10 +22,9 @@ import com.iexec.worker.feign.client.CoreClient;
 import com.iexec.worker.utils.AsyncUtils;
 import com.iexec.worker.utils.ExecutorUtils;
 import com.iexec.worker.worker.WorkerService;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -77,15 +76,22 @@ public class PingService {
      */
     void pingScheduler() {
         log.debug("Sending ping to scheduler");
-        ResponseEntity<String> response = coreClient.ping(loginService.getToken());
-        if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            loginService.login();
+        final String sessionId;
+        try {
+            sessionId = coreClient.ping(loginService.getToken());
+        } catch (FeignException e) {
+            if (e instanceof FeignException.Unauthorized) {
+                loginService.login();
+            }
+            log.warn("The worker cannot ping the core [status:{}]", e.status());
+            return;
         }
-        String sessionId = response.getBody();
-        if (!response.getStatusCode().is2xxSuccessful() || StringUtils.isEmpty(sessionId)) {
+
+        if (StringUtils.isEmpty(sessionId)) {
             log.warn("The worker cannot ping the core");
             return;
         }
+
         // Log once in an hour, in the first ping of the first minute.
         LocalTime now = LocalTime.now();
         if (now.getMinute() == 0 && now.getSecond() <= PING_RATE_IN_SECONDS) {

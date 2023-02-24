@@ -21,14 +21,13 @@ import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.feign.client.CoreClient;
 import com.iexec.worker.worker.WorkerService;
+import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -145,7 +144,7 @@ class PingServiceTests {
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
                 threadNameWrapper, invocation, 10))
                 .when(pingService).pingScheduler();
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn(SESSION_ID);
 
         // Trigger 4 times
@@ -164,7 +163,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndLogInWhenUnauthorized() {
-        when(coreClient.ping(any())).thenReturn(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        when(coreClient.ping(any())).thenThrow(FeignException.Unauthorized.class);
         pingService.pingScheduler();
         verify(loginService).login();
         verifyNoInteractions(coreConfigurationService, workerService);
@@ -172,21 +171,21 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndDoNothingElseSincePongIsEmpty() {
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(""));
+        when(coreClient.ping(anyString())).thenReturn("");
         pingService.pingScheduler();
         verifyNoInteractions(coreConfigurationService, workerService);
     }
 
     @Test
     void shouldPingAndDoNothingElseSincePongIsNull() {
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(null));
+        when(coreClient.ping(anyString())).thenReturn(null);
         pingService.pingScheduler();
         verifyNoInteractions(coreConfigurationService, workerService);
     }
 
     @Test
     void shouldPingAndDoNothingElseWhenSameSession() {
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn(SESSION_ID);
         pingService.pingScheduler();
         verifyNoInteractions(workerService);
@@ -194,7 +193,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndSetNewSessionSincePreviousSessionIsEmpty() {
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn("");
         pingService.pingScheduler();
         verify(coreConfigurationService).setCoreSessionId(anyString());
@@ -203,7 +202,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndSetNewSessionSincePreviousSessionIsNull() {
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn(null);
         pingService.pingScheduler();
         verify(coreConfigurationService).setCoreSessionId(anyString());
@@ -212,7 +211,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndRestart() {
-        when(coreClient.ping(anyString())).thenReturn(ResponseEntity.ok(SESSION_ID));
+        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
         when(coreConfigurationService.getCoreSessionId()).thenReturn(OTHER_SESSION_ID);
         pingService.pingScheduler();
         verify(workerService).restartGracefully();
