@@ -22,15 +22,12 @@ import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.feign.client.CoreClient;
 import com.iexec.worker.worker.WorkerService;
 import feign.FeignException;
-import feign.Request;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
-
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -166,14 +163,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndLogInWhenUnauthorized() {
-        // Can't use ̀.thenThrow(FeignException.Unauthorized.class)` there.
-        // Otherwise, ̀e.status()` returns `0̀`.
-        when(coreClient.ping(any())).thenThrow(new FeignException.Unauthorized(
-                "",
-                mock(Request.class),
-                new byte[]{},
-                Map.of())
-        );
+        when(coreClient.ping(any())).thenThrow(FeignException.Unauthorized.class);
         pingService.pingScheduler();
         verify(loginService).login();
         verifyNoInteractions(coreConfigurationService, workerService);

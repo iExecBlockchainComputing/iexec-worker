@@ -25,8 +25,6 @@ import com.iexec.worker.worker.WorkerService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -78,11 +76,11 @@ public class PingService {
      */
     void pingScheduler() {
         log.debug("Sending ping to scheduler");
-        String sessionId = null;
+        final String sessionId;
         try {
             sessionId = coreClient.ping(loginService.getToken());
         } catch (FeignException e) {
-            if (e.status() == HttpStatus.UNAUTHORIZED.value()) {
+            if (e instanceof FeignException.Unauthorized) {
                 loginService.login();
             }
             log.warn("The worker cannot ping the core [status:{}]", e.status());
