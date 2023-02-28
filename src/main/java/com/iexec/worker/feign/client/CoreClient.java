@@ -37,14 +37,14 @@ public interface CoreClient {
 
     //region /workers
     @GetMapping("/workers/challenge")
-    ResponseEntity<String> getChallenge(@RequestParam String walletAddress);
+    String getChallenge(@RequestParam String walletAddress);
 
     @PostMapping("/workers/login")
-    ResponseEntity<String> login(@RequestParam String walletAddress,
-                                 @RequestBody Signature authorization);
+    String login(@RequestParam String walletAddress,
+                 @RequestBody Signature authorization);
 
     @PostMapping("/workers/ping")
-    ResponseEntity<String> ping(@RequestHeader String authorization);
+    String ping(@RequestHeader String authorization);
 
     @PostMapping("/workers/register")
     ResponseEntity<Void> registerWorker(@RequestHeader String authorization,

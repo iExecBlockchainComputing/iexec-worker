@@ -47,7 +47,6 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_N
 @Slf4j
 @Service
 public class TaskNotificationService {
-
     private final TaskManagerService taskManagerService;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -251,13 +250,25 @@ public class TaskNotificationService {
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+    TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = null;
+
         // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
+            // Let's wait for the STOMP session to be ready.
+            // Otherwise, an update could be lost.
+            try {
+                subscriptionService.waitForSessionReady();
+            } catch (InterruptedException e) {
+                log.warn("Replicate status update has been interrupted" +
+                                " [chainTaskId:{}, statusUpdate:{}]",
+                        chainTaskId, statusUpdate);
+                Thread.currentThread().interrupt();
+                return null;
+            }
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
 

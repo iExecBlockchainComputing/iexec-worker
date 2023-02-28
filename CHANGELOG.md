@@ -7,11 +7,16 @@ All notable changes to this project will be documented in this file.
 ### New Features
 * Support Gramine framework for TEE tasks.
 * Bind SMS URL to task.
+* Show application version on banner.
 ### Bug Fixes
 * Remove dataset decryption non-TEE workflow.
 * Purge result files and metadata when task is completed.
 * On _iExec Core Scheduler_ REST call failure, only try to log in once to avoid nested retry loops.
 * Update iconarchive RLC PNG hash in tests.
+* Do not try to send heartbeat more than scheduled on _iExec Core Scheduler_.
+* Only try to log in once when the _iExec Core Scheduler_ returns __401 Unauthorized__ HTTP status code.
+* Wait for the application to be started before creating STOMP session.
+* Wait for the STOMP session to be ready before sending any replicate status update.
 ### Quality
 * Improve code quality.
 ### Dependency Upgrades

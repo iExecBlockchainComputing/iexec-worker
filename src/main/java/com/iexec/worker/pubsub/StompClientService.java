@@ -19,7 +19,9 @@ package com.iexec.worker.pubsub;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.utils.AsyncUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.*;
@@ -76,6 +78,7 @@ public class StompClientService {
                 : Optional.empty();
     }
 
+    @EventListener(ApplicationStartedEvent.class)
     @Scheduled(fixedRate = SESSION_REFRESH_DELAY_MS)
     void scheduleStompSessionCreation() {
         AsyncUtils.runAsyncTask("listen-to-stomp-session",
@@ -162,6 +165,8 @@ public class StompClientService {
         public void handleTransportError(StompSession session, Throwable exception) {
             log.error("STOMP transport error [session: {}, isConnected: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), exception.getMessage());
+            // notify subscribers
+            eventPublisher.publishEvent(new SessionLostEvent());
         }
     }
 
