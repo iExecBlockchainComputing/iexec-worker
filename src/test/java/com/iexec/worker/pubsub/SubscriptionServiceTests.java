@@ -95,7 +95,7 @@ class SubscriptionServiceTests {
     }
 
     @Test
-    void shouldNotUnsubscribeFromInexistentTopic() {
+    void shouldNotUnsubscribeFromNonexistentTopic() {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(SUBSCRIPTION.get(), never()).unsubscribe();
