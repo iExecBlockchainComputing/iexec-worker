@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 * Wait for the STOMP session to be ready before sending any replicate status update.
 ### Quality
 * Improve code quality.
+* Remove unchecked casts.
 ### Dependency Upgrades
 * Replace the deprecated `openjdk` Docker base image with `eclipse-temurin` and upgrade to Java 11.0.18 patch.
 * Upgrade to Spring Boot 2.6.14.
