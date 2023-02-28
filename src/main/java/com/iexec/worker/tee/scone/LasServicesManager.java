@@ -55,7 +55,7 @@ public class LasServicesManager implements Purgeable {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
-        final SconeServicesProperties properties = teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
+        final SconeServicesProperties properties = (SconeServicesProperties) teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         // TODO: also check `properties.getLasImage()` is not empty and return false if so
         if (properties == null) {
             log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
