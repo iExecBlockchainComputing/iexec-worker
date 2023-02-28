@@ -31,6 +31,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -46,9 +48,55 @@ class CustomCoreFeignClientTests {
     private CustomCoreFeignClient customCoreFeignClient;
 
     @BeforeEach
-    private void init() {
+    void init() {
         MockitoAnnotations.openMocks(this);
     }
+
+    //region getCoreVersion
+    @Test
+    void shouldGetCoreVersion() {
+        when(coreClient.getCoreVersion()).thenReturn(ResponseEntity.ok("X.Y.Z"));
+        assertThat(customCoreFeignClient.getCoreVersion()).isEqualTo("X.Y.Z");
+        verifyNoInteractions(loginService);
+    }
+
+    @Test
+    void shouldNotGetCoreVersionWhenError() {
+        when(coreClient.getCoreVersion()).thenThrow(FeignException.class);
+        assertThat(customCoreFeignClient.getCoreVersion()).isNull();
+        verifyNoInteractions(loginService);
+    }
+    //endregion
+
+    //region getComputingTasks
+    @Test
+    void shouldGetComputingTasks() {
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(coreClient.getComputingTasks(AUTHORIZATION)).thenReturn(ResponseEntity.ok(List.of(CHAIN_TASK_ID)));
+        final List<String> tasks = customCoreFeignClient.getComputingTasks();
+        assertThat(tasks).containsExactly(CHAIN_TASK_ID);
+        verify(loginService, never()).login();
+    }
+
+    @Test
+    void shouldNotGetComputingTasksWhenBadLogin() {
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(loginService.login()).thenReturn(AUTHORIZATION);
+        when(coreClient.getComputingTasks(AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
+        final List<String> tasks = customCoreFeignClient.getComputingTasks();
+        assertThat(tasks).isEmpty();
+        verify(loginService, times(3)).login();
+    }
+
+    @Test
+    void shouldNotGetComputingTasksWhenError() {
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(coreClient.getComputingTasks(AUTHORIZATION)).thenThrow(FeignException.class);
+        final List<String> tasks = customCoreFeignClient.getComputingTasks();
+        assertThat(tasks).isEmpty();
+        verify(loginService, never()).login();
+    }
+    //endregion
 
     // region updateReplicateStatus
     @ParameterizedTest
@@ -59,8 +107,7 @@ class CustomCoreFeignClientTests {
                 .status(ReplicateStatus.COMPLETING)
                 .build();
 
-        when(loginService.getToken())
-                .thenReturn(AUTHORIZATION);
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
                 .thenReturn(ResponseEntity.status(status).body(TaskNotificationType.PLEASE_CONTINUE));
 
@@ -76,8 +123,7 @@ class CustomCoreFeignClientTests {
                 .status(ReplicateStatus.COMPLETING)
                 .build();
 
-        when(loginService.getToken())
-                .thenReturn(AUTHORIZATION);
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
                 .thenThrow(FeignException.Unauthorized.class);
 
@@ -94,8 +140,7 @@ class CustomCoreFeignClientTests {
                 .status(ReplicateStatus.COMPLETING)
                 .build();
 
-        when(loginService.getToken())
-                .thenReturn(AUTHORIZATION);
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
         when(coreClient.updateReplicateStatus(AUTHORIZATION, CHAIN_TASK_ID, statusUpdate))
                 .thenThrow(FeignException.Forbidden.class);
 

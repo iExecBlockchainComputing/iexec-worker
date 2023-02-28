@@ -127,6 +127,13 @@ springBoot {
     buildInfo()
 }
 
+tasks.named("bootJar") {
+    manifest {
+        attributes("Implementation-Title": "iExec Worker",
+                   "Implementation-Version": project.version)
+    }
+}
+
 test {
     useJUnitPlatform {
         // Ignore slow tests in development
@@ -156,7 +163,7 @@ tasks.sonarqube.dependsOn tasks.jacocoTestReport
 publishing {
     publications {
         maven(MavenPublication) {
-            artifact bootJar
+            artifact tasks.named("bootJar")
             from components.java
         }
     }
