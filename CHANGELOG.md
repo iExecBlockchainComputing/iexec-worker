@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 * Do not try to send heartbeat more than scheduled on _iExec Core Scheduler_.
 * Only try to log in once when the _iExec Core Scheduler_ returns __401 Unauthorized__ HTTP status code.
 * Wait for the application to be started before creating STOMP session.
+* Wait for the STOMP session to be ready before sending any replicate status update.
 ### Quality
 * Improve code quality.
 ### Dependency Upgrades
