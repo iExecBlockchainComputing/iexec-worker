@@ -55,15 +55,16 @@ public class LasServicesManager implements Purgeable {
             return alreadyCreatedLas.isStarted() || alreadyCreatedLas.start();
         }
 
-        final SconeServicesProperties properties = teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
-        // TODO: also check `properties.getLasImage()` is not empty and return false if so
+        final SconeServicesProperties properties = (SconeServicesProperties) teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         if (properties == null) {
             log.error("Missing Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
             return false;
         }
-        final String lasImageUri = !StringUtils.isEmpty(properties.getLasImage())
-                ? properties.getLasImage()
-                : "";
+        if (StringUtils.isEmpty(properties.getLasImage())) {
+            log.error("Missing Scone LAS OCI image name in Scone services configuration, can't start LAS [chainTaskId: {}]", chainTaskId);
+            return false;
+        }
+        final String lasImageUri = properties.getLasImage();
 
         final LasService lasService = lasImageUriToLasService.computeIfAbsent(
                 lasImageUri,
