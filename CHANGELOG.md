@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 * Wait for the STOMP session to be ready before sending any replicate status update.
 ### Quality
 * Improve code quality.
+* Extract STOMP client configuration to its own bean.
 ### Dependency Upgrades
 * Upgrade to Spring Boot 2.6.14.
 * Upgrade to Gradle 7.6.
