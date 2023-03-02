@@ -150,7 +150,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_CONTRIBUTE:
                 updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
-                actionResponse = taskManagerService.contribute(taskDescription);
+                actionResponse = taskManagerService.contribute(chainTaskId);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTED, actionResponse.getDetails());
                 } else {

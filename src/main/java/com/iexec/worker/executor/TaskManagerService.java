@@ -291,8 +291,7 @@ public class TaskManagerService {
         );
     }
 
-    ReplicateActionResponse contribute(TaskDescription taskDescription) {
-        final String chainTaskId = taskDescription.getChainTaskId();
+    ReplicateActionResponse contribute(String chainTaskId) {
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "contribute";

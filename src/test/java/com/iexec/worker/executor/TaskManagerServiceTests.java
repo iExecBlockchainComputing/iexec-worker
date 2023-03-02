@@ -847,7 +847,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.of(chainReceipt));
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(taskDescription);
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -861,7 +861,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(getStubTaskDescription(false));
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -871,13 +871,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotContributeSinceNotEnoughGas() {
-        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(taskDescription);
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -887,7 +886,6 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotContributeSinceNoComputedFile() {
-        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -895,7 +893,7 @@ class TaskManagerServiceTests {
                 .thenReturn(null);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(taskDescription);
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -906,7 +904,6 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotContributeSinceNoContribution() {
         ComputedFile computedFile = mock(ComputedFile.class);
-        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -916,7 +913,7 @@ class TaskManagerServiceTests {
                 .thenReturn(null);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(taskDescription);
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -928,7 +925,6 @@ class TaskManagerServiceTests {
     void shouldNotContributeSinceFailedToContribute() {
         ComputedFile computedFile = mock(ComputedFile.class);
         Contribution contribution = mock(Contribution.class);
-        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
@@ -940,7 +936,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.empty());
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(taskDescription);
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -951,7 +947,6 @@ class TaskManagerServiceTests {
     void shouldNotContributeSinceInvalidContributeChainReceipt() {
         ComputedFile computedFile = mock(ComputedFile.class);
         Contribution contribution = mock(Contribution.class);
-        final TaskDescription taskDescription = getStubTaskDescription(false);
         ChainReceipt chainReceipt =
                 ChainReceipt.builder().blockNumber(0).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
@@ -965,7 +960,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.of(chainReceipt));
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(taskDescription);
+                taskManagerService.contribute(CHAIN_TASK_ID);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
