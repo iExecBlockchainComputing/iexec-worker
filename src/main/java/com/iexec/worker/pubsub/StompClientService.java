@@ -23,27 +23,16 @@ import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
-import org.springframework.web.socket.client.WebSocketClient;
-import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.springframework.web.socket.sockjs.client.RestTemplateXhrTransport;
-import org.springframework.web.socket.sockjs.client.SockJsClient;
-import org.springframework.web.socket.sockjs.client.Transport;
-import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.*;
@@ -77,22 +66,11 @@ public class StompClientService {
     private StompSession stompSession;
 
     public StompClientService(ApplicationEventPublisher applicationEventPublisher,
-                              CoreConfigurationService coreConfigService, RestTemplate restTemplate) {
+                              CoreConfigurationService coreConfigService,
+                              WebSocketStompClient stompClient) {
         this.eventPublisher = applicationEventPublisher;
         this.webSocketServerUrl = coreConfigService.getUrl() + "/connect";
-        log.info("Creating STOMP client");
-        WebSocketClient webSocketClient = new StandardWebSocketClient();
-        List<Transport> webSocketTransports = Arrays.asList(
-                new WebSocketTransport(webSocketClient),
-                new RestTemplateXhrTransport(restTemplate)
-        );
-        SockJsClient sockJsClient = new SockJsClient(webSocketTransports);
-        // without SockJS: new WebSocketStompClient(webSocketClient)
-        this.stompClient = new WebSocketStompClient(sockJsClient);
-        this.stompClient.setAutoStartup(true);
-        this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        this.stompClient.setTaskScheduler(new ConcurrentTaskScheduler());
-        log.info("Created STOMP client");
+        this.stompClient = stompClient;
     }
 
     /**

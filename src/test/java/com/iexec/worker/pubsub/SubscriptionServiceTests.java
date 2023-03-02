@@ -53,8 +53,9 @@ class SubscriptionServiceTests {
     private static final String WORKER_WALLET_ADDRESS = "0x1234";
     private static final String CHAIN_TASK_ID = "chaintaskid";
     private static final String CHAIN_TASK_ID_2 = "chaintaskid2";
-    private static final Optional<Subscription> SUBSCRIPTION =
-            Optional.of(mock(Subscription.class));
+
+    @Mock
+    private Subscription subscription;
 
     @BeforeEach
     void init() {
@@ -65,7 +66,7 @@ class SubscriptionServiceTests {
 
     @Test
     void shouldSubscribeToTopic() {
-        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
 
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
@@ -75,7 +76,7 @@ class SubscriptionServiceTests {
 
     @Test
     void shouldNotSubscribeToExistingTopic() {
-        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
         
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
@@ -85,20 +86,20 @@ class SubscriptionServiceTests {
 
     @Test
     void shouldUnsubscribeFromTopic() {
-        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(SUBSCRIPTION);
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
 
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
-        verify(SUBSCRIPTION.get(), times(1)).unsubscribe();
+        verify(subscription, times(1)).unsubscribe();
     }
 
     @Test
-    void shouldNotUnsubscribeFromInexistentTopic() {
+    void shouldNotUnsubscribeFromNonexistentTopic() {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
-        verify(SUBSCRIPTION.get(), never()).unsubscribe();
+        verify(subscription, never()).unsubscribe();
     }
 
     // region reSubscribeToTopics
