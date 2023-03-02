@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 * Do not call `isSgxSupported` when `SgxDriverMode.NONE`.
 ### Quality
 * Improve code quality.
+* Extract STOMP client configuration to its own bean.
 * Remove unchecked casts.
 ### Dependency Upgrades
 * Replace the deprecated `openjdk` Docker base image with `eclipse-temurin` and upgrade to Java 11.0.18 patch.
