@@ -66,8 +66,8 @@ public class SgxService {
             log.info("No SGX driver defined, skipping SGX check [sgxDriverMode:{}]", sgxDriverMode);
             return;
         }
-        // sgxEnabled is always true when reaching this line
-        // sgxEnabled && isSgxSupported can be simplified to isSgxSupported
+        // SgxDriver.isDriverModeNotNone is always true when reaching this line
+        // sgxEnabled becomes equal to isSgxSupported in this case
         sgxEnabled = isSgxSupported(sgxDriverMode);
         if (!sgxEnabled) {
             log.error("SGX required but not supported by worker. Shutting down. [sgxDriverMode:{}]", sgxDriverMode);
