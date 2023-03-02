@@ -25,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -75,9 +76,9 @@ class WorkerpoolAuthorizationServiceTests {
     // region purgeTask
     @Test
     void shouldPurgeTask() {
-        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
-                (Map<String, WorkerpoolAuthorization>) ReflectionTestUtils.getField(workerpoolAuthorizationService, "workerpoolAuthorizations");
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
         workerpoolAuthorizations.put(CHAIN_TASK_ID, mock(WorkerpoolAuthorization.class));
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
 
         assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
     }
@@ -89,9 +90,9 @@ class WorkerpoolAuthorizationServiceTests {
 
     @Test
     void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
-        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations =
-                (Map<String, WorkerpoolAuthorization>) ReflectionTestUtils.getField(workerpoolAuthorizationService, "workerpoolAuthorizations");
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
         workerpoolAuthorizations.put(CHAIN_TASK_ID + "-wrong", mock(WorkerpoolAuthorization.class));
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
 
         assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
     }

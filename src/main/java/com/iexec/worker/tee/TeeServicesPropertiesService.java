@@ -36,9 +36,8 @@ public class TeeServicesPropertiesService implements Purgeable {
         this.iexecHubService = iexecHubService;
     }
 
-    public <T extends TeeServicesProperties> T getTeeServicesProperties(String chainTaskId) {
-        //noinspection unchecked
-        return (T) propertiesForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesProperties);
+    public TeeServicesProperties getTeeServicesProperties(String chainTaskId) {
+        return propertiesForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesProperties);
     }
 
     <T extends TeeServicesProperties> T retrieveTeeServicesProperties(String chainTaskId) {
