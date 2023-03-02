@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 * Only try to log in once when the _iExec Core Scheduler_ returns __401 Unauthorized__ HTTP status code.
 * Wait for the application to be started before creating STOMP session.
 * Wait for the STOMP session to be ready before sending any replicate status update.
+* Do not call `isSgxSupported` when `SgxDriverMode.NONE`.
 ### Quality
 * Improve code quality.
 * Remove unchecked casts.
