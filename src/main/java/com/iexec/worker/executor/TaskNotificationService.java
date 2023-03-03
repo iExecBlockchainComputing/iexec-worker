@@ -78,11 +78,11 @@ public class TaskNotificationService {
     }
 
     /**
-     * Note to dev: In spring the code executed in an @EventListener method will be in the same thread than the
+     * Note to dev: In spring the code executed in an @EventListener method will be in the same thread as the
      * method that triggered the event. We don't want this to be the case here so this method should be Async.
      */
-    @EventListener
     @Async
+    @EventListener
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
@@ -101,8 +101,6 @@ public class TaskNotificationService {
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
-        // TODO use taskDescription as arg for all methods
-        // and don't fetch it in each method.
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
             log.error("Failed to get task description [chainTaskId:{}]", chainTaskId);
@@ -113,7 +111,7 @@ public class TaskNotificationService {
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
-                actionResponse = taskManagerService.start(chainTaskId);
+                actionResponse = taskManagerService.start(taskDescription);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, STARTED, actionResponse.getDetails());
                 } else {
@@ -122,7 +120,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_DOWNLOAD_APP:
                 updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
-                actionResponse = taskManagerService.downloadApp(chainTaskId);
+                actionResponse = taskManagerService.downloadApp(taskDescription);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADED, actionResponse.getDetails());
                 } else {
@@ -140,7 +138,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
-                actionResponse = taskManagerService.compute(chainTaskId);
+                actionResponse = taskManagerService.compute(taskDescription);
                 if (actionResponse.getDetails() != null) {
                     actionResponse.getDetails().tailLogs();
                 }
@@ -196,7 +194,8 @@ public class TaskNotificationService {
                 ReplicateStatusCause replicateAbortCause = ReplicateStatusCause.getReplicateAbortCause(taskAbortCause);
                 updateStatusAndGetNextAction(chainTaskId, ABORTED, replicateAbortCause);
                 break;
-            default:
+            case PLEASE_CONTINUE:
+            case PLEASE_WAIT:
                 break;
         }
 

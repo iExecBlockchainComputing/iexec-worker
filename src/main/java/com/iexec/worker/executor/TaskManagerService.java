@@ -93,19 +93,13 @@ public class TaskManagerService {
         this.purgeService = purgeService;
     }
 
-    ReplicateActionResponse start(String chainTaskId) {
+    ReplicateActionResponse start(TaskDescription taskDescription) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "start";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
                     context, chainTaskId);
         }
 
@@ -129,19 +123,13 @@ public class TaskManagerService {
         return ReplicateActionResponse.success();
     }
 
-    ReplicateActionResponse downloadApp(String chainTaskId) {
+    ReplicateActionResponse downloadApp(TaskDescription taskDescription) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download app";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
                     context, chainTaskId);
         }
 
@@ -229,19 +217,13 @@ public class TaskManagerService {
         return ReplicateActionResponse.failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
-    ReplicateActionResponse compute(String chainTaskId) {
+    ReplicateActionResponse compute(TaskDescription taskDescription) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "compute";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(), context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
-                    context, chainTaskId);
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
@@ -315,13 +297,6 @@ public class TaskManagerService {
         String context = "contribute";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
                     context, chainTaskId);
         }
 

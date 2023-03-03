@@ -196,7 +196,7 @@ class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_START)
                 .build();
-        when(taskManagerService.start(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(taskManagerService.start(taskDescription)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
         doNothing().when(subscriptionService).waitForSessionReady();
@@ -205,7 +205,7 @@ class TaskNotificationServiceTest {
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(taskManagerService, Mockito.times(1)).start(CHAIN_TASK_ID);
+        verify(taskManagerService, Mockito.times(1)).start(taskDescription);
         TaskNotification nextNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
@@ -220,7 +220,7 @@ class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_APP)
                 .build();
-        when(taskManagerService.downloadApp(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(taskManagerService.downloadApp(taskDescription)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
         doNothing().when(subscriptionService).waitForSessionReady();
@@ -229,7 +229,7 @@ class TaskNotificationServiceTest {
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(taskManagerService, Mockito.times(1)).downloadApp(CHAIN_TASK_ID);
+        verify(taskManagerService, Mockito.times(1)).downloadApp(taskDescription);
         TaskNotification nextNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_DOWNLOAD_DATA)
@@ -274,7 +274,7 @@ class TaskNotificationServiceTest {
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPUTE)
                 .build();
-        when(taskManagerService.compute(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(taskManagerService.compute(taskDescription)).thenReturn(ReplicateActionResponse.success());
         when(iexecHubService.getChainTask(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(getChainTask()));
         doNothing().when(subscriptionService).waitForSessionReady();
@@ -283,7 +283,7 @@ class TaskNotificationServiceTest {
 
         taskNotificationService.onTaskNotification(currentNotification);
 
-        verify(taskManagerService, Mockito.times(1)).compute(CHAIN_TASK_ID);
+        verify(taskManagerService, Mockito.times(1)).compute(taskDescription);
         TaskNotification nextNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_CONTINUE)
