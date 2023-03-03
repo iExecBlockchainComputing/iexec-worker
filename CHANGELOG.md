@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 * Upgrade to Gradle 7.6.
 * Upgrade OkHttp to 4.9.0.
 * Upgrade to `iexec-common` 7.0.0.
+* Upgrade to `jenkins-library` 2.4.0.
 
 ## [[7.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.3.0) 2022-12-18
 
