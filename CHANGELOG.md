@@ -17,12 +17,17 @@ All notable changes to this project will be documented in this file.
 * Only try to log in once when the _iExec Core Scheduler_ returns __401 Unauthorized__ HTTP status code.
 * Wait for the application to be started before creating STOMP session.
 * Wait for the STOMP session to be ready before sending any replicate status update.
+* Do not call `isSgxSupported` when `SgxDriverMode.NONE`.
 ### Quality
 * Improve code quality.
+* Extract STOMP client configuration to its own bean.
+* Remove unchecked casts.
 ### Dependency Upgrades
+* Replace the deprecated `openjdk` Docker base image with `eclipse-temurin` and upgrade to Java 11.0.18 patch.
 * Upgrade to Spring Boot 2.6.14.
 * Upgrade to Gradle 7.6.
 * Upgrade OkHttp to 4.9.0.
+* Upgrade to `iexec-common` 7.0.0.
 
 ## [[7.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v7.3.0) 2022-12-18
 

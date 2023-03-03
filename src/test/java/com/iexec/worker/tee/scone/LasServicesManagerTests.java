@@ -153,6 +153,13 @@ class LasServicesManagerTests {
 
         verify(mockedLasService1, times(0)).start();
     }
+
+    @Test
+    void shouldNotStartLasServiceSinceMissingImageName() {
+        SconeServicesProperties properties = new SconeServicesProperties(null, null, "");
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(properties);
+        Assertions.assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+    }
     // endregion
 
     // region stopLasServices
