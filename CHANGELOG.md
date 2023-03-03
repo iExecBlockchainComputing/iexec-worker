@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 * Wait for the application to be started before creating STOMP session.
 * Wait for the STOMP session to be ready before sending any replicate status update.
 * Do not call `isSgxSupported` when `SgxDriverMode.NONE`.
+* Remove duplicated calls to `IexecHubService#getTaskDescription` in `TaskManagerService`.
 ### Quality
 * Improve code quality.
 * Extract STOMP client configuration to its own bean.

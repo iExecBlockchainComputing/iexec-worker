@@ -127,17 +127,15 @@ class TaskManagerServiceTests {
 
     //region start
     @Test
-    void shouldStart() {
+    void shouldStartStandardTask() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(getStubTaskDescription(false));
         when(teeMockedService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.start(CHAIN_TASK_ID);
+                taskManagerService.start(getStubTaskDescription(false));
 
         assertThat(actionResponse.isSuccess()).isTrue();
     }
@@ -148,53 +146,36 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.start(CHAIN_TASK_ID);
+                taskManagerService.start(getStubTaskDescription(false));
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(CONTRIBUTION_TIMEOUT);
     }
 
     @Test
-    void shouldNotStartSinceNoTaskDescription() {
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(null);
-
-        ReplicateActionResponse actionResponse =
-                taskManagerService.start(CHAIN_TASK_ID);
-
-        assertThat(actionResponse.isSuccess()).isFalse();
-        assertThat(actionResponse.getDetails().getCause()).isEqualTo(TASK_DESCRIPTION_NOT_FOUND);
-    }
-
-    @Test
     void shouldNotStartSinceStandardTaskWithEncryption() {
+        final TaskDescription taskDescription = TaskDescription.builder().isResultEncryption(true).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        TaskDescription taskDescription = TaskDescription.builder().isResultEncryption(true).build();
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
-        ReplicateActionResponse actionResponse = taskManagerService.start(CHAIN_TASK_ID);
+        ReplicateActionResponse actionResponse = taskManagerService.start(taskDescription);
         Assertions.assertThat(actionResponse.isSuccess()).isFalse();
         Assertions.assertThat(actionResponse.getDetails().getCause()).isEqualTo(TASK_DESCRIPTION_INVALID);
     }
 
     @Test
-    void shouldStartWithTee() {
+    void shouldStartTeeTask() {
         when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
                 .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(getStubTaskDescription(true));
         when(teeMockedService.isTeeEnabled()).thenReturn(true);
         when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(Optional.empty());
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.start(CHAIN_TASK_ID);
+                taskManagerService.start(getStubTaskDescription(true));
 
         assertThat(actionResponse.isSuccess()).isTrue();
+        verifyNoInteractions(iexecHubService);
     }
 
     @Test
@@ -203,13 +184,11 @@ class TaskManagerServiceTests {
                 .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(getStubTaskDescription(true));
         when(teeMockedService.isTeeEnabled()).thenReturn(true);
         when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(TEE_NOT_SUPPORTED));
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.start(CHAIN_TASK_ID);
+                taskManagerService.start(getStubTaskDescription(true));
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
@@ -219,18 +198,17 @@ class TaskManagerServiceTests {
     //region downloadApp
     @Test
     void shouldDownloadApp() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.downloadApp(taskDescription))
                 .thenReturn(true);
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.downloadApp(CHAIN_TASK_ID);
+                taskManagerService.downloadApp(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isTrue();
+        verifyNoInteractions(iexecHubService);
     }
 
     @Test
@@ -239,7 +217,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.downloadApp(CHAIN_TASK_ID);
+                taskManagerService.downloadApp(getStubTaskDescription(false));
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
@@ -247,27 +225,10 @@ class TaskManagerServiceTests {
     }
 
     @Test
-    void shouldNotDownloadAppSinceNoTaskDescription() {
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(null);
-
-        ReplicateActionResponse actionResponse =
-                taskManagerService.downloadApp(CHAIN_TASK_ID);
-
-        assertThat(actionResponse.isSuccess()).isFalse();
-        assertThat(actionResponse.getDetails().getCause())
-                .isEqualTo(TASK_DESCRIPTION_NOT_FOUND);
-    }
-
-    @Test
     void shouldAppDownloadFailedAndTriggerPostComputeHookWithSuccess() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.downloadApp(taskDescription))
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
@@ -276,19 +237,18 @@ class TaskManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.downloadApp(CHAIN_TASK_ID);
+                taskManagerService.downloadApp(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(APP_IMAGE_DOWNLOAD_FAILED);
+        verifyNoInteractions(iexecHubService);
     }
 
     @Test
     void shouldAppDownloadFailedAndTriggerPostComputeHookWithFailure1() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.downloadApp(taskDescription))
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
@@ -297,7 +257,7 @@ class TaskManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.downloadApp(CHAIN_TASK_ID);
+                taskManagerService.downloadApp(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
@@ -305,11 +265,9 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldAppDownloadFailedAndTriggerPostComputeHookWithFailure2() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.downloadApp(taskDescription))
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
@@ -318,7 +276,7 @@ class TaskManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
 
         ReplicateActionResponse actionResponse =
-                taskManagerService.downloadApp(CHAIN_TASK_ID);
+                taskManagerService.downloadApp(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
@@ -333,7 +291,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotDownloadDataSinceCannotContributeStatusIsPresent() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
 
@@ -349,7 +307,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldReturnSuccessAndNotDownloadDataSinceEmptyUrls() throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetUri("");
         taskDescription.setInputFiles(null);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
@@ -367,7 +325,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldDownloadDatasetAndInputFiles() throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(dataService.downloadStandardDataset(taskDescription))
@@ -385,7 +343,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldDownloadDatasetAndNotInputFiles() throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setInputFiles(null);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -404,7 +362,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldDownloadInputFilesAndNotDataset() throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetAddress("");
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -424,11 +382,9 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess()
             throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(true);
+        final TaskDescription taskDescription = getStubTaskDescription(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(dataService.downloadStandardDataset(taskDescription))
                 .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
@@ -445,7 +401,7 @@ class TaskManagerServiceTests {
     @Test
     void shouldHandleDatasetDownloadFailureAndTriggerPostComputeHookWithSuccess()
                 throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(dataService.downloadStandardDataset(taskDescription))
@@ -466,7 +422,7 @@ class TaskManagerServiceTests {
     @Test
     void shouldHandleDatasetDownloadFailureAndTriggerPostComputeHookWithFailure1()
                 throws Exception{
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(dataService.downloadStandardDataset(taskDescription))
@@ -487,7 +443,7 @@ class TaskManagerServiceTests {
     @Test
     void shouldHandleDatasetDownloadFailureAndTriggerPostComputeHookWithFailure2()
             throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(dataService.downloadStandardDataset(taskDescription))
@@ -509,7 +465,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldWithDatasetUriAndChecksumDownloadData() throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(dataService.downloadStandardDataset(taskDescription))
@@ -526,7 +482,7 @@ class TaskManagerServiceTests {
     @Test
     void shouldHandleWorkflowExceptionInDownloadDataAndTriggerPostComputeHookWithSuccess()
             throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(dataService.downloadStandardDataset(taskDescription))
@@ -549,13 +505,11 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldWithInputFilesDownloadData() throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetUri("");
         taskDescription.setInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"));
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         doNothing().when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
                 taskDescription.getInputFiles());
 
@@ -570,13 +524,11 @@ class TaskManagerServiceTests {
     @Test
     void shouldWithInputFilesDataDownloadFailedAndTriggerPostComputeHookWithSuccess()
             throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetUri("");
         taskDescription.setInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"));
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
                 taskDescription.getInputFiles());
@@ -596,13 +548,11 @@ class TaskManagerServiceTests {
     @Test
     void shouldWithInputFilesDataDownloadFailedAndTriggerPostComputeHookWithFailure1()
             throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetUri("");
         taskDescription.setInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"));
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
                 taskDescription.getInputFiles());
@@ -622,13 +572,11 @@ class TaskManagerServiceTests {
     @Test
     void shouldWithInputFilesDataDownloadFailedAndTriggerPostComputeHookWithFailure2()
             throws Exception {
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         taskDescription.setDatasetUri("");
         taskDescription.setInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"));
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
                 taskDescription.getInputFiles());
@@ -649,7 +597,7 @@ class TaskManagerServiceTests {
     //region compute
     @Test
     void shouldComputeStandardTask() {
-        TaskDescription taskDescription = TaskDescription.builder()
+        final TaskDescription taskDescription = TaskDescription.builder()
                 .isTeeTask(false)
                 .build();
         WorkerpoolAuthorization workerpoolAuthorization =
@@ -659,8 +607,6 @@ class TaskManagerServiceTests {
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
@@ -676,8 +622,10 @@ class TaskManagerServiceTests {
         when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
+        verify(computeManagerService).runPostCompute(any(), any());
+        verifyNoInteractions(iexecHubService, teeServicesManager);
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
                 .isEqualTo(
@@ -688,10 +636,8 @@ class TaskManagerServiceTests {
                                         .build()));
     }
     @Test
-    void shouldCompute() {
-        TaskDescription taskDescription = TaskDescription.builder()
-                .isTeeTask(true)
-                .build();
+    void shouldComputeTeeTask() {
+        final TaskDescription taskDescription = getStubTaskDescription(true);
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
@@ -699,8 +645,6 @@ class TaskManagerServiceTests {
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
         when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
@@ -718,8 +662,10 @@ class TaskManagerServiceTests {
         when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
+        verify(computeManagerService).runPostCompute(any(), any());
+        verifyNoInteractions(iexecHubService);
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
                 .isEqualTo(
@@ -740,7 +686,7 @@ class TaskManagerServiceTests {
                 .thenReturn(Optional.of(replicateStatusCause));
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(getStubTaskDescription(false));
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -748,50 +694,32 @@ class TaskManagerServiceTests {
     }
 
     @Test
-    void shouldNotComputeSinceNoTaskDescription() {
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(null);
-
-        ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
-
-        Assertions.assertThat(replicateActionResponse)
-                .isNotNull()
-                .isEqualTo(ReplicateActionResponse.failure(TASK_DESCRIPTION_NOT_FOUND));
-    }
-
-    @Test
     void shouldNotComputeSinceAppNotDownloaded() {
-        TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(false);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
                 .isEqualTo(ReplicateActionResponse
                         .failure(APP_NOT_FOUND_LOCALLY));
+        verifyNoInteractions(iexecHubService, teeServicesManager);
     }
 
     @Test
     void shouldNotComputeSinceFailedPreCompute() {
-        TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
@@ -802,7 +730,7 @@ class TaskManagerServiceTests {
                 .build());
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -812,21 +740,19 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedLasStart() {
-        TaskDescription taskDescription = TaskDescription.builder()
+        final TaskDescription taskDescription = TaskDescription.builder()
                 .isTeeTask(true)
                 .build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
         when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
                 .thenReturn(false);
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -836,14 +762,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedAppCompute() {
-        TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
@@ -860,7 +784,7 @@ class TaskManagerServiceTests {
 
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -874,14 +798,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedPostCompute() {
-        TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
@@ -897,7 +819,7 @@ class TaskManagerServiceTests {
 
 
         ReplicateActionResponse replicateActionResponse =
-                taskManagerService.compute(CHAIN_TASK_ID);
+                taskManagerService.compute(taskDescription);
 
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -913,11 +835,9 @@ class TaskManagerServiceTests {
         Contribution contribution = mock(Contribution.class);
         ChainReceipt chainReceipt =
                 ChainReceipt.builder().blockNumber(10).build();
-        TaskDescription taskDescription = getStubTaskDescription(false);
+        final TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile);
@@ -950,28 +870,9 @@ class TaskManagerServiceTests {
     }
 
     @Test
-    void shouldNotContributeSinceNoTaskDescription() {
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(null);
-
-        ReplicateActionResponse replicateActionResponse =
-                taskManagerService.contribute(CHAIN_TASK_ID);
-
-        Assertions.assertThat(replicateActionResponse)
-                .isNotNull()
-                .isEqualTo(ReplicateActionResponse
-                        .failure(TASK_DESCRIPTION_NOT_FOUND));
-    }
-
-    @Test
     void shouldNotContributeSinceNotEnoughGas() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(iexecHubService.hasEnoughGas()).thenReturn(false);
 
         ReplicateActionResponse replicateActionResponse =
@@ -985,11 +886,8 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotContributeSinceNoComputedFile() {
-        TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(null);
@@ -1006,11 +904,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotContributeSinceNoContribution() {
         ComputedFile computedFile = mock(ComputedFile.class);
-        TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile);
@@ -1030,11 +925,8 @@ class TaskManagerServiceTests {
     void shouldNotContributeSinceFailedToContribute() {
         ComputedFile computedFile = mock(ComputedFile.class);
         Contribution contribution = mock(Contribution.class);
-        TaskDescription taskDescription = getStubTaskDescription(false);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile);
@@ -1055,13 +947,10 @@ class TaskManagerServiceTests {
     void shouldNotContributeSinceInvalidContributeChainReceipt() {
         ComputedFile computedFile = mock(ComputedFile.class);
         Contribution contribution = mock(Contribution.class);
-        TaskDescription taskDescription = getStubTaskDescription(false);
         ChainReceipt chainReceipt =
                 ChainReceipt.builder().blockNumber(0).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile);
