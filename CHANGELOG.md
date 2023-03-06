@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023
+## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-06
 
 ### New Features
 * Support Gramine framework for TEE tasks.
@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 * Wait for the STOMP session to be ready before sending any replicate status update.
 * Do not call `isSgxSupported` when `SgxDriverMode.NONE`.
 * Remove duplicated calls to `IexecHubService#getTaskDescription` in `TaskManagerService`.
+* Refactor update replicate status call.
 ### Quality
 * Improve code quality.
 * Extract STOMP client configuration to its own bean.
