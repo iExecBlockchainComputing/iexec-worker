@@ -16,7 +16,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +37,7 @@ class StompClientServiceTests {
     CoreConfigurationService coreConfigService;
 
     @Mock
-    RestTemplate restTemplate;
+    WebSocketStompClient stompClient;
 
     @Spy
     @InjectMocks

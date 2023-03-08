@@ -17,10 +17,12 @@
 package com.iexec.worker;
 
 import com.iexec.worker.config.CoreConfigurationService;
-import com.iexec.worker.feign.CustomCoreFeignClient;
+import com.iexec.worker.feign.LoginService;
+import com.iexec.worker.feign.client.CoreClient;
 import com.iexec.worker.utils.AsyncUtils;
 import com.iexec.worker.utils.ExecutorUtils;
 import com.iexec.worker.worker.WorkerService;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,17 +38,20 @@ public class PingService {
     private static final int PING_RATE_IN_SECONDS = 10;
 
     private final Executor executor;
-    private final CustomCoreFeignClient customCoreFeignClient;
+    private final CoreClient coreClient;
     private final CoreConfigurationService coreConfigurationService;
+    private final LoginService loginService;
     private final WorkerService workerService;
 
-    public PingService(CustomCoreFeignClient customCoreFeignClient,
+    public PingService(CoreClient coreClient,
                        CoreConfigurationService coreConfigurationService,
+                       LoginService loginService,
                        WorkerService workerService) {
         executor = ExecutorUtils
                 .newSingleThreadExecutorWithFixedSizeQueue(1, "ping-");
-        this.customCoreFeignClient = customCoreFeignClient;
+        this.coreClient = coreClient;
         this.coreConfigurationService = coreConfigurationService;
+        this.loginService = loginService;
         this.workerService = workerService;
     }
 
@@ -71,15 +76,26 @@ public class PingService {
      */
     void pingScheduler() {
         log.debug("Sending ping to scheduler");
-        String sessionId = customCoreFeignClient.ping();
+        final String sessionId;
+        try {
+            sessionId = coreClient.ping(loginService.getToken());
+        } catch (FeignException e) {
+            if (e instanceof FeignException.Unauthorized) {
+                loginService.login();
+            }
+            log.warn("The worker cannot ping the core [status:{}]", e.status());
+            return;
+        }
+
+        if (StringUtils.isEmpty(sessionId)) {
+            log.warn("The worker cannot ping the core");
+            return;
+        }
+
         // Log once in an hour, in the first ping of the first minute.
         LocalTime now = LocalTime.now();
         if (now.getMinute() == 0 && now.getSecond() <= PING_RATE_IN_SECONDS) {
             log.info("Sent ping to scheduler [sessionId:{}]", sessionId);
-        }
-        if (StringUtils.isEmpty(sessionId)) {
-            log.warn("The worker cannot ping the core! [sessionId:{}]", sessionId);
-            return;
         }
         String currentSessionId = coreConfigurationService.getCoreSessionId();
         if (StringUtils.isEmpty(currentSessionId)) {

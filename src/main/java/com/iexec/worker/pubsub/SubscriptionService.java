@@ -16,14 +16,11 @@
 
 package com.iexec.worker.pubsub;
 
-import java.lang.reflect.Type;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.worker.config.WorkerConfigurationService;
-
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
@@ -32,17 +29,28 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.stereotype.Service;
 
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
+// FIXME: implement `Purgeable`
 public class SubscriptionService {
 
     private final Map<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>();
     private final String workerWalletAddress;
     private final ApplicationEventPublisher eventPublisher;
     private final StompClientService stompClientService;
+
+    private final Lock sessionLock = new ReentrantLock();
+    private final Condition sessionReadyCondition = sessionLock.newCondition();
+    @Getter
+    private boolean sessionReady = false;
 
     public SubscriptionService(WorkerConfigurationService workerConfigurationService,
                                ApplicationEventPublisher applicationEventPublisher,
@@ -101,15 +109,59 @@ public class SubscriptionService {
      * STOMP session is created.
      */
     @EventListener(SessionCreatedEvent.class)
-    private synchronized void reSubscribeToTopics() {
+    synchronized void reSubscribeToTopics() {
         log.debug("Received new SessionCreatedEvent");
         Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
-        log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds);
-        chainTaskIds.forEach(chainTaskId -> {
-            this.chainTaskIdToSubscription.remove(chainTaskId);
-            subscribeToTopic(chainTaskId);    
-        });
-        log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
+        if (chainTaskIds.isEmpty()) {
+            log.info("No topic to resubscribe to");
+        } else {
+            log.info("ReSubscribing to topics [chainTaskIds: {}]", chainTaskIds);
+            chainTaskIds.forEach(chainTaskId -> {
+                this.chainTaskIdToSubscription.remove(chainTaskId);
+                subscribeToTopic(chainTaskId);
+            });
+
+            log.info("ReSubscribed to topics [chainTaskIds: {}]", chainTaskIds);
+        }
+
+        if (sessionReady) {
+            log.warn("STOMP session was already up before receiving this event");
+        }
+
+        sessionReady = true;
+        sessionLock.lock();
+        try {
+            sessionReadyCondition.signalAll();
+        } finally {
+            sessionLock.unlock();
+        }
+    }
+
+    @EventListener(SessionLostEvent.class)
+    synchronized void sessionLost() {
+        log.warn("STOMP session is down, blocking updates until it is restored.");
+        if (!sessionReady) {
+            log.warn("STOMP session was already down before receiving this event");
+        }
+        sessionReady = false;
+    }
+
+    /**
+     * Wait for the session to be ready.
+     * Useful to prevent actions to execute while the STOMP session is disconnected.
+     *
+     * @throws InterruptedException if the current thread is interrupted
+     *         while waiting.
+     */
+    public void waitForSessionReady() throws InterruptedException {
+        while (!sessionReady) {
+            sessionLock.lock();
+            try {
+                sessionReadyCondition.await();
+            } finally {
+                sessionLock.unlock();
+            }
+        }
     }
 
     private String getTaskTopicName(String chainTaskId) {

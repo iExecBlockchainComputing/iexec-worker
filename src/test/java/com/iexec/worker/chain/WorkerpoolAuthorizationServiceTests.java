@@ -23,10 +23,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class WorkerpoolAuthorizationServiceTests {
+    private static final String CHAIN_TASK_ID = "chainTaskId";
 
     @InjectMocks
     private WorkerpoolAuthorizationService workerpoolAuthorizationService;
@@ -65,4 +72,36 @@ class WorkerpoolAuthorizationServiceTests {
 
         assertTrue(workerpoolAuthorizationService.isWorkerpoolAuthorizationValid(workerpoolAuthorization, signingAddress));
     }
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() {
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
+        workerpoolAuthorizations.put(CHAIN_TASK_ID, mock(WorkerpoolAuthorization.class));
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
+
+        assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughEmptyMap() {
+        assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+
+    @Test
+    void shouldPurgeTaskEvenThoughNoMatchingTaskId() {
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
+        workerpoolAuthorizations.put(CHAIN_TASK_ID + "-wrong", mock(WorkerpoolAuthorization.class));
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
+
+        assertTrue(workerpoolAuthorizationService.purgeTask(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(workerpoolAuthorizationService::purgeAllTasksData);
+    }
+    // endregion
 }

@@ -20,19 +20,20 @@ import com.iexec.common.security.Signature;
 import com.iexec.common.utils.SignatureUtils;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.CoreClient;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
-public class LoginService extends BaseFeignClient {
+public class LoginService {
 
-    private static final String TOKEN_PREFIX = "Bearer ";
+    static final String TOKEN_PREFIX = "Bearer ";
     private String jwtToken;
 
     private final CredentialsService credentialsService;
@@ -47,48 +48,50 @@ public class LoginService extends BaseFeignClient {
         return jwtToken;
     }
 
-    @Override
+    /**
+     * Log in the Scheduler.
+     * Caution: this is NOT thread-safe.
+     *
+     * @return An authentication token
+     */
     public String login() {
+        final String oldToken = jwtToken;
         expireToken();
 
         String workerAddress = credentialsService.getCredentials().getAddress();
         ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
-        String challenge = getLoginChallenge(workerAddress);
-        if (challenge.isEmpty()) {
-            log.error("Cannot login since challenge is empty [challenge:{}]", challenge);
+        String challenge = "";
+        try {
+            challenge = coreClient.getChallenge(workerAddress);
+        } catch (FeignException e) {
+            log.error("Cannot login, failed to get challenge [status:{}]", e.status());
+            return "";
+        }
+        if (StringUtils.isEmpty(challenge)) {
+            log.error("Cannot login, challenge is empty [challenge:{}]", challenge);
             return "";
         }
 
         Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
-        String token = requestLogin(workerAddress, signature);
-        if (token.isEmpty()) {
-            log.error("Cannot login since token is empty [token:{}]", token);
+        String token = "";
+        try {
+            token = coreClient.login(workerAddress, signature);
+        } catch (FeignException e) {
+            log.error("Cannot login, failed to get token [status:{}]", e.status());
+            return "";
+        }
+        if (StringUtils.isEmpty(token)) {
+            log.error("Cannot login, token is empty [token:{}]", token);
             return "";
         }
 
         jwtToken = TOKEN_PREFIX + token;
+        log.info("Retrieved {} JWT token from scheduler", Objects.equals(oldToken, jwtToken) ? "existing" : "new");
         return jwtToken;
     }
 
     private void expireToken() {
         jwtToken = "";
-    }
-
-    private String getLoginChallenge(String workerAddress) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("workerAddress", workerAddress);
-        HttpCall<String> httpCall = args -> coreClient.getChallenge((String) args.get("workerAddress"));
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "getLoginChallenge");
-        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
-    }
-
-    private String requestLogin(String workerAddress, Signature signature) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("workerAddress", workerAddress);
-        arguments.put("signature", signature);
-        HttpCall<String> httpCall = args -> coreClient.login((String) args.get("workerAddress"), (Signature) args.get("signature"));
-        ResponseEntity<String> response = makeHttpCall(httpCall, arguments, "requestLogin");
-        return is2xxSuccess(response) && response.getBody() != null ? response.getBody() : "";
     }
 }

@@ -42,11 +42,12 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
@@ -61,6 +62,7 @@ class ResultServiceTests {
     // 32 + 32 + 1 = 65 bytes
     public static final String ENCLAVE_SIGNATURE = "0x000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0c";
     private static final String CHAIN_TASK_ID = "taskId";
+    private static final String CHAIN_TASK_ID_2 = "taskId2";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker/";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
 
@@ -631,4 +633,50 @@ class ResultServiceTests {
         verify(domain, times(1)).getChainId();
     }
     //endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() {
+        when(workerConfigurationService.getTaskBaseDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+
+        assertThat(resultService.purgeTask(CHAIN_TASK_ID))
+                .isTrue();
+    }
+
+    @Test
+    void shouldNotPurgeTaskSinceDirDeletionFailed() {
+        when(workerConfigurationService.getTaskBaseDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+
+        try (MockedStatic<FileHelper> fileHelper = Mockito.mockStatic(FileHelper.class)) {
+            fileHelper.when(() -> FileHelper.deleteFolder(tmp))
+                    .thenReturn(false);
+
+            assertThat(resultService.purgeTask(CHAIN_TASK_ID))
+                    .isFalse();
+        }
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeAllTasksData() {
+        final Map<String, ResultInfo> resultInfoMap = new HashMap<>(Map.of(
+                CHAIN_TASK_ID, ResultInfo.builder().build(),
+                CHAIN_TASK_ID_2, ResultInfo.builder().build()
+        ));
+        ReflectionTestUtils.setField(resultService, "resultInfoMap", resultInfoMap);
+
+        when(workerConfigurationService.getTaskBaseDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+        when(workerConfigurationService.getTaskBaseDir(CHAIN_TASK_ID_2))
+                .thenReturn(tmp);
+
+        resultService.purgeAllTasksData();
+
+        assertThat(resultInfoMap).isEmpty();
+        assertThat(new File(tmp)).doesNotExist();
+    }
+    // endregion
 }

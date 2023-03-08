@@ -23,8 +23,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 
-import static org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME;
-
 /**
  * This service retrieves a bunch of configuration values related to the chain.
  * They are retrieved only when the instance is built and never updated.
@@ -43,11 +41,6 @@ public class BlockchainAdapterConfigurationService {
         }
 
         log.info("Received public chain config [config:{}]", this.publicChainConfig);
-
-        if (publicChainConfig.getBlockTime() == null) {
-            log.warn("Incorrect block time, using default [{}ms]", DEFAULT_BLOCK_TIME);
-            publicChainConfig.setBlockTime(Duration.ofMillis(DEFAULT_BLOCK_TIME));
-        }
     }
 
     public Integer getChainId() {

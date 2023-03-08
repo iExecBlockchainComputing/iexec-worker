@@ -23,10 +23,11 @@ import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.*;
 import com.iexec.common.task.TaskAbortCause;
 import com.iexec.common.task.TaskDescription;
-import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpiringMap;
 import org.springframework.context.ApplicationEventPublisher;
@@ -46,13 +47,13 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_N
 @Slf4j
 @Service
 public class TaskNotificationService {
-
     private final TaskManagerService taskManagerService;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SubscriptionService subscriptionService;
-    private final ContributionService contributionService;
+    private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private final IexecHubService iexecHubService;
+    private final SmsService smsService;
 
     private final Map<String, Long> finalDeadlineForTask = ExpiringMap
             .builder()
@@ -64,22 +65,24 @@ public class TaskNotificationService {
             CustomCoreFeignClient customCoreFeignClient,
             ApplicationEventPublisher applicationEventPublisher,
             SubscriptionService subscriptionService,
-            ContributionService contributionService,
-            IexecHubService iexecHubService) {
+            WorkerpoolAuthorizationService workerpoolAuthorizationService,
+            IexecHubService iexecHubService,
+            SmsService smsService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
         this.subscriptionService = subscriptionService;
-        this.contributionService = contributionService;
+        this.workerpoolAuthorizationService = workerpoolAuthorizationService;
         this.iexecHubService = iexecHubService;
+        this.smsService = smsService;
     }
 
     /**
-     * Note to dev: In spring the code executed in an @EventListener method will be in the same thread than the
+     * Note to dev: In spring the code executed in an @EventListener method will be in the same thread as the
      * method that triggered the event. We don't want this to be the case here so this method should be Async.
      */
-    @EventListener
     @Async
+    @EventListener
     protected void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
@@ -94,12 +97,10 @@ public class TaskNotificationService {
 
         TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
-        if (!storeWorkerpoolAuthorizationFromExtraIfPresent(extra)){
+        if (!storeWorkerpoolAuthAndSmsFromExtraIfPresent(extra)){
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
-        // TODO use taskDescription as arg for all methods
-        // and don't fetch it in each method.
         TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null) {
             log.error("Failed to get task description [chainTaskId:{}]", chainTaskId);
@@ -110,7 +111,7 @@ public class TaskNotificationService {
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
-                actionResponse = taskManagerService.start(chainTaskId);
+                actionResponse = taskManagerService.start(taskDescription);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, STARTED, actionResponse.getDetails());
                 } else {
@@ -119,7 +120,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_DOWNLOAD_APP:
                 updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
-                actionResponse = taskManagerService.downloadApp(chainTaskId);
+                actionResponse = taskManagerService.downloadApp(taskDescription);
                 if (actionResponse.isSuccess()) {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADED, actionResponse.getDetails());
                 } else {
@@ -137,7 +138,7 @@ public class TaskNotificationService {
                 break;
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
-                actionResponse = taskManagerService.compute(chainTaskId);
+                actionResponse = taskManagerService.compute(taskDescription);
                 if (actionResponse.getDetails() != null) {
                     actionResponse.getDetails().tailLogs();
                 }
@@ -193,7 +194,8 @@ public class TaskNotificationService {
                 ReplicateStatusCause replicateAbortCause = ReplicateStatusCause.getReplicateAbortCause(taskAbortCause);
                 updateStatusAndGetNextAction(chainTaskId, ABORTED, replicateAbortCause);
                 break;
-            default:
+            case PLEASE_CONTINUE:
+            case PLEASE_WAIT:
                 break;
         }
 
@@ -210,11 +212,17 @@ public class TaskNotificationService {
 
     }
 
-    private boolean storeWorkerpoolAuthorizationFromExtraIfPresent(TaskNotificationExtra extra) {
-        if (extra != null && extra.getWorkerpoolAuthorization() != null){
-            return contributionService.putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+    private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(TaskNotificationExtra extra) {
+        boolean success = true;
+        if(extra != null && extra.getWorkerpoolAuthorization() != null){
+            success = workerpoolAuthorizationService
+                .putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+            if(success && extra.getSmsUrl() != null){
+                String chainTaskId = extra.getWorkerpoolAuthorization().getChainTaskId();
+                smsService.attachSmsUrlToTask(chainTaskId, extra.getSmsUrl());
+            }
         }
-        return true;
+        return success;
     }
 
     private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
@@ -241,13 +249,25 @@ public class TaskNotificationService {
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+    TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
         TaskNotificationType next = null;
+
         // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
         while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
+            // Let's wait for the STOMP session to be ready.
+            // Otherwise, an update could be lost.
+            try {
+                subscriptionService.waitForSessionReady();
+            } catch (InterruptedException e) {
+                log.warn("Replicate status update has been interrupted" +
+                                " [chainTaskId:{}, statusUpdate:{}]",
+                        chainTaskId, statusUpdate);
+                Thread.currentThread().interrupt();
+                return null;
+            }
             next = customCoreFeignClient.updateReplicateStatus(chainTaskId, statusUpdate);
         }
 

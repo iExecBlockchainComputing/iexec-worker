@@ -19,6 +19,7 @@ package com.iexec.worker.executor;
 import com.iexec.common.chain.ChainReceipt;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.contribution.Contribution;
+import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.notification.TaskNotificationExtra;
 import com.iexec.common.replicate.*;
 import com.iexec.common.result.ComputedFile;
@@ -35,7 +36,8 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeService;
+import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -59,11 +61,12 @@ public class TaskManagerService {
     private final ContributionService contributionService;
     private final RevealService revealService;
     private final ComputeManagerService computeManagerService;
-    private final TeeSconeService teeSconeService;
+    private final TeeServicesManager teeServicesManager;
     private final DataService dataService;
     private final ResultService resultService;
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
+    private final PurgeService purgeService;
 
     public TaskManagerService(
             WorkerConfigurationService workerConfigurationService,
@@ -71,36 +74,32 @@ public class TaskManagerService {
             ContributionService contributionService,
             RevealService revealService,
             ComputeManagerService computeManagerService,
-            TeeSconeService teeSconeService,
+            TeeServicesManager teeServicesManager,
             DataService dataService,
             ResultService resultService,
             DockerService dockerService,
-            SubscriptionService subscriptionService) {
+            SubscriptionService subscriptionService,
+            PurgeService purgeService) {
         this.workerConfigurationService = workerConfigurationService;
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
         this.revealService = revealService;
         this.computeManagerService = computeManagerService;
-        this.teeSconeService = teeSconeService;
+        this.teeServicesManager = teeServicesManager;
         this.dataService = dataService;
         this.resultService = resultService;
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
+        this.purgeService = purgeService;
     }
 
-    ReplicateActionResponse start(String chainTaskId) {
+    ReplicateActionResponse start(TaskDescription taskDescription) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "start";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
                     context, chainTaskId);
         }
 
@@ -110,27 +109,27 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        if (taskDescription.isTeeTask() && !teeSconeService.isTeeEnabled()) {
-            return getFailureResponseAndPrintError(TEE_NOT_SUPPORTED,
-                    context, chainTaskId);
+        if (taskDescription.isTeeTask()) {
+            // If any TEE prerequisite is not met,
+            // then we won't be able to run the task.
+            // So it should be aborted right now.
+            final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
+            final Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
+            if (teePrerequisitesIssue.isPresent()) {
+                log.error("TEE prerequisites are not met [chainTaskId: {}, issue: {}]", chainTaskId, teePrerequisitesIssue.get());
+                return getFailureResponseAndPrintError(teePrerequisitesIssue.get(), context, chainTaskId);
+            }
         }
-
         return ReplicateActionResponse.success();
     }
 
-    ReplicateActionResponse downloadApp(String chainTaskId) {
+    ReplicateActionResponse downloadApp(TaskDescription taskDescription) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download app";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
                     context, chainTaskId);
         }
 
@@ -171,25 +170,24 @@ public class TaskManagerService {
             return getFailureResponseAndPrintError(errorStatus.get(),
                     context, chainTaskId);
         }
+        // Return early if TEE task
+        if (taskDescription.isTeeTask()) {
+            log.info("Dataset and input files will be downloaded by the pre-compute enclave [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.success();
+        }
         try {
-            // download dataset
+            // download dataset for standard task
             if (!taskDescription.containsDataset()) {
                 log.info("No dataset for this task [chainTaskId:{}]", chainTaskId);
-            } else if (taskDescription.isTeeTask()) {
-                log.info("Dataset will be downloaded by the pre-compute enclave " +
-                        "[chainTaskId:{}", chainTaskId);
             } else {
                 String datasetUri = taskDescription.getDatasetUri();
                 log.info("Downloading dataset [chainTaskId:{}, uri:{}, name:{}]",
                         chainTaskId, datasetUri, taskDescription.getDatasetName());
                 dataService.downloadStandardDataset(taskDescription);
             }
-            // download input files
+            // download input files for standard task
             if (!taskDescription.containsInputFiles()) {
                 log.info("No input files for this task [chainTaskId:{}]", chainTaskId);
-            } else if (taskDescription.isTeeTask()) {
-                log.info("Input files will be downloaded by the pre-compute enclave " +
-                        "[chainTaskId:{}", chainTaskId);
             } else {
                 log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
                 dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getInputFiles());
@@ -210,7 +208,7 @@ public class TaskManagerService {
         logError(errorCause, context, chainTaskId);
         boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause);
         // try to run post-compute
-        if (isOk && computeManagerService.runPostCompute(taskDescription, "").isSuccessful()) {
+        if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
             return ReplicateActionResponse.failure(errorCause);
         }
@@ -219,7 +217,8 @@ public class TaskManagerService {
         return ReplicateActionResponse.failure(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
-    ReplicateActionResponse compute(String chainTaskId) {
+    ReplicateActionResponse compute(TaskDescription taskDescription) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         Optional<ReplicateStatusCause> oErrorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "compute";
@@ -227,16 +226,17 @@ public class TaskManagerService {
             return getFailureResponseAndPrintError(oErrorStatus.get(), context, chainTaskId);
         }
 
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
-                    context, chainTaskId);
-        }
-
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
             return getFailureResponseAndPrintError(APP_NOT_FOUND_LOCALLY,
                     context, chainTaskId);
+        }
+
+        if (taskDescription.isTeeTask()) {
+            TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
+            if (!teeService.prepareTeeForTask(chainTaskId)) {
+                return getFailureResponseAndPrintError(TEE_PREPARATION_FAILED,
+                        context, chainTaskId);
+            }
         }
 
         WorkerpoolAuthorization workerpoolAuthorization =
@@ -257,7 +257,7 @@ public class TaskManagerService {
 
         AppComputeResponse appResponse =
                 computeManagerService.runCompute(taskDescription,
-                        preResponse.getSecureSessionId());
+                        preResponse.getSecureSession());
         if (!appResponse.isSuccessful()) {
             ReplicateStatusCause cause = APP_COMPUTE_FAILED;
             logError(cause, context, chainTaskId);
@@ -276,7 +276,7 @@ public class TaskManagerService {
 
         PostComputeResponse postResponse =
                 computeManagerService.runPostCompute(taskDescription,
-                        preResponse.getSecureSessionId());
+                        preResponse.getSecureSession());
         if (!postResponse.isSuccessful()) {
             ReplicateStatusCause cause = postResponse.getExitCause();
             logError(cause, context, chainTaskId);
@@ -297,13 +297,6 @@ public class TaskManagerService {
         String context = "contribute";
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        TaskDescription taskDescription =
-                iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            return getFailureResponseAndPrintError(TASK_DESCRIPTION_NOT_FOUND,
                     context, chainTaskId);
         }
 
@@ -408,7 +401,9 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse complete(String chainTaskId) {
-        if (!resultService.removeResult(chainTaskId)) {
+        purgeService.purgeAllServices(chainTaskId);
+
+        if (!resultService.purgeTask(chainTaskId)) {
             return ReplicateActionResponse.failure();
         }
 
@@ -429,7 +424,7 @@ public class TaskManagerService {
         dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
         log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
-        boolean isSuccess = resultService.removeResult(chainTaskId);
+        boolean isSuccess = purgeService.purgeAllServices(chainTaskId);
         if (!isSuccess) {
             log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
         }

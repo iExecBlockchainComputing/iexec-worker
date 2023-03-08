@@ -16,12 +16,12 @@
 
 package com.iexec.worker.feign.client;
 
-import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.notification.TaskNotification;
 import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.common.security.Signature;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
@@ -37,14 +37,14 @@ public interface CoreClient {
 
     //region /workers
     @GetMapping("/workers/challenge")
-    ResponseEntity<String> getChallenge(@RequestParam String walletAddress);
+    String getChallenge(@RequestParam String walletAddress);
 
     @PostMapping("/workers/login")
-    ResponseEntity<String> login(@RequestParam String walletAddress,
-                                 @RequestBody Signature authorization);
+    String login(@RequestParam String walletAddress,
+                 @RequestBody Signature authorization);
 
     @PostMapping("/workers/ping")
-    ResponseEntity<String> ping(@RequestHeader String authorization);
+    String ping(@RequestHeader String authorization);
 
     @PostMapping("/workers/register")
     ResponseEntity<Void> registerWorker(@RequestHeader String authorization,
@@ -59,7 +59,7 @@ public interface CoreClient {
 
     //region /replicates
     @GetMapping("/replicates/available")
-    ResponseEntity<WorkerpoolAuthorization> getAvailableReplicate(
+    ResponseEntity<ReplicateTaskSummary> getAvailableReplicateTaskSummary(
             @RequestHeader String authorization,
             @RequestParam long blockNumber);
 

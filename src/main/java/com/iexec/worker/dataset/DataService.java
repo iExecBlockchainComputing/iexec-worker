@@ -85,14 +85,10 @@ public class DataService {
      * 
      * @param chainTaskId
      * @param uriList
-     * @throws WorkflowException
+     * @throws WorkflowException if download fails.
      */
     public void downloadStandardInputFiles(String chainTaskId, @Nonnull List<String> uriList)
             throws WorkflowException {
-        if (uriList == null) {
-            log.error("Null input files uri list [chainTaskId:{}]", chainTaskId);
-            throw new WorkflowException(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
-        }
         for (String uri: uriList) {
             String filename = !StringUtils.isEmpty(uri)
                     ? Paths.get(uri).getFileName().toString()
@@ -102,26 +98,6 @@ public class DataService {
                 throw new WorkflowException(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
             }
         }
-    }
-
-    /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean isDatasetDecryptionNeeded(String chainTaskId) {
-        throw new UnsupportedOperationException(
-            "Dataset decryption is not supported for standard tasks");
-    }
-
-    /**
-     * This workflow is not supported anymore.
-     * @return
-     */
-    @Deprecated(forRemoval = true)
-    public boolean decryptDataset(String chainTaskId, String datasetUri) {
-        throw new UnsupportedOperationException(
-            "Dataset decryption is not supported for standard tasks");
     }
 
     /**
@@ -135,7 +111,7 @@ public class DataService {
      * @return absolute path of the saved file
      */
     private String downloadFile(String chainTaskId, String uri,
-            String parentDirectoryPath, String filename) {
+                                String parentDirectoryPath, String filename) {
         if (StringUtils.isEmpty(chainTaskId) ||
                 StringUtils.isEmpty(uri) ||
                 StringUtils.isEmpty(parentDirectoryPath) ||

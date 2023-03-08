@@ -20,10 +20,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.security.Signature;
-import com.iexec.common.tee.TeeWorkflowSharedConfiguration;
 import com.iexec.common.web.ApiResponseBody;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import feign.Request;
@@ -37,37 +35,70 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SmsServiceTests {
 
-    private static final String CAS_URL = "http://cas";
-    private static final String SESSION_ID = "randomSessionId";
+    private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final String HASH = "hash";
+    private static final WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION = spy(WorkerpoolAuthorization
+            .builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .build());
+
+    private static final TeeSessionGenerationResponse SESSION = mock(TeeSessionGenerationResponse.class);
+
     private static final String SIGNATURE = "random-signature";
+    private static final String smsUrl = "smsUrl";
 
     @Mock
     private CredentialsService credentialsService;
     @Mock
     private SmsClient smsClient;
+    @Mock
+    private SmsClientProvider smsClientProvider;
     @InjectMocks
     private SmsService smsService;
 
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
+        doReturn(HASH).when(WORKERPOOL_AUTHORIZATION).getHash();
+    }
+
+    // region getSmsClient
+    @Test
+    void shouldGetSmsClient() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        Assertions.assertThat(smsService.getSmsClient(CHAIN_TASK_ID))
+            .isEqualTo(smsClient);
     }
 
     @Test
+    void shouldNotAndGetSmsClientIfNoSmsUrlForTask() {
+        // no SMS URL attached to taskId
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        assertThrows(SmsClientCreationException.class, 
+            () -> smsService.getSmsClient(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region createTeeSession
+    @Test
     void shouldCreateTeeSession() throws TeeSessionGenerationException {
         Signature signatureStub = new Signature(SIGNATURE);
-        WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
-        when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
+        when(credentialsService.hashAndSignMessage(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
-        when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
-                .thenReturn(ApiResponseBody.<String, TeeSessionGenerationError>builder().data(SESSION_ID).build());
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
+                .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
 
-        String returnedSessionId = smsService.createTeeSession(workerpoolAuthorization);
-        Assertions.assertThat(returnedSessionId).isEqualTo(SESSION_ID);
+        TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
+        Assertions.assertThat(returnedSessionId).isEqualTo(SESSION);
+        verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
     }
 
     @Test
@@ -78,53 +109,40 @@ class SmsServiceTests {
                 new HashMap<>(), null, new RequestTemplate());
 
         Signature signatureStub = new Signature(SIGNATURE);
-        WorkerpoolAuthorization workerpoolAuthorization = mock(WorkerpoolAuthorization.class);
-        when(credentialsService.hashAndSignMessage(workerpoolAuthorization.getHash()))
+        when(credentialsService.hashAndSignMessage(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
-        when(smsClient.generateTeeSession(signatureStub.getValue(), workerpoolAuthorization))
+        when(smsClientProvider.getSmsClient(smsUrl)).thenReturn(smsClient);
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenThrow(new FeignException.InternalServerError("", request, responseBody, null ));   //FIXME
-        final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(workerpoolAuthorization), TeeSessionGenerationException.class);
+
+        final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(WORKERPOOL_AUTHORIZATION), TeeSessionGenerationException.class);
         Assertions.assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
-        verify(smsClient).generateTeeSession(signatureStub.getValue(), workerpoolAuthorization);
+        verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
+    }
+    // endregion
+
+    // region purgeTask
+    @Test
+    void shouldPurgeTask() {
+        // Attach sms URL to task
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+
+        // Purging the task
+        boolean purged = smsService.purgeTask(CHAIN_TASK_ID);
+        assertTrue(purged);
     }
 
     @Test
-    void shouldGetSconeCasUrl() {
-        when(smsClient.getSconeCasUrl()).thenReturn(CAS_URL);
-        String sconeCasUrl = smsService.getSconeCasUrl();
-        Assertions.assertThat(sconeCasUrl).isEqualTo(CAS_URL);
-        verify(smsClient).getSconeCasUrl();
+    void shouldPurgeTaskEvenThoughTaskNeverAccessed() {
+        assertTrue(smsService.purgeTask(CHAIN_TASK_ID));
     }
+    // endregion
 
+    // region purgeAllTasksData
     @Test
-    void shouldNotGetSconeCasUrlOnException() {
-        when(smsClient.getSconeCasUrl()).thenThrow(FeignException.class);
-        Assertions.assertThat(smsService.getSconeCasUrl()).isEmpty();
-        verify(smsClient).getSconeCasUrl();
+    void shouldPurgeAllTasksData() {
+        assertDoesNotThrow(smsService::purgeAllTasksData);
     }
-
-    @Test
-    void shouldGetTeeWorkflowConfiguration() {
-        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
-        when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
-        verify(smsClient).getTeeWorkflowConfiguration();
-    }
-
-    @Test
-    void shouldCallGetTeeWorkflowConfigurationApiOnlyOnce() {
-        TeeWorkflowSharedConfiguration teeWorkflowConfiguration = mock(TeeWorkflowSharedConfiguration.class);
-        when(smsClient.getTeeWorkflowConfiguration()).thenReturn(teeWorkflowConfiguration);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isEqualTo(teeWorkflowConfiguration);
-        verify(smsClient).getTeeWorkflowConfiguration();
-    }
-
-    @Test
-    void shouldNotGetTeeWorkflowConfigurationOnException() {
-        when(smsClient.getTeeWorkflowConfiguration()).thenThrow(FeignException.class);
-        Assertions.assertThat(smsService.getTeeWorkflowConfiguration()).isNull();
-        verify(smsClient).getTeeWorkflowConfiguration();
-    }
-
+    // endregion
 }

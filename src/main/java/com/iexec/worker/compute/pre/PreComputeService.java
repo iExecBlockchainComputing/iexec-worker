@@ -24,16 +24,18 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationError;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.config.TeeAppProperties;
+import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
-import com.iexec.worker.compute.TeeWorkflowConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
-import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -51,27 +53,27 @@ public class PreComputeService {
 
     private final SmsService smsService;
     private final DockerService dockerService;
-    private final TeeSconeService teeSconeService;
+    private final TeeServicesManager teeServicesManager;
     private final WorkerConfigurationService workerConfigService;
-    private final TeeWorkflowConfiguration teeWorkflowConfig;
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
+    private final TeeServicesPropertiesService teeServicesPropertiesService;
 
     public PreComputeService(
             SmsService smsService,
             DockerService dockerService,
-            TeeSconeService teeSconeService,
+            TeeServicesManager teeServicesManager,
             WorkerConfigurationService workerConfigService,
-            TeeWorkflowConfiguration teeWorkflowConfig,
             SgxService sgxService,
-            ComputeExitCauseService computeExitCauseService) {
+            ComputeExitCauseService computeExitCauseService,
+            TeeServicesPropertiesService teeServicesPropertiesService) {
         this.smsService = smsService;
         this.dockerService = dockerService;
-        this.teeSconeService = teeSconeService;
+        this.teeServicesManager = teeServicesManager;
         this.workerConfigService = workerConfigService;
-        this.teeWorkflowConfig = teeWorkflowConfig;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
+        this.teeServicesPropertiesService = teeServicesPropertiesService;
     }
 
     /**
@@ -87,8 +89,7 @@ public class PreComputeService {
     public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
         String chainTaskId = taskDescription.getChainTaskId();
         final PreComputeResponse.PreComputeResponseBuilder preComputeResponseBuilder = PreComputeResponse.builder()
-                .isTeeTask(taskDescription.isTeeTask())
-                .secureSessionId("");
+                .isTeeTask(taskDescription.isTeeTask());
 
         // verify enclave configuration for compute stage
         TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
@@ -108,30 +109,15 @@ public class PreComputeService {
             preComputeResponseBuilder.exitCause(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION);
             return preComputeResponseBuilder.build();
         }
-        // ###############################################################################
-        // TODO: activate this when user specific post-compute is properly
-        // supported. See https://github.com/iExecBlockchainComputing/iexec-sms/issues/52.
-        // ###############################################################################
-        // Download specific post-compute image if requested.
-        // Otherwise the default one will be used. 
-        // if (taskDescription.containsPostCompute() &&
-        //         !dockerService.getClient()
-        //                 .pullImage(taskDescription.getTeePostComputeImage())) {
-        //     log.error("Failed to pull specified tee post-compute image " +
-        //             "[chainTaskId:{}, imageUri:{}]", chainTaskId,
-        //             taskDescription.getTeePostComputeImage());
-        //     return "";
-        // }
-        // ###############################################################################
         // create secure session
-        String secureSessionId = "";
+        TeeSessionGenerationResponse secureSession = null;
         TeeSessionGenerationError teeSessionGenerationError = null;
         try {
-            secureSessionId = smsService.createTeeSession(workerpoolAuth);
-            if (StringUtils.isEmpty(secureSessionId)) {
+            secureSession = smsService.createTeeSession(workerpoolAuth);
+            if (secureSession == null) {
                 throw new TeeSessionGenerationException(UNKNOWN_ISSUE);
             }
-            preComputeResponseBuilder.secureSessionId(secureSessionId);
+            preComputeResponseBuilder.secureSession(secureSession);
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
             teeSessionGenerationError = e.getTeeSessionGenerationError();
@@ -144,16 +130,18 @@ public class PreComputeService {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
                             "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
                     taskDescription.containsInputFiles());
-            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSessionId);
+            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
             preComputeResponseBuilder.exitCause(exitCause);
         }
 
         return preComputeResponseBuilder.build();
     }
 
-    private ReplicateStatusCause downloadDatasetAndFiles(TaskDescription taskDescription, String secureSessionId) {
+    private ReplicateStatusCause downloadDatasetAndFiles(
+            TaskDescription taskDescription,
+            TeeSessionGenerationResponse secureSession) {
         try {
-            Integer exitCode = prepareTeeInputData(taskDescription, secureSessionId);
+            Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
                 ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
@@ -210,29 +198,34 @@ public class PreComputeService {
      * the dataset and decrypts it for the compute stage. It also downloads input
      * files if requested.
      *
-     * @param taskDescription
-     * @param secureSessionId
      * @return pre-compute exit code
      */
-    private Integer prepareTeeInputData(TaskDescription taskDescription, String secureSessionId) throws TimeoutException {
+    private Integer prepareTeeInputData(
+            TaskDescription taskDescription,
+            TeeSessionGenerationResponse secureSession)
+            throws TimeoutException {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
+
+        TeeServicesProperties properties =
+                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
+
         // check that docker image is present
-        String preComputeImage = teeWorkflowConfig.getPreComputeImage();
-        long preComputeHeapSize = teeWorkflowConfig.getPreComputeHeapSize();
+        final TeeAppProperties preComputeProperties = properties.getPreComputeProperties();
+        String preComputeImage = preComputeProperties.getImage();
         if (!dockerService.getClient().isImagePresent(preComputeImage)) {
             log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
             return null;
         }
         // run container
-        List<String> env = teeSconeService.buildPreComputeDockerEnv(secureSessionId,
-                preComputeHeapSize);
+        List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeFramework())
+            .buildPreComputeDockerEnv(taskDescription, secureSession);
         List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
         DockerRunRequest request = DockerRunRequest.builder()
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
                 .imageUri(preComputeImage)
-                .entrypoint(teeWorkflowConfig.getPreComputeEntrypoint())
+                .entrypoint(preComputeProperties.getEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
                 .binds(binds)
