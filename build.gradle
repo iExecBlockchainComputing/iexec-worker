@@ -99,6 +99,9 @@ dependencies {
     //graylog
     implementation 'biz.paluch.logging:logstash-gelf:1.5.1'
 
+    // observability
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
     // docker
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 
