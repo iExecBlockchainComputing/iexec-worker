@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
 ### New Features
+* Enable Prometheus actuator. (#512)
 ### Bug Fixes
 ### Quality
 ### Dependency Upgrades
