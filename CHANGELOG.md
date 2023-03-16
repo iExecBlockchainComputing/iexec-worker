@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 * Enable Prometheus actuator. (#512)
 ### Bug Fixes
 ### Quality
+* Refactor STOMP client service to simplify its implementation.
 ### Dependency Upgrades
 
 ## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-08
@@ -31,7 +32,6 @@ All notable changes to this project will be documented in this file.
 ### Quality
 * Improve code quality.
 * Extract STOMP client configuration to its own bean.
-* Refactor STOMP client service to simplify its implementation.
 * Remove unchecked casts.
 ### Dependency Upgrades
 * Replace the deprecated `openjdk` Docker base image with `eclipse-temurin` and upgrade to Java 11.0.18 patch.
