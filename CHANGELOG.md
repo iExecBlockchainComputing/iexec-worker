@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
 ### New Features
-* Enable Prometheus actuator. (#512)
+- Enable Prometheus actuator. (#512)
 ### Bug Fixes
 ### Quality
-* Refactor STOMP client service to simplify its implementation.
+- Refactor STOMP client service to simplify its implementation. (#492)
 ### Dependency Upgrades
 
 ## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-08
