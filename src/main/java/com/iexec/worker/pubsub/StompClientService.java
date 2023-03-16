@@ -43,7 +43,7 @@ import java.util.concurrent.TimeoutException;
 @Slf4j
 @Component
 public class StompClientService {
-    private static final int SESSION_REFRESH_DELAY_MS = 5000;
+    private static final int SESSION_REFRESH_DELAY_MS = 15000;
     private final Executor singleThreadExecutor = Executors.newSingleThreadExecutor();
     private final ApplicationEventPublisher eventPublisher;
     private final String webSocketServerUrl;
