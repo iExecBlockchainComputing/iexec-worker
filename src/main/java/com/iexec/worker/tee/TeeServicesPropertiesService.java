@@ -1,11 +1,11 @@
 package com.iexec.worker.tee;
 
 import com.iexec.common.chain.IexecHubAbstractService;
-import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeFramework;
+import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;

@@ -16,14 +16,14 @@
 
 package com.iexec.worker.compute.post;
 
-import com.iexec.commons.containers.DockerRunFinalStatus;
-import com.iexec.commons.containers.DockerRunRequest;
-import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.commons.containers.DockerRunFinalStatus;
+import com.iexec.commons.containers.DockerRunRequest;
+import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
