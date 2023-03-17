@@ -1,7 +1,7 @@
 package com.iexec.worker.tee;
 
 import com.iexec.common.chain.IexecHubAbstractService;
-import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.task.TaskDescription;

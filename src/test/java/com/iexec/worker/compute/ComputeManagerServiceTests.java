@@ -18,8 +18,8 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.chain.WorkerpoolAuthorization;
 import com.iexec.common.dapp.DappType;
-import com.iexec.common.docker.DockerLogs;
-import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.commons.containers.DockerLogs;
+import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.task.TaskDescription;

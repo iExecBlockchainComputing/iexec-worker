@@ -17,9 +17,9 @@
 package com.iexec.worker.sgx;
 
 import com.github.dockerjava.api.model.Device;
-import com.iexec.common.docker.DockerRunFinalStatus;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
+import com.iexec.commons.containers.DockerRunFinalStatus;
+import com.iexec.commons.containers.DockerRunRequest;
+import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.utils.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;

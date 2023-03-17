@@ -16,12 +16,12 @@
 
 package com.iexec.worker.docker;
 
-import com.iexec.common.docker.DockerLogs;
-import com.iexec.common.docker.DockerRunFinalStatus;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
-import com.iexec.common.docker.client.DockerClientFactory;
-import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.commons.containers.DockerLogs;
+import com.iexec.commons.containers.DockerRunFinalStatus;
+import com.iexec.commons.containers.DockerRunRequest;
+import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.containers.client.DockerClientFactory;
+import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.assertj.core.api.Assertions;
