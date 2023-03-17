@@ -1,8 +1,8 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
-import com.iexec.common.docker.client.DockerClientInstance;
+import com.iexec.commons.containers.DockerRunRequest;
+import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;

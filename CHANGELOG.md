@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Quality
 - Refactor STOMP client service to simplify its implementation. (#492)
 ### Dependency Upgrades
+- Introduce `iexec-commons-containers` to replace part of `iexec-common` (#513)
 
 ## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-08
 

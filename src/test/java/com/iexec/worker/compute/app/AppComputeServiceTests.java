@@ -16,14 +16,14 @@
 
 package com.iexec.worker.compute.app;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.commons.containers.DockerRunFinalStatus;
+import com.iexec.commons.containers.DockerRunRequest;
+import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;

@@ -1,9 +1,9 @@
 package com.iexec.worker.tee;
 
 import com.iexec.common.chain.IexecHubAbstractService;
-import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.task.TaskDescription;
 import com.iexec.common.tee.TeeFramework;
+import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.GramineServicesProperties;
 import com.iexec.sms.api.config.TeeAppProperties;
