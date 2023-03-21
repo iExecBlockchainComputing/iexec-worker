@@ -78,6 +78,8 @@ public abstract class BaseFeignClient {
             }
 
             attempt++;
+            log.error("Failed to make http call [action:{}, status:{}, attempt:{}]",
+                    action, toHttpStatus(status), attempt);
             sleep(BACK_OFF_DELAY);
         }
 
