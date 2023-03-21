@@ -73,10 +73,13 @@ public class SubscriptionService {
             return;
         }
         MessageHandler messageHandler = new MessageHandler(chainTaskId, this.workerWalletAddress);
-        stompClientService.subscribeToTopic(topic, messageHandler).ifPresent(subscription -> {
-            this.chainTaskIdToSubscription.put(chainTaskId, subscription);
-            log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
-        });
+        stompClientService.subscribeToTopic(topic, messageHandler).ifPresentOrElse(
+                subscription -> {
+                    this.chainTaskIdToSubscription.put(chainTaskId, subscription);
+                    log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
+                },
+                () -> log.error("Topic subscription failed [chainTaskId:{}, topic:{}]", chainTaskId, topic)
+        );
     }
 
     /**

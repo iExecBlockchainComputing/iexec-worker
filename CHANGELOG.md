@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 ### Quality
 - Refactor STOMP client service to simplify its implementation. (#492)
+- Add `error` log events. (#514)
 ### Dependency Upgrades
 - Introduce `iexec-commons-containers` to replace part of `iexec-common` (#513)
 
