@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ package com.iexec.worker.sms;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.security.Signature;
 import com.iexec.common.web.ApiResponseBody;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.security.Signature;
 import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;

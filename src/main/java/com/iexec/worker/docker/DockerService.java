@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-import static com.iexec.common.docker.client.DockerClientInstance.parseRegistryAddress;
+import static com.iexec.commons.containers.client.DockerClientInstance.parseRegistryAddress;
 
 @Slf4j
 @Service

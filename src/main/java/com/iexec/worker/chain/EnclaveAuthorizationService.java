@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.security.Signature;
-import com.iexec.common.tee.TeeEnclaveChallengeSignature;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.EthAddress;
-import com.iexec.common.utils.SignatureUtils;
+import com.iexec.commons.poco.security.Signature;
+import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
+import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.SignatureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import static com.iexec.common.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
+import static com.iexec.commons.poco.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
 
 
 @Slf4j

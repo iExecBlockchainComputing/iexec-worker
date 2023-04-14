@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,17 @@
 
 package com.iexec.worker.executor;
 
-import com.iexec.common.chain.ChainTask;
-import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.notification.TaskNotification;
-import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.common.task.TaskAbortCause;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.commons.poco.chain.ChainTask;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.notification.TaskNotification;
+import com.iexec.commons.poco.notification.TaskNotificationExtra;
+import com.iexec.commons.poco.notification.TaskNotificationType;
+import com.iexec.commons.poco.task.TaskAbortCause;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.iexec.common.notification.TaskNotificationType.*;
+import static com.iexec.commons.poco.notification.TaskNotificationType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
