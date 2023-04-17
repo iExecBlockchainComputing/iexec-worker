@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.chain.*;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.TestUtils;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

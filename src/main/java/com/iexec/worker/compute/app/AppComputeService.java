@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@ package com.iexec.worker.compute.app;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.sgx.SgxDriverMode;
-import com.iexec.common.task.TaskDescription;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;

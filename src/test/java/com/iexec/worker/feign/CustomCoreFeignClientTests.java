@@ -16,9 +16,9 @@
 
 package com.iexec.worker.feign;
 
-import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.commons.poco.notification.TaskNotificationType;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;

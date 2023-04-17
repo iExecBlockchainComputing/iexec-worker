@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@ package com.iexec.worker.result;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iexec.common.chain.ChainTask;
-import com.iexec.common.chain.ChainTaskStatus;
 import com.iexec.common.chain.eip712.EIP712Domain;
 import com.iexec.common.chain.eip712.entity.EIP712Challenge;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.commons.poco.chain.ChainTask;
+import com.iexec.commons.poco.chain.ChainTaskStatus;
+import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
@@ -50,8 +50,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.iexec.common.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
-import static com.iexec.common.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
+import static com.iexec.commons.poco.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
+import static com.iexec.commons.poco.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 

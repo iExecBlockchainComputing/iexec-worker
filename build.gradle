@@ -58,6 +58,7 @@ dependencyManagement {
 
 dependencies {
     // iexec
+    implementation "com.iexec.commons:iexec-commons-poco:$iexecCommonsPocoVersion"
     implementation "com.iexec.common:iexec-common:$iexecCommonVersion"
     implementation "com.iexec.commons:iexec-commons-containers:$iexecCommonsContainersVersion"
     implementation "com.iexec.blockchain:iexec-blockchain-adapter-api-library:$iexecBlockchainAdapterVersion"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package com.iexec.worker.chain;
 
 
-import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
+import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,9 +36,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
 
-import static com.iexec.common.chain.ChainContributionStatus.CONTRIBUTED;
-import static com.iexec.common.chain.ChainContributionStatus.REVEALED;
-import static com.iexec.common.utils.BytesUtils.stringToBytes;
+import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
+import static com.iexec.commons.poco.chain.ChainContributionStatus.REVEALED;
+import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 
 
 @Slf4j
