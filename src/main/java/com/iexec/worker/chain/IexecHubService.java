@@ -22,12 +22,14 @@ import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.BaseEventResponse;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -172,6 +174,65 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         log.error("Failed to reveal [chainTaskId:{}]", chainTaskId);
+        return null;
+    }
+
+    public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultDigest, String resultLink, String callbackData) {
+        try {
+            return CompletableFuture.supplyAsync(() -> {
+                log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
+                        contribution.getChainTaskId(), getWaitingTransactionCount());
+                IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultDigest, resultLink, callbackData);
+                return Optional.ofNullable(finalizeEvent)
+                        .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
+            }, executor).get();
+        } catch (ExecutionException e) {
+            log.error("contributeAndFinalize asynchronous execution did not complete", e);
+        } catch (InterruptedException e) {
+            log.error("contributeAndFinalize thread has been interrupted", e);
+            Thread.currentThread().interrupt();
+        }
+        return Optional.empty();
+    }
+
+    private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultDigest, String resultLink, String callbackData) {
+        TransactionReceipt receipt;
+        String chainTaskId = contribution.getChainTaskId();
+
+        RemoteCall<TransactionReceipt> contributeAndFinalizeCall = getWriteableHubContract().contributeAndFinalize(
+                stringToBytes(chainTaskId),
+                stringToBytes(resultDigest),
+                StringUtils.isNotEmpty(resultLink) ? resultLink.getBytes(StandardCharsets.UTF_8) : new byte[0],
+                StringUtils.isNotEmpty(callbackData) ? stringToBytes(callbackData) : new byte[0],
+                contribution.getEnclaveChallenge(),
+                stringToBytes(contribution.getEnclaveSignature()),
+                stringToBytes(contribution.getWorkerPoolSignature()));
+        log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultDigest: {}, resultLink:{}, callbackData:{}]",
+                chainTaskId, contribution, resultDigest, resultLink, callbackData);
+
+        try {
+            receipt = contributeAndFinalizeCall.send();
+            log.info("transaction hash {} at block {}", receipt.getTransactionHash(), receipt.getBlockNumber());
+        } catch (Exception e) {
+            log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId, e);
+            return null;
+        }
+
+        List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents = getHubContract().getTaskFinalizeEvents(receipt);
+        log.debug("finalizeEvents count {}", finalizeEvents.size());
+
+        IexecHubContract.TaskFinalizeEventResponse finalizeEvent = null;
+        if (!finalizeEvents.isEmpty()) {
+            finalizeEvent = finalizeEvents.get(0);
+        }
+
+        if (isSuccessTx(chainTaskId, finalizeEvent, REVEALED)) {
+            log.info("contributeAndFinalize done [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, contribution, receipt.getGasUsed(), finalizeEvent.log);
+            return finalizeEvent;
+        }
+
+        log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId);
         return null;
     }
 
