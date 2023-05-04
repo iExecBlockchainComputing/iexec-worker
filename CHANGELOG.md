@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 - Enable Prometheus actuator. (#512)
+- Add `contributeAndFinalize` support for TEE tasks when required `trust` is `1`. (#516)
 ### Bug Fixes
 ### Quality
 - Refactor STOMP client service to simplify its implementation. (#492)
