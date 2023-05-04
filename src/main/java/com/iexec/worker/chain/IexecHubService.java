@@ -177,12 +177,12 @@ public class IexecHubService extends IexecHubAbstractService {
         return null;
     }
 
-    public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultDigest, String resultLink, String callbackData) {
+    public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultLink, String callbackData) {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
                         contribution.getChainTaskId(), getWaitingTransactionCount());
-                IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultDigest, resultLink, callbackData);
+                IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
                 return Optional.ofNullable(finalizeEvent)
                         .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
             }, executor).get();
@@ -195,20 +195,20 @@ public class IexecHubService extends IexecHubAbstractService {
         return Optional.empty();
     }
 
-    private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultDigest, String resultLink, String callbackData) {
+    private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultLink, String callbackData) {
         TransactionReceipt receipt;
         String chainTaskId = contribution.getChainTaskId();
 
         RemoteCall<TransactionReceipt> contributeAndFinalizeCall = getWriteableHubContract().contributeAndFinalize(
                 stringToBytes(chainTaskId),
-                stringToBytes(resultDigest),
+                stringToBytes(contribution.getResultDigest()),
                 StringUtils.isNotEmpty(resultLink) ? resultLink.getBytes(StandardCharsets.UTF_8) : new byte[0],
                 StringUtils.isNotEmpty(callbackData) ? stringToBytes(callbackData) : new byte[0],
                 contribution.getEnclaveChallenge(),
                 stringToBytes(contribution.getEnclaveSignature()),
                 stringToBytes(contribution.getWorkerPoolSignature()));
-        log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultDigest: {}, resultLink:{}, callbackData:{}]",
-                chainTaskId, contribution, resultDigest, resultLink, callbackData);
+        log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultLink:{}, callbackData:{}]",
+                chainTaskId, contribution, resultLink, callbackData);
 
         try {
             receipt = contributeAndFinalizeCall.send();
