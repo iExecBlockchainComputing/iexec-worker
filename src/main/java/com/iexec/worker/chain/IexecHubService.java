@@ -212,14 +212,14 @@ public class IexecHubService extends IexecHubAbstractService {
 
         try {
             receipt = contributeAndFinalizeCall.send();
-            log.info("transaction hash {} at block {}", receipt.getTransactionHash(), receipt.getBlockNumber());
+            log.debug("Transaction hash {} at block {} [chainTaskId:{}]", receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
         } catch (Exception e) {
             log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId, e);
             return null;
         }
 
         List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents = getHubContract().getTaskFinalizeEvents(receipt);
-        log.debug("finalizeEvents count {}", finalizeEvents.size());
+        log.debug("finalizeEvents count {} [chainTaskId:{}]", finalizeEvents.size(), chainTaskId);
 
         IexecHubContract.TaskFinalizeEventResponse finalizeEvent = null;
         if (!finalizeEvents.isEmpty()) {
