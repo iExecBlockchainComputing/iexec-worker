@@ -1226,20 +1226,6 @@ class TaskManagerServiceTests {
     }
 
     @Test
-    void shouldNotContributeAndFinalizeSinceEmptyResultDigest() {
-        ComputedFile computedFile = ComputedFile.builder().build();
-        Contribution contribution = mock(Contribution.class);
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
-        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
-        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
-        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
-        assertThat(replicateActionResponse)
-                .isNotNull()
-                .isEqualTo(ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
-    }
-
-    @Test
     void shouldNotContributeAndFinalizeSinceTransactionFailed() {
         ComputedFile computedFile = ComputedFile.builder()
                 .resultDigest("digest")

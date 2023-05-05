@@ -428,18 +428,11 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
 
-        String resultDigest = computedFile.getResultDigest();
         String callbackData = computedFile.getCallbackData();
-
-        if (StringUtils.isEmpty(resultDigest)) {
-            logError("get result digest error", context, chainTaskId);
-            return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
-        }
-
         String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
 
-        log.info("contributeAndFinalize [contribution:{}, resultDigest:{}, resultLink:{}, callbackData:{}]",
-                contribution, resultDigest, resultLink, callbackData);
+        log.info("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
+                contribution, resultLink, callbackData);
         Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
 
         if (oChainReceipt.isEmpty() ||
