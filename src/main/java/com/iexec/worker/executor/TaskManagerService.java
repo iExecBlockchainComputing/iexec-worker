@@ -337,6 +337,12 @@ public class TaskManagerService {
                 response = ReplicateActionResponse.success(oChainReceipt.get());
             }
         } else if (context.equals(CONTRIBUTE_AND_FINALIZE)) {
+            oErrorStatus = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
+            if (oErrorStatus.isPresent()) {
+                return getFailureResponseAndPrintError(oErrorStatus.get(),
+                        context, chainTaskId);
+            }
+
             String callbackData = computedFile.getCallbackData();
             String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
             log.debug("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
