@@ -1226,6 +1226,42 @@ class TaskManagerServiceTests {
     }
 
     @Test
+    void shouldNotContributeAdnFinalizeSinceTrustNotOne() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .resultDigest("digest")
+                .callbackData("data")
+                .build();
+        Contribution contribution = mock(Contribution.class);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
+        when(contributionService.getCannotContributeAndFinalizeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.of(TRUST_NOT_1));
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(TRUST_NOT_1));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceTaskAlreadyContributed() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .resultDigest("digest")
+                .callbackData("data")
+                .build();
+        Contribution contribution = mock(Contribution.class);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
+        when(contributionService.getCannotContributeAndFinalizeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.of(TASK_ALREADY_CONTRIBUTED));
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(TASK_ALREADY_CONTRIBUTED));
+    }
+
+    @Test
     void shouldNotContributeAndFinalizeSinceTransactionFailed() {
         ComputedFile computedFile = ComputedFile.builder()
                 .resultDigest("digest")

@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 - Enable Prometheus actuator. (#512)
-- Add `contributeAndFinalize` support for TEE tasks when required `trust` is `1`. (#516 #517)
+- Add `contributeAndFinalize` support for TEE tasks when required `trust` is `1`. (#516 #517 #518)
 ### Bug Fixes
 - Filter `contribute` and `reveal` event logs  on `chainTaskId` and `workerAddress`. (#516)
 ### Quality
@@ -14,8 +14,8 @@ All notable changes to this project will be documented in this file.
 - Add `error` log events. (#514)
 ### Dependency Upgrades
 - Add new `iexec-commons-containers` 1.0.2 dependency. (#513 #515)
-- Upgrade to `iexec-common` 8.0.0. (#515)
-- Add new `iexec-commons-poco` 1.0.2 dependency. (#515)
+- Upgrade to `iexec-common` 8.0.0-NEXT-SNAPSHOT. (#515 #518)
+- Add new `iexec-commons-poco` 1.0.2-NEXT-SNAPSHOT  dependency. (#515 #518)
 
 ## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-08
 
