@@ -1345,8 +1345,10 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldFindChainReceiptValid() {
-        Optional<ChainReceipt> receipt = Optional.of(new ChainReceipt(5,
-                "txHash"));
+        ChainReceipt receipt = ChainReceipt.builder()
+                .blockNumber(5)
+                .txHash("txHash")
+                .build();
 
         boolean isValid =
                 taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);
@@ -1354,9 +1356,16 @@ class TaskManagerServiceTests {
     }
 
     @Test
+    void shouldFindChainReceiptNotValidSinceNull() {
+        assertThat(taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, null)).isFalse();
+    }
+
+    @Test
     void shouldFindChainReceiptNotValidSinceBlockIsZero() {
-        Optional<ChainReceipt> receipt = Optional.of(new ChainReceipt(0,
-                "txHash"));
+        ChainReceipt receipt = ChainReceipt.builder()
+                .blockNumber(0)
+                .txHash("txHash")
+                .build();
 
         boolean isValid =
                 taskManagerService.isValidChainReceipt(CHAIN_TASK_ID, receipt);

@@ -292,10 +292,8 @@ public class TaskManagerService {
         );
     }
 
-    ReplicateActionResponse contribute(String chainTaskId) {
-        Optional<ReplicateStatusCause> oErrorStatus =
-                contributionService.getCannotContributeStatusCause(chainTaskId);
-        String context = "contribute";
+    private ReplicateActionResponse checkContribute(String chainTaskId, String context) {
+        Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
                     context, chainTaskId);
@@ -306,29 +304,43 @@ public class TaskManagerService {
                     context, chainTaskId);
         }
 
-        ComputedFile computedFile =
-                resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         if (computedFile == null) {
             logError("computed file error", context, chainTaskId);
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        Contribution contribution =
-                contributionService.getContribution(computedFile);
+        Contribution contribution = contributionService.getContribution(computedFile);
         if (contribution == null) {
             logError("get contribution error", context, chainTaskId);
             return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
         }
 
-        Optional<ChainReceipt> oChainReceipt =
-                contributionService.contribute(contribution);
+        ReplicateActionResponse response = ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
+        if (context.equals("contribute")) {
+            log.debug("contribute [contribution:{}]", contribution);
+            Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
 
-        if (oChainReceipt.isEmpty() ||
-                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
-            return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
+            if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
+                response = ReplicateActionResponse.success(oChainReceipt.get());
+            }
+        } else if (context.equals("contributeAndFinalize")) {
+            String callbackData = computedFile.getCallbackData();
+            String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
+            log.debug("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
+                    contribution, resultLink, callbackData);
+            Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
+
+            if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
+                response = ReplicateActionResponse.success(resultLink, callbackData);
+            }
         }
+        return response;
+    }
 
-        return ReplicateActionResponse.success(oChainReceipt.get());
+    ReplicateActionResponse contribute(String chainTaskId) {
+        String context = "contribute";
+        return checkContribute(chainTaskId, context);
     }
 
     ReplicateActionResponse reveal(String chainTaskId,
@@ -372,7 +384,7 @@ public class TaskManagerService {
         Optional<ChainReceipt> oChainReceipt =
                 revealService.reveal(chainTaskId, resultDigest);
         if (oChainReceipt.isEmpty() ||
-                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
+                !isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
             return getFailureResponseAndPrintError(CHAIN_RECEIPT_NOT_VALID,
                     context, chainTaskId
             );
@@ -404,43 +416,7 @@ public class TaskManagerService {
     //TODO add getCannotContributeAndFinalizeStatusCause
     ReplicateActionResponse contributeAndFinalize(String chainTaskId) {
         String context = "contributeAndFinalize";
-        Optional<ReplicateStatusCause> oErrorStatus =
-                contributionService.getCannotContributeStatusCause(chainTaskId);
-        if (oErrorStatus.isPresent()) {
-            return getFailureResponseAndPrintError(oErrorStatus.get(),
-                    context, chainTaskId);
-        }
-
-        if (!hasEnoughGas()) {
-            return getFailureResponseAndPrintError(OUT_OF_GAS,
-                    context, chainTaskId);
-        }
-
-        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-        if (computedFile == null) {
-            logError("computed file error", context, chainTaskId);
-            return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
-        }
-
-        Contribution contribution = contributionService.getContribution(computedFile);
-        if (contribution == null) {
-            logError("get contribution error", context, chainTaskId);
-            return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
-        }
-
-        String callbackData = computedFile.getCallbackData();
-        String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
-
-        log.info("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
-                contribution, resultLink, callbackData);
-        Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
-
-        if (oChainReceipt.isEmpty() ||
-                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
-            return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
-        }
-
-        return ReplicateActionResponse.success(resultLink, callbackData);
+        return checkContribute(chainTaskId, context);
     }
 
     ReplicateActionResponse complete(String chainTaskId) {
@@ -488,14 +464,14 @@ public class TaskManagerService {
 
     //TODO Move that to contribute & reveal services
     boolean isValidChainReceipt(String chainTaskId,
-                                Optional<ChainReceipt> oChainReceipt) {
-        if (oChainReceipt.isEmpty()) {
+                                ChainReceipt chainReceipt) {
+        if (chainReceipt == null) {
             log.warn("The chain receipt is empty, nothing will be sent to the" +
                     " core [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
-        if (oChainReceipt.get().getBlockNumber() == 0) {
+        if (chainReceipt.getBlockNumber() == 0) {
             log.warn("The blockNumber of the receipt is equal to 0, status " +
                     "will not be updated in the core [chainTaskId:{}]", chainTaskId);
             return false;
