@@ -56,6 +56,9 @@ import static java.util.Objects.requireNonNull;
 @Service
 public class TaskManagerService {
 
+    private static final String CONTRIBUTE = "contribute";
+    private static final String CONTRIBUTE_AND_FINALIZE = "contributeAndFinalize";
+
     private final WorkerConfigurationService workerConfigurationService;
     private final IexecHubService iexecHubService;
     private final ContributionService contributionService;
@@ -291,7 +294,17 @@ public class TaskManagerService {
         );
     }
 
-    private ReplicateActionResponse checkContribute(String chainTaskId, String context) {
+    /**
+     * Call {@link ContributionService#contribute(Contribution)} or {@link IexecHubService#contributeAndFinalize(Contribution, String, String)}
+     * depending on the context.
+     * <p>
+     * The method has been developed to avoid code duplication.
+     *
+     * @param chainTaskId ID of the task
+     * @param context Either {@link TaskManagerService#CONTRIBUTE} or {@link TaskManagerService#CONTRIBUTE_AND_FINALIZE}
+     * @return The response of the 'contribute' or 'contributeAndFinalize' action
+     */
+    private ReplicateActionResponse contributeOrContributeAndFinalize(String chainTaskId, String context) {
         Optional<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
         if (oErrorStatus.isPresent()) {
             return getFailureResponseAndPrintError(oErrorStatus.get(),
@@ -316,14 +329,14 @@ public class TaskManagerService {
         }
 
         ReplicateActionResponse response = ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
-        if (context.equals("contribute")) {
+        if (context.equals(CONTRIBUTE)) {
             log.debug("contribute [contribution:{}]", contribution);
             Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
 
             if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
                 response = ReplicateActionResponse.success(oChainReceipt.get());
             }
-        } else if (context.equals("contributeAndFinalize")) {
+        } else if (context.equals(CONTRIBUTE_AND_FINALIZE)) {
             String callbackData = computedFile.getCallbackData();
             String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
             log.debug("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
@@ -338,8 +351,7 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse contribute(String chainTaskId) {
-        String context = "contribute";
-        return checkContribute(chainTaskId, context);
+        return contributeOrContributeAndFinalize(chainTaskId, CONTRIBUTE);
     }
 
     ReplicateActionResponse reveal(String chainTaskId,
@@ -414,8 +426,7 @@ public class TaskManagerService {
 
     //TODO add getCannotContributeAndFinalizeStatusCause
     ReplicateActionResponse contributeAndFinalize(String chainTaskId) {
-        String context = "contributeAndFinalize";
-        return checkContribute(chainTaskId, context);
+        return contributeOrContributeAndFinalize(chainTaskId, CONTRIBUTE_AND_FINALIZE);
     }
 
     ReplicateActionResponse complete(String chainTaskId) {
