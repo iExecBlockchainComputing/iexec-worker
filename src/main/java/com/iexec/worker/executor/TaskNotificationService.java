@@ -175,6 +175,15 @@ public class TaskNotificationService {
                     nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED, actionResponse.getDetails());
                 }
                 break;
+            case PLEASE_CONTRIBUTE_AND_FINALIZE:
+                updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_ONGOING);
+                actionResponse = taskManagerService.contributeAndFinalize(chainTaskId);
+                if (actionResponse.isSuccess()) {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_DONE, actionResponse.getDetails());
+                } else {
+                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_FAILED, actionResponse.getDetails());
+                }
+                break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
                 actionResponse = taskManagerService.complete(chainTaskId);
