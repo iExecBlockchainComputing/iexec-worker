@@ -104,10 +104,15 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubContract.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
+        List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
+                getHubContract().getTaskContributeEvents(contributeReceipt).stream()
+                        .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
+                                && Objects.equals(event.worker, credentialsService.getCredentials().getAddress()))
+                        .collect(Collectors.toList());
+        log.debug("contributeEvents count {} [chainTaskId: {}]", contributeEvents.size(), chainTaskId);
 
         IexecHubContract.TaskContributeEventResponse contributeEvent = null;
-        if (contributeEvents != null && !contributeEvents.isEmpty()) {
+        if (!contributeEvents.isEmpty()) {
             contributeEvent = contributeEvents.get(0);
         }
 
@@ -154,8 +159,8 @@ public class IexecHubService extends IexecHubAbstractService {
         RemoteCall<TransactionReceipt> revealCall = getWriteableHubContract().reveal(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultDigest));
-
         log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
+
         try {
             revealReceipt = revealCall.send();
         } catch (Exception e) {
@@ -163,10 +168,15 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubContract.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
+        List<IexecHubContract.TaskRevealEventResponse> revealEvents =
+                getHubContract().getTaskRevealEvents(revealReceipt).stream()
+                        .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
+                                && Objects.equals(event.worker, credentialsService.getCredentials().getAddress()))
+                        .collect(Collectors.toList());
+        log.debug("revealEvents count {} [chainTaskId:{}]", revealEvents.size(), chainTaskId);
 
         IexecHubContract.TaskRevealEventResponse revealEvent = null;
-        if (revealEvents != null && !revealEvents.isEmpty()) {
+        if (!revealEvents.isEmpty()) {
             revealEvent = revealEvents.get(0);
         }
 
