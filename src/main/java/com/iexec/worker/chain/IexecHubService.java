@@ -31,15 +31,18 @@ import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.commons.poco.chain.ChainContributionStatus.REVEALED;
+import static com.iexec.commons.poco.utils.BytesUtils.bytesToString;
 import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 
 
@@ -218,7 +221,10 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents = getHubContract().getTaskFinalizeEvents(receipt);
+        List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
+                getHubContract().getTaskFinalizeEvents(receipt).stream()
+                        .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId))
+                        .collect(Collectors.toList());
         log.debug("finalizeEvents count {} [chainTaskId:{}]", finalizeEvents.size(), chainTaskId);
 
         IexecHubContract.TaskFinalizeEventResponse finalizeEvent = null;
