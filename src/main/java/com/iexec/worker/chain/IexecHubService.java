@@ -22,22 +22,27 @@ import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.BaseEventResponse;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.commons.poco.chain.ChainContributionStatus.REVEALED;
+import static com.iexec.commons.poco.utils.BytesUtils.bytesToString;
 import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 
 
@@ -99,10 +104,15 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubContract.TaskContributeEventResponse> contributeEvents = getHubContract().getTaskContributeEvents(contributeReceipt);
+        List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
+                getHubContract().getTaskContributeEvents(contributeReceipt).stream()
+                        .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
+                                && Objects.equals(event.worker, credentialsService.getCredentials().getAddress()))
+                        .collect(Collectors.toList());
+        log.debug("contributeEvents count {} [chainTaskId: {}]", contributeEvents.size(), chainTaskId);
 
         IexecHubContract.TaskContributeEventResponse contributeEvent = null;
-        if (contributeEvents != null && !contributeEvents.isEmpty()) {
+        if (!contributeEvents.isEmpty()) {
             contributeEvent = contributeEvents.get(0);
         }
 
@@ -149,8 +159,8 @@ public class IexecHubService extends IexecHubAbstractService {
         RemoteCall<TransactionReceipt> revealCall = getWriteableHubContract().reveal(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultDigest));
-
         log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
+
         try {
             revealReceipt = revealCall.send();
         } catch (Exception e) {
@@ -158,10 +168,15 @@ public class IexecHubService extends IexecHubAbstractService {
             return null;
         }
 
-        List<IexecHubContract.TaskRevealEventResponse> revealEvents = getHubContract().getTaskRevealEvents(revealReceipt);
+        List<IexecHubContract.TaskRevealEventResponse> revealEvents =
+                getHubContract().getTaskRevealEvents(revealReceipt).stream()
+                        .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
+                                && Objects.equals(event.worker, credentialsService.getCredentials().getAddress()))
+                        .collect(Collectors.toList());
+        log.debug("revealEvents count {} [chainTaskId:{}]", revealEvents.size(), chainTaskId);
 
         IexecHubContract.TaskRevealEventResponse revealEvent = null;
-        if (revealEvents != null && !revealEvents.isEmpty()) {
+        if (!revealEvents.isEmpty()) {
             revealEvent = revealEvents.get(0);
         }
 
@@ -172,6 +187,68 @@ public class IexecHubService extends IexecHubAbstractService {
         }
 
         log.error("Failed to reveal [chainTaskId:{}]", chainTaskId);
+        return null;
+    }
+
+    public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultLink, String callbackData) {
+        try {
+            return CompletableFuture.supplyAsync(() -> {
+                log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
+                        contribution.getChainTaskId(), getWaitingTransactionCount());
+                IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
+                return Optional.ofNullable(finalizeEvent)
+                        .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
+            }, executor).get();
+        } catch (ExecutionException e) {
+            log.error("contributeAndFinalize asynchronous execution did not complete", e);
+        } catch (InterruptedException e) {
+            log.error("contributeAndFinalize thread has been interrupted", e);
+            Thread.currentThread().interrupt();
+        }
+        return Optional.empty();
+    }
+
+    private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultLink, String callbackData) {
+        TransactionReceipt receipt;
+        String chainTaskId = contribution.getChainTaskId();
+
+        RemoteCall<TransactionReceipt> contributeAndFinalizeCall = getWriteableHubContract().contributeAndFinalize(
+                stringToBytes(chainTaskId),
+                stringToBytes(contribution.getResultDigest()),
+                StringUtils.isNotEmpty(resultLink) ? resultLink.getBytes(StandardCharsets.UTF_8) : new byte[0],
+                StringUtils.isNotEmpty(callbackData) ? stringToBytes(callbackData) : new byte[0],
+                contribution.getEnclaveChallenge(),
+                stringToBytes(contribution.getEnclaveSignature()),
+                stringToBytes(contribution.getWorkerPoolSignature()));
+        log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultLink:{}, callbackData:{}]",
+                chainTaskId, contribution, resultLink, callbackData);
+
+        try {
+            receipt = contributeAndFinalizeCall.send();
+            log.debug("Transaction hash {} at block {} [chainTaskId:{}]", receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
+        } catch (Exception e) {
+            log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId, e);
+            return null;
+        }
+
+        List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
+                getHubContract().getTaskFinalizeEvents(receipt).stream()
+                        .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId))
+                        .collect(Collectors.toList());
+        log.debug("finalizeEvents count {} [chainTaskId:{}]", finalizeEvents.size(), chainTaskId);
+
+        IexecHubContract.TaskFinalizeEventResponse finalizeEvent = null;
+        if (!finalizeEvents.isEmpty()) {
+            finalizeEvent = finalizeEvents.get(0);
+        }
+
+        if (isSuccessTx(chainTaskId, finalizeEvent, REVEALED)) {
+            log.info("contributeAndFinalize done [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
+                    chainTaskId, contribution, receipt.getGasUsed(), finalizeEvent.log);
+            return finalizeEvent;
+        }
+
+        log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId);
         return null;
     }
 
