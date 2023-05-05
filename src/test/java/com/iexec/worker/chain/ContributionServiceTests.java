@@ -249,6 +249,7 @@ class ContributionServiceTests {
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
+
     @Test
     void getCannotContributeAndFinalizeStatusCauseShouldReturnTrustNotOne() {
         String chainTaskId = chainTask.getChainTaskId();
