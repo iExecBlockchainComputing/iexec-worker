@@ -849,7 +849,7 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse)
+        assertThat(replicateActionResponse)
                 .isNotNull()
                 .isEqualTo(ReplicateActionResponse
                         .success(chainReceipt));
@@ -863,10 +863,9 @@ class TaskManagerServiceTests {
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
 
-        Assertions.assertThat(replicateActionResponse)
+        assertThat(replicateActionResponse)
                 .isNotNull()
-                .isEqualTo(ReplicateActionResponse
-                        .failure(CONTRIBUTION_TIMEOUT));
+                .isEqualTo(ReplicateActionResponse.failure(CONTRIBUTION_TIMEOUT));
     }
 
     @Test
@@ -1177,6 +1176,126 @@ class TaskManagerServiceTests {
                 .isEqualTo(ReplicateActionResponse.failure(RESULT_LINK_MISSING));
     }
     //endregion
+
+    // region contributeAndFinalize
+    @Test
+    void shouldNotContributeAndFinalizeSinceCannotContributeStatusIsPresent() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(Optional.of(CONTRIBUTION_TIMEOUT));
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CONTRIBUTION_TIMEOUT));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceNotEnoughGas() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(false);
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(OUT_OF_GAS));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceNoComputedFile() {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(null);
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceNoContribution() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .resultDigest("digest")
+                .callbackData("data")
+                .build();
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(null);
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceEmptyResultDigest() {
+        ComputedFile computedFile = ComputedFile.builder().build();
+        Contribution contribution = mock(Contribution.class);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceTransactionFailed() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .resultDigest("digest")
+                .callbackData("data")
+                .build();
+        Contribution contribution = mock(Contribution.class);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
+        when(iexecHubService.contributeAndFinalize(any(), any(), any())).thenReturn(Optional.empty());
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+    @Test
+    void shouldNotContributeAndFinalizeSinceInvalidChainReceipt() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .resultDigest("digest")
+                .callbackData("data")
+                .build();
+        ChainReceipt chainReceipt = ChainReceipt.builder().blockNumber(0).build();
+        Contribution contribution = mock(Contribution.class);
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
+        when(iexecHubService.contributeAndFinalize(any(), any(), any())).thenReturn(Optional.of(chainReceipt));
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID));
+    }
+
+    @Test
+    void shouldContributeAndFinalize() {
+        ComputedFile computedFile = ComputedFile.builder()
+                .resultDigest("digest")
+                .callbackData("data")
+                .build();
+        Contribution contribution = mock(Contribution.class);
+        ChainReceipt chainReceipt = ChainReceipt.builder().blockNumber(10).build();
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.hasEnoughGas()).thenReturn(true);
+        when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
+        when(contributionService.getContribution(computedFile)).thenReturn(contribution);
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn("resultLink");
+        when(iexecHubService.contributeAndFinalize(any(), anyString(), anyString())).thenReturn(Optional.of(chainReceipt));
+        ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+        assertThat(replicateActionResponse)
+                .isNotNull()
+                .isEqualTo(ReplicateActionResponse.success("resultLink", "data"));
+    }
+    // endregion
 
     //region complete
     @Test

@@ -40,6 +40,7 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.utils.WorkflowException;
+import io.micrometer.core.instrument.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -396,6 +397,54 @@ public class TaskManagerService {
 
         log.info("Result uploaded [chainTaskId:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, resultLink, callbackData);
+
+        return ReplicateActionResponse.success(resultLink, callbackData);
+    }
+
+    ReplicateActionResponse contributeAndFinalize(String chainTaskId) {
+        String context = "contributeAndFinalize";
+        Optional<ReplicateStatusCause> oErrorStatus =
+                contributionService.getCannotContributeStatusCause(chainTaskId);
+        if (oErrorStatus.isPresent()) {
+            return getFailureResponseAndPrintError(oErrorStatus.get(),
+                    context, chainTaskId);
+        }
+
+        if (!hasEnoughGas()) {
+            return getFailureResponseAndPrintError(OUT_OF_GAS,
+                    context, chainTaskId);
+        }
+
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        if (computedFile == null) {
+            logError("computed file error", context, chainTaskId);
+            return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
+        }
+
+        Contribution contribution = contributionService.getContribution(computedFile);
+        if (contribution == null) {
+            logError("get contribution error", context, chainTaskId);
+            return ReplicateActionResponse.failure(ENCLAVE_SIGNATURE_NOT_FOUND);//TODO update status
+        }
+
+        String resultDigest = computedFile.getResultDigest();
+        String callbackData = computedFile.getCallbackData();
+
+        if (StringUtils.isEmpty(resultDigest)) {
+            logError("get result digest error", context, chainTaskId);
+            return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
+        }
+
+        String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
+
+        log.info("contributeAndFinalize [contribution:{}, resultDigest:{}, resultLink:{}, callbackData:{}]",
+                contribution, resultDigest, resultLink, callbackData);
+        Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
+
+        if (oChainReceipt.isEmpty() ||
+                !isValidChainReceipt(chainTaskId, oChainReceipt)) {
+            return ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
+        }
 
         return ReplicateActionResponse.success(resultLink, callbackData);
     }
