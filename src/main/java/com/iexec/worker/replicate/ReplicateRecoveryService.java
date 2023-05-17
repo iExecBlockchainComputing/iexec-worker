@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 /*
  * This service is used to remind the worker of possible interrupted works
@@ -85,15 +84,13 @@ public class ReplicateRecoveryService {
                 continue;
             }
 
-            Optional<TaskDescription> optionalTaskDescription = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+            TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
-            if (optionalTaskDescription.isEmpty()) {
+            if (taskDescription == null) {
                 log.error("Could not recover task, no TaskDescription retrieved [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
             }
-
-            TaskDescription taskDescription = optionalTaskDescription.get();
 
             ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
             resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
