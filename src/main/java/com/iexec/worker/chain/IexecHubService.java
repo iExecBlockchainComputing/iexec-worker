@@ -18,6 +18,7 @@ package com.iexec.worker.chain;
 
 
 import com.iexec.common.contribution.Contribution;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
@@ -48,7 +49,7 @@ import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 
 @Slf4j
 @Service
-public class IexecHubService extends IexecHubAbstractService {
+public class IexecHubService extends IexecHubAbstractService implements Purgeable {
 
     private final CredentialsService credentialsService;
     private final ThreadPoolExecutor executor;
@@ -340,5 +341,15 @@ public class IexecHubService extends IexecHubAbstractService {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean purgeTask(String chainTaskId) {
+        return super.purgeTask(chainTaskId);
+    }
+
+    @Override
+    public void purgeAllTasksData() {
+        super.purgeAllTasksData();
     }
 }
