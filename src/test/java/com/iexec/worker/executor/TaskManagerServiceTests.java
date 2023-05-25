@@ -1300,22 +1300,35 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldContributeAndFinalize() {
+        final String data = "data";
+        final String resultLink = "resultLink";
         ComputedFile computedFile = ComputedFile.builder()
                 .resultDigest("digest")
-                .callbackData("data")
+                .callbackData(data)
                 .build();
+
         Contribution contribution = mock(Contribution.class);
         ChainReceipt chainReceipt = ChainReceipt.builder().blockNumber(10).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID)).thenReturn(Optional.empty());
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(contributionService.getContribution(computedFile)).thenReturn(contribution);
-        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn("resultLink");
+        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn(resultLink);
         when(iexecHubService.contributeAndFinalize(any(), anyString(), anyString())).thenReturn(Optional.of(chainReceipt));
         ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
+
+        final ReplicateStatusDetails expectedDetails = ReplicateStatusDetails.builder()
+                .resultLink(resultLink)
+                .chainCallbackData(data)
+                .chainReceipt(chainReceipt)
+                .build();
+        final ReplicateActionResponse expectedResponse = ReplicateActionResponse.builder()
+                .isSuccess(true)
+                .details(expectedDetails)
+                .build();
         assertThat(replicateActionResponse)
                 .isNotNull()
-                .isEqualTo(ReplicateActionResponse.success("resultLink", "data"));
+                .isEqualTo(expectedResponse);
     }
     // endregion
 
