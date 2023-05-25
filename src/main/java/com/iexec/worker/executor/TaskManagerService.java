@@ -350,7 +350,15 @@ public class TaskManagerService {
             Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
 
             if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
-                response = ReplicateActionResponse.success(resultLink, callbackData);
+                final ReplicateStatusDetails details = ReplicateStatusDetails.builder()
+                        .resultLink(resultLink)
+                        .chainCallbackData(callbackData)
+                        .chainReceipt(oChainReceipt.get())
+                        .build();
+                response = ReplicateActionResponse.builder()
+                        .isSuccess(true)
+                        .details(details)
+                        .build();
             }
         }
         return response;

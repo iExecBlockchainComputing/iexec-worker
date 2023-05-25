@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Enable Prometheus actuator. (#512)
 - Add `contributeAndFinalize` support for TEE tasks when required `trust` is `1`. (#516 #517 #518)
 - Add purge cached task descriptions ability. (#521)
+- Add `chainReceipt` to ContributeAndFinalize replicate status details. (#522)
 ### Bug Fixes
 - Filter `contribute` and `reveal` event logs  on `chainTaskId` and `workerAddress`. (#516)
 ### Quality
