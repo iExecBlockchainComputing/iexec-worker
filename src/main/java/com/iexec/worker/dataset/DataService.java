@@ -55,7 +55,7 @@ public class DataService {
             throws WorkflowException {
         String chainTaskId = taskDescription.getChainTaskId();
         String uri = taskDescription.getDatasetUri();
-        String filename = taskDescription.getDatasetName();
+        String filename = taskDescription.getDatasetAddress();
         String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
         String datasetLocalFilePath =
                 downloadFile(chainTaskId, uri, parentDirectoryPath, filename);

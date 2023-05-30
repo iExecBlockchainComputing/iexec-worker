@@ -39,7 +39,7 @@ class DataServiceTests {
     public static final String CHAIN_TASK_ID = "chainTaskId";
     public static final String URI =
             "https://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/iExec-RLC-RLC-icon.png";
-    public static final String FILENAME = "icon.png";
+    public static final String DATASET_ADDRESS = "0x7293635a7891ceb3368b87e4a23b6ea41b78b962";
     public static final String CHECKSUM =
             "0x4d8401fd4484f07c202c0a2b9ce6907eabd69efae0cec3956f1a56a6b19a9daa";
 
@@ -57,8 +57,8 @@ class DataServiceTests {
     private final TaskDescription taskDescription = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .datasetUri(URI)
-            .datasetName(FILENAME)
             .datasetChecksum(CHECKSUM)
+            .datasetAddress(DATASET_ADDRESS)
             .isTeeTask(false)
             .build();
 
@@ -73,7 +73,7 @@ class DataServiceTests {
     @Test
     void shouldDownloadStandardTaskDataset() throws Exception {
         String filepath = dataService.downloadStandardDataset(taskDescription);
-        assertThat(filepath).isEqualTo(iexecIn + "/" + FILENAME);
+        assertThat(filepath).isEqualTo(iexecIn + "/" + DATASET_ADDRESS);
     }
 
 
@@ -98,8 +98,8 @@ class DataServiceTests {
     }
 
     @Test
-    void shouldNotDownloadDatasetSinceEmptyFilename() {
-        taskDescription.setDatasetName("");
+    void shouldNotDownloadDatasetSinceEmptyDatasetAddress() {
+        taskDescription.setDatasetAddress("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
@@ -131,7 +131,7 @@ class DataServiceTests {
     void shouldDownloadDatasetSinceEmptyOnchainChecksum() throws Exception {
         taskDescription.setDatasetChecksum("");
         assertThat(dataService.downloadStandardDataset(taskDescription))
-                .isEqualTo(iexecIn + "/" + FILENAME);
+                .isEqualTo(iexecIn + "/" + DATASET_ADDRESS);
     }
 
     @Test
