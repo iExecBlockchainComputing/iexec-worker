@@ -64,3 +64,7 @@ No default strategy has been implemented in the [Dockerfile](Dockerfile) at the 
 ```
 ./gradlew build --refresh-dependencies
 ```
+
+## License
+
+This repository code is released under the [Apache License 2.0](LICENSE).
