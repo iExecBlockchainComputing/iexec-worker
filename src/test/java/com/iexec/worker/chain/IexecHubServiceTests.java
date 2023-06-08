@@ -16,27 +16,36 @@
 
 package com.iexec.worker.chain;
 
+import com.iexec.common.contribution.Contribution;
+import com.iexec.commons.poco.chain.ChainReceipt;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.web3j.crypto.Credentials;
+import org.web3j.crypto.Hash;
 import org.web3j.crypto.Keys;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.RemoteFunctionCall;
+import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tx.TransactionManager;
+import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,7 +55,9 @@ import static org.mockito.Mockito.*;
 @Slf4j
 class IexecHubServiceTests {
 
-    private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final String TASK_FINALIZE_NOTICE = Hash.sha3String("TaskFinalize(bytes32,bytes)");
+    private static final String CHAIN_TASK_ID = "0x5125c4ca7176e40d8c5386072a6f262029609a5d3a896fbf592cd965e65098d9";
+
     @Mock
     private BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
     @Mock
@@ -56,7 +67,7 @@ class IexecHubServiceTests {
     @Mock
     private IexecHubContract iexecHubContract;
     @Mock
-    private RemoteFunctionCall<TransactionReceipt> remoteCall;
+    private RemoteFunctionCall<TransactionReceipt> remoteFunctionCall;
     @Mock Web3j web3jClient;
     private IexecHubService iexecHubService;
 
@@ -77,7 +88,34 @@ class IexecHubServiceTests {
             when(mockRemoteFunctionCall.send()).thenReturn(BigInteger.ONE);
             iexecHubService = spy(new IexecHubService(credentialsService, web3jService, blockchainAdapterConfigurationService));
         }
+        ReflectionTestUtils.setField(iexecHubService, "iexecHubContract", iexecHubContract);
     }
+
+    // region contributeAndFinalize
+    @Test
+    void shouldContributeAndFinalize() throws Exception {
+        Log web3Log = new Log();
+        web3Log.setData("0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000597b202273746f72616765223a202269706673222c20226c6f636174696f6e223a20222f697066732f516d6435763668723848385642444644746f777332786978466f76314833576f704a317645707758756d5a37325522207d00000000000000");
+        web3Log.setTopics(List.of(TASK_FINALIZE_NOTICE, CHAIN_TASK_ID));
+        TransactionReceipt transactionReceipt = new TransactionReceipt();
+        transactionReceipt.setBlockNumber("0x1");
+        transactionReceipt.setGasUsed("0x186a0");
+        transactionReceipt.setLogs(List.of(web3Log));
+        when(iexecHubContract.contributeAndFinalize(any(), any(), any(), any(), any(), any(), any())).thenReturn(remoteFunctionCall);
+        when(remoteFunctionCall.send()).thenReturn(transactionReceipt);
+        doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
+
+        final Contribution contribution = Contribution.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .enclaveChallenge("enclaveChallenge")
+                .enclaveSignature("enclaveSignature")
+                .resultDigest("resultDigest")
+                .workerPoolSignature("workerPoolSignature")
+                .build();
+        Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
+        assertThat(chainReceipt).isNotEmpty();
+    }
+    // endregion
 
     // region ChainTask status
     @ParameterizedTest

@@ -125,7 +125,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return null;
     }
 
-    private boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
+    boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
         if (txEvent == null || txEvent.log == null) {
             return false;
         }
