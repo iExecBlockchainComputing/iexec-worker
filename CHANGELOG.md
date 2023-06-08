@@ -17,8 +17,11 @@ All notable changes to this project will be documented in this file.
 - Add `error` log events. (#514)
 ### Dependency Upgrades
 - Add new `iexec-commons-containers` 1.0.2 dependency. (#513 #515)
-- Upgrade to `iexec-common` 8.1.0-NEXT-SNAPSHOT. (#515 #518 #520)
-- Add new `iexec-commons-poco` 2.0.1 dependency. (#515 #518 #520 #521)
+- Upgrade to `iexec-common` 8.2.0. (#515 #518 #520 #524)
+- Add new `iexec-commons-poco` 3.0.2 dependency. (#515 #518 #520 #521 #524)
+- Upgrade to `iexec-blockchain-adapter-api-library` 8.1.0. (#524)
+- Upgrade to `iexec-result-proxy-library` 8.1.0. (#524)
+- Upgrade to `iexec-sms-library` 8.1.0. (#524)
 
 ## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-08
 
