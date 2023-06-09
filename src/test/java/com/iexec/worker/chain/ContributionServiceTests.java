@@ -69,7 +69,7 @@ class ContributionServiceTests {
     @Test
     void shouldChainTaskBeInitialized() {
         String chainTaskId = "0xabc";
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(new TaskDescription());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().build());
 
         assertThat(contributionService.isChainTaskInitialized(chainTaskId)).isTrue();
     }

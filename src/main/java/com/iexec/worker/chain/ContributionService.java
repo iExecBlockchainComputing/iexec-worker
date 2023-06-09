@@ -141,7 +141,7 @@ public class ContributionService {
         if (optionalContribution.isEmpty()) return false;
 
         ChainContribution chainContribution = optionalContribution.get();
-        return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
+        return chainContribution.getStatus() == ChainContributionStatus.UNSET;
     }
 
     public boolean isContributionDeadlineReached(String chainTaskId) {

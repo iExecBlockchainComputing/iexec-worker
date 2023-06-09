@@ -62,15 +62,14 @@ class AppComputeServiceTests {
     private final static String IEXEC_OUT = "IEXEC_OUT";
     public static final long heapSize = 1024;
 
-    private final TaskDescription taskDescription = TaskDescription.builder()
+    private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .appUri(APP_URI)
             .datasetUri(DATASET_URI)
             .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
             .inputFiles(Arrays.asList("file0", "file1"))
-            .isTeeTask(true)
-            .build();
+            .isTeeTask(true);
 
     @InjectMocks
     private AppComputeService appComputeService;
@@ -96,7 +95,9 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunCompute() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .isTeeTask(false)
+                .build();
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -133,9 +134,10 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunComputeWithTeeAndConnectAppToLas() {
-        taskDescription.setTeeTask(true);
-        taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
-                .builder().heapSize(heapSize).build());
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .appEnclaveConfiguration(
+                        TeeEnclaveConfiguration.builder().heapSize(heapSize).build())
+                .build();
         when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
@@ -181,7 +183,9 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunComputeWithFailDockerResponse() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .isTeeTask(false)
+                .build();
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
