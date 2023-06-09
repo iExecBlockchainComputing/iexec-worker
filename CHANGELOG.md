@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
+## [[8.1.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.0) 2023-06-09
 
 ### New Features
 - Enable Prometheus actuator. (#512)
