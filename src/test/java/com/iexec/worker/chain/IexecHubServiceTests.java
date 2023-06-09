@@ -68,7 +68,8 @@ class IexecHubServiceTests {
     private IexecHubContract iexecHubContract;
     @Mock
     private RemoteFunctionCall<TransactionReceipt> remoteFunctionCall;
-    @Mock Web3j web3jClient;
+    @Mock 
+    private Web3j web3jClient;
     private IexecHubService iexecHubService;
 
     @BeforeEach
