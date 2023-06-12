@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Use DatasetAddress as dataset filename. (#523) 
 ### Bug Fixes
 - Filter `contribute` and `reveal` event logs  on `chainTaskId` and `workerAddress`. (#516)
+- Improve `IexecHubService` coverage. (#526)
 ### Quality
 - Refactor STOMP client service to simplify its implementation. (#492)
 - Add `error` log events. (#514)
