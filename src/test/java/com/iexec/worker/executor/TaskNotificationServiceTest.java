@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,17 @@
 
 package com.iexec.worker.executor;
 
-import com.iexec.common.chain.ChainTask;
-import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.notification.TaskNotification;
-import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.common.task.TaskAbortCause;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.commons.poco.chain.ChainTask;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.notification.TaskNotification;
+import com.iexec.commons.poco.notification.TaskNotificationExtra;
+import com.iexec.commons.poco.notification.TaskNotificationType;
+import com.iexec.commons.poco.task.TaskAbortCause;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.iexec.common.notification.TaskNotificationType.*;
+import static com.iexec.commons.poco.notification.TaskNotificationType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -318,6 +318,48 @@ class TaskNotificationServiceTest {
     }
 
     @Test
+    void shouldContributeAndFinalize() throws InterruptedException {
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_CONTRIBUTE_AND_FINALIZE)
+                .build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(taskManagerService.contributeAndFinalize(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
+        doNothing().when(subscriptionService).waitForSessionReady();
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_WAIT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+        verify(taskManagerService).contributeAndFinalize(CHAIN_TASK_ID);
+        TaskNotification nextNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_WAIT)
+                .build();
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldNotContributeAndFinalize() throws InterruptedException {
+        TaskNotification currentNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_CONTRIBUTE_AND_FINALIZE)
+                .build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(taskManagerService.contributeAndFinalize(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
+        doNothing().when(subscriptionService).waitForSessionReady();
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+        verify(taskManagerService).contributeAndFinalize(CHAIN_TASK_ID);
+        TaskNotification nextNotification = TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(PLEASE_ABORT)
+                .build();
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
     void shouldReveal() throws InterruptedException {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
@@ -370,7 +412,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldComplete() throws InterruptedException {
+    void shouldComplete() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
                 .taskNotificationType(PLEASE_COMPLETE)

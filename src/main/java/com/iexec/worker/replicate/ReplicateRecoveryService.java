@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package com.iexec.worker.replicate;
 
-import com.iexec.common.notification.TaskNotification;
-import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.commons.poco.notification.TaskNotification;
+import com.iexec.commons.poco.notification.TaskNotificationType;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 /*
  * This service is used to remind the worker of possible interrupted works
@@ -85,15 +84,13 @@ public class ReplicateRecoveryService {
                 continue;
             }
 
-            Optional<TaskDescription> optionalTaskDescription = iexecHubService.getTaskDescriptionFromChain(chainTaskId);
+            TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
-            if (optionalTaskDescription.isEmpty()) {
+            if (taskDescription == null) {
                 log.error("Could not recover task, no TaskDescription retrieved [chainTaskId:{}, taskNotificationType:{}]",
                         chainTaskId, taskNotificationType);
                 continue;
             }
-
-            TaskDescription taskDescription = optionalTaskDescription.get();
 
             ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
             resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);

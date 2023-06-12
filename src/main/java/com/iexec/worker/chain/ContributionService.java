@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,17 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.chain.*;
-import com.iexec.common.contract.generated.IexecHubContract;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.utils.BytesUtils;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.contract.generated.IexecHubContract;
+import com.iexec.commons.poco.utils.BytesUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.Optional;
 
@@ -86,6 +87,28 @@ public class ContributionService {
         return Optional.empty();
     }
 
+    // TODO: trust could become part of TaskDescription to avoid fetching deal on-chain
+    public Optional<ReplicateStatusCause> getCannotContributeAndFinalizeStatusCause(String chainTaskId) {
+        Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
+        if (optionalChainTask.isEmpty()) {
+            return Optional.of(CHAIN_UNREACHABLE);
+        }
+        ChainTask chainTask = optionalChainTask.get();
+
+        // check TRUST is 1
+        Optional<ChainDeal> oChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
+        if (oChainDeal.isEmpty() || !BigInteger.ONE.equals(oChainDeal.get().getTrust())) {
+            return Optional.of(TRUST_NOT_1);
+        }
+
+        // check TASK_ALREADY_CONTRIBUTED
+        if (!chainTask.getContributors().isEmpty()) {
+            return Optional.of(TASK_ALREADY_CONTRIBUTED);
+        }
+
+        return Optional.empty();
+    }
+
     private boolean isWorkerpoolAuthorizationPresent(String chainTaskId) {
         WorkerpoolAuthorization workerpoolAuthorization =
                 workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId);
@@ -118,7 +141,7 @@ public class ContributionService {
         if (optionalContribution.isEmpty()) return false;
 
         ChainContribution chainContribution = optionalContribution.get();
-        return chainContribution.getStatus().equals(ChainContributionStatus.UNSET);
+        return chainContribution.getStatus() == ChainContributionStatus.UNSET;
     }
 
     public boolean isContributionDeadlineReached(String chainTaskId) {

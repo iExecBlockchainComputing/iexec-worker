@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package com.iexec.worker.compute;
 
-import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.dapp.DappType;
-import com.iexec.common.docker.DockerLogs;
-import com.iexec.common.docker.client.DockerClientInstance;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.commons.containers.DockerLogs;
+import com.iexec.commons.containers.client.DockerClientInstance;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.dapp.DappType;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
@@ -66,17 +66,6 @@ class ComputeManagerServiceTests {
     private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
 
-    private final TaskDescription taskDescription = TaskDescription.builder()
-            .chainTaskId(CHAIN_TASK_ID)
-            .appType(DappType.DOCKER)
-            .appUri(APP_URI)
-            .datasetUri(DATASET_URI)
-            .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
-            .maxExecutionTime(MAX_EXECUTION_TIME)
-            .inputFiles(Arrays.asList("file0", "file1"))
-            .isTeeTask(true)
-            .maxExecutionTime(3000)
-            .build();
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder()
                     .chainTaskId(CHAIN_TASK_ID)
@@ -111,9 +100,23 @@ class ComputeManagerServiceTests {
         MockitoAnnotations.openMocks(this);
     }
 
+    private TaskDescription.TaskDescriptionBuilder createTaskDescriptionBuilder(boolean isTeeTask) {
+        return TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .appType(DappType.DOCKER)
+                .appUri(APP_URI)
+                .datasetUri(DATASET_URI)
+                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
+                .inputFiles(Arrays.asList("file0", "file1"))
+                .isTeeTask(isTeeTask)
+                .maxExecutionTime(3000);
+    }
+
     //region downloadApp
     @Test
     void shouldDownloadApp() {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(Duration.of(5, ChronoUnit.MINUTES));
         when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(Duration.of(30, ChronoUnit.MINUTES));
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
@@ -123,6 +126,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldNotDownloadAppSincePullImageFailed() {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
@@ -135,18 +139,23 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldNotDownloadAppSinceNoAppType() {
-        taskDescription.setAppType(null);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false)
+                .appType(null)
+                .build();
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
     @Test
     void shouldNotDownloadAppSinceWrongAppType() {
-        taskDescription.setAppType(DappType.BINARY);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false)
+                .appType(DappType.BINARY)
+                .build();
         Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
     @Test
     void shouldHaveImageDownloaded() {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient()).thenReturn(dockerClient);
         when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(true);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isTrue();
@@ -154,6 +163,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldNotHaveImageDownloaded() {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient()).thenReturn(dockerClient);
         when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(false);
         Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isFalse();
@@ -163,7 +173,7 @@ class ComputeManagerServiceTests {
     //region runPreCompute
     @Test
     void shouldRunStandardPreCompute() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
@@ -174,7 +184,7 @@ class ComputeManagerServiceTests {
     @Test
     void shouldRunTeePreCompute() {
         PreComputeResponse mockResponse = mock(PreComputeResponse.class);
-        taskDescription.setTeeTask(true);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(preComputeService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(mockResponse);
 
@@ -189,7 +199,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunTeePreComputeWithFailureResponse() {
-        taskDescription.setTeeTask(true);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(preComputeService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(PreComputeResponse.builder()
                 .secureSession(null)
@@ -209,7 +219,7 @@ class ComputeManagerServiceTests {
     //region runCompute
     @Test
     void shouldRunStandardCompute() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
                         .stdout(dockerLogs.getStdout())
@@ -233,7 +243,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunStandardComputeWithFailureResponse() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
         AppComputeResponse.builder()
                         .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
@@ -254,7 +264,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunTeeCompute() {
-        taskDescription.setTeeTask(true);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
                         .stdout(dockerLogs.getStdout())
@@ -280,7 +290,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunTeeComputeWithFailure() {
-        taskDescription.setTeeTask(true);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
                         .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
@@ -304,7 +314,7 @@ class ComputeManagerServiceTests {
     //region runPostCompute
     @Test
     void shouldNotBeSuccessfulWhenComputedFileNotFound() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
@@ -315,7 +325,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldNotBeSuccessfulWhenResultDigestComputationFails() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
         ComputedFile computedFile = ComputedFile.builder().build();
@@ -328,7 +338,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunStandardPostCompute() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
         ComputedFile computedFile = mock(ComputedFile.class);
@@ -347,7 +357,7 @@ class ComputeManagerServiceTests {
     @ParameterizedTest
     @EnumSource(value = ReplicateStatusCause.class, names = "POST_COMPUTE_.*", mode = EnumSource.Mode.MATCH_ALL)
     void shouldRunStandardPostComputeWithFailureResponse(ReplicateStatusCause statusCause) {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         PostComputeResponse postComputeResponse = PostComputeResponse.builder().exitCause(statusCause).build();
         when(postComputeService.runStandardPostCompute(taskDescription)).thenReturn(postComputeResponse);
 
@@ -358,7 +368,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunTeePostCompute() {
-        taskDescription.setTeeTask(true);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
                         .stdout(dockerLogs.getStdout())
@@ -387,7 +397,7 @@ class ComputeManagerServiceTests {
 
     @Test
     void shouldRunTeePostComputeWithFailureResponse() {
-        taskDescription.setTeeTask(true);
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
                         .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)

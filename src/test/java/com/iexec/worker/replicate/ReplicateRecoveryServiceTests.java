@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 package com.iexec.worker.replicate;
 
-import com.iexec.common.chain.WorkerpoolAuthorization;
-import com.iexec.common.notification.TaskNotification;
-import com.iexec.common.notification.TaskNotificationExtra;
-import com.iexec.common.notification.TaskNotificationType;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.notification.TaskNotification;
+import com.iexec.commons.poco.notification.TaskNotificationExtra;
+import com.iexec.commons.poco.notification.TaskNotificationType;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -37,7 +37,6 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -87,7 +86,7 @@ class ReplicateRecoveryServiceTests {
                 getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
         when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
-        when(iexecHubService.getTaskDescriptionFromChain(CHAIN_TASK_ID)).thenReturn(Optional.empty());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
 
         List<String> recovered =
@@ -106,7 +105,7 @@ class ReplicateRecoveryServiceTests {
                 getStubInterruptedTask(TaskNotificationType.PLEASE_REVEAL);
         when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        when(iexecHubService.getTaskDescription(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
         List<String> recovered =
@@ -125,7 +124,7 @@ class ReplicateRecoveryServiceTests {
                 getStubInterruptedTask(TaskNotificationType.PLEASE_UPLOAD);
         when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        when(iexecHubService.getTaskDescription(any())).thenReturn(getStubModel());
         when(resultService.isResultFolderFound(CHAIN_TASK_ID)).thenReturn(false);
 
         List<String> recovered =
@@ -147,7 +146,7 @@ class ReplicateRecoveryServiceTests {
         when(customCoreFeignClient.getMissedTaskNotifications(blockNumber))
                 .thenReturn(Collections.singletonList(notif));
         when(resultService.isResultAvailable(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getTaskDescriptionFromChain(any())).thenReturn(getStubModel());
+        when(iexecHubService.getTaskDescription(any())).thenReturn(getStubModel());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder().build());
 
@@ -178,9 +177,9 @@ class ReplicateRecoveryServiceTests {
                 .build();
     }
 
-    private Optional<TaskDescription> getStubModel() {
-        return Optional.of(TaskDescription.builder()
+    private TaskDescription getStubModel() {
+        return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .build());
+                .build();
     }
 }

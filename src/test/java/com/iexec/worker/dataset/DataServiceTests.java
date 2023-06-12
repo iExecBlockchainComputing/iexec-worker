@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package com.iexec.worker.dataset;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +39,7 @@ class DataServiceTests {
     public static final String CHAIN_TASK_ID = "chainTaskId";
     public static final String URI =
             "https://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/iExec-RLC-RLC-icon.png";
-    public static final String FILENAME = "icon.png";
+    public static final String DATASET_ADDRESS = "0x7293635a7891ceb3368b87e4a23b6ea41b78b962";
     public static final String CHECKSUM =
             "0x4d8401fd4484f07c202c0a2b9ce6907eabd69efae0cec3956f1a56a6b19a9daa";
 
@@ -54,13 +54,12 @@ class DataServiceTests {
 
     private String iexecIn;
 
-    private final TaskDescription taskDescription = TaskDescription.builder()
+    private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .datasetUri(URI)
-            .datasetName(FILENAME)
             .datasetChecksum(CHECKSUM)
-            .isTeeTask(false)
-            .build();
+            .datasetAddress(DATASET_ADDRESS)
+            .isTeeTask(false);
 
     @BeforeEach
     void beforeEach() {
@@ -72,14 +71,16 @@ class DataServiceTests {
 
     @Test
     void shouldDownloadStandardTaskDataset() throws Exception {
-        String filepath = dataService.downloadStandardDataset(taskDescription);
-        assertThat(filepath).isEqualTo(iexecIn + "/" + FILENAME);
+        String filepath = dataService.downloadStandardDataset(taskDescriptionBuilder.build());
+        assertThat(filepath).isEqualTo(iexecIn + "/" + DATASET_ADDRESS);
     }
 
 
     @Test
     void shouldNotDownloadDatasetSinceEmptyChainTaskId() {
-        taskDescription.setChainTaskId("");
+        TaskDescription taskDescription = taskDescriptionBuilder
+                .chainTaskId("")
+                .build();
         WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
@@ -89,7 +90,9 @@ class DataServiceTests {
 
     @Test
     void shouldNotDownloadDatasetSinceEmptyUri() {
-        taskDescription.setDatasetUri("");
+        TaskDescription taskDescription = taskDescriptionBuilder
+                .datasetUri("")
+                .build();
         WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
@@ -98,8 +101,11 @@ class DataServiceTests {
     }
 
     @Test
-    void shouldNotDownloadDatasetSinceEmptyFilename() {
-        taskDescription.setDatasetName("");
+
+    void shouldNotDownloadDatasetSinceEmptyDatasetAddress() {
+        TaskDescription taskDescription = taskDescriptionBuilder
+                .datasetAddress("")
+                .build();
         WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
@@ -112,14 +118,16 @@ class DataServiceTests {
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
         WorkflowException e = assertThrows(
                 WorkflowException.class,
-                () -> dataService.downloadStandardDataset(taskDescription));
+                () -> dataService.downloadStandardDataset(taskDescriptionBuilder.build()));
         assertThat(e.getReplicateStatusCause())
                 .isEqualTo(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
     }
 
     @Test
     void shouldNotDownloadDatasetSinceBadChecksum() {
-        taskDescription.setDatasetChecksum("badChecksum");
+        TaskDescription taskDescription = taskDescriptionBuilder
+                .datasetChecksum("badChecksum")
+                .build();
         WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
@@ -129,9 +137,11 @@ class DataServiceTests {
 
     @Test
     void shouldDownloadDatasetSinceEmptyOnchainChecksum() throws Exception {
-        taskDescription.setDatasetChecksum("");
+        TaskDescription taskDescription = taskDescriptionBuilder
+                .datasetChecksum("")
+                .build();
         assertThat(dataService.downloadStandardDataset(taskDescription))
-                .isEqualTo(iexecIn + "/" + FILENAME);
+                .isEqualTo(iexecIn + "/" + DATASET_ADDRESS);
     }
 
     @Test

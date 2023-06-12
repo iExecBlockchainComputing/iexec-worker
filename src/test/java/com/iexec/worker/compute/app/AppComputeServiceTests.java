@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 
 package com.iexec.worker.compute.app;
 
-import com.iexec.common.docker.DockerRunFinalStatus;
-import com.iexec.common.docker.DockerRunRequest;
-import com.iexec.common.docker.DockerRunResponse;
 import com.iexec.common.sgx.SgxDriverMode;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.common.tee.TeeEnclaveConfiguration;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.commons.containers.DockerRunFinalStatus;
+import com.iexec.commons.containers.DockerRunRequest;
+import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -62,15 +62,14 @@ class AppComputeServiceTests {
     private final static String IEXEC_OUT = "IEXEC_OUT";
     public static final long heapSize = 1024;
 
-    private final TaskDescription taskDescription = TaskDescription.builder()
+    private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .appUri(APP_URI)
             .datasetUri(DATASET_URI)
             .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
             .inputFiles(Arrays.asList("file0", "file1"))
-            .isTeeTask(true)
-            .build();
+            .isTeeTask(true);
 
     @InjectMocks
     private AppComputeService appComputeService;
@@ -96,7 +95,9 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunCompute() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .isTeeTask(false)
+                .build();
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -133,9 +134,10 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunComputeWithTeeAndConnectAppToLas() {
-        taskDescription.setTeeTask(true);
-        taskDescription.setAppEnclaveConfiguration(TeeEnclaveConfiguration
-                .builder().heapSize(heapSize).build());
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .appEnclaveConfiguration(
+                        TeeEnclaveConfiguration.builder().heapSize(heapSize).build())
+                .build();
         when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
@@ -181,7 +183,9 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunComputeWithFailDockerResponse() {
-        taskDescription.setTeeTask(false);
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .isTeeTask(false)
+                .build();
         when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);

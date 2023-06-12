@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[8.1.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.0) 2023-06-12
+
+### New Features
+- Enable Prometheus actuator. (#512)
+- Add `contributeAndFinalize` support for TEE tasks when required `trust` is `1`. (#516 #517 #518)
+- Add purge cached task descriptions ability. (#521)
+- Add `chainReceipt` to ContributeAndFinalize replicate status details. (#522)
+- Use DatasetAddress as dataset filename. (#523) 
+### Bug Fixes
+- Filter `contribute` and `reveal` event logs  on `chainTaskId` and `workerAddress`. (#516)
+### Quality
+- Refactor STOMP client service to simplify its implementation. (#492)
+- Add `error` log events. (#514)
+- Improve `IexecHubService` coverage. (#526)
+### Dependency Upgrades
+- Add new `iexec-commons-containers` 1.0.2 dependency. (#513 #515)
+- Upgrade to `iexec-common` 8.2.0. (#515 #518 #520 #524)
+- Add new `iexec-commons-poco` 3.0.2 dependency. (#515 #518 #520 #521 #524)
+- Upgrade to `iexec-blockchain-adapter-api-library` 8.1.0. (#524)
+- Upgrade to `iexec-result-proxy-library` 8.1.0. (#524)
+- Upgrade to `iexec-sms-library` 8.1.0. (#524)
+
 ## [[8.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.0.0) 2023-03-08
 
 ### New Features

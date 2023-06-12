@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.iexec.worker.pubsub;
 
-import com.iexec.common.notification.TaskNotification;
+import com.iexec.commons.poco.notification.TaskNotification;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -73,10 +73,13 @@ public class SubscriptionService {
             return;
         }
         MessageHandler messageHandler = new MessageHandler(chainTaskId, this.workerWalletAddress);
-        stompClientService.subscribeToTopic(topic, messageHandler).ifPresent(subscription -> {
-            this.chainTaskIdToSubscription.put(chainTaskId, subscription);
-            log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
-        });
+        stompClientService.subscribeToTopic(topic, messageHandler).ifPresentOrElse(
+                subscription -> {
+                    this.chainTaskIdToSubscription.put(chainTaskId, subscription);
+                    log.info("Subscribed to topic [chainTaskId:{}, topic:{}]", chainTaskId, topic);
+                },
+                () -> log.error("Topic subscription failed [chainTaskId:{}, topic:{}]", chainTaskId, topic)
+        );
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package com.iexec.worker.dataset;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.task.TaskDescription;
+import com.iexec.common.utils.FileHashUtils;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.common.utils.HashUtils;
 import com.iexec.common.utils.IexecFileHelper;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Nonnull;
-
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.List;
@@ -56,7 +55,7 @@ public class DataService {
             throws WorkflowException {
         String chainTaskId = taskDescription.getChainTaskId();
         String uri = taskDescription.getDatasetUri();
-        String filename = taskDescription.getDatasetName();
+        String filename = taskDescription.getDatasetAddress();
         String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
         String datasetLocalFilePath =
                 downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
@@ -69,7 +68,7 @@ public class DataService {
                     "[chainTaskId:{}]", chainTaskId);
             return datasetLocalFilePath;
         }
-        String actualSha256 = HashUtils.sha256(new File(datasetLocalFilePath));
+        String actualSha256 = FileHashUtils.sha256(new File(datasetLocalFilePath));
         if (!expectedSha256.equals(actualSha256)) {
             log.error("Dataset checksum mismatch [chainTaskId:{}, " +
                     "expected:{}, actual:{}]", chainTaskId, expectedSha256,

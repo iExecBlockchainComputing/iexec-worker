@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.chain.*;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.task.TaskDescription;
-import com.iexec.common.utils.BytesUtils;
-import com.iexec.common.utils.TestUtils;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,9 @@ import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
 
 import java.math.BigInteger;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
@@ -42,6 +44,8 @@ import static org.mockito.Mockito.*;
 
 class ContributionServiceTests {
 
+    private static final String CHAIN_DEAL_ID = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
+
     @Mock private IexecHubService iexecHubService;
     @Mock private WorkerpoolAuthorizationService workerpoolAuthorizationService;
     @Mock private EnclaveAuthorizationService enclaveAuthorizationService;
@@ -49,6 +53,13 @@ class ContributionServiceTests {
 
     @InjectMocks
     private ContributionService contributionService;
+
+    private final ChainTask chainTask = ChainTask.builder()
+            .dealid(CHAIN_DEAL_ID)
+            .idx(0)
+            .contributionDeadline(new Date().getTime() + 10000)
+            .contributors(List.of())
+            .build();
 
     @BeforeEach
     void beforeEach() {
@@ -58,7 +69,7 @@ class ContributionServiceTests {
     @Test
     void shouldChainTaskBeInitialized() {
         String chainTaskId = "0xabc";
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(new TaskDescription());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().build());
 
         assertThat(contributionService.isChainTaskInitialized(chainTaskId)).isTrue();
     }
@@ -73,7 +84,7 @@ class ContributionServiceTests {
 
     //region getCannotContributeStatusCause
     @Test
-    void getCannotContributeStatusShouldReturnStatusSinceChainTaskMissing() {
+    void getCannotContributeStatusShouldReturnChainUnreachable() {
         String chainTaskId = "chainTaskId";
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
@@ -86,45 +97,29 @@ class ContributionServiceTests {
     }
 
     @Test
-    void getCannotContributeStatusShouldReturnStakeTooLoww() {
-        String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
-
-        ChainTask chainTask = ChainTask.builder()
-                .dealid(chainDealId)
-                .idx(0)
-                .contributionDeadline(new Date().getTime() + 1000)
-                .build();
-
+    void getCannotContributeStatusShouldReturnStakeTooLow() {
         String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(0).build()));
-        when(iexecHubService.getChainDeal(chainDealId)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
                 .isEqualTo(STAKE_TOO_LOW);
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
-        verify(iexecHubService).getChainDeal(chainDealId);
+        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verifyNoInteractions(workerpoolAuthorizationService);
     }
 
     @Test
     void getCannotContributeStatusShouldReturnTaskNotActive() {
-        String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
-
-        ChainTask chainTask = ChainTask.builder()
-                .dealid(chainDealId)
-                .idx(0)
-                .contributionDeadline(new Date().getTime() + 1000)
-                .build();
-
         String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
-        when(iexecHubService.getChainDeal(chainDealId)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(false);
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
@@ -132,17 +127,15 @@ class ContributionServiceTests {
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
-        verify(iexecHubService).getChainDeal(chainDealId);
+        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verify(iexecHubService).isChainTaskActive(chainTaskId);
         verifyNoInteractions(workerpoolAuthorizationService);
     }
 
     @Test
     void getCannotContributeStatusShouldReturnAfterDeadline() {
-        String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
-
         ChainTask chainTask = ChainTask.builder()
-                .dealid(chainDealId)
+                .dealid(CHAIN_DEAL_ID)
                 .idx(0)
                 .contributionDeadline(new Date().getTime() - 1000)
                 .build();
@@ -152,7 +145,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
-        when(iexecHubService.getChainDeal(chainDealId))
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
 
@@ -161,27 +154,19 @@ class ContributionServiceTests {
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
-        verify(iexecHubService).getChainDeal(chainDealId);
+        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verify(iexecHubService).isChainTaskActive(chainTaskId);
         verifyNoInteractions(workerpoolAuthorizationService);
     }
 
     @Test
     void getCannotContributeStatusShouldReturnContributionAlreadySet() {
-        String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
-
-        ChainTask chainTask = ChainTask.builder()
-                .dealid(chainDealId)
-                .idx(0)
-                .contributionDeadline(new Date().getTime() + 1000)
-                .build();
-
         String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
-        when(iexecHubService.getChainDeal(chainDealId))
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId))
@@ -193,28 +178,20 @@ class ContributionServiceTests {
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
-        verify(iexecHubService).getChainDeal(chainDealId);
+        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verify(iexecHubService).isChainTaskActive(chainTaskId);
         verify(iexecHubService).getChainContribution(chainTaskId);
         verifyNoInteractions(workerpoolAuthorizationService);
     }
 
     @Test
-    void getCannotContributeStatusCAuseShouldReturnWorkerpoolAuthorizationNotFound() {
-        String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
-
-        ChainTask chainTask = ChainTask.builder()
-                .dealid(chainDealId)
-                .idx(0)
-                .contributionDeadline(new Date().getTime() + 1000)
-                .build();
-
+    void getCannotContributeStatusCauseShouldReturnWorkerpoolAuthorizationNotFound() {
         String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
-        when(iexecHubService.getChainDeal(chainDealId))
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId))
@@ -226,29 +203,21 @@ class ContributionServiceTests {
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
-        verify(iexecHubService).getChainDeal(chainDealId);
+        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verify(iexecHubService).isChainTaskActive(chainTaskId);
         verify(iexecHubService).getChainContribution(chainTaskId);
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
     }
 
     @Test
-    void getCannotContributeStatusShouldReturnEmpty() {
-        String chainDealId = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
-
-        ChainTask chainTask = ChainTask.builder()
-                .dealid(chainDealId)
-                .idx(0)
-                .contributionDeadline(new Date().getTime() + 1000)
-                .build();
-
+    void getCannotContributeStatusCauseShouldReturnEmpty() {
         String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId))
                 .thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
-        when(iexecHubService.getChainDeal(chainDealId))
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId))
@@ -261,12 +230,80 @@ class ContributionServiceTests {
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
-        verify(iexecHubService).getChainDeal(chainDealId);
+        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verify(iexecHubService).isChainTaskActive(chainTaskId);
         verify(iexecHubService).getChainContribution(chainTaskId);
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
     }
     //endregion
+
+    // region getCannotContributeAndFinalizeStatusCause
+    @Test
+    void getCannotContributeAndFinalizeStatusCauseShouldReturnChainUnreachable() {
+        String chainTaskId = "chainTaskId";
+
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
+
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
+                .isEqualTo(CHAIN_UNREACHABLE);
+
+        verify(iexecHubService).getChainTask(chainTaskId);
+    }
+
+    @Test
+    void getCannotContributeAndFinalizeStatusCauseShouldReturnTrustNotOne() {
+        String chainTaskId = chainTask.getChainTaskId();
+
+        ChainDeal chainDeal = ChainDeal.builder()
+                .chainDealId(CHAIN_DEAL_ID)
+                .trust(BigInteger.TWO)
+                .build();
+
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(chainDeal));
+
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
+                .isEqualTo(TRUST_NOT_1);
+    }
+
+    @Test
+    void getCannotContributeAndFinalizeStatusCauseShouldReturnTaskAlreadyContributed() {
+        ChainTask chainTask = ChainTask.builder()
+                .dealid(CHAIN_DEAL_ID)
+                .idx(0)
+                .contributionDeadline(new Date().getTime() + 1000)
+                .contributors(List.of("CONTRIBUTED"))
+                .build();
+
+        String chainTaskId = chainTask.getChainTaskId();
+
+        ChainDeal chainDeal = ChainDeal.builder()
+                .chainDealId(CHAIN_DEAL_ID)
+                .trust(BigInteger.ONE)
+                .build();
+
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(chainDeal));
+
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
+                .isEqualTo(TASK_ALREADY_CONTRIBUTED);
+    }
+
+    @Test
+    void getCannotContributeAndFinalizeStatusCauseShouldReturnEmpty() {
+        String chainTaskId = chainTask.getChainTaskId();
+
+        ChainDeal chainDeal = ChainDeal.builder()
+                .chainDealId(CHAIN_DEAL_ID)
+                .trust(BigInteger.ONE)
+                .build();
+
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(chainDeal));
+
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId)).isEmpty();
+    }
+    // endregion
 
     @Test
     void getContribution() {
