@@ -12,10 +12,10 @@ All notable changes to this project will be documented in this file.
 - Use DatasetAddress as dataset filename. (#523) 
 ### Bug Fixes
 - Filter `contribute` and `reveal` event logs  on `chainTaskId` and `workerAddress`. (#516)
-- Improve `IexecHubService` coverage. (#526)
 ### Quality
 - Refactor STOMP client service to simplify its implementation. (#492)
 - Add `error` log events. (#514)
+- Improve `IexecHubService` coverage. (#526)
 ### Dependency Upgrades
 - Add new `iexec-commons-containers` 1.0.2 dependency. (#513 #515)
 - Upgrade to `iexec-common` 8.2.0. (#515 #518 #520 #524)
