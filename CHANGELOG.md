@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
+## [[8.1.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.0) 2023-06-12
+
 ### New Features
 - Enable Prometheus actuator. (#512)
 - Add `contributeAndFinalize` support for TEE tasks when required `trust` is `1`. (#516 #517 #518)
