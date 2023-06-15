@@ -53,9 +53,9 @@ public class LasService {
                 .maxExecutionTime(0)
                 .build();
         if (!imageUri.contains(sconeConfig.getRegistryName())) {
-            // FIXME: throw an IllegalArgumentException
-            throw new RuntimeException(String.format("LAS image (%s) is not " +
-                    "from a known registry (%s)", imageUri, sconeConfig.getRegistryName()));
+            log.error("LAS image ({}) is not from a known registry ({})",
+                    imageUri, sconeConfig.getRegistryName());
+            return false;
         }
         DockerClientInstance client;
         try {
@@ -64,9 +64,8 @@ public class LasService {
                     sconeConfig.getRegistryUsername(),
                     sconeConfig.getRegistryPassword());
         } catch (Exception e) {
-            log.error("", e);
-            // FIXME: throw another, more specific, Exception
-            throw new RuntimeException("Failed to get Docker authenticated client to run LAS");
+            log.error("Failed to get Docker authenticated client to run LAS", e);
+            return false;
         }
         if (client == null) {
             log.error("Docker client with credentials is required to enable TEE support");
