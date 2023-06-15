@@ -16,7 +16,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -71,7 +72,7 @@ class LasServiceTests {
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
-        Assertions.assertThat(lasService.start()).isTrue();
+        assertTrue(lasService.start());
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
         DockerRunRequest dockerRunRequest = dockerRunRequestArgumentCaptor.getValue();
         Assertions.assertThat(dockerRunRequest).isEqualTo(
@@ -86,6 +87,20 @@ class LasServiceTests {
     }
 
     @Test
+    void shouldStartLasServiceOnlyOnce() throws Exception {
+        when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
+        when(dockerService.run(any()))
+                .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+
+        assertTrue(lasService.start());
+        assertTrue(lasService.start());
+        assertTrue(lasService.isStarted());
+        verify(dockerService).getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD);
+        verify(dockerService).run(any());
+    }
+
+    @Test
     void shouldNotStartLasServiceSinceUnknownRegistry() {
         LasService lasService = new LasService(
                 CONTAINER_NAME,
@@ -95,12 +110,8 @@ class LasServiceTests {
                 sgxService,
                 dockerService
         );
-        Exception exception = assertThrows(
-                RuntimeException.class,
-                lasService::start
-        );
 
-        Assertions.assertThat(exception.getMessage()).contains("not from a known registry");
+        assertFalse(lasService.start());
         assertFalse(lasService.isStarted());
     }
 
@@ -109,7 +120,16 @@ class LasServiceTests {
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
 
-        Assertions.assertThat(lasService.start()).isFalse();
+        assertFalse(lasService.start());
+        assertFalse(lasService.isStarted());
+    }
+
+    @Test
+    void shouldNotStartLasServiceSinceClientException() throws Exception {
+        when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
+                .thenThrow(Exception.class);
+
+        assertFalse(lasService.start());
         assertFalse(lasService.isStarted());
     }
 
@@ -117,7 +137,7 @@ class LasServiceTests {
     void shouldNotStartLasServiceSinceCannotPullImage() {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(false);
 
-        Assertions.assertThat(lasService.start()).isFalse();
+        assertFalse(lasService.start());
         assertFalse(lasService.isStarted());
     }
 
@@ -127,7 +147,7 @@ class LasServiceTests {
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
 
-        Assertions.assertThat(lasService.start()).isFalse();
+        assertFalse(lasService.start());
         assertFalse(lasService.isStarted());
     }
     // endregion
