@@ -38,7 +38,7 @@ public class LasService {
         this.dockerService = dockerService;
     }
 
-    boolean start() {
+    synchronized boolean start() {
         if (isStarted) {
             return true;
         }
