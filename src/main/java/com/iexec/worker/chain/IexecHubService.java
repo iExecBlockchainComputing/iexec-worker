@@ -77,8 +77,11 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                         contribution.getChainTaskId(), getWaitingTransactionCount());
                 return sendContributeTransaction(contribution);
             }, executor).get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (ExecutionException e) {
             log.error("contribute asynchronous execution did not complete", e);
+        } catch (InterruptedException e) {
+            log.error("contribute thread has been interrupted", e);
+            Thread.currentThread().interrupt();
         }
         return null;
     }
@@ -143,8 +146,11 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                 log.info("Requested reveal [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
                 return sendRevealTransaction(chainTaskId, resultDigest);
             }, executor).get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (ExecutionException e) {
             log.error("reveal asynchronous execution did not complete", e);
+        } catch (InterruptedException e) {
+            log.error("reveal thread has been interrupted", e);
+            Thread.currentThread().interrupt();
         }
         return null;
     }
