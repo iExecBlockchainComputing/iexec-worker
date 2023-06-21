@@ -36,7 +36,8 @@ public class LasServicesManager implements Purgeable {
      */
     private final Map<String, LasService> lasImageUriToLasService = new HashMap<>();
 
-    public LasServicesManager(SconeConfiguration sconeConfiguration,
+    public LasServicesManager(
+            SconeConfiguration sconeConfiguration,
             TeeServicesPropertiesService teeServicesPropertiesService,
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
