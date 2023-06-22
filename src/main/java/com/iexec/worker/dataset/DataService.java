@@ -21,6 +21,7 @@ import com.iexec.common.utils.FileHashUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.utils.MultiAddressHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -57,8 +58,20 @@ public class DataService {
         String uri = taskDescription.getDatasetUri();
         String filename = taskDescription.getDatasetAddress();
         String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
-        String datasetLocalFilePath =
-                downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
+        String datasetLocalFilePath = "";
+        if (MultiAddressHelper.isMultiAddress(uri)) {
+            for (String ipfsGateway : MultiAddressHelper.IPFS_GATEWAYS) {
+                log.debug("Try to download dataset from {}", ipfsGateway);
+                datasetLocalFilePath =
+                        downloadFile(chainTaskId, ipfsGateway + uri, parentDirectoryPath, filename);
+                if (!datasetLocalFilePath.isEmpty()) {
+                    break;
+                }
+            }
+        } else {
+            datasetLocalFilePath =
+                    downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
+        }
         if (datasetLocalFilePath.isEmpty()) {
             throw new WorkflowException(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
         }
@@ -109,8 +122,8 @@ public class DataService {
      * @param filename
      * @return absolute path of the saved file
      */
-    private String downloadFile(String chainTaskId, String uri,
-                                String parentDirectoryPath, String filename) {
+    String downloadFile(String chainTaskId, String uri,
+                        String parentDirectoryPath, String filename) {
         if (StringUtils.isEmpty(chainTaskId) ||
                 StringUtils.isEmpty(uri) ||
                 StringUtils.isEmpty(parentDirectoryPath) ||
