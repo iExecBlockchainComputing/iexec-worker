@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
+### Bugfixes
+- Improve interruptions handling in `IexecHubService`. (#529)
+
 ## [[8.1.1]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.1) 2023-06-15
 
 ### Bug Fixes
