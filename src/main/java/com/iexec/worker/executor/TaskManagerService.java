@@ -262,7 +262,7 @@ public class TaskManagerService {
                 computeManagerService.runCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!appResponse.isSuccessful()) {
-            ReplicateStatusCause cause = APP_COMPUTE_FAILED;
+            final ReplicateStatusCause cause = appResponse.getExitCause();
             logError(cause, context, chainTaskId);
             return ReplicateActionResponse.failureWithDetails(
                     ReplicateStatusDetails.builder()
@@ -438,7 +438,6 @@ public class TaskManagerService {
         return ReplicateActionResponse.success(resultLink, callbackData);
     }
 
-    //TODO add getCannotContributeAndFinalizeStatusCause
     ReplicateActionResponse contributeAndFinalize(String chainTaskId) {
         return contributeOrContributeAndFinalize(chainTaskId, CONTRIBUTE_AND_FINALIZE);
     }

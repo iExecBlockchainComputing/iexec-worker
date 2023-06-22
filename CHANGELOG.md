@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bugfixes
 - Improve interruptions handling in `IexecHubService`. (#529)
+- Return application execution `exitCause` as computed in `AppComputeService#getExitCauseFromFinalStatus`. (#531)
 
 ## [[8.1.1]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.1) 2023-06-15
 
