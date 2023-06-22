@@ -143,6 +143,25 @@ class DataServiceTests {
     }
 
     @Test
+    void shouldNotDownloadDatasetWhenFailureOnAllGateways(CapturedOutput output) throws WorkflowException {
+        final TaskDescription taskDescription = getTaskDescriptionBuilder()
+                .datasetUri(IPFS_URI)
+                .build();
+        final URL resourceFile = this.getClass().getClassLoader().getResource(DATASET_RESOURCE_NAME);
+        assertThat(resourceFile).isNotNull();
+        when(dataService.downloadFile(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("");
+        assertThrows(
+                WorkflowException.class
+                , () -> dataService.downloadStandardDataset(taskDescription)
+        );
+        assertThat(output)
+                .contains(IEXEC_IPFS_DOWNLOAD)
+                .contains(IO_IPFS_DOWNLOAD)
+                .contains(PINATA_IPFS_DOWNLOAD);
+    }
+
+    @Test
     void shouldNotDownloadDatasetSinceEmptyChainTaskId() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .chainTaskId("")
