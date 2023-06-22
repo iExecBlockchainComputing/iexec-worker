@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Bugfixes
 - Improve interruptions handling in `IexecHubService`. (#529)
 
+## [[8.1.1]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.1) 2023-06-15
+
+### Bug Fixes
+- Do not throw exceptions from `LasService#start` method. (#528)
+- Add `synchronized` keyword on `LasService#start` method to avoid race conditions. (#528)
+
 ## [[8.1.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.0) 2023-06-12
 
 ### New Features
