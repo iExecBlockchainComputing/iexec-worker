@@ -21,6 +21,7 @@ import com.iexec.common.utils.FileHashUtils;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.utils.MultiAddressHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +48,7 @@ public class DataService {
      * Download dataset file for the given standard task and save
      * it in {@link IexecFileHelper#SLASH_IEXEC_IN}.
      * 
-     * @param taskDescription
+     * @param taskDescription Task description containing dataset related parameters
      * @return downloaded dataset file path
      * @throws WorkflowException if download fails or bad checksum.
      */
@@ -57,8 +58,20 @@ public class DataService {
         String uri = taskDescription.getDatasetUri();
         String filename = taskDescription.getDatasetAddress();
         String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
-        String datasetLocalFilePath =
-                downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
+        String datasetLocalFilePath = "";
+        if (MultiAddressHelper.isMultiAddress(uri)) {
+            for (String ipfsGateway : MultiAddressHelper.IPFS_GATEWAYS) {
+                log.debug("Try to download dataset from {}", ipfsGateway);
+                datasetLocalFilePath =
+                        downloadFile(chainTaskId, ipfsGateway + uri, parentDirectoryPath, filename);
+                if (!datasetLocalFilePath.isEmpty()) {
+                    break;
+                }
+            }
+        } else {
+            datasetLocalFilePath =
+                    downloadFile(chainTaskId, uri, parentDirectoryPath, filename);
+        }
         if (datasetLocalFilePath.isEmpty()) {
             throw new WorkflowException(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED);
         }
@@ -82,8 +95,8 @@ public class DataService {
      * Download input files for the given standard task and save them
      * in the input folder.
      * 
-     * @param chainTaskId
-     * @param uriList
+     * @param chainTaskId Task ID used to create input files download folder
+     * @param uriList List of input files to download
      * @throws WorkflowException if download fails.
      */
     public void downloadStandardInputFiles(String chainTaskId, @Nonnull List<String> uriList)
@@ -103,14 +116,14 @@ public class DataService {
      * Download a file from a URI in the provided parent
      * directory and save it with the provided filename.
      * 
-     * @param chainTaskId
-     * @param uri
-     * @param parentDirectoryPath
-     * @param filename
-     * @return absolute path of the saved file
+     * @param chainTaskId Task ID, for logging purpose
+     * @param uri URI of  single file to download
+     * @param parentDirectoryPath Destination folder on worker host
+     * @param filename Name of downloaded file in destination folder
+     * @return absolute path of the saved file on worker host
      */
-    private String downloadFile(String chainTaskId, String uri,
-                                String parentDirectoryPath, String filename) {
+    String downloadFile(String chainTaskId, String uri,
+                        String parentDirectoryPath, String filename) {
         if (StringUtils.isEmpty(chainTaskId) ||
                 StringUtils.isEmpty(uri) ||
                 StringUtils.isEmpty(parentDirectoryPath) ||
