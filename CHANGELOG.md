@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
-### Bugfixes
+### Features
+- Retry dataset download on several IPFS gateways. (#532)
+### Bug Fixes
 - Improve interruptions handling in `IexecHubService`. (#529)
 - Return application execution `exitCause` as computed in `AppComputeService#getExitCauseFromFinalStatus`. (#531)
 
