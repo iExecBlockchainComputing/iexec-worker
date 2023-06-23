@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[8.1.3]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.3) 2023-06-23
+
+### Dependency Upgrades
+- Upgrade to `iexec-common` 8.2.1. (#534)
+- Upgrade to `iexec-commons-containers` 1.0.3. (#534)
+- Upgrade to `iexec-commons-poco` 3.0.4. (#534)
+- Upgrade to `iexec-blockchain-adapter-api-library` 8.1.1. (#534)
+- Upgrade to `iexec-result-proxy-library` 8.1.1. (#534)
+- Upgrade to `iexec-sms-library` 8.1.1. (#534)
+
 ## [[8.1.2]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.2) 2023-06-22
 
 ### Features
