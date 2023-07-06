@@ -141,7 +141,6 @@ public class PostComputeService {
                     if (fileName.length() > RESULT_FILE_NAME_MAX_LENGTH) {
                         log.error("Too long result file name [chainTaskId:{}, file:{}]", taskId, file);
                         failed.set(true);
-                        return FileVisitResult.TERMINATE;
                     }
                     return FileVisitResult.CONTINUE;
                 }
