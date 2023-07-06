@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
+### New Features
+- Check result files name length before zipping. (#538)
+### Dependency Upgrades
+- Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
+
 ## [[8.1.4]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.4) 2023-06-27
 
 ### Dependency Upgrades

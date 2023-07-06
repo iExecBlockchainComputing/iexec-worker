@@ -37,16 +37,25 @@ import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
+import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME;
 
 
 @Slf4j
 @Service
 public class PostComputeService {
+    private static final int RESULT_FILE_NAME_MAX_LENGTH = 31;
 
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
@@ -87,12 +96,22 @@ public class PostComputeService {
      */
     public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
+        final String taskIexecOutDir = workerConfigService.getTaskIexecOutDir(chainTaskId);
+        final String taskOutputDir = workerConfigService.getTaskOutputDir(chainTaskId);
+
+        // check result file names are not too long
+        final Optional<ReplicateStatusCause> resultFilesNameError = checkResultFilesName(chainTaskId, taskIexecOutDir);
+        if (resultFilesNameError.isPresent()) {
+            return PostComputeResponse.builder()
+                    .exitCause(resultFilesNameError.get())
+                    .build();
+        }
 
         // create /output/iexec_out.zip as in Web2ResultService#encryptAndUploadResult
         // return a POST_COMPUTE_OUT_FOLDER_ZIP_FAILED error on failure
         String zipIexecOutPath = ResultUtils.zipIexecOut(
-                workerConfigService.getTaskIexecOutDir(chainTaskId),
-                workerConfigService.getTaskOutputDir(chainTaskId));
+                taskIexecOutDir,
+                taskOutputDir);
         if (zipIexecOutPath.isEmpty()) {
             return PostComputeResponse.builder()
                     .exitCause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)
@@ -101,8 +120,8 @@ public class PostComputeService {
         // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
         // return a POST_COMPUTE_SEND_COMPUTED_FILE_FAILED error on failure
         boolean isCopied = FileHelper.copyFile(
-                workerConfigService.getTaskIexecOutDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON,
-                workerConfigService.getTaskOutputDir(chainTaskId) + IexecFileHelper.SLASH_COMPUTED_JSON);
+                taskIexecOutDir + IexecFileHelper.SLASH_COMPUTED_JSON,
+                taskOutputDir + IexecFileHelper.SLASH_COMPUTED_JSON);
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
             return PostComputeResponse.builder()
@@ -110,6 +129,33 @@ public class PostComputeService {
                     .build();
         }
         return PostComputeResponse.builder().build();
+    }
+
+    Optional<ReplicateStatusCause> checkResultFilesName(String taskId, String iexecOutPath) {
+        final AtomicBoolean failed = new AtomicBoolean(false);
+        try {
+            Files.walkFileTree(Paths.get(iexecOutPath), new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    final String fileName = file.getFileName().toString();
+                    if (fileName.length() > RESULT_FILE_NAME_MAX_LENGTH) {
+                        log.error("Too long result file name [chainTaskId:{}, file:{}]", taskId, file);
+                        failed.set(true);
+                        return FileVisitResult.TERMINATE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            log.error("Can't check result files [chainTaskId:{}]", taskId);
+            return Optional.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        }
+
+        if (failed.get()) {
+            log.error("Too long result file name [chainTaskId:{}]", taskId);
+            return Optional.of(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
+        }
+        return Optional.empty();
     }
 
     public PostComputeResponse runTeePostCompute(TaskDescription taskDescription,
