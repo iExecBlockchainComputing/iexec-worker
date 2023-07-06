@@ -152,7 +152,6 @@ public class PostComputeService {
         }
 
         if (failed.get()) {
-            log.error("Too long result file name [chainTaskId:{}]", taskId);
             return Optional.of(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
         }
         return Optional.empty();
