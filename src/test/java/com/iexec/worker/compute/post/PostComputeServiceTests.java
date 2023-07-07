@@ -36,7 +36,6 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -55,7 +54,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
+import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -128,44 +130,80 @@ class PostComputeServiceTests {
 
     @Test
     void shouldRunStandardPostCompute() throws IOException {
-        Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
-        Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
+        assertThat(new File(iexecOut).mkdir()).isTrue();
+        assertThat(new File(computedJson).createNewFile()).isTrue();
         logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isTrue();
+        assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isTrue();
         logDirectoryTree(output);
-        Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
-        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
+        assertThat(new File(output + "/iexec_out.zip")).exists();
+        assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).exists();
     }
 
     @Test
     void shouldNotRunStandardPostComputeSinceWrongSourceForZip() throws IOException {
-        Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
-        Assertions.assertThat(new File(computedJson).createNewFile()).isTrue();
+        assertThat(new File(iexecOut).mkdir()).isTrue();
+        assertThat(new File(computedJson).createNewFile()).isTrue();
         logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn("dummyIexecOut");
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
+        assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
         logDirectoryTree(output);
     }
 
     @Test
     void shouldNotRunStandardPostComputeSinceNoComputedFileToCopy() {
-        Assertions.assertThat(new File(iexecOut).mkdir()).isTrue();
+        assertThat(new File(iexecOut).mkdir()).isTrue();
         //don't create iexec_out.zip
         logDirectoryTree(output);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
 
-        Assertions.assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
+        assertThat(postComputeService.runStandardPostCompute(taskDescription).isSuccessful()).isFalse();
         logDirectoryTree(output);
-        Assertions.assertThat(new File(output + "/iexec_out.zip")).exists();
-        Assertions.assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).doesNotExist();
+        assertThat(new File(output + "/iexec_out.zip")).exists();
+        assertThat(new File(output + IexecFileHelper.SLASH_COMPUTED_JSON)).doesNotExist();
     }
     //endregion
+
+    // region checkResultFilesName
+    @Test
+    void shouldPassResultFilesNameCheckWhenNoFile() {
+        assertThat(postComputeService.checkResultFilesName(CHAIN_TASK_ID, jUnitTemporaryFolder.getAbsolutePath()))
+                .isEmpty();
+    }
+
+    @Test
+    void shouldPassResultFilesNameCheckWhenCorrectFiles() throws IOException {
+        assertTrue(new File(jUnitTemporaryFolder, "result.txt").createNewFile());
+        assertTrue(new File(jUnitTemporaryFolder, "computed.json").createNewFile());
+
+        assertThat(postComputeService.checkResultFilesName(CHAIN_TASK_ID, jUnitTemporaryFolder.getAbsolutePath()))
+                .isEmpty();
+    }
+
+    @Test
+    void shouldFailResultFilesNameCheckWhenWrongFolder() {
+        assertThat(postComputeService.checkResultFilesName(CHAIN_TASK_ID, "/dummy/folder/that/doesnt/exist"))
+                .isPresent()
+                .get()
+                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    }
+
+    @Test
+    void shouldFailResultFilesNameCheckWhenFileNameTooLong() throws IOException {
+        assertTrue(new File(jUnitTemporaryFolder, "result-0x0000000000000000000.txt").createNewFile());
+        assertTrue(new File(jUnitTemporaryFolder, "computed.json").createNewFile());
+
+        assertThat(postComputeService.checkResultFilesName(CHAIN_TASK_ID, jUnitTemporaryFolder.getAbsolutePath()))
+                .isPresent()
+                .get()
+                .isEqualTo(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
+    }
+    // endregion
 
     //region runTeePostCompute
     @Test
@@ -206,7 +244,7 @@ class PostComputeServiceTests {
         verify(dockerService).run(argumentCaptor.capture());
         DockerRunRequest dockerRunRequest =
                 argumentCaptor.getAllValues().get(0);
-        Assertions.assertThat(dockerRunRequest).isEqualTo(
+        assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
                         .chainTaskId(CHAIN_TASK_ID)
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID +
