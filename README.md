@@ -47,8 +47,6 @@ You can configure the _iExec Worker_ with the following properties:
 | `IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME` | Username to connect to the Scontain registry. | String | |
 | `IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD` | Password to connect to the Scontain registry. | String | |
 | `IEXEC_LAS_PORT` | Port the LAS should be started on. | Positive integer | `18766` |
-| `IEXEC_CORE_GRAYLOG_HOST` | Graylog server host. | String | `localhost` |
-| `IEXEC_CORE_GRAYLOG_PORT` | Graylog server port. | Positive integer | `12201` |
 | `IEXEC_WORKER_SGX_DRIVER_MODE` | Intel® SGX driver that should be used. | { NONE, LEGACY, NATIVE } | `NONE` |
 
 ## Health checks

@@ -51,10 +51,6 @@ management:
     restart:
       enabled: true
 
-graylog:
-  host: ${IEXEC_CORE_GRAYLOG_HOST:localhost}
-  port: ${IEXEC_CORE_GRAYLOG_PORT:12201}
-
 tee:
   sgx:
     driver-mode: ${IEXEC_WORKER_SGX_DRIVER_MODE:NONE}
