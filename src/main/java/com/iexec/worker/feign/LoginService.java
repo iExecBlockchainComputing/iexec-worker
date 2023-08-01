@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
 import java.util.Objects;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -38,7 +38,7 @@ public class LoginService {
 
     private final CredentialsService credentialsService;
     private final CoreClient coreClient;
-    private final Semaphore lock = new Semaphore(1);
+    private final ReentrantLock lock = new ReentrantLock();
 
     LoginService(CredentialsService credentialsService, CoreClient coreClient) {
         this.credentialsService = credentialsService;
@@ -52,7 +52,7 @@ public class LoginService {
     /**
      * Log in the Scheduler.
      * <p>
-     * Thread safety is implemented with a {@link Semaphore} and a {@code try {} finally {}} block.
+     * Thread safety is implemented with a {@link ReentrantLock} and a {@code try {} finally {}} block.
      * The lock is acquired before entering the {@code try} block.
      * The latter has been added to ensure the lock will always be released once acquired.
      * If the lock is not acquired, a login procedure is already ongoing and the method returns immediately.
@@ -60,7 +60,7 @@ public class LoginService {
      * @return An authentication token
      */
     public String login() {
-        if (!lock.tryAcquire()) {
+        if (!lock.tryLock()) {
             log.info("login already ongoing");
             return "";
         }
@@ -100,7 +100,7 @@ public class LoginService {
             log.info("Retrieved {} JWT token from scheduler", Objects.equals(oldToken, jwtToken) ? "existing" : "new");
             return jwtToken;
         } finally {
-            lock.release();
+            lock.unlock();
         }
     }
 
