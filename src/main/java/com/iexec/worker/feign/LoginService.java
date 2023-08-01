@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.web3j.crypto.ECKeyPair;
 
 import java.util.Objects;
+import java.util.concurrent.Semaphore;
 
 @Slf4j
 @Service
@@ -37,6 +38,7 @@ public class LoginService {
 
     private final CredentialsService credentialsService;
     private final CoreClient coreClient;
+    private final Semaphore lock = new Semaphore(1);
 
     LoginService(CredentialsService credentialsService, CoreClient coreClient) {
         this.credentialsService = credentialsService;
@@ -49,45 +51,59 @@ public class LoginService {
 
     /**
      * Log in the Scheduler.
-     * Caution: this is NOT thread-safe.
+     * <p>
+     * Thread safety is implemented with a {@link Semaphore} and a {@code try {} finally {}} block.
+     * The lock is acquired before entering the {@code try} block.
+     * The latter has been added to ensure the lock will always be released once acquired.
+     * If the lock is not acquired, a login procedure is already ongoing and the method returns immediately.
      *
      * @return An authentication token
      */
     public String login() {
-        final String oldToken = jwtToken;
-        expireToken();
-
-        String workerAddress = credentialsService.getCredentials().getAddress();
-        ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
-
-        String challenge = "";
+        if (!lock.tryAcquire()) {
+            log.info("login already ongoing");
+            return "";
+        }
         try {
-            challenge = coreClient.getChallenge(workerAddress);
-        } catch (FeignException e) {
-            log.error("Cannot login, failed to get challenge [status:{}]", e.status());
-            return "";
-        }
-        if (StringUtils.isEmpty(challenge)) {
-            log.error("Cannot login, challenge is empty [challenge:{}]", challenge);
-            return "";
-        }
+            log.debug("lock acquired");
+            final String oldToken = jwtToken;
+            expireToken();
 
-        Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
-        String token = "";
-        try {
-            token = coreClient.login(workerAddress, signature);
-        } catch (FeignException e) {
-            log.error("Cannot login, failed to get token [status:{}]", e.status());
-            return "";
-        }
-        if (StringUtils.isEmpty(token)) {
-            log.error("Cannot login, token is empty [token:{}]", token);
-            return "";
-        }
+            String workerAddress = credentialsService.getCredentials().getAddress();
+            ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
 
-        jwtToken = TOKEN_PREFIX + token;
-        log.info("Retrieved {} JWT token from scheduler", Objects.equals(oldToken, jwtToken) ? "existing" : "new");
-        return jwtToken;
+            final String challenge;
+            try {
+                challenge = coreClient.getChallenge(workerAddress);
+            } catch (FeignException e) {
+                log.error("Cannot login, failed to get challenge [status:{}]", e.status());
+                return "";
+            }
+            if (StringUtils.isEmpty(challenge)) {
+                log.error("Cannot login, challenge is empty [challenge:{}]", challenge);
+                return "";
+            }
+
+            Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
+            final String token;
+            try {
+                token = coreClient.login(workerAddress, signature);
+            } catch (FeignException e) {
+                log.error("Cannot login, failed to get token [status:{}]", e.status());
+                return "";
+            }
+            if (StringUtils.isEmpty(token)) {
+                log.error("Cannot login, token is empty [token:{}]", token);
+                return "";
+            }
+
+            jwtToken = TOKEN_PREFIX + token;
+            log.info("Retrieved {} JWT token from scheduler", Objects.equals(oldToken, jwtToken) ? "existing" : "new");
+            return jwtToken;
+        } finally {
+            log.debug("lock released");
+            lock.release();
+        }
     }
 
     private void expireToken() {
