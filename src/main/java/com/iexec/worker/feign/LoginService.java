@@ -65,7 +65,6 @@ public class LoginService {
             return "";
         }
         try {
-            log.debug("lock acquired");
             final String oldToken = jwtToken;
             expireToken();
 
@@ -101,7 +100,6 @@ public class LoginService {
             log.info("Retrieved {} JWT token from scheduler", Objects.equals(oldToken, jwtToken) ? "existing" : "new");
             return jwtToken;
         } finally {
-            log.debug("lock released");
             lock.release();
         }
     }
