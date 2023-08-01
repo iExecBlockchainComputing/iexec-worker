@@ -6,8 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 - Check result files name length before zipping. (#538)
-- Remove `nexus.intra.iex.ec` repository. (#539)
+### Bug fixes
+- Implement thread-safe login on scheduler. (#541)
 ### Quality
+- Remove `nexus.intra.iex.ec` repository. (#539)
 - Remove `Graylog` support. Fetch logs with a sidecar to push them to your log infrastructure. (#540)
 ### Dependency Upgrades
 - Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
