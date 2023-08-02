@@ -41,7 +41,7 @@ scone:
   show-version: ${IEXEC_SCONE_SHOW_VERSION:true}
   log-level: ${IEXEC_SCONE_LOG_LEVEL:debug}
   registry:
-    name: ${IEXEC_WORKER_SCONTAIN_REGISTRY_NAME:registry.scontain.com:5050}
+    name: ${IEXEC_WORKER_SCONTAIN_REGISTRY_NAME:registry.scontain.com}
     username: ${IEXEC_WORKER_SCONTAIN_REGISTRY_USERNAME:}
     password: ${IEXEC_WORKER_SCONTAIN_REGISTRY_PASSWORD:} #could be a dedicated generated token
   las-port: ${IEXEC_LAS_PORT:18766}
