@@ -24,22 +24,32 @@ import feign.FeignException;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Keys;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import static com.iexec.worker.feign.LoginService.TOKEN_PREFIX;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class LoginServiceTests {
 
     @Mock
@@ -123,6 +133,25 @@ class LoginServiceTests {
         when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
         assertAll(
                 () -> assertEquals(TOKEN_PREFIX + "token", loginService.login()),
+                () -> verify(coreClient).getChallenge(credentials.getAddress()),
+                () -> verify(coreClient).login(credentials.getAddress(), signature)
+        );
+    }
+
+    @Test
+    void shouldLoginOnceOnSimultaneousCalls(CapturedOutput output) throws InterruptedException, ExecutionException, TimeoutException {
+        Credentials credentials = generateCredentials();
+        when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
+        Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
+        CompletableFuture<Void> run1 = CompletableFuture.runAsync(() -> loginService.login());
+        CompletableFuture<Void> run2 = CompletableFuture.runAsync(() -> loginService.login());
+        CompletableFuture<Void> run3 = CompletableFuture.runAsync(() -> loginService.login());
+        CompletableFuture.allOf(run1, run2, run3).get(1L, TimeUnit.SECONDS);
+        assertThat(output.getOut())
+                .contains("login already ongoing", "login already ongoing", "Retrieved new JWT token from scheduler");
+        assertAll(
                 () -> verify(coreClient).getChallenge(credentials.getAddress()),
                 () -> verify(coreClient).login(credentials.getAddress(), signature)
         );
