@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 ### Dependency Upgrades
 - Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
 - Remove `logstash-gelf` dependency. (#540)
+- Upgrade to `eclipse-temurin` 11.0.20. (#543)
 
 ## [[8.1.4]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.4) 2023-06-27
 
