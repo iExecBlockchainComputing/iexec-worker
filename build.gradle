@@ -39,14 +39,6 @@ repositories {
     }
 }
 
-configurations {
-    all {
-        // Exclude JUnit 4. Only JUnit 5 is used
-        exclude group: 'junit', module: 'junit'
-        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
-    }
-}
-
 dependencyManagement {
     imports {
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
@@ -71,8 +63,6 @@ dependencies {
     implementation "org.springframework.cloud:spring-cloud-starter"
     implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation "org.springframework.retry:spring-retry"
-    testImplementation "org.springframework.boot:spring-boot-starter-test"
-    testImplementation "org.mockito:mockito-inline:4.8.0" // activates mocking final classes/methods
 
     // apache commons.lang3
     implementation 'org.apache.commons:commons-lang3'
@@ -95,6 +85,11 @@ dependencies {
 
     // expiring map
     implementation 'net.jodah:expiringmap:0.5.10'
+
+    // tests
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation "org.mockito:mockito-inline" // activates mocking final classes/methods
 
     // awaitility
     testImplementation "org.awaitility:awaitility"
