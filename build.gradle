@@ -109,11 +109,6 @@ java {
 // ./gradlew build -Pdev
 def isDev = project.hasProperty('dev')
 
-jar {
-    enabled true
-    archiveClassifier.set('library')
-}
-
 springBoot {
     buildInfo()
 }
