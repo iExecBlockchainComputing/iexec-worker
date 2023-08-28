@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Remove `nexus.intra.iex.ec` repository. (#539)
 - Remove `Graylog` support. Fetch logs with a sidecar to push them to your log infrastructure. (#540)
 - Rename scontain registry to `registry.scontain.com`. (#542)
+- Upgrade to Gradle 8.2.1 with up-to-date plugins. (#545)
 ### Dependency Upgrades
 - Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
 - Remove `logstash-gelf` dependency. (#540)
