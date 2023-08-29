@@ -18,6 +18,7 @@ package com.iexec.worker.feign;
 
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
+import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.commons.poco.notification.TaskNotificationType;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
@@ -32,8 +33,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.*;
 
 class CustomCoreFeignClientTests {
@@ -97,6 +100,47 @@ class CustomCoreFeignClientTests {
         verify(loginService, never()).login();
     }
     //endregion
+
+    // region getAvailableReplicateTaskSummary
+    @Test
+    void shouldGetAvailableReplicateTaskSummary() {
+        final long blockNumber = 0L;
+        final ReplicateTaskSummary replicateTaskSummary = ReplicateTaskSummary.builder()
+                .build();
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(loginService.login()).thenReturn(AUTHORIZATION);
+        when(coreClient.getAvailableReplicateTaskSummary(AUTHORIZATION, blockNumber)).thenReturn(replicateTaskSummary);
+        Optional<ReplicateTaskSummary> result = customCoreFeignClient.getAvailableReplicateTaskSummary(blockNumber);
+        assertAll(
+                () -> assertThat(result).contains(replicateTaskSummary),
+                () -> verify(loginService, never()).login()
+        );
+    }
+    @Test
+    void shouldNotGetAvailableReplicateTaskSummaryWhenBadLogin() {
+        final long blockNumber = 0L;
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(loginService.login()).thenReturn(AUTHORIZATION);
+        when(coreClient.getAvailableReplicateTaskSummary(AUTHORIZATION, blockNumber)).thenThrow(FeignException.Unauthorized.class);
+        Optional<ReplicateTaskSummary> result = customCoreFeignClient.getAvailableReplicateTaskSummary(blockNumber);
+        assertAll(
+                () -> assertThat(result).isEmpty(),
+                () -> verify(loginService).login()
+        );
+    }
+    @Test
+    void shouldNotGetAvailableReplicateTaskSummaryWhenError() {
+        final long blockNumber = 0L;
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(loginService.login()).thenReturn(AUTHORIZATION);
+        when(coreClient.getAvailableReplicateTaskSummary(AUTHORIZATION, blockNumber)).thenThrow(FeignException.class);
+        Optional<ReplicateTaskSummary> result = customCoreFeignClient.getAvailableReplicateTaskSummary(blockNumber);
+        assertAll(
+                () -> assertThat(result).isEmpty(),
+                () -> verify(loginService, never()).login()
+        );
+    }
+    // endregion
 
     // region updateReplicateStatus
     @ParameterizedTest

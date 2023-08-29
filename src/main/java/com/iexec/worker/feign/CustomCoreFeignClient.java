@@ -120,19 +120,18 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     }
 
     public Optional<ReplicateTaskSummary> getAvailableReplicateTaskSummary(long lastAvailableBlockNumber) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-        arguments.put(BLOCK_NUMBER, lastAvailableBlockNumber);
-
-        HttpCall<ReplicateTaskSummary> httpCall = args ->
-                coreClient.getAvailableReplicateTaskSummary((String) args.get(JWTOKEN), (long) args.get(BLOCK_NUMBER));
-
-        ResponseEntity<ReplicateTaskSummary> response = makeHttpCall(httpCall, arguments, "getAvailableReplicate");
-        if (!is2xxSuccess(response) || response.getBody() == null) {
-            return Optional.empty();
+        try {
+            return Optional.ofNullable(coreClient.getAvailableReplicateTaskSummary(
+                    loginService.getToken(),
+                    lastAvailableBlockNumber
+            ));
+        } catch (FeignException e) {
+            log.error("Failed to retrieve work from scheduler [httpStatus:{}]", e.status());
+            if (e instanceof FeignException.Unauthorized) {
+                login();
+            }
         }
-
-        return Optional.of(response.getBody());
+        return Optional.empty();
     }
 
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
