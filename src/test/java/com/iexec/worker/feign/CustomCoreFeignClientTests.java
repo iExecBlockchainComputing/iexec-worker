@@ -108,7 +108,6 @@ class CustomCoreFeignClientTests {
         final ReplicateTaskSummary replicateTaskSummary = ReplicateTaskSummary.builder()
                 .build();
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
-        when(loginService.login()).thenReturn(AUTHORIZATION);
         when(coreClient.getAvailableReplicateTaskSummary(AUTHORIZATION, blockNumber)).thenReturn(replicateTaskSummary);
         Optional<ReplicateTaskSummary> result = customCoreFeignClient.getAvailableReplicateTaskSummary(blockNumber);
         assertAll(
@@ -120,7 +119,6 @@ class CustomCoreFeignClientTests {
     void shouldNotGetAvailableReplicateTaskSummaryWhenBadLogin() {
         final long blockNumber = 0L;
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
-        when(loginService.login()).thenReturn(AUTHORIZATION);
         when(coreClient.getAvailableReplicateTaskSummary(AUTHORIZATION, blockNumber)).thenThrow(FeignException.Unauthorized.class);
         Optional<ReplicateTaskSummary> result = customCoreFeignClient.getAvailableReplicateTaskSummary(blockNumber);
         assertAll(
@@ -132,7 +130,6 @@ class CustomCoreFeignClientTests {
     void shouldNotGetAvailableReplicateTaskSummaryWhenError() {
         final long blockNumber = 0L;
         when(loginService.getToken()).thenReturn(AUTHORIZATION);
-        when(loginService.login()).thenReturn(AUTHORIZATION);
         when(coreClient.getAvailableReplicateTaskSummary(AUTHORIZATION, blockNumber)).thenThrow(FeignException.class);
         Optional<ReplicateTaskSummary> result = customCoreFeignClient.getAvailableReplicateTaskSummary(blockNumber);
         assertAll(
