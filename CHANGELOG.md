@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Check result files name length before zipping. (#538)
 ### Bug fixes
 - Implement thread-safe login on scheduler. (#541)
+- Fix and harmonize `Dockerfile entrypoint` in all Spring Boot applications. (#548)
 ### Quality
 - Remove `nexus.intra.iex.ec` repository. (#539)
 - Remove `Graylog` support. Fetch logs with a sidecar to push them to your log infrastructure. (#540)
