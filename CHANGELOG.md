@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Upgrade to `eclipse-temurin` 11.0.20. (#543)
 - Upgrade to Spring Boot 2.7.14. (#544)
 - Upgrade to Spring Dependency Management Plugin 1.1.3. (#544)
+- Upgrade to `jenkins-library` 2.7.3. (#549)
 
 ## [[8.1.4]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.4) 2023-06-27
 
