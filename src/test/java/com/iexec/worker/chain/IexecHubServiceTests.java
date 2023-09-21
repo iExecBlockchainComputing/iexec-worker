@@ -17,6 +17,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.contribution.Contribution;
+import com.iexec.commons.poco.chain.ChainContributionStatus;
 import com.iexec.commons.poco.chain.ChainReceipt;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
@@ -266,6 +267,31 @@ class IexecHubServiceTests {
             assertThat(chainReceipt).isEmpty();
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
         }
+    }
+    // endregion
+
+    // region isSuccessTx
+    @ParameterizedTest
+    @EnumSource(value = ChainContributionStatus.class)
+    void shouldTxBeSuccess(ChainContributionStatus chainContributionStatus) {
+        Log log = new Log();
+        log.setType("");
+        assertThat(iexecHubService.isSuccessTx(CHAIN_TASK_ID, log, chainContributionStatus)).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ChainContributionStatus.class)
+    void shouldTxNotBeSuccessWhenLogIsNull(ChainContributionStatus chainContributionStatus) {
+        assertThat(iexecHubService.isSuccessTx(CHAIN_TASK_ID, null, chainContributionStatus)).isFalse();
+    }
+
+    @Test
+    void shouldTxNotBeSuccessWhenTimeout() {
+        Log log = new Log();
+        log.setType("pending");
+        doReturn(Optional.empty()).when(iexecHubService).getChainContribution(CHAIN_TASK_ID);
+        when(web3jService.getBlockTime()).thenReturn(Duration.ofMillis(100L));
+        assertThat(iexecHubService.isSuccessTx(CHAIN_TASK_ID, log, ChainContributionStatus.CONTRIBUTED)).isFalse();
     }
     // endregion
 
