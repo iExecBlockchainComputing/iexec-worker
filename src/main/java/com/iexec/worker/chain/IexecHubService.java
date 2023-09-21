@@ -38,7 +38,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
@@ -306,31 +305,6 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
 
     public long getLatestBlockNumber() {
         return web3jService.getLatestBlockNumber();
-    }
-
-    public long getMaxWaitingTimeWhenNotSync() {
-        return web3jService.getMaxWaitingTimeWhenPendingReceipt();
-    }
-
-    private boolean isBlockchainReadTrueWhenNodeNotSync(String chainTaskId, Function<String, Boolean> booleanBlockchainReadFunction) {
-        long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
-        long startTime = System.currentTimeMillis();
-
-        for (long duration = 0L; duration < maxWaitingTime; duration = System.currentTimeMillis() - startTime) {
-            try {
-                if (booleanBlockchainReadFunction.apply(chainTaskId)) {
-                    return true;
-                }
-
-                Thread.sleep(500L);
-            } catch (InterruptedException e) {
-                log.error("Error in checking the latest block number [chainTaskId:{}, maxWaitingTime:{}]",
-                        chainTaskId, maxWaitingTime);
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        return false;
     }
 
     boolean isChainTaskActive(String chainTaskId) {
