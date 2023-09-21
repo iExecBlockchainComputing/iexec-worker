@@ -17,10 +17,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.contribution.Contribution;
-import com.iexec.commons.poco.chain.ChainContributionStatus;
-import com.iexec.commons.poco.chain.ChainReceipt;
-import com.iexec.commons.poco.chain.ChainTask;
-import com.iexec.commons.poco.chain.ChainTaskStatus;
+import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -289,9 +286,20 @@ class IexecHubServiceTests {
     void shouldTxNotBeSuccessWhenTimeout() {
         Log log = new Log();
         log.setType("pending");
-        doReturn(Optional.empty()).when(iexecHubService).getChainContribution(CHAIN_TASK_ID);
         when(web3jService.getBlockTime()).thenReturn(Duration.ofMillis(100L));
+        doReturn(Optional.empty()).when(iexecHubService).getChainContribution(CHAIN_TASK_ID);
         assertThat(iexecHubService.isSuccessTx(CHAIN_TASK_ID, log, ChainContributionStatus.CONTRIBUTED)).isFalse();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ChainContributionStatus.class)
+    void test(ChainContributionStatus chainContributionStatus) {
+        Log log = new Log();
+        log.setType("pending");
+        ChainContribution chainContribution = ChainContribution.builder().status(chainContributionStatus).build();
+        when(web3jService.getBlockTime()).thenReturn(Duration.ofMillis(100L));
+        doReturn(Optional.of(chainContribution)).when(iexecHubService).getChainContribution(CHAIN_TASK_ID);
+        assertThat(iexecHubService.isSuccessTx(CHAIN_TASK_ID, log, chainContributionStatus)).isTrue();
     }
     // endregion
 
