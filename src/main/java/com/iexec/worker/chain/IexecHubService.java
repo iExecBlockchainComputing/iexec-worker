@@ -27,7 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.RemoteCall;
-import org.web3j.protocol.core.methods.response.BaseEventResponse;
+import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.nio.charset.StandardCharsets;
@@ -70,6 +70,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
 
+    // region contribute
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
         try {
             return CompletableFuture.supplyAsync(() -> {
@@ -113,33 +114,21 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                         .collect(Collectors.toList());
         log.debug("contributeEvents count {} [chainTaskId: {}]", contributeEvents.size(), chainTaskId);
 
-        IexecHubContract.TaskContributeEventResponse contributeEvent = null;
         if (!contributeEvents.isEmpty()) {
-            contributeEvent = contributeEvents.get(0);
-        }
-
-        if (isSuccessTx(chainTaskId, contributeEvent, CONTRIBUTED)) {
-            log.info("Contributed [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
-                    chainTaskId, contribution, contributeReceipt.getGasUsed(), contributeEvent.log);
-            return contributeEvent;
+            IexecHubContract.TaskContributeEventResponse contributeEvent = contributeEvents.get(0);
+            if (isSuccessTx(chainTaskId, contributeEvent.log, CONTRIBUTED)) {
+                log.info("Contributed [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
+                        chainTaskId, contribution, contributeReceipt.getGasUsed(), contributeEvent.log);
+                return contributeEvent;
+            }
         }
 
         log.error("Failed to contribute [chainTaskId:{}]", chainTaskId);
         return null;
     }
+    // endregion
 
-    boolean isSuccessTx(String chainTaskId, BaseEventResponse txEvent, ChainContributionStatus pretendedStatus) {
-        if (txEvent == null || txEvent.log == null) {
-            return false;
-        }
-
-        if (txEvent.log.getType() == null || txEvent.log.getType().equals(PENDING_RECEIPT_STATUS)) {
-            return isStatusValidOnChainAfterPendingReceipt(chainTaskId, pretendedStatus, this::isContributionStatusValidOnChain);
-        }
-
-        return true;
-    }
-
+    // region reveal
     IexecHubContract.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
         try {
             return CompletableFuture.supplyAsync(() -> {
@@ -176,21 +165,21 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                         .collect(Collectors.toList());
         log.debug("revealEvents count {} [chainTaskId:{}]", revealEvents.size(), chainTaskId);
 
-        IexecHubContract.TaskRevealEventResponse revealEvent = null;
         if (!revealEvents.isEmpty()) {
-            revealEvent = revealEvents.get(0);
-        }
-
-        if (isSuccessTx(chainTaskId, revealEvent, REVEALED)) {
-            log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}, log:{}]",
-                    chainTaskId, resultDigest, revealReceipt.getGasUsed(), revealEvent.log);
-            return revealEvent;
+            IexecHubContract.TaskRevealEventResponse revealEvent = revealEvents.get(0);
+            if (isSuccessTx(chainTaskId, revealEvent.log, REVEALED)) {
+                log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}, log:{}]",
+                        chainTaskId, resultDigest, revealReceipt.getGasUsed(), revealEvent.log);
+                return revealEvent;
+            }
         }
 
         log.error("Failed to reveal [chainTaskId:{}]", chainTaskId);
         return null;
     }
+    // endregion reveal
 
+    // region contributeAndFinalize
     public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultLink, String callbackData) {
         try {
             return CompletableFuture.supplyAsync(() -> {
@@ -238,24 +227,70 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                         .collect(Collectors.toList());
         log.debug("finalizeEvents count {} [chainTaskId:{}]", finalizeEvents.size(), chainTaskId);
 
-        IexecHubContract.TaskFinalizeEventResponse finalizeEvent = null;
         if (!finalizeEvents.isEmpty()) {
-            finalizeEvent = finalizeEvents.get(0);
-        }
-
-        if (isSuccessTx(chainTaskId, finalizeEvent, REVEALED)) {
-            log.info("contributeAndFinalize done [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
-                    chainTaskId, contribution, receipt.getGasUsed(), finalizeEvent.log);
-            return finalizeEvent;
+            IexecHubContract.TaskFinalizeEventResponse finalizeEvent = finalizeEvents.get(0);
+            if (isSuccessTx(chainTaskId, finalizeEvent.log, REVEALED)) {
+                log.info("contributeAndFinalize done [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
+                        chainTaskId, contribution, receipt.getGasUsed(), finalizeEvent.log);
+                return finalizeEvent;
+            }
         }
 
         log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId);
         return null;
     }
+    // endregion
 
+    // region isSuccessTx
     private long getWaitingTransactionCount() {
         return executor.getTaskCount() - 1 - executor.getCompletedTaskCount();
     }
+
+    boolean isSuccessTx(String chainTaskId, Log eventLog, ChainContributionStatus pretendedStatus) {
+        if (eventLog == null) {
+            return false;
+        }
+
+        log.info("event log type {}", eventLog.getType());
+        if (PENDING_RECEIPT_STATUS.equals(eventLog.getType())) {
+            return isStatusValidOnChainAfterPendingReceipt(chainTaskId, pretendedStatus);
+        }
+
+        return true;
+    }
+
+    private boolean isContributionStatusValidOnChain(String chainTaskId, ChainContributionStatus chainContributionStatus) {
+        Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
+        return chainContribution.isPresent() && chainContribution.get().getStatus() == chainContributionStatus;
+    }
+
+    private boolean isStatusValidOnChainAfterPendingReceipt(String chainTaskId, ChainContributionStatus onchainStatus) {
+        long maxWaitingTime = 10 * web3jService.getBlockTime().toMillis();
+        log.info("Waiting for on-chain status after pending receipt " +
+                        "[chainTaskId:{}, status:{}, maxWaitingTime:{}]",
+                chainTaskId, onchainStatus, maxWaitingTime);
+
+        final long startTime = System.currentTimeMillis();
+        long duration = 0;
+        while (duration < maxWaitingTime) {
+            try {
+                if (isContributionStatusValidOnChain(chainTaskId, onchainStatus)) {
+                    return true;
+                }
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                log.error("Error in checking the latest block number", e);
+                Thread.currentThread().interrupt();
+            }
+            duration = System.currentTimeMillis() - startTime;
+        }
+
+        log.error("Timeout reached after waiting for on-chain status " +
+                        "[chainTaskId:{}, maxWaitingTime:{}]",
+                chainTaskId, maxWaitingTime);
+        return false;
+    }
+    // endregion
 
     Optional<ChainContribution> getChainContribution(String chainTaskId) {
         return getChainContribution(chainTaskId, credentialsService.getCredentials().getAddress());
@@ -277,14 +312,6 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return web3jService.getMaxWaitingTimeWhenPendingReceipt();
     }
 
-    private Boolean isContributionStatusValidOnChain(String chainTaskId, ChainStatus chainContributionStatus) {
-        if (chainContributionStatus instanceof ChainContributionStatus) {
-            Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
-            return chainContribution.isPresent() && chainContribution.get().getStatus().equals(chainContributionStatus);
-        }
-        return false;
-    }
-
     private boolean isBlockchainReadTrueWhenNodeNotSync(String chainTaskId, Function<String, Boolean> booleanBlockchainReadFunction) {
         long maxWaitingTime = web3jService.getMaxWaitingTimeWhenPendingReceipt();
         long startTime = System.currentTimeMillis();
@@ -299,6 +326,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
             } catch (InterruptedException e) {
                 log.error("Error in checking the latest block number [chainTaskId:{}, maxWaitingTime:{}]",
                         chainTaskId, maxWaitingTime);
+                Thread.currentThread().interrupt();
             }
         }
 
