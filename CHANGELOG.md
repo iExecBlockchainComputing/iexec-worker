@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 ### Bug fixes
 - Implement thread-safe login on scheduler. (#541)
 - Fix and harmonize `Dockerfile entrypoint` in all Spring Boot applications. (#548)
+- Remove potential `NullPointerException` and add `isStatusValidOnChainAfterPendingReceipt` in `IexecHubService`. (#550)
 ### Quality
 - Remove `nexus.intra.iex.ec` repository. (#539)
 - Remove `Graylog` support. Fetch logs with a sidecar to push them to your log infrastructure. (#540)
@@ -16,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Upgrade to Gradle 8.2.1 with up-to-date plugins. (#545)
 - Fix log format in `LasService`. (#546)
 - Do not retry calls to fetch replicate from a scheduler, those calls are already scheduled. (#547)
+- Remove dead code in `IexecHubService`. (#550)
 ### Dependency Upgrades
 - Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
 - Remove `logstash-gelf` dependency. (#540)
