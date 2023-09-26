@@ -17,11 +17,11 @@
 package com.iexec.worker.sgx;
 
 import com.github.dockerjava.api.model.Device;
-import com.iexec.common.sgx.SgxDriverMode;
-import com.iexec.common.utils.SgxUtils;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.containers.SgxDriverMode;
+import com.iexec.commons.containers.SgxUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +51,7 @@ public class SgxService {
             WorkerConfigurationService workerConfigService,
             ApplicationContext context,
             DockerService dockerService,
-            @Value("${tee.sgx.driver-mode}") SgxDriverMode sgxDriverMode
+            @Value("${tee.sgx.driver-mode:NONE}") SgxDriverMode sgxDriverMode
     ) {
         this.workerConfigService = workerConfigService;
         this.context = context;

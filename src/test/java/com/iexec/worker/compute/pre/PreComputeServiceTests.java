@@ -17,10 +17,10 @@
 package com.iexec.worker.compute.pre;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;

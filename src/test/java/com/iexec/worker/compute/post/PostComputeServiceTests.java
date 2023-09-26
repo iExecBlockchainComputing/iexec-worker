@@ -17,12 +17,12 @@
 package com.iexec.worker.compute.post;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
