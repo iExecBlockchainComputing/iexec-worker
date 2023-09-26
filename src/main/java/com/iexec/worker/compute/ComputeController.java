@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ public class ComputeController {
     }
 
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
-    public ResponseEntity sendExitCauseForGivenComputeStage(
+    public ResponseEntity<Void> sendExitCauseForGivenComputeStage(
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
