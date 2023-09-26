@@ -1,9 +1,9 @@
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.sgx.SgxDriverMode;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
+import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -25,8 +25,8 @@ class LasServiceTests {
     private static final String CONTAINER_NAME = "iexec-las";
     private static final String REGISTRY_NAME = "registryName";
     private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
-    public static final String REGISTRY_USERNAME = "registryUsername";
-    public static final String REGISTRY_PASSWORD = "registryPassword";
+    private static final String REGISTRY_USERNAME = "registryUsername";
+    private static final String REGISTRY_PASSWORD = "registryPassword";
 
     @Captor
     ArgumentCaptor<DockerRunRequest> dockerRunRequestArgumentCaptor;
@@ -62,6 +62,7 @@ class LasServiceTests {
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(dockerClientInstanceMock);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NATIVE);
     }
 
     // region start
@@ -70,7 +71,6 @@ class LasServiceTests {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         assertTrue(lasService.start());
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
@@ -79,7 +79,7 @@ class LasServiceTests {
                 DockerRunRequest.builder()
                         .containerName(CONTAINER_NAME)
                         .imageUri(IMAGE_URI)
-                        .sgxDriverMode(SgxDriverMode.LEGACY)
+                        .sgxDriverMode(SgxDriverMode.NATIVE)
                         .maxExecutionTime(0)
                         .build()
         );
@@ -91,7 +91,6 @@ class LasServiceTests {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         assertTrue(lasService.start());
         assertTrue(lasService.start());

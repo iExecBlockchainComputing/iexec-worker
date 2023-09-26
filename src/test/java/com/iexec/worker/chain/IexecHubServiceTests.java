@@ -27,7 +27,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.web3j.crypto.Credentials;
@@ -37,10 +36,8 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.RemoteFunctionCall;
 import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
-import org.web3j.tx.TransactionManager;
 import org.web3j.utils.Numeric;
 
-import java.math.BigInteger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -79,21 +76,13 @@ class IexecHubServiceTests {
     @BeforeEach
     void init() throws Exception {
         MockitoAnnotations.openMocks(this);
-        when(blockchainAdapterConfigurationService.getIexecHubContractAddress()).thenReturn("hub");
+        when(blockchainAdapterConfigurationService.getIexecHubContractAddress()).thenReturn("0x748e091bf16048cb5103E0E10F9D5a8b7fBDd860");
         when(blockchainAdapterConfigurationService.getBlockTime()).thenReturn(Duration.ofSeconds(5L));
         when(blockchainAdapterConfigurationService.getChainId()).thenReturn(65535);
         credentials = Credentials.create(Keys.createEcKeyPair());
         when(credentialsService.getCredentials()).thenReturn(credentials);
         when(web3jService.getWeb3j()).thenReturn(web3jClient);
-        try (MockedStatic<IexecHubContract> iexecHubContract = Mockito.mockStatic(IexecHubContract.class)) {
-            final IexecHubContract mockIexecContract = mock(IexecHubContract.class);
-            final RemoteFunctionCall<BigInteger> mockRemoteFunctionCall = mock(RemoteFunctionCall.class);
-            iexecHubContract.when(() -> IexecHubContract.load(any(), any(), (TransactionManager) any(), any()))
-                    .thenReturn(mockIexecContract);
-            when(mockIexecContract.contribution_deadline_ratio()).thenReturn(mockRemoteFunctionCall);
-            when(mockRemoteFunctionCall.send()).thenReturn(BigInteger.ONE);
-            iexecHubService = spy(new IexecHubService(credentialsService, web3jService, blockchainAdapterConfigurationService));
-        }
+        iexecHubService = spy(new IexecHubService(credentialsService, web3jService, blockchainAdapterConfigurationService));
         ReflectionTestUtils.setField(iexecHubService, "iexecHubContract", iexecHubContract);
     }
 
@@ -205,7 +194,7 @@ class IexecHubServiceTests {
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
         }
     }
-    // end region
+    // endregion
 
     // region contributeAndFinalize
     @Test
