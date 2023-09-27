@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.utils.version;
+package com.iexec.worker.version;
 
-import com.iexec.common.utils.VersionUtils;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Service;
 
@@ -31,10 +30,6 @@ public class VersionService {
 
     public String getVersion() {
         return buildProperties.getVersion();
-    }
-
-    public boolean isSnapshot() {
-        return VersionUtils.isSnapshot(buildProperties.getVersion());
     }
 
 }

@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Fix log format in `LasService`. (#546)
 - Do not retry calls to fetch replicate from a scheduler, those calls are already scheduled. (#547)
 - Remove dead code in `IexecHubService`. (#550)
+- Remove `VersionService#isSnapshot`. (#552)
 ### Dependency Upgrades
 - Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
 - Remove `logstash-gelf` dependency. (#540)
@@ -27,7 +28,7 @@ All notable changes to this project will be documented in this file.
 - Upgrade to `jenkins-library` 2.7.3. (#549)
 - Upgrade to `iexec-commons-poco` 3.1.0. (#551)
 - Upgrade to `iexec-common` 8.3.0. (#551)
-- Upgrade to `iexec-commons-containers` 1.1.0. (#551)
+- Upgrade to `iexec-commons-containers` 1.1.2. (#551 #552)
 
 ## [[8.1.4]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.4) 2023-06-27
 

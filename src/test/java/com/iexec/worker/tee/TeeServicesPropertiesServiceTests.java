@@ -54,8 +54,10 @@ class TeeServicesPropertiesServiceTests {
     private static final long POST_COMPUTE_HEAP_SIZE = 1024L;
     private static final String POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
     private static final GramineServicesProperties GRAMINE_PROPERTIES = new GramineServicesProperties(
-            new TeeAppProperties(PRE_COMPUTE_IMAGE, "", PRE_COMPUTE_ENTRYPOINT, PRE_COMPUTE_HEAP_SIZE),
-            new TeeAppProperties(POST_COMPUTE_IMAGE, "", POST_COMPUTE_ENTRYPOINT, POST_COMPUTE_HEAP_SIZE)
+            TeeAppProperties.builder().image(PRE_COMPUTE_IMAGE).fingerprint("")
+                    .entrypoint(PRE_COMPUTE_ENTRYPOINT).heapSizeInBytes(PRE_COMPUTE_HEAP_SIZE).build(),
+            TeeAppProperties.builder().image(POST_COMPUTE_IMAGE).fingerprint("")
+                    .entrypoint(POST_COMPUTE_ENTRYPOINT).heapSizeInBytes(POST_COMPUTE_HEAP_SIZE).build()
     );
 
     @Mock

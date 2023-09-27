@@ -26,7 +26,7 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
-import com.iexec.worker.utils.version.VersionService;
+import com.iexec.worker.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.context.restart.RestartEndpoint;
 import org.springframework.context.annotation.Bean;

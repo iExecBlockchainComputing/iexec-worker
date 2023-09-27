@@ -1,5 +1,5 @@
 /*
-* Copyright 2020 IEXEC BLOCKCHAIN TECH
+* Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,14 +16,15 @@
 
 package com.iexec.worker.utils;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor.DiscardPolicy;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ExecutorUtils {
-
-    private ExecutorUtils() {}
 
     public static Executor
             newSingleThreadExecutorWithFixedSizeQueue(int queueSize, String threadNamePrefix) {
