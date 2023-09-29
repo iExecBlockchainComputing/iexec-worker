@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,10 +80,10 @@ public class PingService {
         try {
             sessionId = coreClient.ping(loginService.getToken());
         } catch (FeignException e) {
+            log.warn("The worker cannot ping the core [status:{}]", e.status());
             if (e instanceof FeignException.Unauthorized) {
                 loginService.login();
             }
-            log.warn("The worker cannot ping the core [status:{}]", e.status());
             return;
         }
 

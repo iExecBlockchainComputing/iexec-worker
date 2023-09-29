@@ -1,4 +1,4 @@
-FROM eclipse-temurin:11.0.18_10-jre
+FROM eclipse-temurin:11.0.20_8-jre-focal
 
 ARG jar
 
@@ -10,4 +10,4 @@ RUN apt-get update \
 
 COPY $jar iexec-worker.jar
 
-ENTRYPOINT [ "/bin/sh", "-c", "exec java -Djava.security.egd=file:/dev/./urandom -jar iexec-worker.jar" ]
+ENTRYPOINT [ "java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "iexec-worker.jar" ]

@@ -53,7 +53,7 @@ public class LasService {
                 .maxExecutionTime(0)
                 .build();
         if (!imageUri.contains(sconeConfig.getRegistryName())) {
-            log.error("LAS image ({}) is not from a known registry ({})",
+            log.error("LAS image is not from a known registry [image:{}, registry:{}]",
                     imageUri, sconeConfig.getRegistryName());
             return false;
         }

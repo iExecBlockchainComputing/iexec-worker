@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[8.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.2.0) 2023-09-29
+
+### New Features
+- Check result files name length before zipping. (#538)
+### Bug fixes
+- Implement thread-safe login on scheduler. (#541)
+- Fix and harmonize `Dockerfile entrypoint` in all Spring Boot applications. (#548)
+- Remove potential `NullPointerException` and add `isStatusValidOnChainAfterPendingReceipt` in `IexecHubService`. (#550)
+### Quality
+- Remove `nexus.intra.iex.ec` repository. (#539)
+- Remove `Graylog` support. Fetch logs with a sidecar to push them to your log infrastructure. (#540)
+- Rename scontain registry to `registry.scontain.com`. (#542)
+- Upgrade to Gradle 8.2.1 with up-to-date plugins. (#545)
+- Fix log format in `LasService`. (#546)
+- Do not retry calls to fetch replicate from a scheduler, those calls are already scheduled. (#547)
+- Remove dead code in `IexecHubService`. (#550)
+- Remove `VersionService#isSnapshot`. (#552)
+### Dependency Upgrades
+- Upgrade to `iexec-common` 8.2.1-NEXT-SNAPSHOT. (#538)
+- Remove `logstash-gelf` dependency. (#540)
+- Upgrade to `eclipse-temurin` 11.0.20. (#543)
+- Upgrade to Spring Boot 2.7.14. (#544)
+- Upgrade to Spring Dependency Management Plugin 1.1.3. (#544)
+- Upgrade to `jenkins-library` 2.7.3. (#549)
+- Upgrade to `iexec-commons-poco` 3.1.0. (#551)
+- Upgrade to `iexec-common` 8.3.0. (#551)
+- Upgrade to `iexec-commons-containers` 1.1.2. (#551 #552)
+- Upgrade to `iexec-blockchain-adapter-api-library` 8.2.0. (#553)
+- Upgrade to `iexec-result-proxy-library` 8.2.0. (#553)
+- Upgrade to `iexec-sms-library` 8.3.0. (#553)
+
 ## [[8.1.4]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.1.4) 2023-06-27
 
 ### Dependency Upgrades

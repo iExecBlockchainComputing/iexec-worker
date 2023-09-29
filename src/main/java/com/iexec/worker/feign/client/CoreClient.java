@@ -59,7 +59,7 @@ public interface CoreClient {
 
     //region /replicates
     @GetMapping("/replicates/available")
-    ResponseEntity<ReplicateTaskSummary> getAvailableReplicateTaskSummary(
+    ReplicateTaskSummary getAvailableReplicateTaskSummary(
             @RequestHeader String authorization,
             @RequestParam long blockNumber);
 
