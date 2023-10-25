@@ -295,29 +295,27 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return future.get();
     }
 
+    /**
+     * Sends a transaction to the blockchain and returns its receipt.
+     */
     static class RemoteCallTask implements Callable<TransactionReceipt> {
         private final String chainTaskId;
-        private final String callType;
+        private final String transactionType;
         private final RemoteCall<TransactionReceipt> remoteCall;
 
-        public RemoteCallTask(String chainTaskId, String callType, RemoteCall<TransactionReceipt> remoteCall) {
+        public RemoteCallTask(String chainTaskId, String transactionType, RemoteCall<TransactionReceipt> remoteCall) {
             this.chainTaskId = chainTaskId;
-            this.callType = callType;
+            this.transactionType = transactionType;
             this.remoteCall = remoteCall;
         }
 
         @Override
-        public TransactionReceipt call() {
-            try {
-                TransactionReceipt receipt = remoteCall.send();
-                log.debug("{} transaction hash {} at block {} [chainTaskId:{}]",
-                        callType, receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
-                log.info("{} receipt [chainTaskId:{}]", callType, chainTaskId);
-                return receipt;
-            } catch (Exception e) {
-                log.error("{} failed [chainTaskId:{}]", callType, chainTaskId, e);
-                return null;
-            }
+        public TransactionReceipt call() throws Exception {
+            TransactionReceipt receipt = remoteCall.send();
+            log.debug("{} transaction hash {} at block {} [chainTaskId:{}]",
+                    transactionType, receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
+            log.info("{} receipt [chainTaskId:{}]", transactionType, chainTaskId);
+            return receipt;
         }
     }
 }
