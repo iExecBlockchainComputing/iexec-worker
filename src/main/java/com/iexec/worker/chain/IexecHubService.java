@@ -34,10 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
@@ -71,23 +68,11 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
 
     // region contribute
     IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
-        try {
-            return CompletableFuture.supplyAsync(() -> {
-                log.info("Requested contribute [chainTaskId:{}, waitingTxCount:{}]",
-                        contribution.getChainTaskId(), getWaitingTransactionCount());
-                return sendContributeTransaction(contribution);
-            }, executor).get();
-        } catch (ExecutionException e) {
-            log.error("contribute asynchronous execution did not complete", e);
-        } catch (InterruptedException e) {
-            log.error("contribute thread has been interrupted", e);
-            Thread.currentThread().interrupt();
-        }
-        return null;
+        log.info("contribute request [chainTaskId:{}, waitingTxCount:{}]", contribution.getChainTaskId(), getWaitingTransactionCount());
+        return sendContributeTransaction(contribution);
     }
 
     private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(Contribution contribution) {
-        TransactionReceipt contributeReceipt;
         String chainTaskId = contribution.getChainTaskId();
 
         RemoteCall<TransactionReceipt> contributeCall = iexecHubContract.contribute(
@@ -99,12 +84,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                 stringToBytes(contribution.getWorkerPoolSignature()));
         log.info("Sent contribute [chainTaskId:{}, contribution:{}]", chainTaskId, contribution);
 
-        try {
-            contributeReceipt = contributeCall.send();
-        } catch (Exception e) {
-            log.error("Failed to contribute [chainTaskId:{}]", chainTaskId, e);
-            return null;
-        }
+        TransactionReceipt contributeReceipt = submit(chainTaskId, "contribute", contributeCall);
 
         List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
                 IexecHubContract.getTaskContributeEvents(contributeReceipt).stream()
@@ -129,33 +109,17 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
 
     // region reveal
     IexecHubContract.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
-        try {
-            return CompletableFuture.supplyAsync(() -> {
-                log.info("Requested reveal [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
-                return sendRevealTransaction(chainTaskId, resultDigest);
-            }, executor).get();
-        } catch (ExecutionException e) {
-            log.error("reveal asynchronous execution did not complete", e);
-        } catch (InterruptedException e) {
-            log.error("reveal thread has been interrupted", e);
-            Thread.currentThread().interrupt();
-        }
-        return null;
+        log.info("reveal request [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
+        return sendRevealTransaction(chainTaskId, resultDigest);
     }
 
     private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
-        TransactionReceipt revealReceipt;
         RemoteCall<TransactionReceipt> revealCall = iexecHubContract.reveal(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultDigest));
         log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
 
-        try {
-            revealReceipt = revealCall.send();
-        } catch (Exception e) {
-            log.error("Failed to reveal [chainTaskId:{}]", chainTaskId, e);
-            return null;
-        }
+        TransactionReceipt revealReceipt = submit(chainTaskId, "reveal", revealCall);
 
         List<IexecHubContract.TaskRevealEventResponse> revealEvents =
                 IexecHubContract.getTaskRevealEvents(revealReceipt).stream()
@@ -180,25 +144,14 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
 
     // region contributeAndFinalize
     public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultLink, String callbackData) {
-        try {
-            return CompletableFuture.supplyAsync(() -> {
-                log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
-                        contribution.getChainTaskId(), getWaitingTransactionCount());
-                IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
-                return Optional.ofNullable(finalizeEvent)
-                        .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
-            }, executor).get();
-        } catch (ExecutionException e) {
-            log.error("contributeAndFinalize asynchronous execution did not complete", e);
-        } catch (InterruptedException e) {
-            log.error("contributeAndFinalize thread has been interrupted", e);
-            Thread.currentThread().interrupt();
-        }
-        return Optional.empty();
+        log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
+                contribution.getChainTaskId(), getWaitingTransactionCount());
+        IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
+        return Optional.ofNullable(finalizeEvent)
+                .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
     }
 
     private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultLink, String callbackData) {
-        TransactionReceipt receipt;
         String chainTaskId = contribution.getChainTaskId();
 
         RemoteCall<TransactionReceipt> contributeAndFinalizeCall = iexecHubContract.contributeAndFinalize(
@@ -212,13 +165,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, contribution, resultLink, callbackData);
 
-        try {
-            receipt = contributeAndFinalizeCall.send();
-            log.debug("Transaction hash {} at block {} [chainTaskId:{}]", receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
-        } catch (Exception e) {
-            log.error("contributeAndFinalize failed [chainTaskId:{}]", chainTaskId, e);
-            return null;
-        }
+        TransactionReceipt receipt = submit(chainTaskId, "contributeAndFinalize", contributeAndFinalizeCall);
 
         List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
                 IexecHubContract.getTaskFinalizeEvents(receipt).stream()
@@ -325,5 +272,52 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     @Override
     public void purgeAllTasksData() {
         super.purgeAllTasksData();
+    }
+
+    TransactionReceipt submit(String chainTaskId, String transactionType, RemoteCall<TransactionReceipt> remoteCall) {
+        try {
+            final RemoteCallTask remoteCallSend = new RemoteCallTask(chainTaskId, transactionType, remoteCall);
+            return submit(remoteCallSend);
+        } catch (ExecutionException e) {
+            log.error("{} asynchronous execution did not complete", transactionType, e);
+        } catch (InterruptedException e) {
+            log.error("{} thread has been interrupted", transactionType, e);
+            Thread.currentThread().interrupt();
+        }
+        // return non-null receipt with empty logs on failure
+        TransactionReceipt receipt = new TransactionReceipt();
+        receipt.setLogs(List.of());
+        return receipt;
+    }
+
+    TransactionReceipt submit(RemoteCallTask remoteCallTask) throws ExecutionException, InterruptedException {
+        Future<TransactionReceipt> future = executor.submit(remoteCallTask);
+        return future.get();
+    }
+
+    static class RemoteCallTask implements Callable<TransactionReceipt> {
+        private final String chainTaskId;
+        private final String callType;
+        private final RemoteCall<TransactionReceipt> remoteCall;
+
+        public RemoteCallTask(String chainTaskId, String callType, RemoteCall<TransactionReceipt> remoteCall) {
+            this.chainTaskId = chainTaskId;
+            this.callType = callType;
+            this.remoteCall = remoteCall;
+        }
+
+        @Override
+        public TransactionReceipt call() {
+            try {
+                TransactionReceipt receipt = remoteCall.send();
+                log.debug("{} transaction hash {} at block {} [chainTaskId:{}]",
+                        callType, receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
+                log.info("{} receipt [chainTaskId:{}]", callType, chainTaskId);
+                return receipt;
+            } catch (Exception e) {
+                log.error("{} failed [chainTaskId:{}]", callType, chainTaskId, e);
+                return null;
+            }
+        }
     }
 }
