@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2023
 
 ### New Features
+
 - Share code between transaction types in `IexecHubService`. (#556)
+
+### Dependency Upgrades
+
+- Upgrade to `iexec-commons-containers` 1.2.0. (#557)
 
 ## [[8.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.2.0) 2023-09-29
 

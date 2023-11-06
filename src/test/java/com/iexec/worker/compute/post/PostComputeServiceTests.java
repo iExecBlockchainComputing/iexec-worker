@@ -16,6 +16,9 @@
 
 package com.iexec.worker.compute.post;
 
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.Device;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
@@ -49,7 +52,6 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -188,9 +190,7 @@ class PostComputeServiceTests {
     @Test
     void shouldFailResultFilesNameCheckWhenWrongFolder() {
         assertThat(postComputeService.checkResultFilesName(CHAIN_TASK_ID, "/dummy/folder/that/doesnt/exist"))
-                .isPresent()
-                .get()
-                .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+                .contains(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
 
     @Test
@@ -199,9 +199,7 @@ class PostComputeServiceTests {
         assertTrue(new File(jUnitTemporaryFolder, "computed.json").createNewFile());
 
         assertThat(postComputeService.checkResultFilesName(CHAIN_TASK_ID, jUnitTemporaryFolder.getAbsolutePath()))
-                .isPresent()
-                .get()
-                .isEqualTo(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
+                .contains(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
     }
     // endregion
 
@@ -233,6 +231,8 @@ class PostComputeServiceTests {
                 DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        List<Device> devices = List.of(Device.parse("/dev/isgx"));
+        when(sgxService.getSgxDevices()).thenReturn(devices);
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
@@ -244,18 +244,20 @@ class PostComputeServiceTests {
         verify(dockerService).run(argumentCaptor.capture());
         DockerRunRequest dockerRunRequest =
                 argumentCaptor.getAllValues().get(0);
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(Bind.parse(iexecOutBind))
+                .withDevices(devices)
+                .withNetworkMode(lasNetworkName);
         assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .hostConfig(hostConfig)
                         .chainTaskId(CHAIN_TASK_ID)
-                        .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID +
-                                "-tee-post-compute")
+                        .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID + "-tee-post-compute")
                         .imageUri(TEE_POST_COMPUTE_IMAGE)
                         .entrypoint(TEE_POST_COMPUTE_ENTRYPOINT)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(Collections.singletonList(iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.LEGACY)
-                        .dockerNetwork(lasNetworkName)
                         .build()
         );
     }
@@ -298,6 +300,8 @@ class PostComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(env);
+        String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
@@ -318,7 +322,7 @@ class PostComputeServiceTests {
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCause())
                 .isEqualTo(exitCodeKeyToExpectedCauseValue.getValue());
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
     }
 
     private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
@@ -345,8 +349,8 @@ class PostComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(env);
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn("/iexec_out:/iexec_out");
         when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
@@ -362,7 +366,7 @@ class PostComputeServiceTests {
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
     }
     //endregion
 }
