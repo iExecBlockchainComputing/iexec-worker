@@ -18,7 +18,6 @@ package com.iexec.worker.worker;
 
 import com.iexec.common.config.WorkerModel;
 import com.iexec.commons.poco.utils.WaitUtils;
-import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
@@ -39,7 +38,7 @@ import java.util.List;
 @Service
 public class WorkerService {
 
-    private final CredentialsService credentialsService;
+    private final String workerWalletAddress;
     private final WorkerConfigurationService workerConfigService;
     private final CoreConfigurationService coreConfigService;
     private final PublicConfigurationService publicConfigService;
@@ -50,7 +49,6 @@ public class WorkerService {
     private final DockerService dockerService;
 
     public WorkerService(
-            CredentialsService credentialsService,
             WorkerConfigurationService workerConfigService,
             CoreConfigurationService coreConfigService,
             PublicConfigurationService publicConfigService,
@@ -58,8 +56,8 @@ public class WorkerService {
             VersionService versionService,
             TeeSconeService teeSconeService,
             RestartEndpoint restartEndpoint,
-            DockerService dockerService) {
-        this.credentialsService = credentialsService;
+            DockerService dockerService,
+            String workerWalletAddress) {
         this.workerConfigService = workerConfigService;
         this.coreConfigService = coreConfigService;
         this.publicConfigService = publicConfigService;
@@ -68,6 +66,7 @@ public class WorkerService {
         this.teeSconeService = teeSconeService;
         this.restartEndpoint = restartEndpoint;
         this.dockerService = dockerService;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     public boolean registerWorker() {
@@ -91,11 +90,9 @@ public class WorkerService {
             log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfigService.getHttpProxyHost(), workerConfigService.getHttpProxyPort());
         }
 
-        String workerAddress = credentialsService.getCredentials().getAddress();
-
         WorkerModel model = WorkerModel.builder()
                 .name(workerConfigService.getWorkerName())
-                .walletAddress(workerAddress)
+                .walletAddress(workerWalletAddress)
                 .os(workerConfigService.getOS())
                 .cpu(workerConfigService.getCPU())
                 .cpuNb(workerConfigService.getCpuCount())
@@ -113,8 +110,8 @@ public class WorkerService {
      * Before restarting, the worker will ask the core if the worker still
      * has computing task in progress.
      * If the worker has computing task in progress, it won't restart.
-         The worker will retry to restart in the next pings once there is
-         no more computing tasks.
+     * The worker will retry to restart in the next pings once there is
+     * no more computing tasks.
      * If the worker hasn't computing task in progress, it will immediately restart
      * <p>
      * Note: In case of a restart, to avoid launched running containers to become
