@@ -1,5 +1,7 @@
 package com.iexec.worker.tee.scone;
 
+import com.github.dockerjava.api.model.Device;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
@@ -16,6 +18,10 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,7 +30,7 @@ import static org.mockito.Mockito.*;
 class LasServiceTests {
     private static final String CONTAINER_NAME = "iexec-las";
     private static final String REGISTRY_NAME = "registryName";
-    private static final String IMAGE_URI = REGISTRY_NAME +"/some/image/name:x.y";
+    private static final String IMAGE_URI = REGISTRY_NAME + "/some/image/name:x.y";
     private static final String REGISTRY_USERNAME = "registryUsername";
     private static final String REGISTRY_PASSWORD = "registryPassword";
 
@@ -71,12 +77,15 @@ class LasServiceTests {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
+        List<Device> devices = Arrays.stream(SgxDriverMode.NATIVE.getDevices()).map(Device::parse).collect(Collectors.toList());
+        when(sgxService.getSgxDevices()).thenReturn(devices);
 
         assertTrue(lasService.start());
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
         DockerRunRequest dockerRunRequest = dockerRunRequestArgumentCaptor.getValue();
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .hostConfig(HostConfig.newHostConfig().withDevices(devices))
                         .containerName(CONTAINER_NAME)
                         .imageUri(IMAGE_URI)
                         .sgxDriverMode(SgxDriverMode.NATIVE)

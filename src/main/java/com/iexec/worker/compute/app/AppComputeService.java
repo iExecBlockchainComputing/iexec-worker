@@ -16,6 +16,8 @@
 
 package com.iexec.worker.compute.app;
 
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.commons.containers.DockerRunFinalStatus;
@@ -32,8 +34,8 @@ import com.iexec.worker.tee.TeeServicesManager;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class AppComputeService {
@@ -55,14 +57,13 @@ public class AppComputeService {
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
-                                        TeeSessionGenerationResponse secureSession) {
+                                         TeeSessionGenerationResponse secureSession) {
         String chainTaskId = taskDescription.getChainTaskId();
-        List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
+        final List<String> env = IexecEnvUtils.getComputeStageEnvList(taskDescription);
 
-        List<String> binds = new ArrayList<>(Arrays.asList(
-                dockerService.getInputBind(chainTaskId),
-                dockerService.getIexecOutBind(chainTaskId)
-        ));
+        final List<Bind> binds = new ArrayList<>();
+        binds.add(Bind.parse(dockerService.getInputBind(chainTaskId)));
+        binds.add(Bind.parse(dockerService.getIexecOutBind(chainTaskId)));
 
         if (taskDescription.isTeeTask()) {
             final TeeService teeService = teeServicesManager
@@ -72,16 +73,25 @@ public class AppComputeService {
                     .buildComputeDockerEnv(taskDescription, secureSession);
             env.addAll(strings);
 
-            binds.addAll(teeService.getAdditionalBindings());
+            final List<Bind> additionalBindings =
+                    teeService.getAdditionalBindings().stream().map(Bind::parse).collect(Collectors.toList());
+            binds.addAll(additionalBindings);
         }
 
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(binds)
+                .withDevices(sgxService.getSgxDevices());
+        // Enclave should be able to connect to the LAS
+        if (taskDescription.isTeeTask()) {
+            hostConfig.withNetworkMode(workerConfigService.getDockerNetworkName());
+        }
         DockerRunRequest runRequest = DockerRunRequest.builder()
+                .hostConfig(hostConfig)
                 .chainTaskId(chainTaskId)
                 .imageUri(taskDescription.getAppUri())
                 .containerName(getTaskContainerName(chainTaskId))
                 .cmd(taskDescription.getCmd())
                 .env(env)
-                .binds(binds)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .sgxDriverMode(
                         taskDescription.isTeeTask()
@@ -89,10 +99,6 @@ public class AppComputeService {
                                 : SgxDriverMode.NONE
                 )
                 .build();
-        // Enclave should be able to connect to the LAS
-        if (taskDescription.isTeeTask()) {
-            runRequest.setDockerNetwork(workerConfigService.getDockerNetworkName());
-        }
         DockerRunResponse dockerResponse = dockerService.run(runRequest);
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         return AppComputeResponse.builder()

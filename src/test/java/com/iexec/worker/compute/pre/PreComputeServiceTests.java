@@ -59,6 +59,7 @@ import static org.mockito.Mockito.*;
 
 class PreComputeServiceTests {
 
+    private static final String IEXEC_IN_BIND = "/path:/iexec_in";
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP = 1024;
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
@@ -136,8 +137,7 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
-        String iexecInBind = "/path:/iexec_in";
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         String network = "network";
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
@@ -149,15 +149,15 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();
         Assertions.assertThat(preComputeService
-                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                        .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
-        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
-        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+        Assertions.assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }
 
     @Test
@@ -174,8 +174,7 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
-        String iexecInBind = "/path:/iexec_in";
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         String network = "network";
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
@@ -187,15 +186,15 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
         Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();
         Assertions.assertThat(preComputeService
-                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                        .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
-        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
-        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+        Assertions.assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }
 
 
@@ -216,8 +215,7 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
-        String iexecInBind = "/path:/iexec_in";
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         String network = "network";
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
@@ -229,15 +227,15 @@ class PreComputeServiceTests {
         Assertions.assertThat(taskDescription.containsDataset()).isFalse();
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();
         Assertions.assertThat(preComputeService
-                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                        .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
-        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
-        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+        Assertions.assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }
 
     @Test
@@ -314,7 +312,7 @@ class PreComputeServiceTests {
         when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
@@ -356,7 +354,7 @@ class PreComputeServiceTests {
         when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .finalStatus(DockerRunFinalStatus.TIMEOUT)

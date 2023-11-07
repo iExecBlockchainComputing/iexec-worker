@@ -16,6 +16,8 @@
 
 package com.iexec.worker.compute.post;
 
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
@@ -89,9 +91,10 @@ public class PostComputeService {
      * </ul>
      * <p>
      * Classes names are inlined in comments for comparison.
+     *
      * @param taskDescription description of a standard task
      * @return a post compute response with a cause in case of error. The response is returned to
-     *         {@link com.iexec.worker.compute.ComputeManagerService}
+     * {@link com.iexec.worker.compute.ComputeManagerService}
      * @see com.iexec.worker.compute.ComputeManagerService
      */
     public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
@@ -175,24 +178,28 @@ public class PostComputeService {
         TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
         List<String> env = teeService
                 .buildPostComputeDockerEnv(taskDescription, secureSession);
-        List<String> binds = Stream.of(
+        List<Bind> binds = Stream.of(
                         Collections.singletonList(dockerService.getIexecOutBind(chainTaskId)),
                         teeService.getAdditionalBindings())
                 .flatMap(Collection::stream)
+                .map(Bind::parse)
                 .collect(Collectors.toList());
 
-        DockerRunResponse dockerResponse = dockerService.run(
-                DockerRunRequest.builder()
-                        .chainTaskId(chainTaskId)
-                        .containerName(getTaskTeePostComputeContainerName(chainTaskId))
-                        .imageUri(postComputeImage)
-                        .entrypoint(postComputeProperties.getEntrypoint())
-                        .maxExecutionTime(taskDescription.getMaxExecutionTime())
-                        .env(env)
-                        .binds(binds)
-                        .sgxDriverMode(sgxService.getSgxDriverMode())
-                        .dockerNetwork(workerConfigService.getDockerNetworkName())
-                        .build());
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(binds)
+                .withDevices(sgxService.getSgxDevices())
+                .withNetworkMode(workerConfigService.getDockerNetworkName());
+        DockerRunRequest request = DockerRunRequest.builder()
+                .hostConfig(hostConfig)
+                .chainTaskId(chainTaskId)
+                .containerName(getTaskTeePostComputeContainerName(chainTaskId))
+                .imageUri(postComputeImage)
+                .entrypoint(postComputeProperties.getEntrypoint())
+                .maxExecutionTime(taskDescription.getMaxExecutionTime())
+                .env(env)
+                .sgxDriverMode(sgxService.getSgxDriverMode())
+                .build();
+        DockerRunResponse dockerResponse = dockerService.run(request);
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
             log.error("Tee post-compute container timed out" +

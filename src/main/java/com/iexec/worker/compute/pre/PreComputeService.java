@@ -16,6 +16,8 @@
 
 package com.iexec.worker.compute.pre;
 
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
@@ -219,24 +221,27 @@ public class PreComputeService {
         }
         // run container
         List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeFramework())
-            .buildPreComputeDockerEnv(taskDescription, secureSession);
-        List<String> binds = Collections.singletonList(dockerService.getInputBind(chainTaskId));
+                .buildPreComputeDockerEnv(taskDescription, secureSession);
+        List<Bind> binds = Collections.singletonList(Bind.parse(dockerService.getInputBind(chainTaskId)));
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(binds)
+                .withDevices(sgxService.getSgxDevices())
+                .withNetworkMode(workerConfigService.getDockerNetworkName());
         DockerRunRequest request = DockerRunRequest.builder()
+                .hostConfig(hostConfig)
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
                 .imageUri(preComputeImage)
                 .entrypoint(preComputeProperties.getEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
-                .binds(binds)
                 .sgxDriverMode(sgxService.getSgxDriverMode())
-                .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
             log.error("Tee pre-compute container timed out" +
-                    " [chainTaskId:{}, maxExecutionTime:{}]",
+                            " [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             throw new TimeoutException("Tee pre-compute container timed out");
         }
