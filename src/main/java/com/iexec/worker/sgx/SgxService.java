@@ -141,8 +141,6 @@ public class SgxService {
             return false;
         }
 
-        // Check test returned a 0 exit code.
-        log.info("docker container output {}", dockerRunResponse.getStdout().trim());
         return true;
     }
 }
