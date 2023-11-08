@@ -18,7 +18,6 @@ package com.iexec.worker.sgx;
 
 import com.github.dockerjava.api.model.Device;
 import com.iexec.commons.containers.SgxDriverMode;
-import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,17 +37,16 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 @ExtendWith(OutputCaptureExtension.class)
 class SgxServiceTests {
+    private static final String WORKER_WALLET_ADDRESS = "0x2D29bfBEc903479fe4Ba991918bAB99B494f2bEf";
 
     @Autowired
     private ApplicationContext context;
     @Autowired
     private DockerService dockerService;
-    @Autowired
-    private WorkerConfigurationService workerConfigurationService;
 
     @Test
     void modeNone(CapturedOutput output) {
-        SgxService sgxService = new SgxService(workerConfigurationService, context, dockerService, SgxDriverMode.NONE);
+        SgxService sgxService = new SgxService(context, dockerService, SgxDriverMode.NONE, WORKER_WALLET_ADDRESS);
         sgxService.init();
         assertAll(
                 () -> assertThat(sgxService.isSgxEnabled()).isFalse(),
@@ -60,7 +58,7 @@ class SgxServiceTests {
     @ParameterizedTest
     @MethodSource("sgxDevicesCheckParams")
     void checkGetSgxDevices(SgxDriverMode driverMode, List<Device> expectedDevices) {
-        SgxService sgxService = new SgxService(workerConfigurationService, context, dockerService, driverMode);
+        SgxService sgxService = new SgxService(context, dockerService, driverMode, WORKER_WALLET_ADDRESS);
         assertThat(sgxService.getSgxDevices()).isEqualTo(expectedDevices);
     }
 

@@ -31,7 +31,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
 
 import java.math.BigInteger;
@@ -51,6 +50,7 @@ class LasServicesManagerTests {
 
     private static final String LAS_IMAGE_URI_1 = "lasImage1";
     private static final String LAS_IMAGE_URI_2 = "lasImage2";
+    private static final String WORKER_WALLET_ADDRESS = "0x2D29bfBEc903479fe4Ba991918bAB99B494f2bEf";
 
     private static final SconeServicesProperties PROPERTIES_1 = new SconeServicesProperties(
             null,
@@ -220,20 +220,18 @@ class LasServicesManagerTests {
     void shouldCreateLasContainerNameWithProperCharLength() {
         LasServicesManager lasServicesManager = new LasServicesManager(
                 sconeConfiguration, teeServicesPropertiesService, workerConfigService,
-                sgxService, dockerService);
+                sgxService, dockerService, WORKER_WALLET_ADDRESS);
         ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
-        when(workerConfigService.getWorkerWalletAddress())
-                .thenReturn(Credentials.create(keyPair).getAddress());
         String createdLasContainerName = lasServicesManager.createLasContainerName();
         Assertions.assertTrue(
-            createdLasContainerName.length() < 64);
+                createdLasContainerName.length() < 64);
         //more checks about
         String expectedPrefix = "iexec-las";
         Assertions.assertTrue(createdLasContainerName.startsWith(expectedPrefix));
         Assertions.assertTrue(createdLasContainerName
-            .contains(workerConfigService.getWorkerWalletAddress()));
-        int minimumLength = String.format("%s-%s-", 
-            expectedPrefix, workerConfigService.getWorkerWalletAddress()).length();
+                .contains(WORKER_WALLET_ADDRESS));
+        int minimumLength = String.format("%s-%s-",
+                expectedPrefix, WORKER_WALLET_ADDRESS).length();
         Assertions.assertTrue(createdLasContainerName.length() > minimumLength);
     }
 
@@ -241,13 +239,11 @@ class LasServicesManagerTests {
     void shouldCreateLasContainerNameWithRandomness() {
         LasServicesManager lasServicesManager = new LasServicesManager(
                 sconeConfiguration, teeServicesPropertiesService, workerConfigService,
-                sgxService, dockerService);
+                sgxService, dockerService, WORKER_WALLET_ADDRESS);
         ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
-        when(workerConfigService.getWorkerWalletAddress())
-                .thenReturn(Credentials.create(keyPair).getAddress());
         //calling twice should return different values
-        Assertions.assertNotEquals(lasServicesManager.createLasContainerName(), 
-            lasServicesManager.createLasContainerName());
+        Assertions.assertNotEquals(lasServicesManager.createLasContainerName(),
+                lasServicesManager.createLasContainerName());
     }
     // endregion
 

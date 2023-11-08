@@ -30,9 +30,6 @@ import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
 public class WorkerConfigurationService {
 
     @Getter
-    private final String workerWalletAddress;
-
-    @Getter
     @Value("${worker.name}")
     private String workerName;
 
@@ -68,10 +65,6 @@ public class WorkerConfigurationService {
     @Value("${worker.docker-network-name}")
     @Getter
     private String dockerNetworkName;
-
-    public WorkerConfigurationService(String workerWalletAddress) {
-        this.workerWalletAddress = workerWalletAddress;
-    }
 
     @PostConstruct
     private void postConstruct() {

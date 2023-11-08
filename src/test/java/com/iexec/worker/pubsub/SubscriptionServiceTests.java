@@ -16,7 +16,6 @@
 
 package com.iexec.worker.pubsub;
 
-import com.iexec.worker.config.WorkerConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -40,8 +39,6 @@ import static org.mockito.Mockito.*;
 class SubscriptionServiceTests {
 
     @Mock
-    private WorkerConfigurationService workerConfigurationService;
-    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
     @Mock
     private StompClientService stompClientService;
@@ -60,8 +57,7 @@ class SubscriptionServiceTests {
     @BeforeEach
     void init() {
         MockitoAnnotations.openMocks(this);
-        when(workerConfigurationService.getWorkerWalletAddress())
-                .thenReturn(WORKER_WALLET_ADDRESS);
+        subscriptionService = spy(new SubscriptionService(applicationEventPublisher, stompClientService, WORKER_WALLET_ADDRESS));
     }
 
     @Test
@@ -77,7 +73,7 @@ class SubscriptionServiceTests {
     @Test
     void shouldNotSubscribeToExistingTopic() {
         when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
-        
+
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
