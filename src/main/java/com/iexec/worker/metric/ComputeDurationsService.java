@@ -90,8 +90,8 @@ public class ComputeDurationsService {
      */
     public AggregatedDurations getAggregatedDurations() {
         return new AggregatedDurations(
-                (long) statistics.getMin(),
-                (long) statistics.getMax(),
+                statistics.getMin(),
+                statistics.getMax(),
                 statistics.getMean()
         );
     }
