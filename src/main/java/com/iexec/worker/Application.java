@@ -17,7 +17,6 @@
 package com.iexec.worker;
 
 
-import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.replicate.ReplicateRecoveryService;
@@ -45,7 +44,7 @@ import java.util.List;
 public class Application implements CommandLineRunner {
 
     @Autowired
-    private CredentialsService credentialsService;
+    private String workerWalletAddress;
 
     @Autowired
     private IexecHubService iexecHubService;
@@ -68,11 +67,9 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        String workerAddress = credentialsService.getCredentials().getAddress();
-
         if (!iexecHubService.hasEnoughGas()) {
             String noEnoughGas = "No enough gas! please refill your wallet [walletAddress:%s]";
-            String formatted = String.format(noEnoughGas, workerAddress);
+            String formatted = String.format(noEnoughGas, workerWalletAddress);
             LoggingUtils.printHighlightedMessage(formatted);
             System.exit(0);
         }

@@ -24,6 +24,7 @@ public class LasServicesManager implements Purgeable {
     private final WorkerConfigurationService workerConfigService;
     private final SgxService sgxService;
     private final DockerService dockerService;
+    private final String workerWalletAddress;
 
     /**
      * Memoize Task-LAS container association.
@@ -41,12 +42,14 @@ public class LasServicesManager implements Purgeable {
             TeeServicesPropertiesService teeServicesPropertiesService,
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
-            DockerService dockerService) {
+            DockerService dockerService,
+            String workerWalletAddress) {
         this.sconeConfiguration = sconeConfiguration;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
         this.workerConfigService = workerConfigService;
         this.sgxService = sgxService;
         this.dockerService = dockerService;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     public boolean startLasService(String chainTaskId) {
@@ -81,8 +84,8 @@ public class LasServicesManager implements Purgeable {
      * information: Name does not resolve` error occures.
      */
     String createLasContainerName() {
-        return "iexec-las-" + workerConfigService.getWorkerWalletAddress() + "-"
-            + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        return "iexec-las-" + workerWalletAddress + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
     LasService createLasService(String lasImageUri) {
@@ -107,6 +110,7 @@ public class LasServicesManager implements Purgeable {
 
     /**
      * Try and remove LAS service related to given task ID.
+     *
      * @param chainTaskId Task ID whose related LAS service should be purged
      * @return {@literal true} if key is not stored anymore,
      * {@literal false} otherwise.

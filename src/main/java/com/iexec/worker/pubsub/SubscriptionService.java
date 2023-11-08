@@ -17,7 +17,6 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.commons.poco.notification.TaskNotification;
-import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -43,26 +42,26 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SubscriptionService {
 
     private final Map<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>();
-    private final String workerWalletAddress;
     private final ApplicationEventPublisher eventPublisher;
     private final StompClientService stompClientService;
+    private final String workerWalletAddress;
 
     private final Lock sessionLock = new ReentrantLock();
     private final Condition sessionReadyCondition = sessionLock.newCondition();
     @Getter
     private boolean sessionReady = false;
 
-    public SubscriptionService(WorkerConfigurationService workerConfigurationService,
-                               ApplicationEventPublisher applicationEventPublisher,
-                               StompClientService stompClientService) {
-        this.workerWalletAddress = workerConfigurationService.getWorkerWalletAddress();
+    public SubscriptionService(ApplicationEventPublisher applicationEventPublisher,
+                               StompClientService stompClientService,
+                               String workerWalletAddress) {
         this.eventPublisher = applicationEventPublisher;
         this.stompClientService = stompClientService;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     /**
      * Subscribe to a task's topic and handle {@link TaskNotification}.
-     * 
+     *
      * @param chainTaskId id of the task to which to subscribe
      */
     public void subscribeToTopic(String chainTaskId) {
@@ -84,7 +83,7 @@ public class SubscriptionService {
 
     /**
      * Unsubscribe from topic if already subscribed.
-     * 
+     *
      * @param chainTaskId
      */
     public void unsubscribeFromTopic(String chainTaskId) {
@@ -99,7 +98,7 @@ public class SubscriptionService {
 
     /**
      * Check if the worker is subscribed to a task's topic.
-     * 
+     *
      * @param chainTaskId id of the task to check
      * @return true if subscribed, false otherwise
      */
@@ -154,7 +153,7 @@ public class SubscriptionService {
      * Useful to prevent actions to execute while the STOMP session is disconnected.
      *
      * @throws InterruptedException if the current thread is interrupted
-     *         while waiting.
+     *                              while waiting.
      */
     public void waitForSessionReady() throws InterruptedException {
         while (!sessionReady) {
@@ -173,7 +172,7 @@ public class SubscriptionService {
 
     /**
      * An implementation of {@link StompFrameHandler} that
-     * handles received task notifications. 
+     * handles received task notifications.
      */
     @AllArgsConstructor
     public class MessageHandler implements StompFrameHandler {
@@ -204,7 +203,7 @@ public class SubscriptionService {
         private boolean isWorkerInvolved(TaskNotification notification) {
             return notification.getWorkersAddress() != null &&
                     (notification.getWorkersAddress().isEmpty() || // for all workers
-                    notification.getWorkersAddress().contains(this.workerWalletAddress));
-        }    
+                            notification.getWorkersAddress().contains(this.workerWalletAddress));
+        }
     }
 }

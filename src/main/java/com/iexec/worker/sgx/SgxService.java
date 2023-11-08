@@ -18,12 +18,7 @@ package com.iexec.worker.sgx;
 
 import com.github.dockerjava.api.model.Device;
 import com.github.dockerjava.api.model.HostConfig;
-import com.iexec.commons.containers.DockerRunFinalStatus;
-import com.iexec.commons.containers.DockerRunRequest;
-import com.iexec.commons.containers.DockerRunResponse;
-import com.iexec.commons.containers.SgxDriverMode;
-import com.iexec.commons.containers.SgxUtils;
-import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.commons.containers.*;
 import com.iexec.worker.docker.DockerService;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,24 +37,24 @@ import java.util.stream.Collectors;
 @Service
 public class SgxService {
 
-    private final WorkerConfigurationService workerConfigService;
     private final ApplicationContext context;
     private final DockerService dockerService;
     @Getter
     private final SgxDriverMode sgxDriverMode;
+    private final String workerWalletAddress;
     @Getter
     private boolean sgxEnabled;
 
     public SgxService(
-            WorkerConfigurationService workerConfigService,
             ApplicationContext context,
             DockerService dockerService,
-            @Value("${tee.sgx.driver-mode:NONE}") SgxDriverMode sgxDriverMode
+            @Value("${tee.sgx.driver-mode:NONE}") SgxDriverMode sgxDriverMode,
+            String workerWalletAddress
     ) {
-        this.workerConfigService = workerConfigService;
         this.context = context;
         this.dockerService = dockerService;
         this.sgxDriverMode = sgxDriverMode;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     @PostConstruct
@@ -105,7 +100,7 @@ public class SgxService {
     private boolean isSgxDevicePresent(SgxDriverMode sgxDriverMode) {
         // "wallet-address-sgx-check" as containerName to avoid naming conflict
         // when running multiple workers on the same machine.
-        String containerName = workerConfigService.getWorkerWalletAddress() + "-sgx-check";
+        String containerName = workerWalletAddress + "-sgx-check";
         String alpineLatest = "alpine:latest";
 
         final String[] devices = sgxDriverMode.getDevices();

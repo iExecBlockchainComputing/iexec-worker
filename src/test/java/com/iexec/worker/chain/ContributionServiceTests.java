@@ -26,13 +26,11 @@ import com.iexec.commons.poco.utils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.web3j.crypto.Credentials;
 
 import java.math.BigInteger;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -45,13 +43,15 @@ import static org.mockito.Mockito.*;
 class ContributionServiceTests {
 
     private static final String CHAIN_DEAL_ID = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
+    private static final String WORKER_WALLET_ADDRESS = "0x49713c374C0D5259A0c0c4fCCd1254CdFd631b80";
 
-    @Mock private IexecHubService iexecHubService;
-    @Mock private WorkerpoolAuthorizationService workerpoolAuthorizationService;
-    @Mock private EnclaveAuthorizationService enclaveAuthorizationService;
-    @Mock private CredentialsService credentialsService;
+    @Mock
+    private IexecHubService iexecHubService;
+    @Mock
+    private WorkerpoolAuthorizationService workerpoolAuthorizationService;
+    @Mock
+    private EnclaveAuthorizationService enclaveAuthorizationService;
 
-    @InjectMocks
     private ContributionService contributionService;
 
     private final ChainTask chainTask = ChainTask.builder()
@@ -64,6 +64,8 @@ class ContributionServiceTests {
     @BeforeEach
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
+
+        contributionService = new ContributionService(iexecHubService, workerpoolAuthorizationService, enclaveAuthorizationService, WORKER_WALLET_ADDRESS);
     }
 
     @Test
@@ -171,7 +173,7 @@ class ContributionServiceTests {
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId))
                 .thenReturn(Optional.of(ChainContribution.builder()
-                .status(ChainContributionStatus.CONTRIBUTED).build()));
+                        .status(ChainContributionStatus.CONTRIBUTED).build()));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
                 .isEqualTo(CONTRIBUTION_ALREADY_SET);
@@ -222,7 +224,7 @@ class ContributionServiceTests {
         when(iexecHubService.isChainTaskActive(chainTaskId)).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId))
                 .thenReturn(Optional.of(ChainContribution.builder()
-                .status(ChainContributionStatus.UNSET).build()));
+                        .status(ChainContributionStatus.UNSET).build()));
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(new WorkerpoolAuthorization());
 
@@ -315,7 +317,6 @@ class ContributionServiceTests {
 
         WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
-        when(credentialsService.getCredentials()).thenReturn(Credentials.create(TestUtils.WORKER_PRIVATE));
         when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(false);
 
         ComputedFile computedFile = ComputedFile.builder()
@@ -355,7 +356,6 @@ class ContributionServiceTests {
         when(enclaveAuthorizationService.
                 isVerifiedEnclaveSignature(anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(true);
-        when(credentialsService.getCredentials()).thenReturn(Credentials.create(TestUtils.WORKER_PRIVATE));
         when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
 
         ComputedFile computedFile = ComputedFile.builder()
