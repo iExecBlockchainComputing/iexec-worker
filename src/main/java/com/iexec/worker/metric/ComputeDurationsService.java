@@ -40,14 +40,15 @@ public class ComputeDurationsService {
                                    String context) {
         statistics = new DescriptiveStatistics(STATISTICS_WINDOW);
 
+        final String[] tags = {"wallet", workerWalletAddress, "phase", context};
         Gauge.builder(context + "_duration_min", statistics::getMin)
-                .tags("wallet", workerWalletAddress, "phase", context)
+                .tags(tags)
                 .register(registry);
         Gauge.builder(context + "_duration_max", statistics::getMax)
-                .tags("wallet", workerWalletAddress, "phase", context)
+                .tags(tags)
                 .register(registry);
         Gauge.builder(context + "_duration_average", statistics::getMean)
-                .tags("wallet", workerWalletAddress, "phase", context)
+                .tags(tags)
                 .register(registry);
     }
 
