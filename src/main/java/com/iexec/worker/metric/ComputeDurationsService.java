@@ -31,6 +31,7 @@ import java.util.Optional;
  */
 public class ComputeDurationsService {
     private static final int STATISTICS_WINDOW = 100;
+    private static final String EXPORTED_STAT_PREFIX = "iexec_";
 
     private final Map<String, Long> durationPerChainTaskId = new LinkedHashMap<>();
     private final DescriptiveStatistics statistics = new DescriptiveStatistics(STATISTICS_WINDOW);
@@ -39,13 +40,13 @@ public class ComputeDurationsService {
                                    String workerWalletAddress,
                                    String context) {
         final String[] tags = {"wallet", workerWalletAddress, "phase", context};
-        Gauge.builder(context + "_duration_min", statistics::getMin)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_min", statistics::getMin)
                 .tags(tags)
                 .register(registry);
-        Gauge.builder(context + "_duration_max", statistics::getMax)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_max", statistics::getMax)
                 .tags(tags)
                 .register(registry);
-        Gauge.builder(context + "_duration_average", statistics::getMean)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_average", statistics::getMean)
                 .tags(tags)
                 .register(registry);
     }
