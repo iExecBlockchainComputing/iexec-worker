@@ -95,9 +95,6 @@ dependencies {
     // awaitility
     testImplementation "org.awaitility:awaitility"
 
-    // observability
-    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-
     // Commons math
     implementation "org.apache.commons:commons-math3:${commonsMathsVersion}"
 

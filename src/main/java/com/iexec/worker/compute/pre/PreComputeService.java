@@ -32,6 +32,7 @@ import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
@@ -41,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -60,6 +62,7 @@ public class PreComputeService {
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
     private final TeeServicesPropertiesService teeServicesPropertiesService;
+    private final ComputeDurationsService preComputeDurationsService;
 
     public PreComputeService(
             SmsService smsService,
@@ -68,7 +71,8 @@ public class PreComputeService {
             WorkerConfigurationService workerConfigService,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService,
-            TeeServicesPropertiesService teeServicesPropertiesService) {
+            TeeServicesPropertiesService teeServicesPropertiesService,
+            ComputeDurationsService preComputeDurationsService) {
         this.smsService = smsService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
@@ -76,6 +80,7 @@ public class PreComputeService {
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
+        this.preComputeDurationsService = preComputeDurationsService;
     }
 
     /**
@@ -238,6 +243,10 @@ public class PreComputeService {
                 .sgxDriverMode(sgxService.getSgxDriverMode())
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(request);
+        final Duration executionDuration = dockerResponse.getExecutionDuration();
+        if (executionDuration != null) {
+            preComputeDurationsService.addDurationForTask(chainTaskId, executionDuration.toMillis());
+        }
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
             log.error("Tee pre-compute container timed out" +

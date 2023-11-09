@@ -48,6 +48,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -143,6 +144,7 @@ class PreComputeServiceTests {
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -180,6 +182,7 @@ class PreComputeServiceTests {
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -221,6 +224,7 @@ class PreComputeServiceTests {
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 

@@ -20,12 +20,10 @@ worker:
 
 docker:
   registries:
-    -
-      address: docker.io # do not update this line
+    - address: docker.io # do not update this line
       username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_0:}
       password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_0:}
-    -
-      address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_1:}
+    - address: ${IEXEC_WORKER_DOCKER_REGISTRY_ADDRESS_1:}
       username: ${IEXEC_WORKER_DOCKER_REGISTRY_USERNAME_1:}
       password: ${IEXEC_WORKER_DOCKER_REGISTRY_PASSWORD_1:}
   image:
@@ -54,3 +52,6 @@ management:
 tee:
   sgx:
     driver-mode: ${IEXEC_WORKER_SGX_DRIVER_MODE:NONE}
+
+metrics:
+  window-size: ${IEXEC_WORKER_METRICS_WINDOW_SIZE:1000}
