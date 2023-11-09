@@ -30,15 +30,17 @@ import java.util.Optional;
  * and aggregates them (min, max and average).
  */
 public class ComputeDurationsService {
-    private static final int STATISTICS_WINDOW = 100;
     private static final String EXPORTED_STAT_PREFIX = "iexec_";
 
     private final Map<String, Long> durationPerChainTaskId = new LinkedHashMap<>();
-    private final DescriptiveStatistics statistics = new DescriptiveStatistics(STATISTICS_WINDOW);
+    private final DescriptiveStatistics statistics;
 
     public ComputeDurationsService(MeterRegistry registry,
                                    String workerWalletAddress,
-                                   String context) {
+                                   String context,
+                                   int statisticsWindow) {
+        this.statistics = new DescriptiveStatistics(statisticsWindow);
+
         final String[] tags = {"wallet", workerWalletAddress, "phase", context};
         Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_min", statistics::getMin)
                 .tags(tags)
