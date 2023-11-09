@@ -33,6 +33,7 @@ import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
@@ -108,6 +109,8 @@ class PreComputeServiceTests {
     private ComputeExitCauseService computeExitCauseService;
     @Mock
     private TeeServicesPropertiesService teeServicesPropertiesService;
+    @Mock
+    private ComputeDurationsService preComputeDurationsService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
