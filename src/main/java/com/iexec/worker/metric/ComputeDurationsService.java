@@ -38,8 +38,8 @@ public class ComputeDurationsService {
     public ComputeDurationsService(MeterRegistry registry,
                                    String workerWalletAddress,
                                    String context,
-                                   int statisticsWindow) {
-        this.statistics = new DescriptiveStatistics(statisticsWindow);
+                                   int windowsSize) {
+        this.statistics = new DescriptiveStatistics(windowsSize);
 
         final String[] tags = {"wallet", workerWalletAddress, "phase", context};
         Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_min", statistics::getMin)
