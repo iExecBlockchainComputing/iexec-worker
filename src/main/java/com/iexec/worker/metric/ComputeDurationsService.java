@@ -18,7 +18,7 @@ package com.iexec.worker.metric;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
