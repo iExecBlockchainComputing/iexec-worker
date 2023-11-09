@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### New Features
 
 - Share code between transaction types in `IexecHubService`. (#556)
+- Initialize compute duration exposition. (#559)
 
 ### Quality
 
