@@ -83,6 +83,9 @@ public class MetricsService {
         final Optional<Long> appComputeDuration = appComputeDurationsService.getDurationForTask(chainTaskId);
         final Optional<Long> postComputeDuration = postComputeDurationsService.getDurationForTask(chainTaskId);
 
+        // Should check whether appComputeDuration is still known.
+        // It could have been purged if max number of durations has been reached
+        // and new durations have been added.
         if (appComputeDuration.isEmpty() || postComputeDuration.isEmpty()) {
             return Optional.empty();
         }
