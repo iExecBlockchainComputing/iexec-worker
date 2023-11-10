@@ -16,9 +16,9 @@
 
 package com.iexec.worker.metric;
 
+import com.iexec.worker.utils.MaxSizeHashMap;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import net.jodah.expiringmap.ExpiringMap;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.Collection;
@@ -39,9 +39,7 @@ public class ComputeDurationsService {
                                    String workerWalletAddress,
                                    String context,
                                    int windowSize) {
-        this.durationPerChainTaskId = ExpiringMap.builder()
-                .maxSize(windowSize)
-                .build();
+        this.durationPerChainTaskId = new MaxSizeHashMap<>(windowSize);
         this.statistics = new DescriptiveStatistics(windowSize);
 
         final String[] tags = {"wallet", workerWalletAddress, "phase", context};
