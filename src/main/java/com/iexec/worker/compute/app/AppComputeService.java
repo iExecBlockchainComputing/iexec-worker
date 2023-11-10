@@ -28,11 +28,13 @@ import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,16 +46,19 @@ public class AppComputeService {
     private final DockerService dockerService;
     private final TeeServicesManager teeServicesManager;
     private final SgxService sgxService;
+    private final ComputeDurationsService appComputeDurationsService;
 
     public AppComputeService(
             WorkerConfigurationService workerConfigService,
             DockerService dockerService,
             TeeServicesManager teeServicesManager,
-            SgxService sgxService) {
+            SgxService sgxService,
+            ComputeDurationsService appComputeDurationsService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.sgxService = sgxService;
+        this.appComputeDurationsService = appComputeDurationsService;
     }
 
     public AppComputeResponse runCompute(TaskDescription taskDescription,
@@ -100,6 +105,10 @@ public class AppComputeService {
                 )
                 .build();
         DockerRunResponse dockerResponse = dockerService.run(runRequest);
+        final Duration executionDuration = dockerResponse.getExecutionDuration();
+        if (executionDuration != null) {
+            appComputeDurationsService.addDurationForTask(chainTaskId, executionDuration.toMillis());
+        }
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         return AppComputeResponse.builder()
                 .exitCause(getExitCauseFromFinalStatus(finalStatus))

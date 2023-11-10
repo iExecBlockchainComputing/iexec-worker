@@ -30,6 +30,7 @@ import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
@@ -41,6 +42,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,6 +84,8 @@ class AppComputeServiceTests {
     private TeeServicesManager teeServicesManager;
     @Mock
     private SgxService sgxService;
+    @Mock
+    private ComputeDurationsService appComputeDurationsService;
 
     @Mock
     private TeeService teeMockedService;
@@ -102,8 +106,11 @@ class AppComputeServiceTests {
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
+        DockerRunResponse expectedDockerRunResponse = DockerRunResponse
+                .builder()
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
+                .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
@@ -152,8 +159,11 @@ class AppComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         String lasNetworkName = "lasNetworkName";
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
+        DockerRunResponse expectedDockerRunResponse = DockerRunResponse
+                .builder()
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
+                .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
         List<Device> devices = List.of(Device.parse("/dev/isgx"));

@@ -34,4 +34,16 @@ public class ComputeDurationsConfig {
                                                       String workerWalletAddress) {
         return new ComputeDurationsService(registry, workerWalletAddress, "pre_compute", windowSize);
     }
+
+    @Bean
+    ComputeDurationsService appComputeDurationService(MeterRegistry registry,
+                                                      String workerWalletAddress) {
+        return new ComputeDurationsService(registry, workerWalletAddress, "app_compute", windowSize);
+    }
+
+    @Bean
+    ComputeDurationsService postComputeDurationService(MeterRegistry registry,
+                                                       String workerWalletAddress) {
+        return new ComputeDurationsService(registry, workerWalletAddress, "post_compute", windowSize);
+    }
 }
