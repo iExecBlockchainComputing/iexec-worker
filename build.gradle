@@ -65,8 +65,11 @@ dependencies {
     implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation "org.springframework.retry:spring-retry"
 
-    // apache commons.lang3
+    // apache commons-lang3
     implementation 'org.apache.commons:commons-lang3'
+
+    // Apache commons-math3
+    implementation "org.apache.commons:commons-math3:${commonsMathsVersion}"
 
     // Required for com.iexec.worker.feign.config.RestTemplateConfig
     implementation 'org.apache.httpcomponents:httpclient'
@@ -94,13 +97,6 @@ dependencies {
 
     // awaitility
     testImplementation "org.awaitility:awaitility"
-
-    // observability
-    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-
-    // Commons math
-    implementation "org.apache.commons:commons-math3:${commonsMathsVersion}"
-
 }
 
 java {

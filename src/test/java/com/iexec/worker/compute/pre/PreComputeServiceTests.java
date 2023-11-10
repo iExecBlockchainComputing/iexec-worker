@@ -33,6 +33,7 @@ import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
@@ -48,6 +49,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -107,6 +109,8 @@ class PreComputeServiceTests {
     private ComputeExitCauseService computeExitCauseService;
     @Mock
     private TeeServicesPropertiesService teeServicesPropertiesService;
+    @Mock
+    private ComputeDurationsService preComputeDurationsService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -143,6 +147,7 @@ class PreComputeServiceTests {
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -180,6 +185,7 @@ class PreComputeServiceTests {
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
@@ -221,6 +227,7 @@ class PreComputeServiceTests {
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
