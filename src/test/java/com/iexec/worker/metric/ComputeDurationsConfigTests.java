@@ -50,4 +50,22 @@ class ComputeDurationsConfigTests {
         assertThat(preComputeDurationsService).isNotNull();
     }
     // endregion
+
+    // region appComputeDurationService
+    @Test
+    void shouldConstructAppComputeDurationService() {
+        final ComputeDurationsService appComputeDurationsService =
+                computeDurationsConfig.appComputeDurationService(new SimpleMeterRegistry(), WALLET_ADDRESS);
+        assertThat(appComputeDurationsService).isNotNull();
+    }
+    // endregion
+
+    // region postComputeDurationService
+    @Test
+    void shouldConstructPostComputeDurationService() {
+        final ComputeDurationsService postComputeDurationsService =
+                computeDurationsConfig.postComputeDurationService(new SimpleMeterRegistry(), WALLET_ADDRESS);
+        assertThat(postComputeDurationsService).isNotNull();
+    }
+    // endregion
 }
