@@ -46,7 +46,7 @@ class ComputeDurationsConfigTests {
     @Test
     void shouldConstructPreComputeDurationService() {
         final ComputeDurationsService preComputeDurationsService =
-                computeDurationsConfig.preComputeDurationService(new SimpleMeterRegistry(), WALLET_ADDRESS);
+                computeDurationsConfig.preComputeDurationsService(new SimpleMeterRegistry(), WALLET_ADDRESS);
         assertThat(preComputeDurationsService).isNotNull();
     }
     // endregion
@@ -55,7 +55,7 @@ class ComputeDurationsConfigTests {
     @Test
     void shouldConstructAppComputeDurationService() {
         final ComputeDurationsService appComputeDurationsService =
-                computeDurationsConfig.appComputeDurationService(new SimpleMeterRegistry(), WALLET_ADDRESS);
+                computeDurationsConfig.appComputeDurationsService(new SimpleMeterRegistry(), WALLET_ADDRESS);
         assertThat(appComputeDurationsService).isNotNull();
     }
     // endregion
@@ -64,7 +64,7 @@ class ComputeDurationsConfigTests {
     @Test
     void shouldConstructPostComputeDurationService() {
         final ComputeDurationsService postComputeDurationsService =
-                computeDurationsConfig.postComputeDurationService(new SimpleMeterRegistry(), WALLET_ADDRESS);
+                computeDurationsConfig.postComputeDurationsService(new SimpleMeterRegistry(), WALLET_ADDRESS);
         assertThat(postComputeDurationsService).isNotNull();
     }
     // endregion
