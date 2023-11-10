@@ -18,10 +18,10 @@ package com.iexec.worker.metric;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import net.jodah.expiringmap.ExpiringMap;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,13 +32,16 @@ import java.util.Optional;
 public class ComputeDurationsService {
     private static final String EXPORTED_STAT_PREFIX = "iexec_";
 
-    private final Map<String, Long> durationPerChainTaskId = new LinkedHashMap<>();
+    private final Map<String, Long> durationPerChainTaskId;
     private final DescriptiveStatistics statistics;
 
     public ComputeDurationsService(MeterRegistry registry,
                                    String workerWalletAddress,
                                    String context,
                                    int windowSize) {
+        this.durationPerChainTaskId = ExpiringMap.builder()
+                .maxSize(windowSize)
+                .build();
         this.statistics = new DescriptiveStatistics(windowSize);
 
         final String[] tags = {"wallet", workerWalletAddress, "phase", context};

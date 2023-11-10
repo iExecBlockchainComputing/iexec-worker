@@ -88,7 +88,7 @@ dependencies {
     implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 
     // expiring map
-    implementation 'net.jodah:expiringmap:0.5.10'
+    implementation 'net.jodah:expiringmap:0.5.11'
 
     // tests
     testImplementation "org.springframework.boot:spring-boot-starter-test"
