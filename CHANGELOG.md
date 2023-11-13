@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 ### Dependency Upgrades
 
 - Upgrade to `iexec-commons-containers` 1.2.0. (#557)
+- Upgrade to `jenkins-library` 2.7.4. (#564)
 
 ## [[8.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.2.0) 2023-09-29
 
