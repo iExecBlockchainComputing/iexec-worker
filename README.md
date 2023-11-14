@@ -58,8 +58,37 @@ No default strategy has been implemented in the [Dockerfile](Dockerfile) at the 
 
 ## Metrics
 
-A metrics endpoint (`/metrics`) is available. It currently exposes data on TEE pre-compute, app-compute and TEE post-compute durations. These metrics are computed on the
-latest `IEXEC_WORKER_METRICS_WINDOW_SIZE` executions of each stage.
+A metrics endpoint (`/metrics`) is available. It currently exposes data on TEE pre-compute, app-compute and TEE post-compute durations in the following form:
+
+```json
+{
+  "preComputeDurations": {
+    "minDuration": 3835.0,
+    "maxDuration": 3928.0,
+    "averageDuration": 3881.5
+  },
+  "appComputeDurations": {
+    "minDuration": 4349.0,
+    "maxDuration": 4349.0,
+    "averageDuration": 4349.0
+  },
+  "postComputeDurations": {
+    "minDuration": 16080.0,
+    "maxDuration": 16080.0,
+    "averageDuration": 16080.0
+  },
+  "completeComputeDurations": {
+    "minDuration": 24264.0,
+    "maxDuration": 24264.0,
+    "averageDuration": 24264.0
+  }
+}
+```
+
+These metrics are computed on the latest `IEXEC_WORKER_METRICS_WINDOW_SIZE` executions of each stage.
+
+All these metrics but complete compute durations can also be exposed on `/actuator/prometheus` endpoint. In such a case, they are
+called `iexec_{pre_compute|app_compute|post_compute}_durations_{min|max|average}`.
 
 ⚠ As pre-compute is optional, metrics of each stage are not consistent. E.g.: if `IEXEC_WORKER_METRICS_WINDOW_SIZE` replicates are executed, each of those replicates without any dataset nor input
 file, then none of the pre-compute durations relates to any of app-compute or post-compute durations. So, treat these metrics with care.
