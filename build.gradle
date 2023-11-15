@@ -101,8 +101,10 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
+    sourceCompatibility = "11"
+    targetCompatibility = "11"
 }
 
 springBoot {
@@ -160,8 +162,7 @@ tasks.register('buildImage', Exec) {
     group 'Build'
     description 'Builds an OCI image from a Dockerfile.'
     dependsOn bootJar
-    commandLine("sh", "-c", "docker build --build-arg jar=$jarPathForOCI -t $ociImageName:$gitShortCommit ."
-            + " && docker tag $ociImageName:$gitShortCommit $ociImageName:dev")
+    commandLine 'docker', 'build', '--build-arg', 'jar=' + jarPathForOCI, '-t', ociImageName + ':dev', '.'
 }
 
 // ##################
