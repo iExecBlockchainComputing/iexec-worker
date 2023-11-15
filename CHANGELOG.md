@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### New Features
 
 - Share code between transaction types in `IexecHubService`. (#556)
-- Expose Pre, App & Post-Compute durations. (#559, #560, #561, #562)
+- Expose Pre, App & Post-Compute durations. (#559, #560, #561, #562, #563)
 
 ### Quality
 
