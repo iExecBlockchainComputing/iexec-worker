@@ -52,7 +52,7 @@ public class ComputeDurationsService {
         Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_average", statistics::getMean)
                 .tags(tags)
                 .register(registry);
-        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_count", statistics::getN)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_samples_count", statistics::getN)
                 .tags(tags)
                 .register(registry);
     }

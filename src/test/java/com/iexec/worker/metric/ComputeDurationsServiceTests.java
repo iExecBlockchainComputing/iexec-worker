@@ -59,7 +59,7 @@ class ComputeDurationsServiceTests {
         minGauge = meterRegistry.find(EXPORTED_STAT_PREFIX + CONTEXT + "_duration_min").gauge();
         maxGauge = meterRegistry.find(EXPORTED_STAT_PREFIX + CONTEXT + "_duration_max").gauge();
         averageGauge = meterRegistry.find(EXPORTED_STAT_PREFIX + CONTEXT + "_duration_average").gauge();
-        countGauge = meterRegistry.find(EXPORTED_STAT_PREFIX + CONTEXT + "_duration_count").gauge();
+        countGauge = meterRegistry.find(EXPORTED_STAT_PREFIX + CONTEXT + "_duration_samples_count").gauge();
     }
 
     @AfterEach
