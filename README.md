@@ -66,25 +66,25 @@ A metrics endpoint (`/metrics`) is available. It currently exposes data on TEE p
     "minDuration": 3835.0,
     "maxDuration": 3928.0,
     "averageDuration": 3881.5,
-    "durationsCount": 2
+    "durationSamplesCount": 2
   },
   "appComputeDurations": {
     "minDuration": 4349.0,
     "maxDuration": 4349.0,
     "averageDuration": 4349.0,
-    "durationsCount": 1
+    "durationSamplesCount": 1
   },
   "postComputeDurations": {
     "minDuration": 16080.0,
     "maxDuration": 16080.0,
     "averageDuration": 16080.0,
-    "durationsCount": 1
+    "durationSamplesCount": 1
   },
   "completeComputeDurations": {
     "minDuration": 24264.0,
     "maxDuration": 24264.0,
     "averageDuration": 24264.0,
-    "durationsCount": 1
+    "durationSamplesCount": 1
   }
 }
 ```

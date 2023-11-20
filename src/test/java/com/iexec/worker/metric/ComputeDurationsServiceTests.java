@@ -114,7 +114,7 @@ class ComputeDurationsServiceTests {
                 () -> assertThat(aggregatedDurations.getMinDuration()).isNaN(),
                 () -> assertThat(aggregatedDurations.getMaxDuration()).isNaN(),
                 () -> assertThat(aggregatedDurations.getAverageDuration()).isNaN(),
-                () -> assertThat(aggregatedDurations.getDurationsCount()).isZero()
+                () -> assertThat(aggregatedDurations.getDurationSamplesCount()).isZero()
         );
     }
 
@@ -181,7 +181,7 @@ class ComputeDurationsServiceTests {
                 () -> assertThat(aggregatedDurations.getMinDuration()).isEqualTo(expectedMinValue),
                 () -> assertThat(aggregatedDurations.getMaxDuration()).isEqualTo(expectedMaxValue),
                 () -> assertThat(aggregatedDurations.getAverageDuration()).isEqualTo(expectedAverageValue),
-                () -> assertThat(aggregatedDurations.getDurationsCount()).isEqualTo(expectedCountValue)
+                () -> assertThat(aggregatedDurations.getDurationSamplesCount()).isEqualTo(expectedCountValue)
         );
     }
 

@@ -20,7 +20,7 @@ import lombok.Value;
 
 @Value
 public class AggregatedDurations {
-    long durationsCount;
+    long durationSamplesCount;
     double minDuration;
     double maxDuration;
     double averageDuration;
