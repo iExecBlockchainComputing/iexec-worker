@@ -70,16 +70,19 @@ class MetricsServiceTests {
         when(postComputeDurationsService.getDurationForTask(CHAIN_TASK_ID_2)).thenReturn(Optional.of(2_500L));
 
         when(preComputeDurationsService.getAggregatedDurations()).thenReturn(new AggregatedDurations(
+                2,
                 1_000.0,
                 1_500.0,
                 1_250.0
         ));
         when(appComputeDurationsService.getAggregatedDurations()).thenReturn(new AggregatedDurations(
+                2,
                 3_000.0,
                 3_500.0,
                 3_250.0
         ));
         when(postComputeDurationsService.getAggregatedDurations()).thenReturn(new AggregatedDurations(
+                2,
                 2_000.0,
                 2_500.0,
                 2_250.0
@@ -88,10 +91,10 @@ class MetricsServiceTests {
         final WorkerMetrics workerMetrics = metricsService.getWorkerMetrics();
 
         final WorkerMetrics expectedWorkerMetrics = new WorkerMetrics(
-                new AggregatedDurations(1_000.0, 1_500.0, 1_250.0),
-                new AggregatedDurations(3_000.0, 3_500.0, 3_250.0),
-                new AggregatedDurations(2_000.0, 2_500.0, 2_250.0),
-                new AggregatedDurations(6_000.0, 7_500.0, 6_750.0)
+                new AggregatedDurations(2, 1_000.0, 1_500.0, 1_250.0),
+                new AggregatedDurations(2, 3_000.0, 3_500.0, 3_250.0),
+                new AggregatedDurations(2, 2_000.0, 2_500.0, 2_250.0),
+                new AggregatedDurations(2, 6_000.0, 7_500.0, 6_750.0)
         );
 
         assertThat(workerMetrics).isEqualTo(expectedWorkerMetrics);

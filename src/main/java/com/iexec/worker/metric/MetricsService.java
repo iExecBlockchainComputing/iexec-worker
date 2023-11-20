@@ -53,6 +53,7 @@ public class MetricsService {
         durations.forEach(descriptiveStatistics::addValue);
 
         return new AggregatedDurations(
+                descriptiveStatistics.getN(),
                 descriptiveStatistics.getMin(),
                 descriptiveStatistics.getMax(),
                 descriptiveStatistics.getMean()
