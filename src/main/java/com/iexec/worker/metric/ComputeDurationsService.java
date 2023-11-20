@@ -52,6 +52,9 @@ public class ComputeDurationsService {
         Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_average", statistics::getMean)
                 .tags(tags)
                 .register(registry);
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_count", statistics::getN)
+                .tags(tags)
+                .register(registry);
     }
 
     /**
@@ -92,6 +95,7 @@ public class ComputeDurationsService {
      */
     public AggregatedDurations getAggregatedDurations() {
         return new AggregatedDurations(
+                statistics.getN(),
                 statistics.getMin(),
                 statistics.getMax(),
                 statistics.getMean()
