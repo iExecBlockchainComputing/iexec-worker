@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Dependency Upgrades
 
+- Upgrade to `eclipse-temurin:11.0.21_9-jre-focal`. (#567)
 - Upgrade to Spring Boot 2.7.17. (#566)
 - Upgrade to Spring Dependency Management Plugin 1.1.4. (#566)
 - Upgrade to `iexec-commons-containers` 1.2.0. (#557)
