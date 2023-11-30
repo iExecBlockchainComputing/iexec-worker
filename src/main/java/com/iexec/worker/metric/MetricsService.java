@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.iexec.worker.metric.MetricsUtils.*;
+
 @Service
 public class MetricsService {
     private final ComputeDurationsService preComputeDurationsService;
@@ -54,9 +56,9 @@ public class MetricsService {
 
         return new AggregatedDurations(
                 descriptiveStatistics.getN(),
-                descriptiveStatistics.getMin(),
-                descriptiveStatistics.getMax(),
-                descriptiveStatistics.getMean()
+                getMin(descriptiveStatistics),
+                getMax(descriptiveStatistics),
+                getMean(descriptiveStatistics)
         );
     }
 

@@ -108,12 +108,12 @@ class ComputeDurationsServiceTests {
 
     // region getAggregatedMetrics
     @Test
-    void shouldGetNanAggregatedDurationsSinceNoValue() {
+    void shouldGetZeroAggregatedDurationsSinceNoValue() {
         final AggregatedDurations aggregatedDurations = computeDurationsService.getAggregatedDurations();
         Assertions.assertAll(
-                () -> assertThat(aggregatedDurations.getMinDuration()).isNaN(),
-                () -> assertThat(aggregatedDurations.getMaxDuration()).isNaN(),
-                () -> assertThat(aggregatedDurations.getAverageDuration()).isNaN(),
+                () -> assertThat(aggregatedDurations.getMinDuration()).isZero(),
+                () -> assertThat(aggregatedDurations.getMaxDuration()).isZero(),
+                () -> assertThat(aggregatedDurations.getAverageDuration()).isZero(),
                 () -> assertThat(aggregatedDurations.getDurationSamplesCount()).isZero()
         );
     }
@@ -147,7 +147,7 @@ class ComputeDurationsServiceTests {
     static Stream<Arguments> metricsEvolutionValuesProvider() {
         // values, expected min, expected max, expected average, expected count
         return Stream.of(
-                Arguments.of(List.of(), Double.NaN, Double.NaN, Double.NaN, 0),   // No value => expected NaN
+                Arguments.of(List.of(), 0.0, 0.0, 0.0, 0),   // No value => all 0s
                 Arguments.of(List.of(1_000.0), 1_000.0, 1_000.0, 1_000.0, 1),  // Single value => same expected value
                 Arguments.of(List.of(1_000.0, 500.0), 500.0, 1_000.0, 750.0, 2), // Max as first value
                 Arguments.of(List.of(1_000.0, 2_000.0), 1_000.0, 2_000.0, 1_500.0, 2),   // Max as second value

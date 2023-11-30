@@ -25,6 +25,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.iexec.worker.metric.MetricsUtils.*;
+
 /**
  * Simple service to store durations of a compute stage (pre, app or post-compute)
  * and aggregates them (min, max and average).
@@ -43,13 +45,13 @@ public class ComputeDurationsService {
         this.statistics = new DescriptiveStatistics(windowSize);
 
         final String[] tags = {"wallet", workerWalletAddress, "phase", context};
-        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_min", statistics::getMin)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_min", () -> getMin(statistics))
                 .tags(tags)
                 .register(registry);
-        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_max", statistics::getMax)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_max", () -> getMax(statistics))
                 .tags(tags)
                 .register(registry);
-        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_average", statistics::getMean)
+        Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_average", () -> getMean(statistics))
                 .tags(tags)
                 .register(registry);
         Gauge.builder(EXPORTED_STAT_PREFIX + context + "_duration_samples_count", statistics::getN)
@@ -96,9 +98,9 @@ public class ComputeDurationsService {
     public AggregatedDurations getAggregatedDurations() {
         return new AggregatedDurations(
                 statistics.getN(),
-                statistics.getMin(),
-                statistics.getMax(),
-                statistics.getMean()
+                getMin(statistics),
+                getMax(statistics),
+                getMean(statistics)
         );
     }
 }
