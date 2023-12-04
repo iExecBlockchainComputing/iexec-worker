@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Share code between transaction types in `IexecHubService`. (#556)
 - Expose Pre, App & Post-Compute durations. (#559, #560, #561, #562, #563, #565)
+- Expose version through prometheus endpoint and through VersionController. (#569)
 
 ### Quality
 
