@@ -25,8 +25,8 @@ import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.tee.scone.TeeSconeService;
 import com.iexec.worker.utils.LoggingUtils;
-import com.iexec.worker.version.VersionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.cloud.context.restart.RestartEndpoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
@@ -43,7 +43,7 @@ public class WorkerService {
     private final CoreConfigurationService coreConfigService;
     private final PublicConfigurationService publicConfigService;
     private final CustomCoreFeignClient customCoreFeignClient;
-    private final VersionService versionService;
+    private final BuildProperties buildProperties;
     private final TeeSconeService teeSconeService;
     private final RestartEndpoint restartEndpoint;
     private final DockerService dockerService;
@@ -53,7 +53,7 @@ public class WorkerService {
             CoreConfigurationService coreConfigService,
             PublicConfigurationService publicConfigService,
             CustomCoreFeignClient customCoreFeignClient,
-            VersionService versionService,
+            BuildProperties buildProperties,
             TeeSconeService teeSconeService,
             RestartEndpoint restartEndpoint,
             DockerService dockerService,
@@ -62,7 +62,7 @@ public class WorkerService {
         this.coreConfigService = coreConfigService;
         this.publicConfigService = publicConfigService;
         this.customCoreFeignClient = customCoreFeignClient;
-        this.versionService = versionService;
+        this.buildProperties = buildProperties;
         this.teeSconeService = teeSconeService;
         this.restartEndpoint = restartEndpoint;
         this.dockerService = dockerService;
@@ -77,10 +77,10 @@ public class WorkerService {
         log.info("Got public configuration from the core [config:{}]", publicConfigService.getPublicConfiguration());
 
         if (!publicConfigService.getRequiredWorkerVersion().isEmpty() &&
-                !versionService.getVersion().equals(publicConfigService.getRequiredWorkerVersion())) {
+                !buildProperties.getVersion().equals(publicConfigService.getRequiredWorkerVersion())) {
 
             String badVersion = String.format("Bad version! please upgrade your iexec-worker [current:%s, required:%s]",
-                    versionService.getVersion(), publicConfigService.getRequiredWorkerVersion());
+                    buildProperties.getVersion(), publicConfigService.getRequiredWorkerVersion());
 
             LoggingUtils.printHighlightedMessage(badVersion);
             return false;

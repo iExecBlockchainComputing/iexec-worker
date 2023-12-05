@@ -23,19 +23,26 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.tee.scone.TeeSconeService;
-import com.iexec.worker.version.VersionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.info.ProjectInfoAutoConfiguration;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.cloud.context.restart.RestartEndpoint;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(SpringExtension.class)
+@Import(ProjectInfoAutoConfiguration.class)
 class WorkerServiceTests {
     private static final String WORKER_WALLET_ADDRESS = "0x2D29bfBEc903479fe4Ba991918bAB99B494f2bEf";
 
@@ -48,8 +55,8 @@ class WorkerServiceTests {
     private PublicConfigurationService publicConfigService;
     @Mock
     private CustomCoreFeignClient customCoreFeignClient;
-    @Mock
-    private VersionService versionService;
+    @Autowired
+    private BuildProperties buildProperties;
     @Mock
     private TeeSconeService teeSconeService;
     @Mock
@@ -66,7 +73,7 @@ class WorkerServiceTests {
                 coreConfigService,
                 publicConfigService,
                 customCoreFeignClient,
-                versionService,
+                buildProperties,
                 teeSconeService,
                 restartEndpoint,
                 dockerService,
@@ -76,7 +83,7 @@ class WorkerServiceTests {
 
     @Test
     void shouldRegisterWorker() {
-        String version = "version";
+        String version = buildProperties.getVersion();
         String name = "name";
         String os = "os";
         String cpu = "cpu";
@@ -85,7 +92,6 @@ class WorkerServiceTests {
         boolean isTee = true;
         boolean isGpu = true;
         when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
-        when(versionService.getVersion()).thenReturn(version);
         when(workerConfigService.getWorkerName()).thenReturn(name);
         when(workerConfigService.getOS()).thenReturn(os);
         when(workerConfigService.getCPU()).thenReturn(cpu);
@@ -117,7 +123,6 @@ class WorkerServiceTests {
     void shouldNotRegisterWorkerSinceBadVersion() {
         String version = "version";
         when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
-        when(versionService.getVersion()).thenReturn("someOtherVersion");
 
         assertThat(workerService.registerWorker()).isFalse();
 
