@@ -106,7 +106,6 @@ class ComputeManagerServiceTests {
                 .appType(DappType.DOCKER)
                 .appUri(APP_URI)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .inputFiles(Arrays.asList("file0", "file1"))
                 .isTeeTask(isTeeTask)
@@ -245,7 +244,7 @@ class ComputeManagerServiceTests {
     void shouldRunStandardComputeWithFailureResponse() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
-        AppComputeResponse.builder()
+                AppComputeResponse.builder()
                         .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
@@ -425,9 +424,9 @@ class ComputeManagerServiceTests {
                 // maxExecutionTime, minPullTimeout, maxPullTimeout, expectedTimeout
 
                 // Default values
-                Arguments.of(3000  , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 7),        // XS category
-                Arguments.of(12000 , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 13),      // S category
-                Arguments.of(36000 , Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 18),      // M category
+                Arguments.of(3000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 7),        // XS category
+                Arguments.of(12000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 13),      // S category
+                Arguments.of(36000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 18),      // M category
                 Arguments.of(108000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 23),     // L category
                 Arguments.of(360000, Duration.of(5, ChronoUnit.MINUTES), Duration.of(30, ChronoUnit.MINUTES), 28),     // XL category
 

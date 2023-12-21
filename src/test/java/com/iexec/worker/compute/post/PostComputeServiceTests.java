@@ -214,7 +214,6 @@ class PostComputeServiceTests {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
@@ -274,7 +273,6 @@ class PostComputeServiceTests {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
@@ -296,7 +294,6 @@ class PostComputeServiceTests {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
@@ -345,7 +342,6 @@ class PostComputeServiceTests {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
-                .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");

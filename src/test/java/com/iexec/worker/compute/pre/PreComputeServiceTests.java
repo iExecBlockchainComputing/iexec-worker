@@ -73,7 +73,6 @@ class PreComputeServiceTests {
             .datasetUri(datasetUri)
             .datasetName("datasetName")
             .datasetChecksum("datasetChecksum")
-            .teePostComputeImage("teePostComputeImage")
             .teeFramework(TeeFramework.SCONE)
             .appEnclaveConfiguration(TeeEnclaveConfiguration.builder()
                     .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
@@ -169,8 +168,6 @@ class PreComputeServiceTests {
     void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
 
-        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
@@ -211,8 +208,6 @@ class PreComputeServiceTests {
                 .inputFiles(List.of("input-file1"))
                 .build();
 
-        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
@@ -274,9 +269,7 @@ class PreComputeServiceTests {
     @Test
     void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
+
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
@@ -288,9 +281,6 @@ class PreComputeServiceTests {
     @Test
     void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -309,9 +299,6 @@ class PreComputeServiceTests {
     @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
     void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -351,9 +338,6 @@ class PreComputeServiceTests {
     @Test
     void shouldFailToRunTeePreComputeSinceTimeout() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
