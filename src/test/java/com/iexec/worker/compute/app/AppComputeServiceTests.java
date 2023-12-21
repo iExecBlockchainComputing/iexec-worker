@@ -57,8 +57,6 @@ class AppComputeServiceTests {
     private final static String DATASET_URI = "DATASET_URI";
     private final static String APP_URI = "APP_URI";
     private final static String WORKER_NAME = "WORKER_NAME";
-    private final static String TEE_POST_COMPUTE_IMAGE =
-            "TEE_POST_COMPUTE_IMAGE";
     private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
     private final static String INPUT = "INPUT";
@@ -69,7 +67,6 @@ class AppComputeServiceTests {
             .chainTaskId(CHAIN_TASK_ID)
             .appUri(APP_URI)
             .datasetUri(DATASET_URI)
-            .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true);
