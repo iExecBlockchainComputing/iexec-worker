@@ -12,8 +12,6 @@ group = 'com.iexec.worker'
 
 ext {
     springCloudVersion = '2021.0.8'
-    dockerJavaVersion = '3.2.12'
-    lombokVersion = '1.18.2'
     commonsMathsVersion = '3.6.1'
 }
 
@@ -83,9 +81,6 @@ dependencies {
 
     // observability
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-
-    // docker
-    implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 
     // expiring map
     implementation 'net.jodah:expiringmap:0.5.10'
