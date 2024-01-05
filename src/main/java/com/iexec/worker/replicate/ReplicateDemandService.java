@@ -68,7 +68,7 @@ public class ReplicateDemandService {
      * than one replicate at the same time. The executor's queue is of size 1 to
      * avoid memory leak if the thread halts for any reason.
      */
-    @Scheduled(fixedDelayString = "#{publicConfigurationService.askForReplicatePeriod}")
+    @Scheduled(fixedDelayString = "#{publicConfigurationService.publicConfiguration.askForReplicatePeriod}")
     void triggerAskForReplicate() {
         log.debug("Triggering ask for replicate action");
         AsyncUtils.runAsyncTask("ask-for-replicate", this::askForReplicate, executor);
