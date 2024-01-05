@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Quality
 
 - Expose `workerWalletAddress` to avoid importing `CredentialsService` when not required. (#558)
+- Use `docker-java` from `iexec-commons-containers`. (#572)
 
 ### Dependency Upgrades
 
