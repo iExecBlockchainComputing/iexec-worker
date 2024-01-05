@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 
 - Expose `workerWalletAddress` to avoid importing `CredentialsService` when not required. (#558)
 - Use `docker-java` from `iexec-commons-containers`. (#572)
+- Use `@Getter` lombok annotation in `PublicConfigurationService`. (#573)
 
 ### Dependency Upgrades
 
