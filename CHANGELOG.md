@@ -26,6 +26,9 @@ All notable changes to this project will be documented in this file.
 - Upgrade to `iexec-commons-poco` 3.2.0. (#571)
 - Upgrade to `iexec-commons-containers` 1.2.1. (#571)
 - Upgrade to `iexec-common` 8.3.1. (#571)
+- Upgrade to `iexec-blockchain-adapter-api-library` 8.3.0. (#574)
+- Upgrade to `iexec-result-proxy-library` 8.3.0. (#574)
+- Upgrade to `iexec-sms-library` 8.4.0. (#574)
 
 ## [[8.2.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.2.0) 2023-09-29
 
