@@ -1,5 +1,6 @@
 package com.iexec.worker.tee.scone;
 
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.client.DockerClientInstance;
@@ -43,12 +44,15 @@ public class LasService {
             return true;
         }
 
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withDevices(sgxService.getSgxDevices())
+                .withNetworkMode(workerConfigService.getDockerNetworkName());
         DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+                .hostConfig(hostConfig)
                 .containerName(containerName)
                 .imageUri(imageUri)
                 // pre-compute, application & post-compute enclaves will be
                 // able to talk to the LAS via this network
-                .dockerNetwork(workerConfigService.getDockerNetworkName())
                 .sgxDriverMode(sgxService.getSgxDriverMode())
                 .maxExecutionTime(0)
                 .build();

@@ -16,6 +16,8 @@
 
 package com.iexec.worker.compute.post;
 
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
@@ -30,6 +32,7 @@ import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
@@ -40,6 +43,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -63,6 +67,7 @@ public class PostComputeService {
     private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
     private final TeeServicesPropertiesService teeServicesPropertiesService;
+    private final ComputeDurationsService postComputeDurationsService;
 
     public PostComputeService(
             WorkerConfigurationService workerConfigService,
@@ -70,13 +75,15 @@ public class PostComputeService {
             TeeServicesManager teeServicesManager,
             SgxService sgxService,
             ComputeExitCauseService computeExitCauseService,
-            TeeServicesPropertiesService teeServicesPropertiesService) {
+            TeeServicesPropertiesService teeServicesPropertiesService,
+            ComputeDurationsService postComputeDurationsService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
+        this.postComputeDurationsService = postComputeDurationsService;
     }
 
     /**
@@ -89,9 +96,10 @@ public class PostComputeService {
      * </ul>
      * <p>
      * Classes names are inlined in comments for comparison.
+     *
      * @param taskDescription description of a standard task
      * @return a post compute response with a cause in case of error. The response is returned to
-     *         {@link com.iexec.worker.compute.ComputeManagerService}
+     * {@link com.iexec.worker.compute.ComputeManagerService}
      * @see com.iexec.worker.compute.ComputeManagerService
      */
     public PostComputeResponse runStandardPostCompute(TaskDescription taskDescription) {
@@ -175,24 +183,32 @@ public class PostComputeService {
         TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
         List<String> env = teeService
                 .buildPostComputeDockerEnv(taskDescription, secureSession);
-        List<String> binds = Stream.of(
+        List<Bind> binds = Stream.of(
                         Collections.singletonList(dockerService.getIexecOutBind(chainTaskId)),
                         teeService.getAdditionalBindings())
                 .flatMap(Collection::stream)
+                .map(Bind::parse)
                 .collect(Collectors.toList());
 
-        DockerRunResponse dockerResponse = dockerService.run(
-                DockerRunRequest.builder()
-                        .chainTaskId(chainTaskId)
-                        .containerName(getTaskTeePostComputeContainerName(chainTaskId))
-                        .imageUri(postComputeImage)
-                        .entrypoint(postComputeProperties.getEntrypoint())
-                        .maxExecutionTime(taskDescription.getMaxExecutionTime())
-                        .env(env)
-                        .binds(binds)
-                        .sgxDriverMode(sgxService.getSgxDriverMode())
-                        .dockerNetwork(workerConfigService.getDockerNetworkName())
-                        .build());
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(binds)
+                .withDevices(sgxService.getSgxDevices())
+                .withNetworkMode(workerConfigService.getDockerNetworkName());
+        DockerRunRequest request = DockerRunRequest.builder()
+                .hostConfig(hostConfig)
+                .chainTaskId(chainTaskId)
+                .containerName(getTaskTeePostComputeContainerName(chainTaskId))
+                .imageUri(postComputeImage)
+                .entrypoint(postComputeProperties.getEntrypoint())
+                .maxExecutionTime(taskDescription.getMaxExecutionTime())
+                .env(env)
+                .sgxDriverMode(sgxService.getSgxDriverMode())
+                .build();
+        DockerRunResponse dockerResponse = dockerService.run(request);
+        final Duration executionDuration = dockerResponse.getExecutionDuration();
+        if (executionDuration != null) {
+            postComputeDurationsService.addDurationForTask(chainTaskId, executionDuration.toMillis());
+        }
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
             log.error("Tee post-compute container timed out" +

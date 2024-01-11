@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2023-2023 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.version;
+package com.iexec.worker.metric;
 
-import org.springframework.boot.info.BuildProperties;
-import org.springframework.stereotype.Service;
+import lombok.Value;
 
-@Service
-public class VersionService {
-
-    private final BuildProperties buildProperties;
-
-    VersionService(BuildProperties buildProperties) {
-        this.buildProperties = buildProperties;
-    }
-
-    public String getVersion() {
-        return buildProperties.getVersion();
-    }
-
+@Value
+public class AggregatedDurations {
+    long durationSamplesCount;
+    double minDuration;
+    double maxDuration;
+    double averageDuration;
 }

@@ -1,8 +1,8 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '8.2.2'
-    id 'org.springframework.boot' version '2.7.14'
-    id 'io.spring.dependency-management' version '1.1.3'
+    id 'org.springframework.boot' version '2.7.17'
+    id 'io.spring.dependency-management' version '1.1.4'
     id 'jacoco'
     id 'org.sonarqube' version '4.2.1.3168'
     id 'maven-publish'
@@ -12,15 +12,14 @@ group = 'com.iexec.worker'
 
 ext {
     springCloudVersion = '2021.0.8'
-    dockerJavaVersion = '3.2.12'
-    lombokVersion = '1.18.2'
+    commonsMathsVersion = '3.6.1'
 }
 
 if (!project.hasProperty('gitBranch')) {
     ext.gitBranch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
 }
 
-if (gitBranch != 'main' && gitBranch != 'master' && ! (gitBranch ==~ '(release|hotfix|support)/.*')) {
+if (gitBranch != 'main' && gitBranch != 'master' && !(gitBranch ==~ '(release|hotfix|support)/.*')) {
     version += '-NEXT-SNAPSHOT'
 }
 
@@ -64,8 +63,11 @@ dependencies {
     implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation "org.springframework.retry:spring-retry"
 
-    // apache commons.lang3
+    // apache commons-lang3
     implementation 'org.apache.commons:commons-lang3'
+
+    // Apache commons-math3
+    implementation "org.apache.commons:commons-math3:${commonsMathsVersion}"
 
     // Required for com.iexec.worker.feign.config.RestTemplateConfig
     implementation 'org.apache.httpcomponents:httpclient'
@@ -79,9 +81,6 @@ dependencies {
 
     // observability
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-
-    // docker
-    implementation "com.github.docker-java:docker-java:${dockerJavaVersion}"
 
     // expiring map
     implementation 'net.jodah:expiringmap:0.5.10'
@@ -97,8 +96,10 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
+    sourceCompatibility = "11"
+    targetCompatibility = "11"
 }
 
 springBoot {
@@ -108,7 +109,7 @@ springBoot {
 tasks.named("bootJar") {
     manifest {
         attributes("Implementation-Title": "iExec Worker",
-                   "Implementation-Version": project.version)
+                "Implementation-Version": project.version)
     }
 }
 
@@ -127,7 +128,7 @@ jacocoTestReport {
         xml.required = true
     }
 }
-tasks.test.finalizedBy    tasks.jacocoTestReport
+tasks.test.finalizedBy tasks.jacocoTestReport
 tasks.sonarqube.dependsOn tasks.jacocoTestReport
 
 publishing {
@@ -148,16 +149,15 @@ publishing {
     }
 }
 
-ext.jarPathForOCI  = relativePath(tasks.bootJar.outputs.files.singleFile)
+ext.jarPathForOCI = relativePath(tasks.bootJar.outputs.files.singleFile)
 ext.gitShortCommit = 'git rev-parse --short=8 HEAD'.execute().text.trim()
-ext.ociImageName   = 'local/' + ['bash', '-c', 'basename $(git config --get remote.origin.url) .git'].execute().text.trim()
+ext.ociImageName = 'local/' + ['bash', '-c', 'basename $(git config --get remote.origin.url) .git'].execute().text.trim()
 
 tasks.register('buildImage', Exec) {
-    group       'Build'
+    group 'Build'
     description 'Builds an OCI image from a Dockerfile.'
-    dependsOn    bootJar
-    commandLine ("sh", "-c", "docker build --build-arg jar=$jarPathForOCI -t $ociImageName:$gitShortCommit ."
-            + " && docker tag $ociImageName:$gitShortCommit $ociImageName:dev")
+    dependsOn bootJar
+    commandLine 'docker', 'build', '--build-arg', 'jar=' + jarPathForOCI, '-t', ociImageName + ':dev', '.'
 }
 
 // ##################
@@ -167,9 +167,9 @@ tasks.register('buildImage', Exec) {
 //gradle bootRun -PproxyHost=192.168.XX.XXX -PproxyPort=3128
 project.ext.getJvmArgs = {
     if (project.hasProperty("proxyHost") && project.hasProperty("proxyPort")) {
-        return ["-Dhttp.proxyHost="+project.proxyHost, "-Dhttp.proxyPort="+project.proxyPort]
+        return ["-Dhttp.proxyHost=" + project.proxyHost, "-Dhttp.proxyPort=" + project.proxyPort]
     } else {
-        return  []
+        return []
     }
 }
 

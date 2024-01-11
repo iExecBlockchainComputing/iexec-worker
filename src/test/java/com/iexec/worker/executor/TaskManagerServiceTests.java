@@ -35,7 +35,6 @@ import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
-import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
@@ -48,7 +47,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Collections;
 import java.util.List;
@@ -67,10 +69,7 @@ class TaskManagerServiceTests {
     private static final String WORKER_ADDRESS = "WORKER_ADDRESS";
     public static final String PATH_TO_DOWNLOADED_FILE = "/path/to/downloaded/file";
 
-    @InjectMocks
     private TaskManagerService taskManagerService;
-    @Mock
-    private WorkerConfigurationService workerConfigurationService;
     @Mock
     private IexecHubService iexecHubService;
     @Mock
@@ -102,6 +101,20 @@ class TaskManagerServiceTests {
     void init() {
         MockitoAnnotations.openMocks(this);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+
+        taskManagerService = new TaskManagerService(
+                iexecHubService,
+                contributionService,
+                revealService,
+                computeManagerService,
+                teeServicesManager,
+                dataService,
+                resultService,
+                dockerService,
+                subscriptionService,
+                purgeService,
+                WORKER_ADDRESS
+        );
     }
 
     TaskDescription.TaskDescriptionBuilder getTaskDescriptionBuilder(boolean isTeeTask) {
@@ -396,13 +409,13 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isTrue();
         verify(dataService, never()).downloadStandardDataset(taskDescription);
         verify(dataService, never()).downloadStandardInputFiles(anyString(), anyList());
-    }    
+    }
 
     // DATASET_FILE_DOWNLOAD_FAILED exception
 
     @Test
     void shouldHandleDatasetDownloadFailureAndTriggerPostComputeHookWithSuccess()
-                throws Exception {
+            throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -423,7 +436,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldHandleDatasetDownloadFailureAndTriggerPostComputeHookWithFailure1()
-                throws Exception{
+            throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -561,7 +574,7 @@ class TaskManagerServiceTests {
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
                 taskDescription.getInputFiles());
-                when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
+        when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
         when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().build());
@@ -586,7 +599,7 @@ class TaskManagerServiceTests {
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
                 taskDescription.getInputFiles());
-                when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
+        when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
                 .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
@@ -625,7 +638,6 @@ class TaskManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
-        when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -641,6 +653,7 @@ class TaskManagerServiceTests {
                                         .stderr("stderr")
                                         .build()));
     }
+
     @Test
     void shouldComputeTeeTask() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(true).build();
@@ -665,7 +678,6 @@ class TaskManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().build());
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(computedFile1);
-        when(workerConfigurationService.getWorkerWalletAddress()).thenReturn(WORKER_ADDRESS);
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -733,7 +745,7 @@ class TaskManagerServiceTests {
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
                         .exitCause(PRE_COMPUTE_DATASET_URL_MISSING)
-                .build());
+                        .build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);

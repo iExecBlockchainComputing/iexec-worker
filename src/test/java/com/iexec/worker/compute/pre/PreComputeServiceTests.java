@@ -33,6 +33,7 @@ import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
@@ -48,6 +49,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.*;
 import org.springframework.util.unit.DataSize;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -59,6 +61,7 @@ import static org.mockito.Mockito.*;
 
 class PreComputeServiceTests {
 
+    private static final String IEXEC_IN_BIND = "/path:/iexec_in";
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
     private static final long PRE_COMPUTE_HEAP = 1024;
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
@@ -70,7 +73,6 @@ class PreComputeServiceTests {
             .datasetUri(datasetUri)
             .datasetName("datasetName")
             .datasetChecksum("datasetChecksum")
-            .teePostComputeImage("teePostComputeImage")
             .teeFramework(TeeFramework.SCONE)
             .appEnclaveConfiguration(TeeEnclaveConfiguration.builder()
                     .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
@@ -106,6 +108,8 @@ class PreComputeServiceTests {
     private ComputeExitCauseService computeExitCauseService;
     @Mock
     private TeeServicesPropertiesService teeServicesPropertiesService;
+    @Mock
+    private ComputeDurationsService preComputeDurationsService;
     @Captor
     private ArgumentCaptor<DockerRunRequest> captor;
 
@@ -136,36 +140,34 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
-        String iexecInBind = "/path:/iexec_in";
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         String network = "network";
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();
         Assertions.assertThat(preComputeService
-                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                        .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
-        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
-        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+        Assertions.assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }
 
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyDatasetIsPresent() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
 
-        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
@@ -174,28 +176,28 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
-        String iexecInBind = "/path:/iexec_in";
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         String network = "network";
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isTrue();
         Assertions.assertThat(taskDescription.containsInputFiles()).isFalse();
         Assertions.assertThat(preComputeService
-                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                        .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
-        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
-        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+        Assertions.assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }
 
 
@@ -206,8 +208,6 @@ class PreComputeServiceTests {
                 .inputFiles(List.of("input-file1"))
                 .build();
 
-        when(dockerClientInstanceMock.pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
@@ -216,28 +216,28 @@ class PreComputeServiceTests {
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
-        String iexecInBind = "/path:/iexec_in";
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(iexecInBind);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         String network = "network";
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(0)
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         Assertions.assertThat(taskDescription.containsDataset()).isFalse();
         Assertions.assertThat(taskDescription.containsInputFiles()).isTrue();
         Assertions.assertThat(preComputeService
-                .runTeePreCompute(taskDescription, workerpoolAuthorization))
+                        .runTeePreCompute(taskDescription, workerpoolAuthorization))
                 .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verify(dockerService).run(captor.capture());
         DockerRunRequest capturedRequest = captor.getValue();
         Assertions.assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         Assertions.assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
         Assertions.assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
-        Assertions.assertThat(capturedRequest.getDockerNetwork()).isEqualTo(network);
-        Assertions.assertThat(capturedRequest.getBinds().get(0)).isEqualTo(iexecInBind);
+        Assertions.assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
+        Assertions.assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }
 
     @Test
@@ -269,9 +269,7 @@ class PreComputeServiceTests {
     @Test
     void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
+
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
 
         Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
@@ -283,9 +281,6 @@ class PreComputeServiceTests {
     @Test
     void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -304,9 +299,6 @@ class PreComputeServiceTests {
     @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
     void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -314,7 +306,7 @@ class PreComputeServiceTests {
         when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
@@ -346,9 +338,6 @@ class PreComputeServiceTests {
     @Test
     void shouldFailToRunTeePreComputeSinceTimeout() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(dockerClientInstanceMock
-                .pullImage(taskDescription.getTeePostComputeImage()))
-                .thenReturn(true);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -356,7 +345,7 @@ class PreComputeServiceTests {
         when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
-        when(dockerService.getInputBind(chainTaskId)).thenReturn("bind");
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn("network");
         when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
                 .finalStatus(DockerRunFinalStatus.TIMEOUT)

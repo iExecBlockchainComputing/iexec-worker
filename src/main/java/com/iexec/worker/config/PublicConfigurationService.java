@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,11 @@ import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import feign.Logger;
+import lombok.Getter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
+@Getter
 @Service
 public class PublicConfigurationService {
 
@@ -35,28 +37,8 @@ public class PublicConfigurationService {
         this.publicConfiguration = customCoreFeignClient.getPublicConfiguration();
     }
 
-    public PublicConfiguration getPublicConfiguration() {
-        return publicConfiguration;
-    }
-
-    public String getBlockchainAdapterUrl() {
-        return publicConfiguration.getBlockchainAdapterUrl();
-    }
-
-    public String getWorkerPoolAddress() {
-        return publicConfiguration.getWorkerPoolAddress();
-    }
-
     public String getSchedulerPublicAddress() {
         return publicConfiguration.getSchedulerPublicAddress();
-    }
-
-    public long getAskForReplicatePeriod() {
-        return publicConfiguration.getAskForReplicatePeriod();
-    }
-
-    public String getResultRepositoryURL() {
-        return publicConfiguration.getResultRepositoryURL();
     }
 
     public String getRequiredWorkerVersion() {
@@ -65,11 +47,15 @@ public class PublicConfigurationService {
 
     @Bean
     public BlockchainAdapterApiClient blockchainAdapterApiClient() {
-        return BlockchainAdapterApiClientBuilder.getInstance(Logger.Level.NONE, getBlockchainAdapterUrl());
+        return BlockchainAdapterApiClientBuilder.getInstance(
+                Logger.Level.NONE,
+                publicConfiguration.getBlockchainAdapterUrl());
     }
 
     @Bean
     public ResultProxyClient resultProxyClient() {
-        return ResultProxyClientBuilder.getInstance(Logger.Level.NONE, getResultRepositoryURL());
+        return ResultProxyClientBuilder.getInstance(
+                Logger.Level.NONE,
+                publicConfiguration.getResultRepositoryURL());
     }
 }

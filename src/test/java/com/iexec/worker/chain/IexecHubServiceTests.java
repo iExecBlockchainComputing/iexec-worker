@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.web3j.crypto.Credentials;
@@ -41,7 +40,6 @@ import org.web3j.utils.Numeric;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,8 +68,6 @@ class IexecHubServiceTests {
     private Web3j web3jClient;
     private IexecHubService iexecHubService;
     private Credentials credentials;
-    @Mock
-    private CompletableFuture<?> completableFuture;
 
     @BeforeEach
     void init() throws Exception {
@@ -129,12 +125,9 @@ class IexecHubServiceTests {
                 .resultSeal("resultSeal")
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        try (MockedStatic<CompletableFuture> mockedStatic = mockStatic(CompletableFuture.class)) {
-            mockedStatic.when(() -> CompletableFuture.supplyAsync(any(), any())).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(ExecutionException.class);
-            IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
-            assertThat(response).isNull();
-        }
+        doThrow(ExecutionException.class).when(iexecHubService).submit(any());
+        IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
+        assertThat(response).isNull();
     }
 
     @Test
@@ -147,13 +140,10 @@ class IexecHubServiceTests {
                 .resultSeal("resultSeal")
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        try (MockedStatic<CompletableFuture> mockedStatic = mockStatic(CompletableFuture.class)) {
-            mockedStatic.when(() -> CompletableFuture.supplyAsync(any(), any())).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(InterruptedException.class);
-            IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
-            assertThat(response).isNull();
-            assertThat(Thread.currentThread().isInterrupted()).isTrue();
-        }
+        doThrow(InterruptedException.class).when(iexecHubService).submit(any());
+        IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
+        assertThat(response).isNull();
+        assertThat(Thread.currentThread().isInterrupted()).isTrue();
     }
     // endregion
 
@@ -176,23 +166,17 @@ class IexecHubServiceTests {
 
     @Test
     void shouldNotRevealOnExecutionException() throws ExecutionException, InterruptedException {
-        try (MockedStatic<CompletableFuture> mockedStatic = mockStatic(CompletableFuture.class)) {
-            mockedStatic.when(() -> CompletableFuture.supplyAsync(any(), any())).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(ExecutionException.class);
-            IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
-            assertThat(response).isNull();
-        }
+        doThrow(ExecutionException.class).when(iexecHubService).submit(any());
+        IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
+        assertThat(response).isNull();
     }
 
     @Test
-    void shouldNotContributeRevealWhenInterrupted() throws ExecutionException, InterruptedException {
-        try (MockedStatic<CompletableFuture> mockedStatic = mockStatic(CompletableFuture.class)) {
-            mockedStatic.when(() -> CompletableFuture.supplyAsync(any(), any())).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(InterruptedException.class);
-            IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
-            assertThat(response).isNull();
-            assertThat(Thread.currentThread().isInterrupted()).isTrue();
-        }
+    void shouldNotRevealWhenInterrupted() throws ExecutionException, InterruptedException {
+        doThrow(InterruptedException.class).when(iexecHubService).submit(any());
+        IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
+        assertThat(response).isNull();
+        assertThat(Thread.currentThread().isInterrupted()).isTrue();
     }
     // endregion
 
@@ -219,40 +203,32 @@ class IexecHubServiceTests {
     }
 
     @Test
-    void shouldNotContributeAndFinalizeOnExecutionException() throws ExecutionException, InterruptedException {
+    void shouldNotContributeAndFinalizeOnExecutionException() throws Exception {
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge("enclaveChallenge")
                 .enclaveSignature("enclaveSignature")
-                .resultHash("resultHash")
-                .resultSeal("resultSeal")
+                .resultDigest("resultDigest")
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        try (MockedStatic<CompletableFuture> mockedStatic = mockStatic(CompletableFuture.class)) {
-            mockedStatic.when(() -> CompletableFuture.supplyAsync(any(), any())).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(ExecutionException.class);
-            Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
-            assertThat(chainReceipt).isEmpty();
-        }
+        doThrow(ExecutionException.class).when(iexecHubService).submit(any());
+        Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
+        assertThat(chainReceipt).isEmpty();
     }
 
     @Test
-    void shouldNotContributeAndFinalizeWhenInterrupted() throws ExecutionException, InterruptedException {
+    void shouldNotContributeAndFinalizeWhenInterrupted() throws Exception {
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .enclaveChallenge("enclaveChallenge")
                 .enclaveSignature("enclaveSignature")
-                .resultHash("resultHash")
-                .resultSeal("resultSeal")
+                .resultDigest("resultDigest")
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        try (MockedStatic<CompletableFuture> mockedStatic = mockStatic(CompletableFuture.class)) {
-            mockedStatic.when(() -> CompletableFuture.supplyAsync(any(), any())).thenReturn(completableFuture);
-            when(completableFuture.get()).thenThrow(InterruptedException.class);
-            Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
-            assertThat(chainReceipt).isEmpty();
-            assertThat(Thread.currentThread().isInterrupted()).isTrue();
-        }
+        doThrow(InterruptedException.class).when(iexecHubService).submit(any());
+        Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
+        assertThat(chainReceipt).isEmpty();
+        assertThat(Thread.currentThread().isInterrupted()).isTrue();
     }
     // endregion
 

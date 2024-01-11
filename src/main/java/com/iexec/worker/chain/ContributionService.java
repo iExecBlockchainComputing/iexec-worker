@@ -40,16 +40,16 @@ public class ContributionService {
     private final IexecHubService iexecHubService;
     private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private final EnclaveAuthorizationService enclaveAuthorizationService;
-    private final CredentialsService credentialsService;
+    private final String workerWalletAddress;
 
     public ContributionService(IexecHubService iexecHubService,
                                WorkerpoolAuthorizationService workerpoolAuthorizationService,
                                EnclaveAuthorizationService enclaveAuthorizationService,
-                               CredentialsService credentialsService) {
+                               String workerWalletAddress) {
         this.iexecHubService = iexecHubService;
         this.workerpoolAuthorizationService = workerpoolAuthorizationService;
         this.enclaveAuthorizationService = enclaveAuthorizationService;
-        this.credentialsService = credentialsService;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     public boolean isChainTaskInitialized(String chainTaskId) {
@@ -180,7 +180,7 @@ public class ContributionService {
 
         String resultDigest = computedFile.getResultDigest();
         String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
-        String resultSeal = ResultUtils.computeResultSeal(credentialsService.getCredentials().getAddress(), chainTaskId, resultDigest);
+        String resultSeal = ResultUtils.computeResultSeal(workerWalletAddress, chainTaskId, resultDigest);
         String workerpoolSignature = workerpoolAuthorization.getSignature().getValue();
         String enclaveChallenge = workerpoolAuthorization.getEnclaveChallenge();
         String enclaveSignature = computedFile.getEnclaveSignature();

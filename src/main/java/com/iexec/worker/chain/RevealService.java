@@ -30,15 +30,15 @@ import java.util.Optional;
 public class RevealService {
 
     private final IexecHubService iexecHubService;
-    private final CredentialsService credentialsService;
     private final Web3jService web3jService;
+    private final String workerWalletAddress;
 
     public RevealService(IexecHubService iexecHubService,
-                         CredentialsService credentialsService,
-                         Web3jService web3jService) {
+                         Web3jService web3jService,
+                         String workerWalletAddress) {
         this.iexecHubService = iexecHubService;
-        this.credentialsService = credentialsService;
         this.web3jService = web3jService;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     public boolean repeatCanReveal(String chainTaskId, String resultDigest) {
@@ -78,9 +78,8 @@ public class RevealService {
         if (!resultDigest.isEmpty()) {//TODO
             isContributionResultHashCorrect = chainContribution.getResultHash().equals(ResultUtils.computeResultHash(chainTaskId, resultDigest));
 
-            String walletAddress = credentialsService.getCredentials().getAddress();
             isContributionResultSealCorrect = chainContribution.getResultSeal().equals(
-                    ResultUtils.computeResultSeal(walletAddress, chainTaskId, resultDigest)
+                    ResultUtils.computeResultSeal(workerWalletAddress, chainTaskId, resultDigest)
             );
         }
 

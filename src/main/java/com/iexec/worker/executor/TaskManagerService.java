@@ -31,7 +31,6 @@ import com.iexec.worker.compute.ComputeManagerService;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
-import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
@@ -59,7 +58,6 @@ public class TaskManagerService {
     private static final String CONTRIBUTE = "contribute";
     private static final String CONTRIBUTE_AND_FINALIZE = "contributeAndFinalize";
 
-    private final WorkerConfigurationService workerConfigurationService;
     private final IexecHubService iexecHubService;
     private final ContributionService contributionService;
     private final RevealService revealService;
@@ -70,9 +68,9 @@ public class TaskManagerService {
     private final DockerService dockerService;
     private final SubscriptionService subscriptionService;
     private final PurgeService purgeService;
+    private final String workerWalletAddress;
 
     public TaskManagerService(
-            WorkerConfigurationService workerConfigurationService,
             IexecHubService iexecHubService,
             ContributionService contributionService,
             RevealService revealService,
@@ -82,8 +80,8 @@ public class TaskManagerService {
             ResultService resultService,
             DockerService dockerService,
             SubscriptionService subscriptionService,
-            PurgeService purgeService) {
-        this.workerConfigurationService = workerConfigurationService;
+            PurgeService purgeService,
+            String workerWalletAddress) {
         this.iexecHubService = iexecHubService;
         this.contributionService = contributionService;
         this.revealService = revealService;
@@ -94,6 +92,7 @@ public class TaskManagerService {
         this.dockerService = dockerService;
         this.subscriptionService = subscriptionService;
         this.purgeService = purgeService;
+        this.workerWalletAddress = workerWalletAddress;
     }
 
     ReplicateActionResponse start(TaskDescription taskDescription) {
@@ -301,7 +300,7 @@ public class TaskManagerService {
      * The method has been developed to avoid code duplication.
      *
      * @param chainTaskId ID of the task
-     * @param context Either {@link TaskManagerService#CONTRIBUTE} or {@link TaskManagerService#CONTRIBUTE_AND_FINALIZE}
+     * @param context     Either {@link TaskManagerService#CONTRIBUTE} or {@link TaskManagerService#CONTRIBUTE_AND_FINALIZE}
      * @return The response of the 'contribute' or 'contributeAndFinalize' action
      */
     private ReplicateActionResponse contributeOrContributeAndFinalize(String chainTaskId, String context) {
@@ -480,7 +479,7 @@ public class TaskManagerService {
 
         String noEnoughGas = String.format("Out of gas! please refill your " +
                         "wallet [walletAddress:%s]",
-                workerConfigurationService.getWorkerWalletAddress());
+                workerWalletAddress);
         LoggingUtils.printHighlightedMessage(noEnoughGas);
         return false;
     }

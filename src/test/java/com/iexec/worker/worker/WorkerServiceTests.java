@@ -17,37 +17,36 @@
 package com.iexec.worker.worker;
 
 import com.iexec.common.config.WorkerModel;
-import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.tee.scone.TeeSconeService;
-import com.iexec.worker.version.VersionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.info.ProjectInfoAutoConfiguration;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.cloud.context.restart.RestartEndpoint;
-import org.web3j.crypto.Credentials;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(SpringExtension.class)
+@Import(ProjectInfoAutoConfiguration.class)
 class WorkerServiceTests {
+    private static final String WORKER_WALLET_ADDRESS = "0x2D29bfBEc903479fe4Ba991918bAB99B494f2bEf";
 
-    public static final String SESSION_ID = "SESSION_ID";
-    public static final String OTHER_SESSION_ID = "OTHER_SESSION_ID";
-
-    @InjectMocks
     private WorkerService workerService;
-    @Mock
-    private CredentialsService credentialsService;
     @Mock
     private WorkerConfigurationService workerConfigService;
     @Mock
@@ -56,8 +55,8 @@ class WorkerServiceTests {
     private PublicConfigurationService publicConfigService;
     @Mock
     private CustomCoreFeignClient customCoreFeignClient;
-    @Mock
-    private VersionService versionService;
+    @Autowired
+    private BuildProperties buildProperties;
     @Mock
     private TeeSconeService teeSconeService;
     @Mock
@@ -69,12 +68,22 @@ class WorkerServiceTests {
     void beforeEach() {
         MockitoAnnotations.openMocks(this);
 
+        workerService = new WorkerService(
+                workerConfigService,
+                coreConfigService,
+                publicConfigService,
+                customCoreFeignClient,
+                buildProperties,
+                teeSconeService,
+                restartEndpoint,
+                dockerService,
+                WORKER_WALLET_ADDRESS
+        );
     }
 
     @Test
     void shouldRegisterWorker() {
-        String version = "version";
-        String walletAddress = "walletAddress";
+        String version = buildProperties.getVersion();
         String name = "name";
         String os = "os";
         String cpu = "cpu";
@@ -83,11 +92,7 @@ class WorkerServiceTests {
         boolean isTee = true;
         boolean isGpu = true;
         when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
-        when(versionService.getVersion()).thenReturn(version);
-        Credentials credentials = mock(Credentials.class);
         when(workerConfigService.getWorkerName()).thenReturn(name);
-        when(credentials.getAddress()).thenReturn(walletAddress);
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(workerConfigService.getOS()).thenReturn(os);
         when(workerConfigService.getCPU()).thenReturn(cpu);
         when(workerConfigService.getCpuCount()).thenReturn(cpuNb);
@@ -105,7 +110,7 @@ class WorkerServiceTests {
                 .registerWorker(workerModelCaptor.capture());
         WorkerModel workerModel = workerModelCaptor.getValue();
         assertThat(workerModel.getName()).isEqualTo(name);
-        assertThat(workerModel.getWalletAddress()).isEqualTo(walletAddress);
+        assertThat(workerModel.getWalletAddress()).isEqualTo(WORKER_WALLET_ADDRESS);
         assertThat(workerModel.getOs()).isEqualTo(os);
         assertThat(workerModel.getCpu()).isEqualTo(cpu);
         assertThat(workerModel.getCpuNb()).isEqualTo(cpuNb);
@@ -118,10 +123,9 @@ class WorkerServiceTests {
     void shouldNotRegisterWorkerSinceBadVersion() {
         String version = "version";
         when(publicConfigService.getRequiredWorkerVersion()).thenReturn(version);
-        when(versionService.getVersion()).thenReturn("someOtherVersion");
 
         assertThat(workerService.registerWorker()).isFalse();
-        
+
         verify(customCoreFeignClient, times(0))
                 .registerWorker(any());
     }

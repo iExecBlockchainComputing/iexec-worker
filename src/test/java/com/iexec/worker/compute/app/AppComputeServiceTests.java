@@ -16,6 +16,9 @@
 
 package com.iexec.worker.compute.app;
 
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.Device;
+import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.utils.IexecEnvUtils;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.containers.DockerRunFinalStatus;
@@ -25,9 +28,9 @@ import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
+import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
@@ -39,7 +42,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,8 +57,6 @@ class AppComputeServiceTests {
     private final static String DATASET_URI = "DATASET_URI";
     private final static String APP_URI = "APP_URI";
     private final static String WORKER_NAME = "WORKER_NAME";
-    private final static String TEE_POST_COMPUTE_IMAGE =
-            "TEE_POST_COMPUTE_IMAGE";
     private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private final static long MAX_EXECUTION_TIME = 1000;
     private final static String INPUT = "INPUT";
@@ -66,7 +67,6 @@ class AppComputeServiceTests {
             .chainTaskId(CHAIN_TASK_ID)
             .appUri(APP_URI)
             .datasetUri(DATASET_URI)
-            .teePostComputeImage(TEE_POST_COMPUTE_IMAGE)
             .maxExecutionTime(MAX_EXECUTION_TIME)
             .inputFiles(Arrays.asList("file0", "file1"))
             .isTeeTask(true);
@@ -78,17 +78,17 @@ class AppComputeServiceTests {
     @Mock
     private DockerService dockerService;
     @Mock
-    private PublicConfigurationService publicConfigService;
-    @Mock
     private TeeServicesManager teeServicesManager;
     @Mock
     private SgxService sgxService;
+    @Mock
+    private ComputeDurationsService appComputeDurationsService;
 
     @Mock
     private TeeService teeMockedService;
 
     @BeforeEach
-    void beforeEach() throws IOException {
+    void beforeEach() {
         MockitoAnnotations.openMocks(this);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
     }
@@ -103,8 +103,11 @@ class AppComputeServiceTests {
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
+        DockerRunResponse expectedDockerRunResponse = DockerRunResponse
+                .builder()
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
+                .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
@@ -119,14 +122,17 @@ class AppComputeServiceTests {
         verify(dockerService).run(argumentCaptor.capture());
         DockerRunRequest dockerRunRequest =
                 argumentCaptor.getAllValues().get(0);
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind))
+                .withDevices(new ArrayList<>());
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .hostConfig(hostConfig)
                         .chainTaskId(CHAIN_TASK_ID)
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
-                        .binds(Arrays.asList(inputBind, iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.NONE)
                         .build()
         );
@@ -150,14 +156,18 @@ class AppComputeServiceTests {
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         String lasNetworkName = "lasNetworkName";
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
-        DockerRunResponse expectedDockerRunResponse =
-                DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build();
+        DockerRunResponse expectedDockerRunResponse = DockerRunResponse
+                .builder()
+                .finalStatus(DockerRunFinalStatus.SUCCESS)
+                .executionDuration(Duration.ofSeconds(10))
+                .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        List<Device> devices = List.of(Device.parse("/dev/isgx"));
+        when(sgxService.getSgxDevices()).thenReturn(devices);
 
         AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription,
-                        SECURE_SESSION);
+                appComputeService.runCompute(taskDescription, SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService, times(1)).run(any());
@@ -167,16 +177,19 @@ class AppComputeServiceTests {
         DockerRunRequest dockerRunRequest =
                 argumentCaptor.getAllValues().get(0);
         Collections.sort(dockerRunRequest.getEnv());
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind))
+                .withDevices(devices)
+                .withNetworkMode(lasNetworkName);
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
+                        .hostConfig(hostConfig)
                         .chainTaskId(CHAIN_TASK_ID)
                         .containerName(WORKER_NAME + "-" + CHAIN_TASK_ID)
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .binds(Arrays.asList(inputBind ,iexecOutBind))
                         .sgxDriverMode(SgxDriverMode.LEGACY)
-                        .dockerNetwork(lasNetworkName)
                         .build()
         );
     }
@@ -186,8 +199,8 @@ class AppComputeServiceTests {
         final TaskDescription taskDescription = taskDescriptionBuilder
                 .isTeeTask(false)
                 .build();
-        when(workerConfigService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn(INPUT);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(IEXEC_OUT);
+        when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn("/iexec_in:/iexec_in");
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn("/iexec_out:/iexec_out");
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
@@ -199,7 +212,7 @@ class AppComputeServiceTests {
                         SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
     }
 
 }

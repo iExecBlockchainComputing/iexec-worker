@@ -17,13 +17,11 @@
 package com.iexec.worker.config;
 
 import com.iexec.common.utils.IexecFileHelper;
-import com.iexec.worker.chain.CredentialsService;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-
 import java.io.File;
 
 import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
@@ -31,8 +29,7 @@ import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
 @Service
 public class WorkerConfigurationService {
 
-    private final CredentialsService credentialsService;
-
+    @Getter
     @Value("${worker.name}")
     private String workerName;
 
@@ -69,24 +66,12 @@ public class WorkerConfigurationService {
     @Getter
     private String dockerNetworkName;
 
-    public WorkerConfigurationService(CredentialsService credentialsService) {
-        this.credentialsService = credentialsService;
-    }
-
     @PostConstruct
     private void postConstruct() {
         if (overrideAvailableCpuCount != null && overrideAvailableCpuCount <= 0) {
             throw new IllegalArgumentException(
                     "Override available CPU count must not be less or equal to 0");
         }
-    }
-
-    public String getWorkerName() {
-        return workerName;
-    }
-
-    public String getWorkerWalletAddress() {
-        return credentialsService.getCredentials().getAddress();
     }
 
     public boolean isGpuEnabled() {
@@ -105,7 +90,7 @@ public class WorkerConfigurationService {
      * Get path to input folder on the host side.
      * <p>
      * Expected: workerBaseDir/chainTaskId/input
-     * 
+     *
      * @param chainTaskId
      * @return
      */
@@ -117,7 +102,7 @@ public class WorkerConfigurationService {
      * Get path to output folder on the host side.
      * <p>
      * Expected: workerBaseDir/chainTaskId/output
-     * 
+     *
      * @param chainTaskId
      * @return
      */
@@ -129,7 +114,7 @@ public class WorkerConfigurationService {
      * Get path to output folder inside the container.
      * <p>
      * Expected: workerBaseDir/chainTaskId/output/iexec_in
-     * 
+     *
      * @param chainTaskId
      * @return
      */
@@ -147,7 +132,7 @@ public class WorkerConfigurationService {
 
     /**
      * Get the number of CPUs dedicated to the worker.
-     * 
+     *
      * @return number of CPUs set by the worker admin if defined, otherwise
      * get max(numberOfJvmCpus -1, 1).
      */
