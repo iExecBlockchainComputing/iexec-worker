@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,9 +87,9 @@ class TeeSconeServiceTests {
     @BeforeEach
     void init() {
         MockitoAnnotations.openMocks(this);
-        when(sconeConfig.getRegistryName()).thenReturn(REGISTRY_NAME);
-        when(sconeConfig.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
-        when(sconeConfig.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
+        final SconeConfiguration.SconeRegistry registry = new SconeConfiguration.SconeRegistry(
+                REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD);
+        when(sconeConfig.getRegistry()).thenReturn(registry);
 
         when(preComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
         when(postComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
@@ -210,12 +210,12 @@ class TeeSconeServiceTests {
 
         assertThat(teeSconeService.buildPreComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
-                    "SCONE_CAS_ADDR=" + CAS_URL,
-                    "SCONE_LAS_ADDR=" + LAS_URL,
-                    "SCONE_CONFIG_ID=" + SESSION_ID + "/pre-compute",
-                    "SCONE_HEAP=" + HEAP_SIZE,
-                    "SCONE_LOG=" + LOG_LEVEL,
-                    "SCONE_VERSION=" + 1));
+                        "SCONE_CAS_ADDR=" + CAS_URL,
+                        "SCONE_LAS_ADDR=" + LAS_URL,
+                        "SCONE_CONFIG_ID=" + SESSION_ID + "/pre-compute",
+                        "SCONE_HEAP=" + HEAP_SIZE,
+                        "SCONE_LOG=" + LOG_LEVEL,
+                        "SCONE_VERSION=" + 1));
     }
     // endregion
 
@@ -227,12 +227,12 @@ class TeeSconeServiceTests {
 
         assertThat(teeSconeService.buildComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
-                    "SCONE_CAS_ADDR=" + CAS_URL,
-                    "SCONE_LAS_ADDR=" + LAS_URL,
-                    "SCONE_CONFIG_ID=" + SESSION_ID + "/app",
-                    "SCONE_HEAP=" + HEAP_SIZE,
-                    "SCONE_LOG=" + LOG_LEVEL,
-                    "SCONE_VERSION=" + 1));
+                        "SCONE_CAS_ADDR=" + CAS_URL,
+                        "SCONE_LAS_ADDR=" + LAS_URL,
+                        "SCONE_CONFIG_ID=" + SESSION_ID + "/app",
+                        "SCONE_HEAP=" + HEAP_SIZE,
+                        "SCONE_LOG=" + LOG_LEVEL,
+                        "SCONE_VERSION=" + 1));
     }
     // endregion
 
@@ -244,12 +244,12 @@ class TeeSconeServiceTests {
 
         assertThat(teeSconeService.buildPostComputeDockerEnv(TASK_DESCRIPTION, SESSION))
                 .isEqualTo(List.of(
-                    "SCONE_CAS_ADDR=" + CAS_URL,
-                    "SCONE_LAS_ADDR=" + LAS_URL,
-                    "SCONE_CONFIG_ID=" + SESSION_ID + "/post-compute",
-                    "SCONE_HEAP=" + HEAP_SIZE,
-                    "SCONE_LOG=" + LOG_LEVEL,
-                    "SCONE_VERSION=" + 1));
+                        "SCONE_CAS_ADDR=" + CAS_URL,
+                        "SCONE_LAS_ADDR=" + LAS_URL,
+                        "SCONE_CONFIG_ID=" + SESSION_ID + "/post-compute",
+                        "SCONE_HEAP=" + HEAP_SIZE,
+                        "SCONE_LOG=" + LOG_LEVEL,
+                        "SCONE_VERSION=" + 1));
     }
     // endregion
 }

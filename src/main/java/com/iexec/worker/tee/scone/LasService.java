@@ -1,3 +1,19 @@
+/*
+ * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.tee.scone;
 
 import com.github.dockerjava.api.model.HostConfig;
@@ -56,17 +72,17 @@ public class LasService {
                 .sgxDriverMode(sgxService.getSgxDriverMode())
                 .maxExecutionTime(0)
                 .build();
-        if (!imageUri.contains(sconeConfig.getRegistryName())) {
+        if (!imageUri.contains(sconeConfig.getRegistry().getName())) {
             log.error("LAS image is not from a known registry [image:{}, registry:{}]",
-                    imageUri, sconeConfig.getRegistryName());
+                    imageUri, sconeConfig.getRegistry().getName());
             return false;
         }
         DockerClientInstance client;
         try {
             client = dockerService.getClient(
-                    sconeConfig.getRegistryName(),
-                    sconeConfig.getRegistryUsername(),
-                    sconeConfig.getRegistryPassword());
+                    sconeConfig.getRegistry().getName(),
+                    sconeConfig.getRegistry().getUsername(),
+                    sconeConfig.getRegistry().getPassword());
         } catch (Exception e) {
             log.error("Failed to get Docker authenticated client to run LAS", e);
             return false;
@@ -101,9 +117,7 @@ public class LasService {
     synchronized boolean stopAndRemoveContainer() {
         if (isStarted()) {
             final DockerClientInstance client = dockerService.getClient();
-            client.stopAndRemoveContainer(containerName);
-            // TODO: this should be the default case in `DockerClientInstance::stopAndRemoveContainer`
-            isStarted = client.isContainerPresent(containerName);
+            isStarted = client.stopAndRemoveContainer(containerName);
         }
 
         return !isStarted;

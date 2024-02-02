@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,14 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import lombok.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.ConstructorBinding;
 
 /**
  * LAS: local attestation service.
  * Local service used to perform SGX specific operations to attest the enclave
- * (eg compute enclave measurement - MREnclave - and attest it through Intel
+ * (e.g. compute enclave measurement - MREnclave - and attest it through Intel
  * Attestation Service).
  * It must be on the same machine as the attested program/enclave.
  * <p>
@@ -36,31 +35,19 @@ import org.springframework.context.annotation.Configuration;
  * within which every LAS image is stored.
  * It also assumes every LAS uses the same port.
  */
-@Configuration
+@Value
+@ConstructorBinding
+@ConfigurationProperties(prefix = "scone")
 public class SconeConfiguration {
+    boolean showVersion;
+    String logLevel;
+    SconeRegistry registry;
+    int lasPort;
 
-    @Getter
-    @Value("${scone.show-version}")
-    private boolean showVersion;
-
-    @Getter
-    @Value("${scone.log-level}")
-    private String logLevel;
-
-    @Getter
-    @Value("${scone.registry.name}")
-    private String registryName;
-
-    @Getter
-    @Value("${scone.registry.username}")
-    private String registryUsername;
-
-    @JsonIgnore
-    @Getter
-    @Value("${scone.registry.password}")
-    private String registryPassword;
-
-    @Getter
-    @Value("${scone.las-port}")
-    private int lasPort;
+    @Value
+    public static class SconeRegistry {
+        String name;
+        String username;
+        String password;
+    }
 }
