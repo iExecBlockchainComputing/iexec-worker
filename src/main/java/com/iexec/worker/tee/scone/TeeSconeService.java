@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.TEE_PREPARATION_FAILED;
 
-
 @Slf4j
 @Service
 public class TeeSconeService extends TeeService {
@@ -47,7 +46,6 @@ public class TeeSconeService extends TeeService {
     private static final String SCONE_HEAP = "SCONE_HEAP";
     private static final String SCONE_LOG = "SCONE_LOG";
     private static final String SCONE_VERSION = "SCONE_VERSION";
-    // private static final String SCONE_MPROTECT = "SCONE_MPROTECT";
 
     private final LasServicesManager lasServicesManager;
 
