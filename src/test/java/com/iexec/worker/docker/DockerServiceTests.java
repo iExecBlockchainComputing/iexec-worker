@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ class DockerServiceTests {
 
     // docker.io/image:tag
     @Test
-    void shouldGetAuthenticatedClientWithDockerIoRegistry() throws Exception {
+    void shouldGetAuthenticatedClientWithDockerIoRegistry() {
         String registry = DEFAULT_DOCKER_REGISTRY;
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -90,7 +90,7 @@ class DockerServiceTests {
 
     // registry.xyz/name:tag
     @Test
-    void shouldGetAuthenticatedClientWithCustomRegistry() throws Exception {
+    void shouldGetAuthenticatedClientWithCustomRegistry() {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -110,7 +110,7 @@ class DockerServiceTests {
 
     // registry:port/image:tag
     @Test
-    void shouldGetAuthenticatedClientWithCustomRegistryAndPort() throws Exception {
+    void shouldGetAuthenticatedClientWithCustomRegistryAndPort() {
         String registry = "registry.host.com:5050";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -127,10 +127,10 @@ class DockerServiceTests {
         verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
         verify(dockerService, never()).getClient();
     }
-    
+
     // image:tag
     @Test
-    void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() throws Exception {
+    void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() {
         String registry = "";
         String imageName = registry + "name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -148,14 +148,14 @@ class DockerServiceTests {
                         credentials.getPassword());
         dockerService.getClient(imageName);
         verify(dockerService).getClient(
-                        DEFAULT_DOCKER_REGISTRY,
-                        credentials.getUsername(),
-                        credentials.getPassword());
+                DEFAULT_DOCKER_REGISTRY,
+                credentials.getUsername(),
+                credentials.getPassword());
         verify(dockerService, never()).getClient();
     }
 
     @Test
-    void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
+    void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
@@ -167,7 +167,7 @@ class DockerServiceTests {
     }
 
     @Test
-    void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() throws Exception {
+    void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -176,7 +176,7 @@ class DockerServiceTests {
                 .build();
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
-        doThrow(Exception.class)
+        doThrow(RuntimeException.class)
                 .when(dockerService)
                 .getClient(registry, credentials.getUsername(), credentials.getPassword());
 

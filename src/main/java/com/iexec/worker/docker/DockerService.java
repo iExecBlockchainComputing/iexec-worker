@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ public class DockerService {
      * <p>
      * e.g. for the image "registry.xyz/image:tag" we try to connect to
      * "registry.xyz" and for "iexechub/image:tag" we try to connect to docker.io.
-     * 
+     *
      * @param imageName
      * @return an authenticated Docker client if credentials for the image's registry are
      * to be found, an unauthenticated client otherwise.
@@ -99,21 +99,20 @@ public class DockerService {
 
     /**
      * Get a Docker client that is authenticated to the specified registry.
-     * 
-     * @param registryAddress
-     * @param registryUsername
-     * @param registryPassword
-     * @return
-     * @throws Exception when on of the arguments is blank or when authentication fails
+     *
+     * @param registryAddress  Registry address
+     * @param registryUsername Username to authenticate on the registry
+     * @param registryPassword Password to authenticate on the registry
+     * @return An authenticated client
      */
     public DockerClientInstance getClient(String registryAddress,
                                           String registryUsername,
-                                          String registryPassword) throws Exception {
+                                          String registryPassword) {
         if (StringUtils.isBlank(registryAddress) || StringUtils.isBlank(registryUsername)
                 || StringUtils.isBlank(registryPassword)) {
             log.error("Registry parameters are required [registry:{}, username:{}]",
                     registryAddress, registryUsername);
-            throw new Exception("All Docker registry parameters must be provided: "
+            throw new IllegalArgumentException("All Docker registry parameters must be provided: "
                     + registryAddress);
         }
         return DockerClientFactory.getDockerClientInstance(
@@ -208,7 +207,7 @@ public class DockerService {
      * the worker aborts a task and needs to stop its pre-compute, compute, or
      * post-compute containers. The container itself is not removed here as it is
      * removed by its watcher thread.
-     * 
+     *
      * @param containerNamePredicate predicate that contains a condition on the
      *                               container name.
      */
@@ -223,7 +222,7 @@ public class DockerService {
      * Stop a running container with the provided containerName and remove it from
      * running containers record. The container itself is not stopped here as it is
      * removed by its watcher thread.
-     * 
+     *
      * @param containerName
      */
     void stopRunningContainer(String containerName) {
@@ -244,7 +243,7 @@ public class DockerService {
 
     /**
      * Get the record of running containers. Added originally for testing purposes.
-     * 
+     *
      * @return
      */
     Set<String> getRunningContainersRecord() {
