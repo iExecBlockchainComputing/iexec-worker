@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Quality
 
 - `SconeConfiguration` class becomes immutable. (#577)
+- Fix `onTaskNotification` visibility and lower its complexity. (#578)
 
 ## [[8.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.3.0) 2024-01-11
 
