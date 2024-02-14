@@ -28,6 +28,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
@@ -37,9 +40,11 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import java.io.File;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static com.iexec.commons.containers.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(OutputCaptureExtension.class)
@@ -66,6 +71,27 @@ class DockerServiceTests {
     void shouldGetUnauthenticatedClient() {
         DockerClientInstance dockerClientInstance = dockerService.getClient();
         assertThat(dockerClientInstance).isEqualTo(DockerClientFactory.getDockerClientInstance());
+    }
+
+    private static Stream<Arguments> provideBadParametersForGetClient() {
+        return Stream.of(
+                Arguments.of(null, null, null),
+                Arguments.of("", "", ""),
+                Arguments.of("a", "b", null),
+                Arguments.of("a", "b", ""),
+                Arguments.of("a", null, "c"),
+                Arguments.of("a", "", "c"),
+                Arguments.of(null, "b", "c"),
+                Arguments.of("", "b", "c")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideBadParametersForGetClient")
+    void shouldFailToGetAuthenticatedClient(String registryAddress, String registryUsername, String registryPassword) {
+        assertThatThrownBy(() -> dockerService.getClient(registryAddress, registryUsername, registryPassword))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("All Docker registry parameters must be provided");
     }
 
     // docker.io/image:tag
