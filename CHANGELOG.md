@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - `SconeConfiguration` class becomes immutable. (#577)
 - Fix `onTaskNotification` visibility and lower its complexity. (#578)
+- Throw a dedicated exception on empty parameters when authenticating to a docker registry. (#579)
 
 ## [[8.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.3.0) 2024-01-11
 

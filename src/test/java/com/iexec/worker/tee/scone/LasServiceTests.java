@@ -67,7 +67,7 @@ class LasServiceTests {
     LasService lasService;
 
     @BeforeEach
-    void init() throws Exception {
+    void init() {
         MockitoAnnotations.openMocks(this);
         lasService = spy(new LasService(
                 CONTAINER_NAME,
@@ -112,7 +112,7 @@ class LasServiceTests {
     }
 
     @Test
-    void shouldStartLasServiceOnlyOnce() throws Exception {
+    void shouldStartLasServiceOnlyOnce() {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
@@ -140,7 +140,7 @@ class LasServiceTests {
     }
 
     @Test
-    void shouldNotStartLasServiceSinceClientError() throws Exception {
+    void shouldNotStartLasServiceSinceClientError() {
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
 
@@ -149,9 +149,10 @@ class LasServiceTests {
     }
 
     @Test
-    void shouldNotStartLasServiceSinceClientException() throws Exception {
+    void shouldNotStartLasServiceSinceClientException() {
+        // getClient calls DockerClientFactory.getDockerClientInstance which can throw runtime exceptions
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
-                .thenThrow(Exception.class);
+                .thenThrow(RuntimeException.class);
 
         assertFalse(lasService.start());
         assertFalse(lasService.isStarted());
