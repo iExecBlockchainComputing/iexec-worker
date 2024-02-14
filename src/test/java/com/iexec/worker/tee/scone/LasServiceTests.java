@@ -67,7 +67,7 @@ class LasServiceTests {
     LasService lasService;
 
     @BeforeEach
-    void init() throws Exception {
+    void init() {
         MockitoAnnotations.openMocks(this);
         lasService = spy(new LasService(
                 CONTAINER_NAME,
@@ -150,6 +150,7 @@ class LasServiceTests {
 
     @Test
     void shouldNotStartLasServiceSinceClientException() {
+        // getClient calls DockerClientFactory.getDockerClientInstance which can throw runtime exceptions
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenThrow(RuntimeException.class);
 

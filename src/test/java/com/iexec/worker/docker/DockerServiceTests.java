@@ -176,6 +176,7 @@ class DockerServiceTests {
                 .build();
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
+        // getClient calls DockerClientFactory.getDockerClientInstance which can throw runtime exceptions
         doThrow(RuntimeException.class)
                 .when(dockerService)
                 .getClient(registry, credentials.getUsername(), credentials.getPassword());
