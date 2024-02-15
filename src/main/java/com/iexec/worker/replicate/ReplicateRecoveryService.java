@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
-/*
+/**
  * This service is used to remind the worker of possible interrupted works
  * after a restart and how to deal with each interruption.
  */
@@ -58,49 +58,49 @@ public class ReplicateRecoveryService {
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
-    //TODO clean that
     public List<String> recoverInterruptedReplicates() {
         long latestAvailableBlockNumber = iexecHubService.getLatestBlockNumber();
         List<TaskNotification> missedTaskNotifications = customCoreFeignClient.getMissedTaskNotifications(
                 latestAvailableBlockNumber);
-        List<String> recoveredChainTaskIds = new ArrayList<>();
 
         if (missedTaskNotifications == null || missedTaskNotifications.isEmpty()) {
             log.info("No interrupted tasks to recover");
             return Collections.emptyList();
         }
 
-        for (TaskNotification missedTaskNotification : missedTaskNotifications) {
-            TaskNotificationType taskNotificationType = missedTaskNotification.getTaskNotificationType();
-            String chainTaskId = missedTaskNotification.getChainTaskId();
-            boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
+        return missedTaskNotifications.stream()
+                .filter(this::canReplicateBeRecovered)
+                .map(TaskNotification::getChainTaskId)
+                .collect(Collectors.toList());
+    }
 
-            log.info("Recovering interrupted task [chainTaskId:{}, taskNotificationType:{}]",
+    boolean canReplicateBeRecovered(TaskNotification missedTaskNotification) {
+        final TaskNotificationType taskNotificationType = missedTaskNotification.getTaskNotificationType();
+        final String chainTaskId = missedTaskNotification.getChainTaskId();
+        final boolean isResultAvailable = resultService.isResultAvailable(chainTaskId);
+
+        log.info("Recovering interrupted task [chainTaskId:{}, taskNotificationType:{}]",
+                chainTaskId, taskNotificationType);
+
+        if (!isResultAvailable) {
+            log.error("Could not recover task, result not found [chainTaskId:{}, taskNotificationType:{}]",
                     chainTaskId, taskNotificationType);
-
-            if (!isResultAvailable) {
-                log.error("Could not recover task, result not found [chainTaskId:{}, taskNotificationType:{}]",
-                        chainTaskId, taskNotificationType);
-                continue;
-            }
-
-            TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
-
-            if (taskDescription == null) {
-                log.error("Could not recover task, no TaskDescription retrieved [chainTaskId:{}, taskNotificationType:{}]",
-                        chainTaskId, taskNotificationType);
-                continue;
-            }
-
-            ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-            resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
-
-            subscriptionService.subscribeToTopic(chainTaskId);
-            applicationEventPublisher.publishEvent(missedTaskNotification);
-
-            recoveredChainTaskIds.add(chainTaskId);
+            return false;
         }
 
-        return recoveredChainTaskIds;
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+
+        if (taskDescription == null) {
+            log.error("Could not recover task, no TaskDescription retrieved [chainTaskId:{}, taskNotificationType:{}]",
+                    chainTaskId, taskNotificationType);
+            return false;
+        }
+
+        final ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
+        resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
+        subscriptionService.subscribeToTopic(chainTaskId);
+        applicationEventPublisher.publishEvent(missedTaskNotification);
+
+        return true;
     }
 }
