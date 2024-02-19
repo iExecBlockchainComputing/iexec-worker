@@ -210,20 +210,22 @@ public class DockerService {
      *
      * @param containerNamePredicate predicate that contains a condition on the
      *                               container name.
+     * @return The remaining count of containers matching the provided predicate.
      */
-    public void stopRunningContainersWithNamePredicate(Predicate<String> containerNamePredicate) {
+    public long stopRunningContainersWithNamePredicate(Predicate<String> containerNamePredicate) {
         log.info("Stopping containers with names matching the provided predicate");
         List.copyOf(runningContainersRecord).stream()
                 .filter(containerNamePredicate)
                 .forEach(this::stopRunningContainer);
+        return List.copyOf(runningContainersRecord).stream()
+                .filter(containerNamePredicate).count();
     }
 
     /**
-     * Stop a running container with the provided containerName and remove it from
-     * running containers record. The container itself is not stopped here as it is
-     * removed by its watcher thread.
+     * Stop a running container with the provided name and remove it from the running containers record.
+     * The container itself is not stopped here as it is removed by its watcher thread.
      *
-     * @param containerName
+     * @param containerName Name of container to stop
      */
     void stopRunningContainer(String containerName) {
         if (!getClient().isContainerPresent(containerName)) {
@@ -244,7 +246,7 @@ public class DockerService {
     /**
      * Get the record of running containers. Added originally for testing purposes.
      *
-     * @return
+     * @return The current set of running containers
      */
     Set<String> getRunningContainersRecord() {
         return runningContainersRecord;

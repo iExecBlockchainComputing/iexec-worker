@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,6 +51,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -120,7 +120,7 @@ class ComputeManagerServiceTests {
         when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(Duration.of(30, ChronoUnit.MINUTES));
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(7, ChronoUnit.MINUTES))).thenReturn(true);
-        Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
+        assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
     @Test
@@ -128,12 +128,12 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(false);
-        Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
+        assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
     @Test
     void shouldNotDownloadAppSinceNoTaskDescription() {
-        Assertions.assertThat(computeManagerService.downloadApp(null)).isFalse();
+        assertThat(computeManagerService.downloadApp(null)).isFalse();
     }
 
     @Test
@@ -141,7 +141,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false)
                 .appType(null)
                 .build();
-        Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
+        assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
     @Test
@@ -149,7 +149,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false)
                 .appType(DappType.BINARY)
                 .build();
-        Assertions.assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
+        assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
     @Test
@@ -157,7 +157,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient()).thenReturn(dockerClient);
         when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(true);
-        Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isTrue();
+        assertThat(computeManagerService.isAppDownloaded(APP_URI)).isTrue();
     }
 
     @Test
@@ -165,7 +165,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient()).thenReturn(dockerClient);
         when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(false);
-        Assertions.assertThat(computeManagerService.isAppDownloaded(APP_URI)).isFalse();
+        assertThat(computeManagerService.isAppDownloaded(APP_URI)).isFalse();
     }
     //endregion
 
@@ -177,7 +177,7 @@ class ComputeManagerServiceTests {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
 
-        Assertions.assertThat(preComputeResponse.isSuccessful()).isTrue();
+        assertThat(preComputeResponse.isSuccessful()).isTrue();
     }
 
     @Test
@@ -190,7 +190,7 @@ class ComputeManagerServiceTests {
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
-        Assertions.assertThat(preComputeResponse).isEqualTo(mockResponse);
+        assertThat(preComputeResponse).isEqualTo(mockResponse);
         verify(preComputeService, times(1))
                 .runTeePreCompute(taskDescription,
                         workerpoolAuthorization);
@@ -208,9 +208,9 @@ class ComputeManagerServiceTests {
         PreComputeResponse preComputeResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
-        Assertions.assertThat(preComputeResponse.getSecureSession()).isNull();
-        Assertions.assertThat(preComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(preComputeResponse.getExitCause())
+        assertThat(preComputeResponse.getSecureSession()).isNull();
+        assertThat(preComputeResponse.isSuccessful()).isFalse();
+        assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
     }
     //endregion
@@ -231,10 +231,10 @@ class ComputeManagerServiceTests {
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription, null);
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
-        Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
+        assertThat(appComputeResponse.isSuccessful()).isTrue();
+        assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
-        Assertions.assertThat(appComputeResponse.getStderr()).isEqualTo(
+        assertThat(appComputeResponse.getStderr()).isEqualTo(
                 "stderr");
         verify(appComputeService, times(1))
                 .runCompute(taskDescription, null);
@@ -254,10 +254,10 @@ class ComputeManagerServiceTests {
 
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription, null);
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
+        assertThat(appComputeResponse.isSuccessful()).isFalse();
+        assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
-        Assertions.assertThat(appComputeResponse.getStderr()).isEqualTo(
+        assertThat(appComputeResponse.getStderr()).isEqualTo(
                 "stderr");
     }
 
@@ -277,10 +277,10 @@ class ComputeManagerServiceTests {
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription,
                         SECURE_SESSION);
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
-        Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
+        assertThat(appComputeResponse.isSuccessful()).isTrue();
+        assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
-        Assertions.assertThat(appComputeResponse.getStderr()).isEqualTo(
+        assertThat(appComputeResponse.getStderr()).isEqualTo(
                 "stderr");
         verify(appComputeService, times(1))
                 .runCompute(taskDescription,
@@ -302,10 +302,10 @@ class ComputeManagerServiceTests {
         AppComputeResponse appComputeResponse =
                 computeManagerService.runCompute(taskDescription,
                         SECURE_SESSION);
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(appComputeResponse.getStdout()).isEqualTo(
+        assertThat(appComputeResponse.isSuccessful()).isFalse();
+        assertThat(appComputeResponse.getStdout()).isEqualTo(
                 "stdout");
-        Assertions.assertThat(appComputeResponse.getStderr()).isEqualTo(
+        assertThat(appComputeResponse.getStderr()).isEqualTo(
                 "stderr");
     }
     //endregion
@@ -318,8 +318,8 @@ class ComputeManagerServiceTests {
                 .thenReturn(PostComputeResponse.builder().build());
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
     }
 
     @Test
@@ -331,8 +331,8 @@ class ComputeManagerServiceTests {
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(resultService.computeResultDigest(computedFile)).thenReturn("");
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
     }
 
     @Test
@@ -346,7 +346,7 @@ class ComputeManagerServiceTests {
 
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription, null);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
+        assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(postComputeService).runStandardPostCompute(taskDescription);
         verify(resultService).readComputedFile(CHAIN_TASK_ID);
         verify(resultService).computeResultDigest(computedFile);
@@ -361,8 +361,8 @@ class ComputeManagerServiceTests {
         when(postComputeService.runStandardPostCompute(taskDescription)).thenReturn(postComputeResponse);
 
         postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(postComputeResponse.getExitCause()).isEqualTo(statusCause);
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getExitCause()).isEqualTo(statusCause);
     }
 
     @Test
@@ -383,10 +383,10 @@ class ComputeManagerServiceTests {
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
                         SECURE_SESSION);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isTrue();
-        Assertions.assertThat(postComputeResponse.getStdout()).isEqualTo(
+        assertThat(postComputeResponse.isSuccessful()).isTrue();
+        assertThat(postComputeResponse.getStdout()).isEqualTo(
                 "stdout");
-        Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
+        assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
         verify(postComputeService).runTeePostCompute(taskDescription, SECURE_SESSION);
         verify(resultService).readComputedFile(CHAIN_TASK_ID);
@@ -410,10 +410,10 @@ class ComputeManagerServiceTests {
         PostComputeResponse postComputeResponse =
                 computeManagerService.runPostCompute(taskDescription,
                         SECURE_SESSION);
-        Assertions.assertThat(postComputeResponse.isSuccessful()).isFalse();
-        Assertions.assertThat(postComputeResponse.getStdout()).isEqualTo(
+        assertThat(postComputeResponse.isSuccessful()).isFalse();
+        assertThat(postComputeResponse.getStdout()).isEqualTo(
                 "stdout");
-        Assertions.assertThat(postComputeResponse.getStderr()).isEqualTo(
+        assertThat(postComputeResponse.getStderr()).isEqualTo(
                 "stderr");
     }
     //endregion
@@ -451,8 +451,22 @@ class ComputeManagerServiceTests {
         when(dockerRegistryConfiguration.getMinPullTimeout()).thenReturn(minPullTimeout);
         when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(maxPullTimeout);
 
-        Assertions.assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
+        assertThat(computeManagerService.computeImagePullTimeout(taskDescription))
                 .isEqualTo(expectedTimeout);
     }
     //endregion
+
+    // region abort
+    @Test
+    void shouldNotAbortWhenContainersAreStillRunning() {
+        when(dockerService.stopRunningContainersWithNamePredicate(any())).thenReturn(1L);
+        assertThat(computeManagerService.abort(CHAIN_TASK_ID)).isFalse();
+    }
+
+    @Test
+    void shouldAbortTask() {
+        when(dockerService.stopRunningContainersWithNamePredicate(any())).thenReturn(0L);
+        assertThat(computeManagerService.abort(CHAIN_TASK_ID)).isTrue();
+    }
+    // endregion
 }
