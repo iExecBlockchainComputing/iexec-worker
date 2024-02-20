@@ -21,7 +21,6 @@ import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.utils.HashUtils;
-import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -79,7 +78,12 @@ public class SmsService implements Purgeable {
                     Hash.sha3String(IEXEC_RESULT_IEXEC_IPFS_TOKEN),
                     Hash.sha3String(token));
             final String authorization = credentialsService.hashAndSignMessage(challenge).getValue();
+            if (authorization.isEmpty()) {
+                log.error("Couldn't sign challenge for an unknown reason [hash:{}]", challenge);
+                return false;
+            }
 
+            // TODO check secret exist to create or update
             smsClient.setWeb2Secret(authorization, workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN, token);
             smsClient.isWeb2SecretSet(workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN);
             return true;
