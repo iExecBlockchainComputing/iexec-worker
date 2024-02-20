@@ -30,11 +30,14 @@ import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.eip712.EIP712Domain;
+import com.iexec.commons.poco.eip712.entity.EIP712Challenge;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -57,6 +60,7 @@ public class ResultService implements Purgeable {
     public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
+    private final BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
     private final ResultProxyClient resultProxyClient;
@@ -65,10 +69,12 @@ public class ResultService implements Purgeable {
 
     public ResultService(
             WorkerConfigurationService workerConfigService,
+            BlockchainAdapterConfigurationService blockchainAdapterConfigurationService,
             CredentialsService credentialsService,
             IexecHubService iexecHubService,
             ResultProxyClient resultProxyClient) {
         this.workerConfigService = workerConfigService;
+        this.blockchainAdapterConfigurationService = blockchainAdapterConfigurationService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.resultProxyClient = resultProxyClient;
@@ -201,7 +207,7 @@ public class ResultService implements Purgeable {
 
         // Cloud computing - basic
         boolean isIpfsStorageRequest = task.getResultStorageProvider().equals(IPFS_RESULT_STORAGE_PROVIDER);
-        boolean isUpload = upload(workerpoolAuthorization);
+        boolean isUpload = upload(chainTaskId);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
             return getWeb2ResultLink(chainTaskId);//retrieves ipfs only
@@ -212,9 +218,8 @@ public class ResultService implements Purgeable {
         return "";
     }
 
-    private boolean upload(WorkerpoolAuthorization workerpoolAuthorization) {
-        final String chainTaskId = workerpoolAuthorization.getChainTaskId();
-        final String authorizationToken = getIexecUploadToken(workerpoolAuthorization);
+    private boolean upload(String chainTaskId) {
+        String authorizationToken = getIexecUploadToken();
         if (authorizationToken.isEmpty()) {
             log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
             return false;
@@ -293,6 +298,49 @@ public class ResultService implements Purgeable {
             }
             return resultProxyClient.getJwt(authorization, workerpoolAuthorization);
         } catch (Exception e) {
+            log.error("Failed to get upload token", e);
+            return "";
+        }
+    }
+
+    public String getIexecUploadToken() {
+        // get challenge
+        Integer chainId = blockchainAdapterConfigurationService.getChainId();
+        try {
+            final EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
+            if (eip712Challenge == null) {
+                log.error("Couldn't retrieve an EIP712Challenge from Result Proxy");
+                return "";
+            }
+
+            final EIP712Domain domain = eip712Challenge.getDomain();
+            final String expectedDomainName = "iExec Result Repository";
+            final String actualDomainName = domain.getName();
+            if (!Objects.equals(actualDomainName, expectedDomainName)) {
+                log.error("Domain name does not match expected name [expected:{}, actual:{}]",
+                        expectedDomainName, actualDomainName);
+                return "";
+            }
+
+            final long domainChainId = domain.getChainId();
+            if (!Objects.equals(domainChainId, chainId.longValue())) {
+                log.error("Domain chain id does not match expected chain id [expected:{}, actual:{}]",
+                        chainId, domainChainId);
+                return "";
+            }
+
+            // sign challenge
+            String signedEip712Challenge = credentialsService.signEIP712EntityAndBuildToken(eip712Challenge);
+
+            if (signedEip712Challenge.isEmpty()) {
+                log.error("Couldn't sign challenge for an unknown reason [challenge:{}]",
+                        eip712Challenge);
+                return "";
+            }
+
+            // login
+            return resultProxyClient.login(chainId, signedEip712Challenge);
+        } catch (RuntimeException e) {
             log.error("Failed to get upload token", e);
             return "";
         }
