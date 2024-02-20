@@ -523,7 +523,7 @@ class ResultServiceTests {
 
     //region getIexecUploadToken
     @Test
-    void shouldGetIexecUploadToken() {
+    void shouldGetIexecUploadTokenFromWorkerpoolAuthorization() {
         final String uploadToken = "uploadToken";
         when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
@@ -533,7 +533,7 @@ class ResultServiceTests {
     }
 
     @Test
-    void shouldNotGetIexecUploadTokenSinceSigningReturnsEmpty() {
+    void shouldNotGetIexecUploadTokenSinceWorkerpoolAuthorizationSigningReturnsEmpty() {
         when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(""));
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
         verify(credentialsService).hashAndSignMessage(anyString());
@@ -541,7 +541,7 @@ class ResultServiceTests {
     }
 
     @Test
-    void shouldNotGetIexecUploadTokenSinceFeignException() {
+    void shouldNotGetIexecUploadTokenFromWorkerpoolAuthorizationSinceFeignException() {
         when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
