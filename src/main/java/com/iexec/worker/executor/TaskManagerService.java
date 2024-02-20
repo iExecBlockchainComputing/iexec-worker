@@ -122,7 +122,7 @@ public class TaskManagerService {
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
             final String token = resultService.getIexecUploadToken(workerpoolAuthorization);
-            //smsService.pushToken(workerpoolAuthorization, token);
+            smsService.pushToken(workerpoolAuthorization, token);
         }
 
         return ReplicateActionResponse.success();
