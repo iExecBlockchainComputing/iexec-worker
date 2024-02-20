@@ -1375,7 +1375,7 @@ class TaskManagerServiceTests {
 
     //region abort
     @Test
-    void shouldNotifyErrorWhenRemainingContainers() {
+    void shouldReturnFalseWhenRemainingContainers() {
         when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(false);
         when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(true);
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isFalse();
@@ -1385,7 +1385,7 @@ class TaskManagerServiceTests {
     }
 
     @Test
-    void shouldNotifyErrorWhenRemainingService() {
+    void shouldReturnFalseWhenRemainingService() {
         when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(false);
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isFalse();
