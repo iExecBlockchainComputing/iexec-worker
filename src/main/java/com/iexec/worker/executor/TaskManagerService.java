@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
@@ -43,13 +43,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.function.Predicate;
 
 import static com.iexec.common.replicate.ReplicateStatus.APP_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatus.DATA_DOWNLOAD_FAILED;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static java.util.Objects.requireNonNull;
-
 
 @Slf4j
 @Service
@@ -65,7 +63,7 @@ public class TaskManagerService {
     private final TeeServicesManager teeServicesManager;
     private final DataService dataService;
     private final ResultService resultService;
-    private final DockerService dockerService;
+    private final SmsService smsService;
     private final SubscriptionService subscriptionService;
     private final PurgeService purgeService;
     private final String workerWalletAddress;
@@ -78,7 +76,7 @@ public class TaskManagerService {
             TeeServicesManager teeServicesManager,
             DataService dataService,
             ResultService resultService,
-            DockerService dockerService,
+            SmsService smsService,
             SubscriptionService subscriptionService,
             PurgeService purgeService,
             String workerWalletAddress) {
@@ -89,7 +87,7 @@ public class TaskManagerService {
         this.teeServicesManager = teeServicesManager;
         this.dataService = dataService;
         this.resultService = resultService;
-        this.dockerService = dockerService;
+        this.smsService = smsService;
         this.subscriptionService = subscriptionService;
         this.purgeService = purgeService;
         this.workerWalletAddress = workerWalletAddress;
@@ -121,7 +119,12 @@ public class TaskManagerService {
                 log.error("TEE prerequisites are not met [chainTaskId: {}, issue: {}]", chainTaskId, teePrerequisitesIssue.get());
                 return getFailureResponseAndPrintError(teePrerequisitesIssue.get(), context, chainTaskId);
             }
+
+            final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
+            final String token = resultService.getIexecUploadToken(workerpoolAuthorization);
+            //smsService.pushToken(workerpoolAuthorization, token);
         }
+
         return ReplicateActionResponse.success();
     }
 
@@ -342,8 +345,9 @@ public class TaskManagerService {
                         context, chainTaskId);
             }
 
+            final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
             String callbackData = computedFile.getCallbackData();
-            String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
+            String resultLink = resultService.uploadResultAndGetLink(workerpoolAuthorization);
             log.debug("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
                     contribution, resultLink, callbackData);
             Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
@@ -418,7 +422,8 @@ public class TaskManagerService {
     }
 
     ReplicateActionResponse uploadResult(String chainTaskId) {
-        String resultLink = resultService.uploadResultAndGetLink(chainTaskId);
+        final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
+        String resultLink = resultService.uploadResultAndGetLink(workerpoolAuthorization);
         String context = "upload result";
         if (resultLink.isEmpty()) {
             return getFailureResponseAndPrintError(RESULT_LINK_MISSING,
@@ -426,8 +431,7 @@ public class TaskManagerService {
             );
         }
 
-        ComputedFile computedFile =
-                resultService.getComputedFile(chainTaskId);
+        ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         String callbackData = computedFile != null ?
                 computedFile.getCallbackData() : "";
 
@@ -456,18 +460,18 @@ public class TaskManagerService {
      * related to the task in question, unsubscribe from the task's notifications,
      * then remove result folders.
      *
-     * @param chainTaskId
-     * @return
+     * @param chainTaskId Task ID
+     * @return {@literal true} if all cleanup operations went well, {@literal false} otherwise
      */
     boolean abort(String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
-        Predicate<String> containsChainTaskId = name -> name.contains(chainTaskId);
-        dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
-        log.info("Stopped task containers [chainTaskId:{}]", chainTaskId);
         subscriptionService.unsubscribeFromTopic(chainTaskId);
-        boolean isSuccess = purgeService.purgeAllServices(chainTaskId);
+        boolean allContainersStopped = computeManagerService.abort(chainTaskId);
+        boolean allServicesPurged = purgeService.purgeAllServices(chainTaskId);
+        final boolean isSuccess = allContainersStopped && allServicesPurged;
         if (!isSuccess) {
-            log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
+            log.error("Failed to abort task [chainTaskId:{}, containers:{}, services:{}]",
+                    chainTaskId, allContainersStopped, allServicesPurged);
         }
         return isSuccess;
     }

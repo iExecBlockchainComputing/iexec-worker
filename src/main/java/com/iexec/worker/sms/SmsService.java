@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,15 +30,13 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.Optional;
 
-
 @Slf4j
 @Service
 public class SmsService implements Purgeable {
 
     private final CredentialsService credentialsService;
     private final SmsClientProvider smsClientProvider;
-    private final Map<String, String> taskIdToSmsUrl = 
-        ExpiringTaskMapFactory.getExpiringTaskMap();
+    private final Map<String, String> taskIdToSmsUrl = ExpiringTaskMapFactory.getExpiringTaskMap();
 
     public SmsService(CredentialsService credentialsService,
                       SmsClientProvider smsClientProvider) {
@@ -52,11 +50,11 @@ public class SmsService implements Purgeable {
 
     public SmsClient getSmsClient(String chainTaskId) {
         String url = taskIdToSmsUrl.get(chainTaskId);
-        if(StringUtils.isEmpty(url)){
+        if (StringUtils.isEmpty(url)) {
             // if url is not here anymore, worker might hit core on GET /tasks 
             // to retrieve SMS URL
             throw new SmsClientCreationException("No SMS URL defined for " +
-                "given task [chainTaskId: " + chainTaskId +"]");
+                    "given task [chainTaskId: " + chainTaskId + "]");
         }
         return smsClientProvider.getSmsClient(url);
     }
@@ -79,7 +77,7 @@ public class SmsService implements Purgeable {
             log.info("Created TEE session [chainTaskId:{}, session:{}]",
                     chainTaskId, session);
             return session;
-        } catch(FeignException e) {
+        } catch (FeignException e) {
             log.error("SMS failed to create TEE session [chainTaskId:{}]",
                     chainTaskId, e);
             final Optional<TeeSessionGenerationError> error = ApiResponseBodyDecoder.getErrorFromResponse(e.contentUTF8(), TeeSessionGenerationError.class);
@@ -100,7 +98,7 @@ public class SmsService implements Purgeable {
 
     @Override
     public void purgeAllTasksData() {
-        taskIdToSmsUrl.clear();  
+        taskIdToSmsUrl.clear();
     }
 
 }
