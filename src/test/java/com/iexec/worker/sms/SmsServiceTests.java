@@ -34,7 +34,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
-import static com.iexec.sms.secret.ReservedSecretKeyName.IEXEC_RESULT_IEXEC_IPFS_TOKEN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -83,31 +82,6 @@ class SmsServiceTests {
     void shouldNotAndGetSmsClientIfNoSmsUrlForTask() {
         // no SMS URL attached to taskId
         assertThrows(SmsClientCreationException.class, () -> smsService.getSmsClient(CHAIN_TASK_ID));
-    }
-    // endregion
-
-    // region pushToken
-    @Test
-    void shouldPushToken() {
-        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
-        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isTrue();
-    }
-
-    @Test
-    void shouldNotPushTokenOnEmptySignature() {
-        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(""));
-        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
-    }
-
-    @Test
-    void shouldNotPushTokenOnFeignException() {
-        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
-        when(smsClient.setWeb2Secret(SIGNATURE, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
-                IEXEC_RESULT_IEXEC_IPFS_TOKEN, TOKEN)).thenThrow(FeignException.InternalServerError.class);
-        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
     }
     // endregion
 
