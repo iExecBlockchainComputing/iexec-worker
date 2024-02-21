@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2024
 
+### New Features
+
+- Retrieve Result Proxy JWT with `WorkerpoolAuthorization`. (#581)
+- Push Result Proxy JWT for IPFS to SMS. (#582)
+
 ### Quality
 
 - `SconeConfiguration` class becomes immutable. (#577)

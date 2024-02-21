@@ -20,15 +20,19 @@ import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.web.ApiResponseBodyDecoder;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.sms.api.*;
 import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Hash;
 
 import java.util.Map;
 import java.util.Optional;
+
+import static com.iexec.sms.secret.ReservedSecretKeyName.IEXEC_RESULT_IEXEC_IPFS_TOKEN;
 
 @Slf4j
 @Service
@@ -57,6 +61,59 @@ public class SmsService implements Purgeable {
                     "given task [chainTaskId: " + chainTaskId + "]");
         }
         return smsClientProvider.getSmsClient(url);
+    }
+
+    /**
+     * Checks if a JWT is present to upload results for TEE tasks.
+     *
+     * @param workerpoolAuthorization Authorization
+     * @return {@literal true} if an entry was found, {@literal false} if the secret was not found or an error happened
+     */
+    private boolean isTokenPresent(WorkerpoolAuthorization workerpoolAuthorization) {
+        final SmsClient smsClient = getSmsClient(workerpoolAuthorization.getChainTaskId());
+        try {
+            smsClient.isWeb2SecretSet(workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN);
+            return true;
+        } catch (FeignException.NotFound e) {
+            log.info("Worker Result Proxy JWT does not exist in SMS");
+        } catch (FeignException e) {
+            log.error("Worker Result Proxy JWT existence check failed with error", e);
+        }
+        return false;
+    }
+
+    /**
+     * Push a JWT as a Web2 secret in the SMS.
+     *
+     * @param workerpoolAuthorization Authorization
+     * @param token                   JWT to push in the SMS
+     * @return {@literal true} if secret is in SMS, {@literal false} otherwise
+     */
+    public boolean pushToken(WorkerpoolAuthorization workerpoolAuthorization, String token) {
+        final SmsClient smsClient = getSmsClient(workerpoolAuthorization.getChainTaskId());
+        try {
+            final String challenge = HashUtils.concatenateAndHash(
+                    Hash.sha3String("IEXEC_SMS_DOMAIN"),
+                    workerpoolAuthorization.getWorkerWallet(),
+                    Hash.sha3String(IEXEC_RESULT_IEXEC_IPFS_TOKEN),
+                    Hash.sha3String(token));
+            final String authorization = credentialsService.hashAndSignMessage(challenge).getValue();
+            if (authorization.isEmpty()) {
+                log.error("Couldn't sign challenge for an unknown reason [hash:{}]", challenge);
+                return false;
+            }
+
+            if (isTokenPresent(workerpoolAuthorization)) {
+                smsClient.updateWeb2Secret(authorization, workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN, token);
+            } else {
+                smsClient.setWeb2Secret(authorization, workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN, token);
+            }
+            smsClient.isWeb2SecretSet(workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to push Web2 secret to SMS", e);
+        }
+        return false;
     }
 
     // TODO: use the below method with retry.

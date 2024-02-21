@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
+import static com.iexec.sms.secret.ReservedSecretKeyName.IEXEC_RESULT_IEXEC_IPFS_TOKEN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -83,6 +84,58 @@ class SmsServiceTests {
     void shouldNotAndGetSmsClientIfNoSmsUrlForTask() {
         // no SMS URL attached to taskId
         assertThrows(SmsClientCreationException.class, () -> smsService.getSmsClient(CHAIN_TASK_ID));
+    }
+    // endregion
+
+    // region pushToken
+    @Test
+    void shouldPushToken() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        // send 404 NOT_FOUND on first call then 204 NO_CONTENT
+        doThrow(FeignException.NotFound.class).doNothing().when(smsClient).isWeb2SecretSet(anyString(), anyString());
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
+        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isTrue();
+    }
+
+    @Test
+    void shouldUpdateToken() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
+        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isTrue();
+    }
+
+    @Test
+    void shouldNotPushTokenOnEmptySignature() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(""));
+        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
+    }
+
+    @Test
+    void shouldNotPushTokenOnFeignException() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
+        doThrow(FeignException.NotFound.class).when(smsClient).isWeb2SecretSet(anyString(), anyString());
+        when(smsClient.setWeb2Secret(SIGNATURE, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
+                IEXEC_RESULT_IEXEC_IPFS_TOKEN, TOKEN)).thenThrow(FeignException.InternalServerError.class);
+        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
+    }
+
+    @Test
+    void shouldNotUpdateTokenOnFeignException() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
+        when(smsClient.updateWeb2Secret(SIGNATURE, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
+                IEXEC_RESULT_IEXEC_IPFS_TOKEN, TOKEN)).thenThrow(FeignException.InternalServerError.class);
+        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
+    }
+
+    @Test
+    void shouldNotFindTokenOnFeignException() {
+        smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(SIGNATURE));
+        doThrow(FeignException.class).when(smsClient).isWeb2SecretSet(anyString(), anyString());
+        assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
     }
     // endregion
 

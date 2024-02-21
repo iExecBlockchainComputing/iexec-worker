@@ -121,7 +121,8 @@ class ResultServiceTests {
                 "\"callback-data\":null," +
                 "\"task-id\":null," +
                 "\"result-digest\":null," +
-                "\"enclave-signature\":null" +
+                "\"enclave-signature\":null," +
+                "\"error-message\":null" +
                 "}");
     }
 
@@ -533,7 +534,7 @@ class ResultServiceTests {
     }
 
     @Test
-    void shouldNotGetIexecUploadTokenSinceWorkerpoolAuthorizationSigningReturnsEmpty() {
+    void shouldNotGetIexecUploadTokenWorkerpoolAuthorizationSinceSigningReturnsEmpty() {
         when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(""));
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
         verify(credentialsService).hashAndSignMessage(anyString());
