@@ -39,9 +39,12 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
 import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND;
+import static com.iexec.commons.poco.notification.TaskNotificationType.*;
+import static java.util.Map.entry;
 
 
 @Slf4j
@@ -59,6 +62,21 @@ public class TaskNotificationService {
             .builder()
             .expiration(1, TimeUnit.HOURS)
             .build();
+    private final Map<TaskNotificationType, BiFunction<TaskDescription, TaskNotification, TaskNotificationType>> actionForNotification =
+            Map.ofEntries(
+                    entry(PLEASE_START, this::pleaseStart),
+                    entry(PLEASE_DOWNLOAD_APP, this::pleaseDownloadApp),
+                    entry(PLEASE_DOWNLOAD_DATA, this::pleaseDownloadData),
+                    entry(PLEASE_COMPUTE, this::pleaseCompute),
+                    entry(PLEASE_CONTRIBUTE, this::pleaseContribute),
+                    entry(PLEASE_REVEAL, this::pleaseReveal),
+                    entry(PLEASE_UPLOAD, this::pleaseUpload),
+                    entry(PLEASE_CONTRIBUTE_AND_FINALIZE, this::pleaseContributeAndFinalize),
+                    entry(PLEASE_COMPLETE, this::pleaseComplete),
+                    entry(PLEASE_ABORT, this::pleaseAbort),
+                    entry(PLEASE_CONTINUE, (d, t) -> null),
+                    entry(PLEASE_WAIT, (d, t) -> null)
+            );
 
     public TaskNotificationService(
             TaskManagerService taskManagerService,
@@ -86,9 +104,6 @@ public class TaskNotificationService {
     public void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
-        ReplicateActionResponse actionResponse;
-        ReplicateStatus nextStatus;
-        TaskNotificationType nextAction = null;
         log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
         if (action == null) {
@@ -109,79 +124,14 @@ public class TaskNotificationService {
             updateStatusAndGetNextAction(chainTaskId, ABORTED, TASK_DESCRIPTION_NOT_FOUND);
             return;
         }
-        switch (action) {
-            case PLEASE_START:
-                updateStatusAndGetNextAction(chainTaskId, STARTING);
-                actionResponse = taskManagerService.start(taskDescription);
-                nextStatus = actionResponse.isSuccess() ? STARTED : START_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_DOWNLOAD_APP:
-                updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
-                actionResponse = taskManagerService.downloadApp(taskDescription);
-                nextStatus = actionResponse.isSuccess() ? APP_DOWNLOADED : APP_DOWNLOAD_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_DOWNLOAD_DATA:
-                updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
-                actionResponse = taskManagerService.downloadData(taskDescription);
-                nextStatus = actionResponse.isSuccess() ? DATA_DOWNLOADED : DATA_DOWNLOAD_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_COMPUTE:
-                updateStatusAndGetNextAction(chainTaskId, COMPUTING);
-                actionResponse = taskManagerService.compute(taskDescription);
-                if (actionResponse.getDetails() != null) {
-                    actionResponse.getDetails().tailLogs();
-                }
-                nextStatus = actionResponse.isSuccess() ? COMPUTED : COMPUTE_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_CONTRIBUTE:
-                updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
-                actionResponse = taskManagerService.contribute(chainTaskId);
-                nextStatus = actionResponse.isSuccess() ? CONTRIBUTED : CONTRIBUTE_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_REVEAL:
-                updateStatusAndGetNextAction(chainTaskId, REVEALING);
-                actionResponse = taskManagerService.reveal(chainTaskId, extra);
-                nextStatus = actionResponse.isSuccess() ? REVEALED : REVEAL_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_UPLOAD:
-                updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
-                actionResponse = taskManagerService.uploadResult(chainTaskId);
-                nextStatus = actionResponse.isSuccess() ? RESULT_UPLOADED : RESULT_UPLOAD_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_CONTRIBUTE_AND_FINALIZE:
-                updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_ONGOING);
-                actionResponse = taskManagerService.contributeAndFinalize(chainTaskId);
-                nextStatus = actionResponse.isSuccess() ? CONTRIBUTE_AND_FINALIZE_DONE : CONTRIBUTE_AND_FINALIZE_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_COMPLETE:
-                updateStatusAndGetNextAction(chainTaskId, COMPLETING);
-                actionResponse = taskManagerService.complete(chainTaskId);
-                subscriptionService.unsubscribeFromTopic(chainTaskId);
-                nextStatus = actionResponse.isSuccess() ? COMPLETED : COMPLETE_FAILED;
-                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
-                break;
-            case PLEASE_ABORT:
-                if (!taskManagerService.abort(chainTaskId)) {
-                    log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
-                    return;
-                }
-                TaskAbortCause taskAbortCause = notification.getTaskAbortCause();
-                ReplicateStatusCause replicateAbortCause = ReplicateStatusCause.getReplicateAbortCause(taskAbortCause);
-                updateStatusAndGetNextAction(chainTaskId, ABORTED, replicateAbortCause);
-                break;
-            case PLEASE_CONTINUE:
-            case PLEASE_WAIT:
-                break;
+
+        final BiFunction<TaskDescription, TaskNotification, TaskNotificationType> function = actionForNotification.get(action);
+        if (function == null) {
+            log.error("No function for notification [action:{}]", action);
+            return;
         }
 
+        final TaskNotificationType nextAction = function.apply(taskDescription, notification);
         if (nextAction != null) {
             log.debug("Sending next action [chainTaskId:{}, nextAction:{}]", chainTaskId, nextAction);
             applicationEventPublisher.publishEvent(TaskNotification.builder()
@@ -194,6 +144,106 @@ public class TaskNotificationService {
         }
 
     }
+
+    // region Actions
+    private TaskNotificationType pleaseStart(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+        updateStatusAndGetNextAction(chainTaskId, STARTING);
+        final ReplicateActionResponse actionResponse = taskManagerService.start(taskDescription);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? STARTED : START_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseDownloadApp(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
+        final ReplicateActionResponse actionResponse = taskManagerService.downloadApp(taskDescription);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? APP_DOWNLOADED : APP_DOWNLOAD_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseDownloadData(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
+        final ReplicateActionResponse actionResponse = taskManagerService.downloadData(taskDescription);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? DATA_DOWNLOADED : DATA_DOWNLOAD_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseCompute(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, COMPUTING);
+        final ReplicateActionResponse actionResponse = taskManagerService.compute(taskDescription);
+        if (actionResponse.getDetails() != null) {
+            actionResponse.getDetails().tailLogs();
+        }
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? COMPUTED : COMPUTE_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseContribute(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
+        final ReplicateActionResponse actionResponse = taskManagerService.contribute(chainTaskId);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? CONTRIBUTED : CONTRIBUTE_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseReveal(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, REVEALING);
+        final ReplicateActionResponse actionResponse = taskManagerService.reveal(chainTaskId, notification.getTaskNotificationExtra());
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? REVEALED : REVEAL_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseUpload(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
+        final ReplicateActionResponse actionResponse = taskManagerService.uploadResult(chainTaskId);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? RESULT_UPLOADED : RESULT_UPLOAD_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseContributeAndFinalize(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_ONGOING);
+        final ReplicateActionResponse actionResponse = taskManagerService.contributeAndFinalize(chainTaskId);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? CONTRIBUTE_AND_FINALIZE_DONE : CONTRIBUTE_AND_FINALIZE_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseComplete(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        updateStatusAndGetNextAction(chainTaskId, COMPLETING);
+        final ReplicateActionResponse actionResponse = taskManagerService.complete(chainTaskId);
+        subscriptionService.unsubscribeFromTopic(chainTaskId);
+        final ReplicateStatus nextStatus = actionResponse.isSuccess() ? COMPLETED : COMPLETE_FAILED;
+        return updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
+    }
+
+    private TaskNotificationType pleaseAbort(TaskDescription taskDescription, TaskNotification notification) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+
+        if (!taskManagerService.abort(chainTaskId)) {
+            log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+        TaskAbortCause taskAbortCause = notification.getTaskAbortCause();
+        ReplicateStatusCause replicateAbortCause = ReplicateStatusCause.getReplicateAbortCause(taskAbortCause);
+        updateStatusAndGetNextAction(chainTaskId, ABORTED, replicateAbortCause);
+
+        return null;
+    }
+    // endregion
 
     private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(TaskNotificationExtra extra) {
         boolean success = true;
