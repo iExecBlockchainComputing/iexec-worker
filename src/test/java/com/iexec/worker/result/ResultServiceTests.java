@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,10 @@ import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.eip712.EIP712Domain;
 import com.iexec.commons.poco.eip712.entity.EIP712Challenge;
+import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
@@ -34,6 +36,7 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +56,7 @@ import java.util.Optional;
 import static com.iexec.commons.poco.chain.DealParams.DROPBOX_RESULT_STORAGE_PROVIDER;
 import static com.iexec.commons.poco.chain.DealParams.IPFS_RESULT_STORAGE_PROVIDER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @Slf4j
@@ -65,6 +69,13 @@ class ResultServiceTests {
     private static final String CHAIN_TASK_ID_2 = "taskId2";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker/";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
+
+    private static final String AUTHORIZATION = "0x4";
+    private static final WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION = WorkerpoolAuthorization.builder()
+            .chainTaskId("0x1")
+            .enclaveChallenge("0x2")
+            .workerWallet("0x3")
+            .build();
 
     @TempDir
     public File folderRule;
@@ -110,7 +121,8 @@ class ResultServiceTests {
                 "\"callback-data\":null," +
                 "\"task-id\":null," +
                 "\"result-digest\":null," +
-                "\"enclave-signature\":null" +
+                "\"enclave-signature\":null," +
+                "\"error-message\":null" +
                 "}");
     }
 
@@ -511,6 +523,31 @@ class ResultServiceTests {
     //endregion
 
     //region getIexecUploadToken
+    @Test
+    void shouldGetIexecUploadTokenFromWorkerpoolAuthorization() {
+        final String uploadToken = "uploadToken";
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEqualTo(uploadToken);
+        verify(credentialsService).hashAndSignMessage(anyString());
+        verify(resultProxyClient).getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION);
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenWorkerpoolAuthorizationSinceSigningReturnsEmpty() {
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(""));
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
+        verify(credentialsService).hashAndSignMessage(anyString());
+        verifyNoInteractions(resultProxyClient);
+    }
+
+    @Test
+    void shouldNotGetIexecUploadTokenFromWorkerpoolAuthorizationSinceFeignException() {
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
+    }
+
     @Test
     void shouldGetIexecUploadToken() {
         final int chainId = 1;

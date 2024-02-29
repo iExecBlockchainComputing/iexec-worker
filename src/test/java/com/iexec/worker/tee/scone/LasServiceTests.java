@@ -1,3 +1,19 @@
+/*
+ * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.iexec.worker.tee.scone;
 
 import com.github.dockerjava.api.model.Device;
@@ -51,7 +67,7 @@ class LasServiceTests {
     LasService lasService;
 
     @BeforeEach
-    void init() throws Exception {
+    void init() {
         MockitoAnnotations.openMocks(this);
         lasService = spy(new LasService(
                 CONTAINER_NAME,
@@ -62,9 +78,9 @@ class LasServiceTests {
                 dockerService
         ));
 
-        when(sconeConfiguration.getRegistryName()).thenReturn(REGISTRY_NAME);
-        when(sconeConfiguration.getRegistryUsername()).thenReturn(REGISTRY_USERNAME);
-        when(sconeConfiguration.getRegistryPassword()).thenReturn(REGISTRY_PASSWORD);
+        final SconeConfiguration.SconeRegistry registry = new SconeConfiguration.SconeRegistry(
+                REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD);
+        when(sconeConfiguration.getRegistry()).thenReturn(registry);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(dockerClientInstanceMock);
@@ -96,7 +112,7 @@ class LasServiceTests {
     }
 
     @Test
-    void shouldStartLasServiceOnlyOnce() throws Exception {
+    void shouldStartLasServiceOnlyOnce() {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
@@ -124,7 +140,7 @@ class LasServiceTests {
     }
 
     @Test
-    void shouldNotStartLasServiceSinceClientError() throws Exception {
+    void shouldNotStartLasServiceSinceClientError() {
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
 
@@ -133,9 +149,10 @@ class LasServiceTests {
     }
 
     @Test
-    void shouldNotStartLasServiceSinceClientException() throws Exception {
+    void shouldNotStartLasServiceSinceClientException() {
+        // getClient calls DockerClientFactory.getDockerClientInstance which can throw runtime exceptions
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
-                .thenThrow(Exception.class);
+                .thenThrow(RuntimeException.class);
 
         assertFalse(lasService.start());
         assertFalse(lasService.isStarted());
@@ -164,14 +181,12 @@ class LasServiceTests {
     @Test
     void shouldStopAndRemoveContainer() {
         when(lasService.isStarted()).thenReturn(true).thenCallRealMethod();
-        when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(true);
-        when(dockerClientInstanceMock.isContainerPresent(CONTAINER_NAME)).thenReturn(false);
+        when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(false);
 
         assertTrue(lasService.stopAndRemoveContainer());
         assertFalse(lasService.isStarted());
 
         verify(dockerClientInstanceMock).stopAndRemoveContainer(CONTAINER_NAME);
-        verify(dockerClientInstanceMock).isContainerPresent(CONTAINER_NAME);
     }
 
     @Test
@@ -182,20 +197,17 @@ class LasServiceTests {
         assertFalse(lasService.isStarted());
 
         verify(dockerClientInstanceMock, times(0)).stopAndRemoveContainer(CONTAINER_NAME);
-        verify(dockerClientInstanceMock, times(0)).isContainerPresent(CONTAINER_NAME);
     }
 
     @Test
     void shouldFailTotStopAndRemoveContainer() {
         when(lasService.isStarted()).thenReturn(true).thenCallRealMethod();
-        when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(false);
-        when(dockerClientInstanceMock.isContainerPresent(CONTAINER_NAME)).thenReturn(true);
+        when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(true);
 
         assertFalse(lasService.stopAndRemoveContainer());
         assertTrue(lasService.isStarted());
 
         verify(dockerClientInstanceMock).stopAndRemoveContainer(CONTAINER_NAME);
-        verify(dockerClientInstanceMock).isContainerPresent(CONTAINER_NAME);
     }
     // endregion
 }

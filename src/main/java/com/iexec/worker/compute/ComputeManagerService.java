@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.function.Predicate;
 
 @Slf4j
 @Service
@@ -223,6 +223,13 @@ public class ComputeManagerService {
         }
         resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
         return postComputeResponse;
+    }
+
+    public boolean abort(String chainTaskId) {
+        Predicate<String> containsChainTaskId = name -> name.contains(chainTaskId);
+        long remaining = dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
+        log.info("Stopped task containers [chainTaskId:{}, remaining:{}]", chainTaskId, remaining);
+        return remaining == 0L;
     }
 
 }

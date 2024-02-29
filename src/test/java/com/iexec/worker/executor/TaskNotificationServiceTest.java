@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -82,6 +81,8 @@ class TaskNotificationServiceTest {
     void init() {
         MockitoAnnotations.openMocks(this);
         taskDescription = mock(TaskDescription.class);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
     }
 
     @Test
@@ -100,22 +101,16 @@ class TaskNotificationServiceTest {
     @Test
     void shouldStoreWorkerpoolAuthorizationOnly() {
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
-            .chainTaskId(CHAIN_TASK_ID)
-            .build();
-        TaskNotification currentNotification = TaskNotification.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTINUE)
-                .taskNotificationExtra(TaskNotificationExtra.builder()
-                    .workerpoolAuthorization(auth)
-                    .build())
                 .build();
-
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().workerpoolAuthorization(auth).build();
+        TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_CONTINUE, extra);
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(workerpoolAuthorizationService, Mockito.times(1))
                 .putWorkerpoolAuthorization(any());
         verify(smsService, times(0))
-            .attachSmsUrlToTask(anyString(), anyString());
+                .attachSmsUrlToTask(anyString(), anyString());
     }
 
     @Test
@@ -124,15 +119,12 @@ class TaskNotificationServiceTest {
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
-        TaskNotification currentNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTINUE)
-                .taskNotificationExtra(TaskNotificationExtra.builder()
-                    .workerpoolAuthorization(auth)
-                    .smsUrl(smsUrl)
-                    .build())
+        TaskNotificationExtra extra = TaskNotificationExtra.builder()
+                .workerpoolAuthorization(auth)
+                .smsUrl(smsUrl)
                 .build();
-                when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
+        TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_CONTINUE, extra);
+        when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
                 .thenReturn(false);
         when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
                 .thenReturn(true);
@@ -142,7 +134,7 @@ class TaskNotificationServiceTest {
         verify(workerpoolAuthorizationService, Mockito.times(1))
                 .putWorkerpoolAuthorization(any());
         verify(smsService, times(1))
-            .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+                .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
     }
 
 
@@ -152,32 +144,24 @@ class TaskNotificationServiceTest {
         WorkerpoolAuthorization auth = WorkerpoolAuthorization.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .build();
-        TaskNotification currentNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTINUE)
-                .taskNotificationExtra(TaskNotificationExtra.builder()
-                    .workerpoolAuthorization(auth)
-                    .smsUrl(smsUrl)
-                    .build())
+        TaskNotificationExtra extra = TaskNotificationExtra.builder()
+                .workerpoolAuthorization(auth)
+                .smsUrl(smsUrl)
                 .build();
+        TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_CONTINUE, extra);
         when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
                 .thenReturn(false);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(smsService, times(0))
-            .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
+                .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
     }
 
     @Test
-    void shouldAbortSinceNoTaskDescription() throws InterruptedException {
+    void shouldAbortSinceNoTaskDescription() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_START)
-                .build();
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
+        TaskNotification currentNotification = getTaskNotification(PLEASE_START);
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_WAIT);
 
@@ -191,232 +175,235 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldStart() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_START)
-                .build();
+    void shouldStart() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_START);
         when(taskManagerService.start(taskDescription)).thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
                 .thenReturn(PLEASE_DOWNLOAD_APP);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).start(taskDescription);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_DOWNLOAD_APP)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_DOWNLOAD_APP);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
-    void shouldDownloadApp() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_DOWNLOAD_APP)
-                .build();
+    void shouldFailToStart() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_START);
+        when(taskManagerService.start(taskDescription)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).start(taskDescription);
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldDownloadApp() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_APP);
         when(taskManagerService.downloadApp(taskDescription)).thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
                 .thenReturn(PLEASE_DOWNLOAD_DATA);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).downloadApp(taskDescription);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_DOWNLOAD_DATA)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_DOWNLOAD_DATA);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
-    void shouldDownloadData() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_DOWNLOAD_DATA)
-                .build();
-        TaskDescription taskDescription = TaskDescription.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .build();
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
-                .thenReturn(taskDescription);
+    void shouldFailToDownloadApp() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_APP);
+        when(taskManagerService.downloadApp(taskDescription)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).downloadApp(taskDescription);
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldDownloadData() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_DATA);
         when(taskManagerService.downloadData(taskDescription))
                 .thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // DATA_DOWNLOADED
                 .thenReturn(PLEASE_COMPUTE);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).downloadData(taskDescription);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_COMPUTE)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_COMPUTE);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
-    void shouldCompute() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_COMPUTE)
-                .build();
+    void shouldFailToDownloadData() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_DATA);
+        when(taskManagerService.downloadData(taskDescription)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).downloadData(taskDescription);
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldCompute() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_COMPUTE);
         when(taskManagerService.compute(taskDescription)).thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
                 .thenReturn(PLEASE_CONTINUE);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).compute(taskDescription);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTINUE)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_CONTINUE);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
-    void shouldContribute() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTRIBUTE)
-                .build();
+    void shouldFailToCompute() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_COMPUTE);
+        when(taskManagerService.compute(taskDescription)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).compute(taskDescription);
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldContribute() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE);
         when(taskManagerService.contribute(CHAIN_TASK_ID))
                 .thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // CONTRIBUTED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).contribute(CHAIN_TASK_ID);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_WAIT)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_WAIT);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
-    void shouldContributeAndFinalize() throws InterruptedException {
-        TaskNotification currentNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTRIBUTE_AND_FINALIZE)
-                .build();
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+    void shouldFailToContribute() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE);
+        when(taskManagerService.contribute(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).contribute(CHAIN_TASK_ID);
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldContributeAndFinalize() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE_AND_FINALIZE);
         when(taskManagerService.contributeAndFinalize(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
         verify(taskManagerService).contributeAndFinalize(CHAIN_TASK_ID);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_WAIT)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_WAIT);
         verify(applicationEventPublisher).publishEvent(nextNotification);
     }
 
     @Test
-    void shouldNotContributeAndFinalize() throws InterruptedException {
-        TaskNotification currentNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_CONTRIBUTE_AND_FINALIZE)
-                .build();
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+    void shouldFailToContributeAndFinalize() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE_AND_FINALIZE);
         when(taskManagerService.contributeAndFinalize(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
 
         taskNotificationService.onTaskNotification(currentNotification);
         verify(taskManagerService).contributeAndFinalize(CHAIN_TASK_ID);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_ABORT)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
         verify(applicationEventPublisher).publishEvent(nextNotification);
     }
 
     @Test
-    void shouldReveal() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_REVEAL)
-                .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
-                .build();
+    void shouldReveal() {
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(10).build();
+        TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_REVEAL, extra);
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
                 .thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // REVEALED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra());
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_WAIT)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_WAIT);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
-    void shouldUpload() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_UPLOAD)
-                .taskNotificationExtra(TaskNotificationExtra.builder().blockNumber(10).build())
-                .build();
+    void shouldFailToReveal() {
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(10).build();
+        TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_REVEAL, extra);
+        when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
+                .thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
 
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra());
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldUpload() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_UPLOAD);
         when(taskManagerService.uploadResult(CHAIN_TASK_ID))
                 .thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // RESULT_UPLOADED
                 .thenReturn(PLEASE_WAIT);
 
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).uploadResult(CHAIN_TASK_ID);
-        TaskNotification nextNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_WAIT)
-                .build();
+        TaskNotification nextNotification = getTaskNotification(PLEASE_WAIT);
         verify(applicationEventPublisher, Mockito.times(1))
                 .publishEvent(nextNotification);
     }
 
     @Test
+    void shouldFailToUpload() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_UPLOAD);
+        when(taskManagerService.uploadResult(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).uploadResult(CHAIN_TASK_ID);
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
     void shouldComplete() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_COMPLETE)
-                .build();
+        TaskNotification currentNotification = getTaskNotification(PLEASE_COMPLETE);
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
                 .thenReturn(PLEASE_WAIT);
@@ -425,24 +412,29 @@ class TaskNotificationServiceTest {
 
         verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
         verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
-        verify(applicationEventPublisher, Mockito.times(0))
-                .publishEvent(any());
+        TaskNotification nextNotification = getTaskNotification(PLEASE_WAIT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
     }
 
     @Test
-    void shouldAbort() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(TaskNotificationType.PLEASE_ABORT)
-                .taskNotificationExtra(TaskNotificationExtra.builder()
-                        .taskAbortCause(TaskAbortCause.CONTRIBUTION_TIMEOUT)
-                        .build())
-                .build();
+    void shouldFailToComplete() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_COMPLETE);
+        when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
+        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
+
+        taskNotificationService.onTaskNotification(currentNotification);
+
+        verify(taskManagerService).complete(CHAIN_TASK_ID);
+        verify(subscriptionService).unsubscribeFromTopic(any());
+        TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
+        verify(applicationEventPublisher).publishEvent(nextNotification);
+    }
+
+    @Test
+    void shouldAbort() {
+        TaskNotificationExtra extra = TaskNotificationExtra.builder().taskAbortCause(TaskAbortCause.CONTRIBUTION_TIMEOUT).build();
+        TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_ABORT, extra);
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -453,15 +445,9 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldRetryCompleteUntilAchieved() throws InterruptedException {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        TaskNotification currentNotification = TaskNotification.builder().chainTaskId(CHAIN_TASK_ID)
-                .taskNotificationType(PLEASE_COMPLETE)
-                .build();
+    void shouldRetryCompleteUntilAchieved() {
+        TaskNotification currentNotification = getTaskNotification(PLEASE_COMPLETE);
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(getChainTask()));
-        doNothing().when(subscriptionService).waitForSessionReady();
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
                 .thenReturn(null)
                 .thenReturn(null)
@@ -540,7 +526,7 @@ class TaskNotificationServiceTest {
     }
 
     @Test
-    void shouldResumeUpdateWhenStompReady() throws InterruptedException, ExecutionException, TimeoutException {
+    void shouldResumeUpdateWhenStompReady() throws InterruptedException {
         final ChainTask chainTask = getChainTask();
         final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
                 .builder()
@@ -582,6 +568,18 @@ class TaskNotificationServiceTest {
                 .chainTaskId(CHAIN_TASK_ID)
                 .finalDeadline(Instant.now().toEpochMilli() + 100_000)  // 100 seconds from now
                 .build();
+    }
+
+    private TaskNotification getTaskNotificationWithExtra(TaskNotificationType notificationType, TaskNotificationExtra notificationExtra) {
+        return TaskNotification.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .taskNotificationType(notificationType)
+                .taskNotificationExtra(notificationExtra)
+                .build();
+    }
+
+    private TaskNotification getTaskNotification(TaskNotificationType notificationType) {
+        return getTaskNotificationWithExtra(notificationType, null);
     }
 }
 

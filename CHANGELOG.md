@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[8.4.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.4.0) 2024-02-29
+
+### New Features
+
+- Retrieve Result Proxy JWT with `WorkerpoolAuthorization`. (#581)
+- Push Result Proxy JWT for IPFS to SMS. (#582)
+
+### Quality
+
+- `SconeConfiguration` class becomes immutable. (#577)
+- Fix `onTaskNotification` visibility and lower its complexity. (#578)
+- Throw a dedicated exception on empty parameters when authenticating to a docker registry. (#579)
+- Check replicate recoverability wih a dedicated check in `ReplicateRecoveryService`. (#580)
+
+### Dependency Upgrades
+
+- Upgrade to `iexec-common` 8.4.0. (#583)
+- Upgrade to `iexec-blockchain-adapter` 8.4.0. (#584)
+- Upgrade to `iexec-result-proxy` 8.4.0. (#584)
+- Upgrade to `iexec-sms` 8.5.0. (#584)
+
 ## [[8.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.3.0) 2024-01-11
 
 ### New Features

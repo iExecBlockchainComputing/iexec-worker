@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.eip712.EIP712Domain;
 import com.iexec.commons.poco.eip712.entity.EIP712Challenge;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -188,7 +189,8 @@ public class ResultService implements Purgeable {
      * - link could be retrieved from core before finalize
      *
      * */
-    public String uploadResultAndGetLink(String chainTaskId) {
+    public String uploadResultAndGetLink(WorkerpoolAuthorization workerpoolAuthorization) {
+        final String chainTaskId = workerpoolAuthorization.getChainTaskId();
         TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
 
         // Offchain computing - basic & tee
@@ -277,6 +279,28 @@ public class ResultService implements Purgeable {
 
     String buildResultLink(String storage, String location) {
         return String.format("{ \"storage\": \"%s\", \"location\": \"%s\" }", storage, location);
+    }
+
+    /**
+     * Gets and returns a JWT against a valid {@code WorkerpoolAuthorization}
+     *
+     * @param workerpoolAuthorization The auhtorization
+     * @return The JWT
+     */
+    // TODO Add JWT validation
+    public String getIexecUploadToken(WorkerpoolAuthorization workerpoolAuthorization) {
+        try {
+            final String hash = workerpoolAuthorization.getHash();
+            final String authorization = credentialsService.hashAndSignMessage(hash).getValue();
+            if (authorization.isEmpty()) {
+                log.error("Couldn't sign hash for an unknown reason [hash:{}]", hash);
+                return "";
+            }
+            return resultProxyClient.getJwt(authorization, workerpoolAuthorization);
+        } catch (Exception e) {
+            log.error("Failed to get upload token", e);
+            return "";
+        }
     }
 
     public String getIexecUploadToken() {

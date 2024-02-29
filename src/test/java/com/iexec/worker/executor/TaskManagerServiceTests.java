@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,9 +36,9 @@ import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.WorkflowException;
@@ -47,27 +47,30 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-
 class TaskManagerServiceTests {
 
-    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private static final String WORKER_ADDRESS = "WORKER_ADDRESS";
-    public static final String PATH_TO_DOWNLOADED_FILE = "/path/to/downloaded/file";
+    private static final String CHAIN_TASK_ID = "0x1";
+    private static final String ENCLAVE_CHALLENGE = "0x2";
+    private static final String WORKER_ADDRESS = "0x3";
+    private static final String PATH_TO_DOWNLOADED_FILE = "/path/to/downloaded/file";
+    private static final WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION =
+            WorkerpoolAuthorization.builder()
+                    .chainTaskId(CHAIN_TASK_ID)
+                    .enclaveChallenge(ENCLAVE_CHALLENGE)
+                    .workerWallet(WORKER_ADDRESS)
+                    .build();
 
     private TaskManagerService taskManagerService;
     @Mock
@@ -85,7 +88,7 @@ class TaskManagerServiceTests {
     @Mock
     private ResultService resultService;
     @Mock
-    private DockerService dockerService;
+    private SmsService smsService;
     @Mock
     private SubscriptionService subscriptionService;
     @Mock
@@ -93,9 +96,6 @@ class TaskManagerServiceTests {
 
     @Mock
     private TeeService teeMockedService;
-
-    @Captor
-    private ArgumentCaptor<Predicate<String>> predicateCaptor;
 
     @BeforeEach
     void init() {
@@ -110,7 +110,7 @@ class TaskManagerServiceTests {
                 teeServicesManager,
                 dataService,
                 resultService,
-                dockerService,
+                smsService,
                 subscriptionService,
                 purgeService,
                 WORKER_ADDRESS
@@ -128,13 +128,6 @@ class TaskManagerServiceTests {
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
                 .inputFiles(List.of("http://file1"));
-    }
-
-    WorkerpoolAuthorization getStubAuth(String enclaveChallenge) {
-        return WorkerpoolAuthorization.builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge(enclaveChallenge)
-                .build();
     }
 
     //region start
@@ -1147,8 +1140,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldUploadResultWithResultUri() {
         String resultUri = "resultUri";
-        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
-                .thenReturn(resultUri);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID)).thenReturn(WORKERPOOL_AUTHORIZATION);
+        when(resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION)).thenReturn(resultUri);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(null);
 
@@ -1164,8 +1157,8 @@ class TaskManagerServiceTests {
     void shouldUploadResultWithResultUriAndCallbackData() {
         String resultUri = "resultUri";
         String callbackData = "callbackData";
-        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
-                .thenReturn(resultUri);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID)).thenReturn(WORKERPOOL_AUTHORIZATION);
+        when(resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION)).thenReturn(resultUri);
         when(resultService.getComputedFile(CHAIN_TASK_ID))
                 .thenReturn(ComputedFile.builder()
                         .callbackData(callbackData)
@@ -1182,8 +1175,8 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotUploadResultSinceEmptyResultLink() {
-        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID))
-                .thenReturn("");
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID)).thenReturn(WORKERPOOL_AUTHORIZATION);
+        when(resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION)).thenReturn("");
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.uploadResult(CHAIN_TASK_ID);
@@ -1330,7 +1323,8 @@ class TaskManagerServiceTests {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(contributionService.getContribution(computedFile)).thenReturn(contribution);
-        when(resultService.uploadResultAndGetLink(CHAIN_TASK_ID)).thenReturn(resultLink);
+        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID)).thenReturn(WORKERPOOL_AUTHORIZATION);
+        when(resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION)).thenReturn(resultLink);
         when(iexecHubService.contributeAndFinalize(any(), anyString(), anyString())).thenReturn(Optional.of(chainReceipt));
         ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
 
@@ -1381,15 +1375,33 @@ class TaskManagerServiceTests {
 
     //region abort
     @Test
-    void shouldAbortTask() {
+    void shouldReturnFalseWhenRemainingContainers() {
+        when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(false);
         when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(true);
-
-        assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isTrue();
-        verify(dockerService).stopRunningContainersWithNamePredicate(predicateCaptor.capture());
+        assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isFalse();
         verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
+        verify(computeManagerService).abort(CHAIN_TASK_ID);
         verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
-        // Check the predicate
-        assertThat(predicateCaptor.getValue().test(CHAIN_TASK_ID)).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenRemainingService() {
+        when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
+        when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(false);
+        assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isFalse();
+        verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
+        verify(computeManagerService).abort(CHAIN_TASK_ID);
+        verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
+    }
+
+    @Test
+    void shouldAbortTask() {
+        when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
+        when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(true);
+        assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isTrue();
+        verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
+        verify(computeManagerService).abort(CHAIN_TASK_ID);
+        verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
     }
 
     //endregion

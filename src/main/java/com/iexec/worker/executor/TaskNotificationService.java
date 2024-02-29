@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,10 +83,11 @@ public class TaskNotificationService {
      */
     @Async
     @EventListener
-    protected void onTaskNotification(TaskNotification notification) {
+    public void onTaskNotification(TaskNotification notification) {
         String chainTaskId = notification.getChainTaskId();
         TaskNotificationType action = notification.getTaskNotificationType();
         ReplicateActionResponse actionResponse;
+        ReplicateStatus nextStatus;
         TaskNotificationType nextAction = null;
         log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
@@ -97,7 +98,7 @@ public class TaskNotificationService {
 
         TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
-        if (!storeWorkerpoolAuthAndSmsFromExtraIfPresent(extra)){
+        if (!storeWorkerpoolAuthAndSmsFromExtraIfPresent(extra)) {
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
@@ -112,29 +113,20 @@ public class TaskNotificationService {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
                 actionResponse = taskManagerService.start(taskDescription);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, STARTED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, START_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? STARTED : START_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_DOWNLOAD_APP:
                 updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
                 actionResponse = taskManagerService.downloadApp(taskDescription);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOAD_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? APP_DOWNLOADED : APP_DOWNLOAD_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_DOWNLOAD_DATA:
                 updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
                 actionResponse = taskManagerService.downloadData(taskDescription);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOAD_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? DATA_DOWNLOADED : DATA_DOWNLOAD_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_COMPUTE:
                 updateStatusAndGetNextAction(chainTaskId, COMPUTING);
@@ -142,57 +134,39 @@ public class TaskNotificationService {
                 if (actionResponse.getDetails() != null) {
                     actionResponse.getDetails().tailLogs();
                 }
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPUTE_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? COMPUTED : COMPUTE_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_CONTRIBUTE:
                 updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
                 actionResponse = taskManagerService.contribute(chainTaskId);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? CONTRIBUTED : CONTRIBUTE_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_REVEAL:
                 updateStatusAndGetNextAction(chainTaskId, REVEALING);
                 actionResponse = taskManagerService.reveal(chainTaskId, extra);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, REVEALED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, REVEAL_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? REVEALED : REVEAL_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_UPLOAD:
                 updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
                 actionResponse = taskManagerService.uploadResult(chainTaskId);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOAD_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? RESULT_UPLOADED : RESULT_UPLOAD_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_CONTRIBUTE_AND_FINALIZE:
                 updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_ONGOING);
                 actionResponse = taskManagerService.contributeAndFinalize(chainTaskId);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_DONE, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? CONTRIBUTE_AND_FINALIZE_DONE : CONTRIBUTE_AND_FINALIZE_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
                 actionResponse = taskManagerService.complete(chainTaskId);
                 subscriptionService.unsubscribeFromTopic(chainTaskId);
-                if (actionResponse.isSuccess()) {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETED, actionResponse.getDetails());
-                } else {
-                    nextAction = updateStatusAndGetNextAction(chainTaskId, COMPLETE_FAILED, actionResponse.getDetails());
-                }
+                nextStatus = actionResponse.isSuccess() ? COMPLETED : COMPLETE_FAILED;
+                nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_ABORT:
                 if (!taskManagerService.abort(chainTaskId)) {
@@ -223,10 +197,10 @@ public class TaskNotificationService {
 
     private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(TaskNotificationExtra extra) {
         boolean success = true;
-        if(extra != null && extra.getWorkerpoolAuthorization() != null){
+        if (extra != null && extra.getWorkerpoolAuthorization() != null) {
             success = workerpoolAuthorizationService
-                .putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
-            if(success && extra.getSmsUrl() != null){
+                    .putWorkerpoolAuthorization(extra.getWorkerpoolAuthorization());
+            if (success && extra.getSmsUrl() != null) {
                 String chainTaskId = extra.getWorkerpoolAuthorization().getChainTaskId();
                 smsService.attachSmsUrlToTask(chainTaskId, extra.getSmsUrl());
             }

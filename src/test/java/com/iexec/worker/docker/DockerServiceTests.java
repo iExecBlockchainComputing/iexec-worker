@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
@@ -37,9 +40,11 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import java.io.File;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static com.iexec.commons.containers.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(OutputCaptureExtension.class)
@@ -68,9 +73,30 @@ class DockerServiceTests {
         assertThat(dockerClientInstance).isEqualTo(DockerClientFactory.getDockerClientInstance());
     }
 
+    private static Stream<Arguments> provideBadParametersForGetClient() {
+        return Stream.of(
+                Arguments.of(null, null, null),
+                Arguments.of("", "", ""),
+                Arguments.of("a", "b", null),
+                Arguments.of("a", "b", ""),
+                Arguments.of("a", null, "c"),
+                Arguments.of("a", "", "c"),
+                Arguments.of(null, "b", "c"),
+                Arguments.of("", "b", "c")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideBadParametersForGetClient")
+    void shouldFailToGetAuthenticatedClient(String registryAddress, String registryUsername, String registryPassword) {
+        assertThatThrownBy(() -> dockerService.getClient(registryAddress, registryUsername, registryPassword))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("All Docker registry parameters must be provided");
+    }
+
     // docker.io/image:tag
     @Test
-    void shouldGetAuthenticatedClientWithDockerIoRegistry() throws Exception {
+    void shouldGetAuthenticatedClientWithDockerIoRegistry() {
         String registry = DEFAULT_DOCKER_REGISTRY;
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -90,7 +116,7 @@ class DockerServiceTests {
 
     // registry.xyz/name:tag
     @Test
-    void shouldGetAuthenticatedClientWithCustomRegistry() throws Exception {
+    void shouldGetAuthenticatedClientWithCustomRegistry() {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -110,7 +136,7 @@ class DockerServiceTests {
 
     // registry:port/image:tag
     @Test
-    void shouldGetAuthenticatedClientWithCustomRegistryAndPort() throws Exception {
+    void shouldGetAuthenticatedClientWithCustomRegistryAndPort() {
         String registry = "registry.host.com:5050";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -127,10 +153,10 @@ class DockerServiceTests {
         verify(dockerService).getClient(registry, credentials.getUsername(), credentials.getPassword());
         verify(dockerService, never()).getClient();
     }
-    
+
     // image:tag
     @Test
-    void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() throws Exception {
+    void shouldGetAuthenticatedClientWithDefaultRegistryWhenRegistryNotInImageName() {
         String registry = "";
         String imageName = registry + "name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -148,14 +174,14 @@ class DockerServiceTests {
                         credentials.getPassword());
         dockerService.getClient(imageName);
         verify(dockerService).getClient(
-                        DEFAULT_DOCKER_REGISTRY,
-                        credentials.getUsername(),
-                        credentials.getPassword());
+                DEFAULT_DOCKER_REGISTRY,
+                credentials.getUsername(),
+                credentials.getPassword());
         verify(dockerService, never()).getClient();
     }
 
     @Test
-    void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() throws Exception {
+    void shouldGetUnauthenticatedClientWhenCredentialsNotFoundWithCustomRegistry() {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
@@ -167,7 +193,7 @@ class DockerServiceTests {
     }
 
     @Test
-    void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() throws Exception {
+    void shouldGetUnauthenticatedClientWhenAuthFailureWithCustomRegistry() {
         String registry = "registry.xyz";
         String imageName = registry + "/name:tag";
         RegistryCredentials credentials = RegistryCredentials.builder()
@@ -176,7 +202,8 @@ class DockerServiceTests {
                 .build();
         when(dockerRegistryConfiguration.getRegistryCredentials(registry))
                 .thenReturn(Optional.of(credentials));
-        doThrow(Exception.class)
+        // getClient calls DockerClientFactory.getDockerClientInstance which can throw runtime exceptions
+        doThrow(RuntimeException.class)
                 .when(dockerService)
                 .getClient(registry, credentials.getUsername(), credentials.getPassword());
 
