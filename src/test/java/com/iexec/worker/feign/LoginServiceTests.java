@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.internal.stubbing.answers.AnswersWithDelay;
+import org.mockito.internal.stubbing.answers.Returns;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.web3j.crypto.Credentials;
@@ -46,8 +48,7 @@ import static com.iexec.worker.feign.LoginService.TOKEN_PREFIX;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(OutputCaptureExtension.class)
 class LoginServiceTests {
@@ -142,7 +143,7 @@ class LoginServiceTests {
     void shouldLoginOnceOnSimultaneousCalls(CapturedOutput output) throws InterruptedException, ExecutionException, TimeoutException {
         Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
-        when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
+        doAnswer(new AnswersWithDelay(100L, new Returns("challenge"))).when(coreClient).getChallenge(credentials.getAddress());
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
         CompletableFuture<Void> run1 = CompletableFuture.runAsync(() -> loginService.login());

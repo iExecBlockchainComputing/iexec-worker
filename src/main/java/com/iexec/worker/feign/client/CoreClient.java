@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import com.iexec.commons.poco.notification.TaskNotification;
 import com.iexec.commons.poco.notification.TaskNotificationType;
 import com.iexec.commons.poco.security.Signature;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +32,7 @@ import java.util.List;
 public interface CoreClient {
 
     @GetMapping("/version")
-    ResponseEntity<String> getCoreVersion();
+    String getCoreVersion();
 
     //region /workers
     @GetMapping("/workers/challenge")
@@ -47,14 +46,14 @@ public interface CoreClient {
     String ping(@RequestHeader String authorization);
 
     @PostMapping("/workers/register")
-    ResponseEntity<Void> registerWorker(@RequestHeader String authorization,
-                                        @RequestBody WorkerModel model);
+    Void registerWorker(@RequestHeader String authorization,
+                        @RequestBody WorkerModel model);
 
     @GetMapping("/workers/config")
-    ResponseEntity<PublicConfiguration> getPublicConfiguration();
+    PublicConfiguration getPublicConfiguration();
 
     @GetMapping("/workers/computing")
-    ResponseEntity<List<String>> getComputingTasks(@RequestHeader String authorization);
+    List<String> getComputingTasks(@RequestHeader String authorization);
     //endregion
 
     //region /replicates
@@ -64,12 +63,12 @@ public interface CoreClient {
             @RequestParam long blockNumber);
 
     @GetMapping("/replicates/interrupted")
-    ResponseEntity<List<TaskNotification>> getMissedTaskNotifications(
+    List<TaskNotification> getMissedTaskNotifications(
             @RequestHeader String authorization,
             @RequestParam long blockNumber);
 
     @PostMapping("/replicates/{chainTaskId}/updateStatus")
-    ResponseEntity<TaskNotificationType> updateReplicateStatus(
+    TaskNotificationType updateReplicateStatus(
             @RequestHeader String authorization,
             @PathVariable String chainTaskId,
             @RequestBody ReplicateStatusUpdate replicateStatusUpdate);

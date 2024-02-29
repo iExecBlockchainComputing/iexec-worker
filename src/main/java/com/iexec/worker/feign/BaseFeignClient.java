@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,12 @@
 
 package com.iexec.worker.feign;
 
-import java.util.Map;
-import java.util.function.Function;
-
+import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import feign.FeignException;
-import lombok.extern.slf4j.Slf4j;
+import java.util.function.Function;
 
 
 @Slf4j
@@ -34,7 +32,8 @@ public abstract class BaseFeignClient {
      * T: type of the response body. It can be Void.
      * Object[]: array of the call arguments
      */
-    public interface HttpCall<T> extends Function<Map<String, Object>, ResponseEntity<T>> {}
+    public interface HttpCall<T> extends Function<String, T> {
+    }
 
     /*
      * This method should be overridden in
@@ -43,7 +42,7 @@ public abstract class BaseFeignClient {
     abstract String login();
 
     /*
-     * Retry configuration values (max attempts, back off delay...) 
+     * Retry configuration values (max attempts, back off delay...)
      */
     private static final int MAX_ATTEMPTS = 3;
     private static final int BACK_OFF_DELAY = 2000; // 2s
@@ -54,26 +53,20 @@ public abstract class BaseFeignClient {
      * the method will retry infinitely until it gets a valid
      * response.
      */
-    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Map<String, Object> args, String action) {
-        return makeHttpCall(call, args, action, false);
-    }
-
-    <T> ResponseEntity<T> makeHttpCall(HttpCall<T> call, Map<String, Object> args, String action, boolean infiniteRetry) {
+    <T> T makeHttpCall(HttpCall<T> call, String action, String jwtToken, T defaultValueOnRepeatedFailures) {
         int attempt = 0;
         int status = -1;
 
-        while (shouldRetry(infiniteRetry, attempt, status)) {
+        while (shouldRetry(attempt, status)) {
             try {
-                // FIXME: what happens when several authenticated REST calls are executed in parallel and get HTTP 4xx ?
-                return call.apply(args);
+                return call.apply(jwtToken);
             } catch (FeignException e) {
                 status = e.status();
 
-                final boolean containsJwt = args != null && args.containsKey("jwtoken");
+                final boolean containsJwt = jwtToken != null;
                 if (e instanceof FeignException.Unauthorized && containsJwt) {
                     // login and update token for the next call
-                    String newJwToken = login();
-                    args.put("jwtoken", newJwToken);
+                    jwtToken = login();
                 }
             }
 
@@ -85,11 +78,11 @@ public abstract class BaseFeignClient {
 
         log.error("Failed to make http call [action:{}, status:{}, attempts:{}]",
                 action, toHttpStatus(status), attempt);
-        return ResponseEntity.status(status).build();
+        return defaultValueOnRepeatedFailures;
     }
 
-    private boolean shouldRetry(boolean infiniteRetry, int attempt, int status) {
-        return infiniteRetry || attempt < MAX_ATTEMPTS || status < 0;
+    private boolean shouldRetry(int attempt, int status) {
+        return attempt < MAX_ATTEMPTS || status < 0;
     }
 
     private String toHttpStatus(int status) {
@@ -102,6 +95,10 @@ public abstract class BaseFeignClient {
 
     boolean is2xxSuccess(ResponseEntity<?> response) {
         int status = response.getStatusCodeValue();
+        return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
+    }
+
+    boolean is2xxSuccess(int status) {
         return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
     }
 
