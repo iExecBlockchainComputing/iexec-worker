@@ -22,6 +22,7 @@ import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import lombok.SneakyThrows;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,16 +32,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.stubbing.Answer;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Keys;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.iexec.worker.feign.LoginService.TOKEN_PREFIX;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -138,23 +141,60 @@ class LoginServiceTests {
         );
     }
 
+    /**
+     * <ul>
+     *     <li>Spawn N threads
+     *     <li>Each thread tries to log in
+     *     <li>When the first thread enters the login method, it locks until N-1 threads have tried to log in
+     *     <li>In the end, a single thread should have retrieved a token
+     *     while the others should have had a "login already ongoing" message
+     * </ul>
+     */
     @Test
-    void shouldLoginOnceOnSimultaneousCalls(CapturedOutput output) throws InterruptedException, ExecutionException, TimeoutException {
-        Credentials credentials = generateCredentials();
+    void shouldLoginOnceOnSimultaneousCalls(CapturedOutput output)
+            throws InterruptedException,
+            ExecutionException,
+            TimeoutException {
+        // Pre-conditions
+        final int threadsCount = 3;
+        final ExecutorService executor = Executors.newFixedThreadPool(threadsCount);
+        final CountDownLatch gate = new CountDownLatch(threadsCount - 1);
+        final Answer<Object> waitForOtherThreads = invocation -> {
+            Awaitility.waitAtMost(1, TimeUnit.SECONDS)
+                    .pollDelay(5, TimeUnit.MILLISECONDS)
+                    .until(() -> gate.getCount() == 0);
+            return "token";
+        };
+        final Runnable loginAndDecrement = () -> {
+            loginService.login();
+            gate.countDown();
+        };
+
+        final Credentials credentials = generateCredentials();
         when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
-        Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
-        when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
-        CompletableFuture<Void> run1 = CompletableFuture.runAsync(() -> loginService.login());
-        CompletableFuture<Void> run2 = CompletableFuture.runAsync(() -> loginService.login());
-        CompletableFuture<Void> run3 = CompletableFuture.runAsync(() -> loginService.login());
-        CompletableFuture.allOf(run1, run2, run3).get(1L, TimeUnit.SECONDS);
+        final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        when(coreClient.login(credentials.getAddress(), signature))
+                .then(waitForOtherThreads)
+                .thenReturn("token");
+
+        // Execution
+        final CompletableFuture<?>[] completableFutures = IntStream.range(0, threadsCount)
+                .mapToObj(i -> CompletableFuture.runAsync(loginAndDecrement, executor))
+                .collect(Collectors.toList())
+                .toArray(new CompletableFuture<?>[]{});
+        CompletableFuture.allOf(completableFutures).get(1L, TimeUnit.SECONDS);
+
+        // Verifications
+        final List<String> expectedOutput = Stream.concat(
+                Stream.of("Retrieved new JWT token from scheduler"),
+                IntStream.range(0, threadsCount - 1).mapToObj(i -> "login already ongoing")
+        ).collect(Collectors.toList());
         assertThat(output.getOut())
-                .contains("login already ongoing", "login already ongoing", "Retrieved new JWT token from scheduler");
+                .contains(expectedOutput);
         assertAll(
                 () -> verify(coreClient).getChallenge(credentials.getAddress()),
                 () -> verify(coreClient).login(credentials.getAddress(), signature)
         );
     }
-
 }
