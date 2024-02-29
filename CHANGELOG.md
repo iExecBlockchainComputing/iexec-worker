@@ -19,6 +19,9 @@ All notable changes to this project will be documented in this file.
 ### Dependency Upgrades
 
 - Upgrade to `iexec-common` 8.4.0. (#583)
+- Upgrade to `iexec-blockchain-adapter` 8.4.0. (#584)
+- Upgrade to `iexec-result-proxy` 8.4.0. (#584)
+- Upgrade to `iexec-sms` 8.5.0. (#584)
 
 ## [[8.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.3.0) 2024-01-11
 
