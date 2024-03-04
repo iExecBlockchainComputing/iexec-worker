@@ -181,8 +181,7 @@ class LoginServiceTests {
         // Execution
         final CompletableFuture<?>[] completableFutures = IntStream.range(0, threadsCount)
                 .mapToObj(i -> CompletableFuture.runAsync(loginAndDecrement, executor))
-                .collect(Collectors.toList())
-                .toArray(new CompletableFuture<?>[]{});
+                .toArray(CompletableFuture<?>[]::new);
         CompletableFuture.allOf(completableFutures).get(1L, TimeUnit.SECONDS);
 
         // Verifications
