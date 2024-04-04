@@ -178,16 +178,21 @@ public class ResultService implements Purgeable {
         final String chainTaskId = workerpoolAuthorization.getChainTaskId();
         final TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
 
+        if (task == null) {
+            log.error("Cannot get result link (task missing) [chainTaskId:{}]", chainTaskId);
+            return "";
+        }
+
         // Offchain computing - basic & tee
         if (task.containsCallback()) {
             log.info("Web3 storage, no need to upload [chainTaskId:{}]", chainTaskId);
-            return getWeb3ResultLink(chainTaskId);
+            return buildResultLink("ethereum", task.getCallback());
         }
 
         // Cloud computing - tee
-        if (task.isTeeTask()) {//result is already uploaded
+        if (task.isTeeTask()) {
             log.info("Web2 storage, already uploaded (with tee) [chainTaskId:{}]", chainTaskId);
-            return getWeb2ResultLink(chainTaskId);
+            return getWeb2ResultLink(task);
         }
 
         // Cloud computing - basic
@@ -195,7 +200,7 @@ public class ResultService implements Purgeable {
         final boolean isUpload = upload(workerpoolAuthorization);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
-            return getWeb2ResultLink(chainTaskId);//retrieves ipfs only
+            return getWeb2ResultLink(task);//retrieves ipfs only
         }
 
         log.info("Cannot uploadResultAndGetLink [chainTaskId:{}, isIpfsStorageRequest:{}, chainTaskId:{}]",
@@ -220,47 +225,25 @@ public class ResultService implements Purgeable {
         }
     }
 
-    private String getWeb3ResultLink(String chainTaskId) {
-        final TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
-
-        if (task == null) {
-            log.error("Cannot get web3 result link (task missing) [chainTaskId:{}]", chainTaskId);
-            return "";
-        }
-
-        return buildResultLink("ethereum", task.getCallback());
-    }
-
-    String getWeb2ResultLink(String chainTaskId) {
-        final TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
-
-        if (task == null) {
-            log.error("Cannot get tee web2 result link (task missing) [chainTaskId:{}]", chainTaskId);
-            return "";
-        }
-
-        String location;
-        String storage = task.getResultStorageProvider();
+    private String getWeb2ResultLink(final TaskDescription task) {
+        final String chainTaskId = task.getChainTaskId();
+        final String storage = task.getResultStorageProvider();
 
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
                 try {
-                    String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
-                    location = "/ipfs/" + ipfsHash;
+                    final String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
+                    return buildResultLink(storage, "/ipfs/" + ipfsHash);
                 } catch (RuntimeException e) {
                     log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId, e);
                     return "";
                 }
-                break;
             case DROPBOX_RESULT_STORAGE_PROVIDER:
-                location = "/results/" + chainTaskId;
-                break;
+                return buildResultLink(storage, "/results/" + chainTaskId);
             default:
                 log.error("Cannot get tee web2 result link (storage missing) [chainTaskId:{}]", chainTaskId);
                 return "";
         }
-
-        return buildResultLink(storage, location);
     }
 
     String buildResultLink(String storage, String location) {

@@ -59,7 +59,7 @@ class ResultServiceTests {
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
     // 32 + 32 + 1 = 65 bytes
     public static final String ENCLAVE_SIGNATURE = "0x000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0c";
-    private static final String CHAIN_TASK_ID = "taskId";
+    private static final String CHAIN_TASK_ID = "0x1";
     private static final String CHAIN_TASK_ID_2 = "taskId2";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker/";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
@@ -92,6 +92,7 @@ class ResultServiceTests {
         tmp = folderRule.getAbsolutePath();
     }
 
+    // region writeErrorToIexecOut
     @Test
     void shouldWriteErrorToIexecOut() {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
@@ -129,6 +130,22 @@ class ResultServiceTests {
 
         assertThat(isErrorWritten).isFalse();
     }
+    // endregion
+
+    // region uploadResultAndGetLink
+    @Test
+    void shouldNotGetResultLinkWhenNoTask() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
+        assertThat(resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION)).isEmpty();
+    }
+
+    @Test
+    void shouldGetWeb3ResultLink() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
+                TaskDescription.builder().callback(CALLBACK).build());
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
+        assertThat(resultLink).isEqualTo(resultService.buildResultLink("ethereum", CALLBACK));
+    }
 
     @Test
     void shouldGetTeeWeb2ResultLinkSinceIpfs() {
@@ -136,10 +153,10 @@ class ResultServiceTests {
         String ipfsHash = "QmcipfsHash";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
         when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash));
     }
@@ -149,9 +166,9 @@ class ResultServiceTests {
         String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/results/" + CHAIN_TASK_ID));
     }
@@ -161,22 +178,13 @@ class ResultServiceTests {
         String storage = "some-unsupported-third-party-storage";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
-
-        assertThat(resultLink).isEmpty();
-    }
-
-
-    @Test
-    void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
-
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEmpty();
     }
+    // endregion
 
     //region getComputedFile
     @Test
