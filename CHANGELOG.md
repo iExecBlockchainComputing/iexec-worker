@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Bug fixes
 
 - Fix `LoginServiceTests#shouldLoginOnceOnSimultaneousCalls` test. (#587)
-- Always use `WorkerpoolAuthorization` to fetch result proxy token. (#588)
+- Do not use legacy endpoints to fetch result proxy token. (#588)
 
 ## [[8.4.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.4.0) 2024-02-29
 
