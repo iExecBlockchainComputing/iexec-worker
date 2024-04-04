@@ -184,6 +184,20 @@ class ResultServiceTests {
 
         assertThat(resultLink).isEmpty();
     }
+
+    @Test
+    void shouldNotGetWeb2ResultLinkForStandardTaskOnIpfs() {
+        final String uploadToken = "uploadToken";
+
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).resultStorageProvider(IPFS_RESULT_STORAGE_PROVIDER).build());
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
+
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
+
+        assertThat(resultLink).isEmpty();
+    }
     // endregion
 
     //region getComputedFile
