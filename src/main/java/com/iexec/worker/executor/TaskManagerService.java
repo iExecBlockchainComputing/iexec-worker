@@ -333,10 +333,10 @@ public class TaskManagerService {
         ReplicateActionResponse response = ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         if (context.equals(CONTRIBUTE)) {
             log.debug("contribute [contribution:{}]", contribution);
-            Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
+            final ChainReceipt chainReceipt = contributionService.contribute(contribution).orElse(null);
 
-            if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
-                response = ReplicateActionResponse.success(oChainReceipt.get());
+            if (isValidChainReceipt(chainTaskId, chainReceipt)) {
+                response = ReplicateActionResponse.success(chainReceipt);
             }
         } else if (context.equals(CONTRIBUTE_AND_FINALIZE)) {
             oErrorStatus = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
@@ -350,13 +350,13 @@ public class TaskManagerService {
             String resultLink = resultService.uploadResultAndGetLink(workerpoolAuthorization);
             log.debug("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
                     contribution, resultLink, callbackData);
-            Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
 
-            if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
+            final ChainReceipt chainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData).orElse(null);
+            if (isValidChainReceipt(chainTaskId, chainReceipt)) {
                 final ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                         .resultLink(resultLink)
                         .chainCallbackData(callbackData)
-                        .chainReceipt(oChainReceipt.get())
+                        .chainReceipt(chainReceipt)
                         .build();
                 response = ReplicateActionResponse.builder()
                         .isSuccess(true)
