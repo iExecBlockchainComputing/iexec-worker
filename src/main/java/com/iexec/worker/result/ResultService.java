@@ -30,14 +30,11 @@ import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
-import com.iexec.commons.poco.eip712.EIP712Domain;
-import com.iexec.commons.poco.eip712.entity.EIP712Challenge;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -60,21 +57,17 @@ public class ResultService implements Purgeable {
     public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
-    private final BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
     private final ResultProxyClient resultProxyClient;
-    private final Map<String, ResultInfo> resultInfoMap
-            = ExpiringTaskMapFactory.getExpiringTaskMap();
+    private final Map<String, ResultInfo> resultInfoMap = ExpiringTaskMapFactory.getExpiringTaskMap();
 
     public ResultService(
             WorkerConfigurationService workerConfigService,
-            BlockchainAdapterConfigurationService blockchainAdapterConfigurationService,
             CredentialsService credentialsService,
             IexecHubService iexecHubService,
             ResultProxyClient resultProxyClient) {
         this.workerConfigService = workerConfigService;
-        this.blockchainAdapterConfigurationService = blockchainAdapterConfigurationService;
         this.credentialsService = credentialsService;
         this.iexecHubService = iexecHubService;
         this.resultProxyClient = resultProxyClient;
@@ -96,16 +89,8 @@ public class ResultService implements Purgeable {
         return getResultFolderPath(chainTaskId) + ".zip";
     }
 
-    public String getEncryptedResultFilePath(String chainTaskId) {
-        return getResultFolderPath(chainTaskId) + ".zip";
-    }
-
     public boolean isResultZipFound(String chainTaskId) {
         return new File(getResultZipFilePath(chainTaskId)).exists();
-    }
-
-    public boolean isEncryptedResultZipFound(String chainTaskId) {
-        return new File(getEncryptedResultFilePath(chainTaskId)).exists();
     }
 
     public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
@@ -191,26 +176,31 @@ public class ResultService implements Purgeable {
      * */
     public String uploadResultAndGetLink(WorkerpoolAuthorization workerpoolAuthorization) {
         final String chainTaskId = workerpoolAuthorization.getChainTaskId();
-        TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
+        final TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
+
+        if (task == null) {
+            log.error("Cannot get result link (task missing) [chainTaskId:{}]", chainTaskId);
+            return "";
+        }
 
         // Offchain computing - basic & tee
         if (task.containsCallback()) {
             log.info("Web3 storage, no need to upload [chainTaskId:{}]", chainTaskId);
-            return getWeb3ResultLink(chainTaskId);
+            return buildResultLink("ethereum", task.getCallback());
         }
 
         // Cloud computing - tee
-        if (task.isTeeTask()) {//result is already uploaded
+        if (task.isTeeTask()) {
             log.info("Web2 storage, already uploaded (with tee) [chainTaskId:{}]", chainTaskId);
-            return getWeb2ResultLink(chainTaskId);
+            return getWeb2ResultLink(task);
         }
 
         // Cloud computing - basic
-        boolean isIpfsStorageRequest = task.getResultStorageProvider().equals(IPFS_RESULT_STORAGE_PROVIDER);
-        boolean isUpload = upload(chainTaskId);
+        final boolean isIpfsStorageRequest = IPFS_RESULT_STORAGE_PROVIDER.equals(task.getResultStorageProvider());
+        final boolean isUpload = upload(workerpoolAuthorization);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
-            return getWeb2ResultLink(chainTaskId);//retrieves ipfs only
+            return getWeb2ResultLink(task);//retrieves ipfs only
         }
 
         log.info("Cannot uploadResultAndGetLink [chainTaskId:{}, isIpfsStorageRequest:{}, chainTaskId:{}]",
@@ -218,8 +208,9 @@ public class ResultService implements Purgeable {
         return "";
     }
 
-    private boolean upload(String chainTaskId) {
-        String authorizationToken = getIexecUploadToken();
+    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization) {
+        final String chainTaskId = workerpoolAuthorization.getChainTaskId();
+        final String authorizationToken = getIexecUploadToken(workerpoolAuthorization);
         if (authorizationToken.isEmpty()) {
             log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
             return false;
@@ -228,53 +219,31 @@ public class ResultService implements Purgeable {
         try {
             resultProxyClient.addResult(authorizationToken, getResultModelWithZip(chainTaskId));
             return true;
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId, e);
             return false;
         }
     }
 
-    private String getWeb3ResultLink(String chainTaskId) {
-        TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
-
-        if (task == null) {
-            log.error("Cannot get web3 result link (task missing) [chainTaskId:{}]", chainTaskId);
-            return "";
-        }
-
-        return buildResultLink("ethereum", task.getCallback());
-    }
-
-    String getWeb2ResultLink(String chainTaskId) {
-        TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
-
-        if (task == null) {
-            log.error("Cannot get tee web2 result link (task missing) [chainTaskId:{}]", chainTaskId);
-            return "";
-        }
-
-        String location;
-        String storage = task.getResultStorageProvider();
+    private String getWeb2ResultLink(final TaskDescription task) {
+        final String chainTaskId = task.getChainTaskId();
+        final String storage = task.getResultStorageProvider();
 
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
                 try {
-                    String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
-                    location = "/ipfs/" + ipfsHash;
+                    final String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
+                    return buildResultLink(storage, "/ipfs/" + ipfsHash);
                 } catch (RuntimeException e) {
                     log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId, e);
                     return "";
                 }
-                break;
             case DROPBOX_RESULT_STORAGE_PROVIDER:
-                location = "/results/" + chainTaskId;
-                break;
+                return buildResultLink(storage, "/results/" + chainTaskId);
             default:
                 log.error("Cannot get tee web2 result link (storage missing) [chainTaskId:{}]", chainTaskId);
                 return "";
         }
-
-        return buildResultLink(storage, location);
     }
 
     String buildResultLink(String storage, String location) {
@@ -298,49 +267,6 @@ public class ResultService implements Purgeable {
             }
             return resultProxyClient.getJwt(authorization, workerpoolAuthorization);
         } catch (Exception e) {
-            log.error("Failed to get upload token", e);
-            return "";
-        }
-    }
-
-    public String getIexecUploadToken() {
-        // get challenge
-        Integer chainId = blockchainAdapterConfigurationService.getChainId();
-        try {
-            final EIP712Challenge eip712Challenge = resultProxyClient.getChallenge(chainId);
-            if (eip712Challenge == null) {
-                log.error("Couldn't retrieve an EIP712Challenge from Result Proxy");
-                return "";
-            }
-
-            final EIP712Domain domain = eip712Challenge.getDomain();
-            final String expectedDomainName = "iExec Result Repository";
-            final String actualDomainName = domain.getName();
-            if (!Objects.equals(actualDomainName, expectedDomainName)) {
-                log.error("Domain name does not match expected name [expected:{}, actual:{}]",
-                        expectedDomainName, actualDomainName);
-                return "";
-            }
-
-            final long domainChainId = domain.getChainId();
-            if (!Objects.equals(domainChainId, chainId.longValue())) {
-                log.error("Domain chain id does not match expected chain id [expected:{}, actual:{}]",
-                        chainId, domainChainId);
-                return "";
-            }
-
-            // sign challenge
-            String signedEip712Challenge = credentialsService.signEIP712EntityAndBuildToken(eip712Challenge);
-
-            if (signedEip712Challenge.isEmpty()) {
-                log.error("Couldn't sign challenge for an unknown reason [challenge:{}]",
-                        eip712Challenge);
-                return "";
-            }
-
-            // login
-            return resultProxyClient.login(chainId, signedEip712Challenge);
-        } catch (RuntimeException e) {
             log.error("Failed to get upload token", e);
             return "";
         }

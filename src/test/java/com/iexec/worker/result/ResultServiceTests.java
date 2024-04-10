@@ -26,15 +26,12 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
-import com.iexec.commons.poco.eip712.EIP712Domain;
-import com.iexec.commons.poco.eip712.entity.EIP712Challenge;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
-import com.iexec.worker.config.BlockchainAdapterConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -42,9 +39,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -65,7 +59,7 @@ class ResultServiceTests {
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
     // 32 + 32 + 1 = 65 bytes
     public static final String ENCLAVE_SIGNATURE = "0x000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0c";
-    private static final String CHAIN_TASK_ID = "taskId";
+    private static final String CHAIN_TASK_ID = "0x1";
     private static final String CHAIN_TASK_ID_2 = "taskId2";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker/";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
@@ -86,8 +80,6 @@ class ResultServiceTests {
     @Mock
     private WorkerConfigurationService workerConfigurationService;
     @Mock
-    private BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
-    @Mock
     private CredentialsService credentialsService;
 
     @InjectMocks
@@ -100,6 +92,7 @@ class ResultServiceTests {
         tmp = folderRule.getAbsolutePath();
     }
 
+    // region writeErrorToIexecOut
     @Test
     void shouldWriteErrorToIexecOut() {
         when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
@@ -137,6 +130,22 @@ class ResultServiceTests {
 
         assertThat(isErrorWritten).isFalse();
     }
+    // endregion
+
+    // region uploadResultAndGetLink
+    @Test
+    void shouldNotGetResultLinkWhenNoTask() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
+        assertThat(resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION)).isEmpty();
+    }
+
+    @Test
+    void shouldGetWeb3ResultLink() {
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
+                TaskDescription.builder().callback(CALLBACK).build());
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
+        assertThat(resultLink).isEqualTo(resultService.buildResultLink("ethereum", CALLBACK));
+    }
 
     @Test
     void shouldGetTeeWeb2ResultLinkSinceIpfs() {
@@ -144,10 +153,10 @@ class ResultServiceTests {
         String ipfsHash = "QmcipfsHash";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
         when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash));
     }
@@ -157,9 +166,9 @@ class ResultServiceTests {
         String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/results/" + CHAIN_TASK_ID));
     }
@@ -169,22 +178,27 @@ class ResultServiceTests {
         String storage = "some-unsupported-third-party-storage";
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEmpty();
     }
-
 
     @Test
-    void shouldNotGetTeeWeb2ResultLinkSinceNoTask() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
+    void shouldNotGetWeb2ResultLinkForStandardTaskOnIpfs() {
+        final String uploadToken = "uploadToken";
 
-        String resultLink = resultService.getWeb2ResultLink(CHAIN_TASK_ID);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).resultStorageProvider(IPFS_RESULT_STORAGE_PROVIDER).build());
+        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
+
+        final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEmpty();
     }
+    // endregion
 
     //region getComputedFile
     @Test
@@ -546,128 +560,6 @@ class ResultServiceTests {
         when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
-    }
-
-    @Test
-    void shouldGetIexecUploadToken() {
-        final int chainId = 1;
-        final EIP712Domain domain = spy(new EIP712Domain("iExec Result Repository", "1", chainId, null));
-        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
-        final String signedChallenge = "signedChallenge";
-        final String uploadToken = "uploadToken";
-
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
-        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
-        when(credentialsService.signEIP712EntityAndBuildToken(challenge)).thenReturn(signedChallenge);
-        when(resultProxyClient.login(chainId, signedChallenge)).thenReturn(uploadToken);
-
-        assertThat(resultService.getIexecUploadToken()).isEqualTo(uploadToken);
-
-        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
-        verify(resultProxyClient, times(1)).getChallenge(chainId);
-        verify(credentialsService, times(1)).signEIP712EntityAndBuildToken(challenge);
-        verify(resultProxyClient, times(1)).login(chainId, signedChallenge);
-
-        verify(challenge, times(1)).getDomain();
-        verify(domain, times(1)).getName();
-        verify(domain, times(1)).getChainId();
-    }
-
-    @Test
-    void shouldNotGetIexecUploadTokenSinceNoResultChallenge() {
-        final int chainId = 1;
-
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
-        when(resultProxyClient.getChallenge(chainId)).thenReturn(null);
-
-        assertThat(resultService.getIexecUploadToken()).isEmpty();
-
-        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
-        verify(resultProxyClient, times(1)).getChallenge(chainId);
-        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
-        verify(resultProxyClient, never()).login(anyInt(), any());
-    }
-
-    @Test
-    void shouldNotGetIexecUploadTokenSinceGetResultChallengeThrows() {
-        final int chainId = 1;
-
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
-        when(resultProxyClient.getChallenge(chainId)).thenThrow(RuntimeException.class);
-
-        assertThat(resultService.getIexecUploadToken()).isEmpty();
-
-        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
-        verify(resultProxyClient, times(1)).getChallenge(chainId);
-        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
-        verify(resultProxyClient, never()).login(anyInt(), any());
-    }
-
-    @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = {"", "wrong name"})
-    void shouldNotGetIexecUploadTokenSinceWrongDomainName(String wrongDomainName) {
-        final int chainId = 1;
-        final EIP712Domain domain = spy(new EIP712Domain(wrongDomainName, "1", chainId, null));
-        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
-
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
-        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
-
-        assertThat(resultService.getIexecUploadToken()).isEmpty();
-
-        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
-        verify(resultProxyClient, times(1)).getChallenge(chainId);
-        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
-        verify(resultProxyClient, never()).login(anyInt(), any());
-
-        verify(challenge, times(1)).getDomain();
-        verify(domain, times(1)).getName();
-        verify(domain, times(0)).getChainId();
-    }
-
-    @Test
-    void shouldNotGetIexecUploadTokenSinceWrongChainId() {
-        final int expectedChainId = 1;
-        final long wrongChainId = 42;
-        final EIP712Domain domain = spy(new EIP712Domain("iExec Result Repository", "1", wrongChainId, null));
-        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
-
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(expectedChainId);
-        when(resultProxyClient.getChallenge(expectedChainId)).thenReturn(challenge);
-
-        assertThat(resultService.getIexecUploadToken()).isEmpty();
-
-        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
-        verify(resultProxyClient, times(1)).getChallenge(expectedChainId);
-        verify(credentialsService, never()).signEIP712EntityAndBuildToken(any());
-        verify(resultProxyClient, never()).login(anyInt(), any());
-
-        verify(challenge, times(1)).getDomain();
-        verify(domain, times(1)).getName();
-        verify(domain, times(1)).getChainId();
-    }
-
-    @Test
-    void shouldNotGetIexecUploadTokenSinceSigningReturnsEmpty() {
-        final int chainId = 1;
-        final EIP712Domain domain = spy(new EIP712Domain("iExec Result Repository", "1", chainId, null));
-        final EIP712Challenge challenge = spy(new EIP712Challenge(domain, null));
-
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(chainId);
-        when(resultProxyClient.getChallenge(chainId)).thenReturn(challenge);
-        when(credentialsService.signEIP712EntityAndBuildToken(challenge)).thenReturn("");
-
-        assertThat(resultService.getIexecUploadToken()).isEmpty();
-
-        verify(blockchainAdapterConfigurationService, times(1)).getChainId();
-        verify(resultProxyClient, times(1)).getChallenge(chainId);
-        verify(credentialsService, times(1)).signEIP712EntityAndBuildToken(challenge);
-        verify(resultProxyClient, never()).login(anyInt(), any());
-
-        verify(challenge, times(1)).getDomain();
-        verify(domain, times(1)).getName();
-        verify(domain, times(1)).getChainId();
     }
     //endregion
 
