@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - Fix `LoginServiceTests#shouldLoginOnceOnSimultaneousCalls` test. (#587)
 - Alwyas use `WorkerpoolAuhorization` to retrieve JWT on Result Proxy. (#588)
 
+### Quality
+
+- Configure Gradle JVM Test Suite Plugin. (#589)
+
 ## [[8.4.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.4.0) 2024-02-29
 
 ### New Features
