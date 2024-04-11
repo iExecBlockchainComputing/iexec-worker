@@ -84,14 +84,6 @@ dependencies {
 
     // expiring map
     implementation 'net.jodah:expiringmap:0.5.10'
-
-    // tests
-    testImplementation "org.springframework.boot:spring-boot-starter-test"
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation "org.mockito:mockito-inline" // activates mocking final classes/methods
-
-    // awaitility
-    testImplementation "org.awaitility:awaitility"
 }
 
 java {
@@ -113,8 +105,23 @@ tasks.named("bootJar") {
     }
 }
 
-test {
-    useJUnitPlatform()
+testing {
+    suites {
+        test {
+            useJUnitJupiter()
+            dependencies {
+                implementation "org.springframework.boot:spring-boot-starter-test"
+                implementation "org.mockito:mockito-inline" // activates mocking final classes/methods
+
+                // awaitility
+                implementation "org.awaitility:awaitility"
+            }
+        }
+    }
+}
+
+tasks.withType(Test).configureEach {
+    finalizedBy jacocoTestReport
 }
 
 tasks.register('itest') {
@@ -128,7 +135,6 @@ jacocoTestReport {
         xml.required = true
     }
 }
-tasks.test.finalizedBy tasks.jacocoTestReport
 tasks.sonarqube.dependsOn tasks.jacocoTestReport
 
 publishing {
