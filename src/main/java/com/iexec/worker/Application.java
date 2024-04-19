@@ -16,7 +16,6 @@
 
 package com.iexec.worker;
 
-
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.replicate.ReplicateRecoveryService;
@@ -25,7 +24,6 @@ import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.worker.WorkerService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -44,23 +42,26 @@ import java.util.List;
 @ConfigurationPropertiesScan
 public class Application implements CommandLineRunner {
 
-    @Autowired
-    private String workerWalletAddress;
+    private final String workerWalletAddress;
+    private final IexecHubService iexecHubService;
+    private final LoginService loginService;
+    private final WorkerService workerService;
+    private final ReplicateRecoveryService replicateRecoveryService;
+    private final ResultService resultService;
 
-    @Autowired
-    private IexecHubService iexecHubService;
-
-    @Autowired
-    private LoginService loginService;
-
-    @Autowired
-    private WorkerService workerService;
-
-    @Autowired
-    private ReplicateRecoveryService replicateRecoveryService;
-
-    @Autowired
-    private ResultService resultService;
+    public Application(String workerWalletAddress,
+                       IexecHubService iexecHubService,
+                       LoginService loginService,
+                       WorkerService workerService,
+                       ReplicateRecoveryService replicateRecoveryService,
+                       ResultService resultService) {
+        this.workerWalletAddress = workerWalletAddress;
+        this.iexecHubService = iexecHubService;
+        this.loginService = loginService;
+        this.workerService = workerService;
+        this.replicateRecoveryService = replicateRecoveryService;
+        this.resultService = resultService;
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);

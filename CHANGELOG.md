@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - Configure Gradle JVM Test Suite Plugin. (#589)
 - Remove `ResponseEntity` wrapper in feign client. (#593)
+- Use constructor injection in `Application` class. (#594)
 
 ### Dependency Upgrades
 
