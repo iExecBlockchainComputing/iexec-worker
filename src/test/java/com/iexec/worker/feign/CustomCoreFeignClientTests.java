@@ -17,9 +17,11 @@
 package com.iexec.worker.feign;
 
 import com.iexec.common.config.PublicConfiguration;
+import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
+import com.iexec.commons.poco.notification.TaskNotification;
 import com.iexec.commons.poco.notification.TaskNotificationType;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
@@ -42,6 +44,7 @@ import static org.mockito.Mockito.*;
 class CustomCoreFeignClientTests {
     private static final String AUTHORIZATION = "authorization";
     private static final String CHAIN_TASK_ID = "0x123";
+    private static final long BLOCK_NUMBER = 123456789;
 
     @Mock
     private LoginService loginService;
@@ -99,6 +102,26 @@ class CustomCoreFeignClientTests {
     }
     // endregion
 
+    // region registerWorker
+    @Test
+    void shouldRegisterWorker() {
+        final WorkerModel model = WorkerModel.builder().build();
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        customCoreFeignClient.registerWorker(model);
+        verify(loginService, never()).login();
+    }
+
+    @Test
+    void shouldNotRegisterWhenUnauthorized() {
+        final WorkerModel model = WorkerModel.builder().build();
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(loginService.login()).thenReturn(AUTHORIZATION);
+        when(coreClient.registerWorker(AUTHORIZATION, model)).thenThrow(FeignException.Unauthorized.class);
+        customCoreFeignClient.registerWorker(model);
+        verify(loginService, times(3)).login();
+    }
+    // endregion
+
     // region getComputingTasks
     @Test
     void shouldGetComputingTasks() {
@@ -130,6 +153,43 @@ class CustomCoreFeignClientTests {
         final List<String> tasks = customCoreFeignClient.getComputingTasks();
         assertAll(
                 () -> assertThat(tasks).isEmpty(),
+                () -> verify(loginService, never()).login()
+        );
+    }
+    // endregion
+
+    // region getMissedTaskNotifications
+    @Test
+    void shouldGetMissedTaskNotifications() {
+        final List<TaskNotification> missedNotifications = List.of(TaskNotification.builder().build());
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(coreClient.getMissedTaskNotifications(AUTHORIZATION, BLOCK_NUMBER)).thenReturn(missedNotifications);
+        final List<TaskNotification> notifications = customCoreFeignClient.getMissedTaskNotifications(BLOCK_NUMBER);
+        assertAll(
+                () -> assertThat(notifications).isEqualTo(missedNotifications),
+                () -> verify(loginService, never()).login()
+        );
+    }
+
+    @Test
+    void shouldNotGetMissedTaskNotificationsWhenUnauthorized() {
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(loginService.login()).thenReturn(AUTHORIZATION);
+        when(coreClient.getMissedTaskNotifications(AUTHORIZATION, BLOCK_NUMBER)).thenThrow(FeignException.Unauthorized.class);
+        final List<TaskNotification> notifications = customCoreFeignClient.getMissedTaskNotifications(BLOCK_NUMBER);
+        assertAll(
+                () -> assertThat(notifications).isEmpty(),
+                () -> verify(loginService, times(3)).login()
+        );
+    }
+
+    @Test
+    void shouldNotGetMissedTaskNotificationsWhenError() {
+        when(loginService.getToken()).thenReturn(AUTHORIZATION);
+        when(coreClient.getMissedTaskNotifications(AUTHORIZATION, BLOCK_NUMBER)).thenThrow(FeignException.class);
+        final List<TaskNotification> notifications = customCoreFeignClient.getMissedTaskNotifications(BLOCK_NUMBER);
+        assertAll(
+                () -> assertThat(notifications).isEmpty(),
                 () -> verify(loginService, never()).login()
         );
     }
