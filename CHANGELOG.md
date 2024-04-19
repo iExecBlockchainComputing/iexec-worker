@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Quality
 
 - Configure Gradle JVM Test Suite Plugin. (#589)
+- Remove `ResponseEntity` wrapper in feign client. (#593)
 
 ### Dependency Upgrades
 
