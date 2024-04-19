@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,19 +25,16 @@ import com.iexec.commons.poco.notification.TaskNotificationType;
 import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
 public class CustomCoreFeignClient extends BaseFeignClient {
 
-    public static final String JWTOKEN = "jwtoken";
-    public static final String BLOCK_NUMBER = "blockNumber";
     private final LoginService loginService;
     private final CoreClient coreClient;
 
@@ -49,8 +46,6 @@ public class CustomCoreFeignClient extends BaseFeignClient {
     /**
      * Log in the Scheduler.
      * Caution: this is NOT thread-safe.
-     *
-     * @return An authentication token
      */
     @Override
     String login() {
@@ -74,49 +69,35 @@ public class CustomCoreFeignClient extends BaseFeignClient {
      * (Casting arguments is safe).
      */
 
-    public PublicConfiguration getPublicConfiguration() {
-        HttpCall<PublicConfiguration> httpCall = args -> coreClient.getPublicConfiguration();
-        ResponseEntity<PublicConfiguration> response = makeHttpCall(httpCall, null, "getPublicConfig");
-        return is2xxSuccess(response) ? response.getBody() : null;
+    public String getCoreVersion() {
+        return makeHttpCall(
+                jwtToken -> coreClient.getCoreVersion(),
+                "getCoreVersion", null, null);
     }
 
-    public String getCoreVersion() {
-        HttpCall<String> httpCall = args -> coreClient.getCoreVersion();
-        ResponseEntity<String> response = makeHttpCall(httpCall, null, "getCoreVersion");
-        return is2xxSuccess(response) ? response.getBody() : null;
+    public PublicConfiguration getPublicConfiguration() {
+        return makeHttpCall(
+                jwtToken -> coreClient.getPublicConfiguration(),
+                "getPublicConfiguration", null, null);
     }
 
     //TODO: Make registerWorker return Worker
-    public boolean registerWorker(WorkerModel model) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-        arguments.put("model", model);
-        HttpCall<Void> httpCall = args -> coreClient.registerWorker((String) args.get(JWTOKEN), (WorkerModel) args.get("model"));
-        ResponseEntity<Void> response = makeHttpCall(httpCall, arguments, "registerWorker");
-        return is2xxSuccess(response);
+    public void registerWorker(WorkerModel model) {
+        makeHttpCall(
+                jwtToken -> coreClient.registerWorker(jwtToken, model),
+                "registerWorker", loginService.getToken(), null);
     }
 
     public List<String> getComputingTasks() {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-
-        HttpCall<List<String>> httpCall = args ->
-                coreClient.getComputingTasks((String) args.get(JWTOKEN));
-
-        ResponseEntity<List<String>> response = makeHttpCall(httpCall, arguments, "getComputingTasks");
-        return is2xxSuccess(response) ? response.getBody() : Collections.emptyList();
+        return makeHttpCall(
+                coreClient::getComputingTasks,
+                "getComputingTasks", loginService.getToken(), Collections.emptyList());
     }
 
     public List<TaskNotification> getMissedTaskNotifications(long lastAvailableBlockNumber) {
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put(JWTOKEN, loginService.getToken());
-        arguments.put(BLOCK_NUMBER, lastAvailableBlockNumber);
-
-        HttpCall<List<TaskNotification>> httpCall = args ->
-                coreClient.getMissedTaskNotifications((String) args.get(JWTOKEN), (long) args.get(BLOCK_NUMBER));
-
-        ResponseEntity<List<TaskNotification>> response = makeHttpCall(httpCall, arguments, "getMissedNotifications");
-        return is2xxSuccess(response) ? response.getBody() : Collections.emptyList();
+        return makeHttpCall(
+                jwtToken -> coreClient.getMissedTaskNotifications(jwtToken, lastAvailableBlockNumber),
+                "getMissedNotifications", loginService.getToken(), Collections.emptyList());
     }
 
     public Optional<ReplicateTaskSummary> getAvailableReplicateTaskSummary(long lastAvailableBlockNumber) {
@@ -136,26 +117,21 @@ public class CustomCoreFeignClient extends BaseFeignClient {
 
     public TaskNotificationType updateReplicateStatus(String chainTaskId, ReplicateStatusUpdate replicateStatusUpdate) {
         try {
-            final ResponseEntity<TaskNotificationType> response = coreClient.updateReplicateStatus(
+            final TaskNotificationType taskNotificationType = coreClient.updateReplicateStatus(
                     loginService.getToken(),
                     chainTaskId,
                     replicateStatusUpdate
             );
-            if (response.getStatusCode() == HttpStatus.ALREADY_REPORTED) {
-                log.info("Replicate status already reported [status:{}, chainTaskId:{}]",
-                        replicateStatusUpdate.getStatus().toString(), chainTaskId);
-            } else {
-                log.info("Updated replicate status [status:{}, chainTaskId:{}]",
-                        replicateStatusUpdate.getStatus().toString(), chainTaskId);
-            }
-            return response.getBody();
-        } catch (FeignException.Unauthorized e) {
-            login();
-            return null;
+            log.info("Updated replicate status [status:{}, chainTaskId:{}]",
+                    replicateStatusUpdate.getStatus(), chainTaskId);
+            return taskNotificationType;
         } catch (FeignException e) {
             log.error("Exception while trying to update replicate status" +
-                    " [chainTaskId:{}, statusUpdate:{}, httpStatus:{}]",
+                            " [chainTaskId:{}, statusUpdate:{}, httpStatus:{}]",
                     chainTaskId, replicateStatusUpdate, e.status());
+            if (e instanceof FeignException.Unauthorized) {
+                login();
+            }
             return null;
         }
     }
