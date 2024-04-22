@@ -17,9 +17,9 @@
 package com.iexec.worker.replicate;
 
 import com.iexec.common.result.ComputedFile;
-import com.iexec.commons.poco.notification.TaskNotification;
-import com.iexec.commons.poco.notification.TaskNotificationType;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.core.notification.TaskNotification;
+import com.iexec.core.notification.TaskNotificationType;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;

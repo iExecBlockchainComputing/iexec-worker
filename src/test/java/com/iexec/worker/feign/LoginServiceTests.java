@@ -18,8 +18,8 @@ package com.iexec.worker.feign;
 
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.utils.SignatureUtils;
+import com.iexec.core.api.SchedulerClient;
 import com.iexec.worker.chain.CredentialsService;
-import com.iexec.worker.feign.client.CoreClient;
 import feign.FeignException;
 import lombok.SneakyThrows;
 import org.awaitility.Awaitility;
@@ -56,7 +56,7 @@ import static org.mockito.Mockito.when;
 class LoginServiceTests {
 
     @Mock
-    CoreClient coreClient;
+    SchedulerClient coreClient;
     @Mock
     CredentialsService credentialsService;
     @InjectMocks

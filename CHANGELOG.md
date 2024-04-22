@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2024
 
+### New Features
+
+- Use `iexec-core-library` in `iexec-worker`. (#595)
+
 ### Bug fixes
 
 - Fix `LoginServiceTests#shouldLoginOnceOnSimultaneousCalls` test. (#587)
