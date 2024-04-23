@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2023-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.worker.config.BlockchainAdapterConfigurationService;
+import com.iexec.worker.config.ConfigServerConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,17 +30,17 @@ import static org.mockito.Mockito.when;
 
 class Web3jServiceTests {
     @Mock
-    private BlockchainAdapterConfigurationService blockchainAdapterConfigurationService;
+    private ConfigServerConfigurationService configServerConfigurationService;
     @Mock
     private WorkerConfigurationService workerConfigurationService;
 
     @BeforeEach
     void init() {
         MockitoAnnotations.openMocks(this);
-        when(blockchainAdapterConfigurationService.getChainId()).thenReturn(134);
-        when(blockchainAdapterConfigurationService.getBlockTime()).thenReturn(Duration.ofSeconds(5));
-        when(blockchainAdapterConfigurationService.isSidechain()).thenReturn(true);
-        when(blockchainAdapterConfigurationService.getChainNodeUrl()).thenReturn("https://bellecour.iex.ec");
+        when(configServerConfigurationService.getChainId()).thenReturn(134);
+        when(configServerConfigurationService.getBlockTime()).thenReturn(Duration.ofSeconds(5));
+        when(configServerConfigurationService.isSidechain()).thenReturn(true);
+        when(configServerConfigurationService.getChainNodeUrl()).thenReturn("https://bellecour.iex.ec");
         when(workerConfigurationService.getGasPriceMultiplier()).thenReturn(1.0f);
         when(workerConfigurationService.getGasPriceCap()).thenReturn(22_000_000_000L);
     }
@@ -48,12 +48,12 @@ class Web3jServiceTests {
     @Test
     void shouldCreateInstanceWithDefaultNodeAddress() {
         when(workerConfigurationService.getOverrideBlockchainNodeAddress()).thenReturn("");
-        assertThat(new Web3jService(blockchainAdapterConfigurationService, workerConfigurationService)).isNotNull();
+        assertThat(new Web3jService(configServerConfigurationService, workerConfigurationService)).isNotNull();
     }
 
     @Test
     void shouldCreateInstanceWithOverridenNodeAddress() {
         when(workerConfigurationService.getOverrideBlockchainNodeAddress()).thenReturn("http://localhost:8545");
-        assertThat(new Web3jService(blockchainAdapterConfigurationService, workerConfigurationService)).isNotNull();
+        assertThat(new Web3jService(configServerConfigurationService, workerConfigurationService)).isNotNull();
     }
 }

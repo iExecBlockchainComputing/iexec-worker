@@ -16,11 +16,11 @@
 
 package com.iexec.worker.feign;
 
-import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.core.api.SchedulerClient;
+import com.iexec.core.config.PublicConfiguration;
 import com.iexec.core.notification.TaskNotification;
 import com.iexec.core.notification.TaskNotificationType;
 import feign.FeignException;

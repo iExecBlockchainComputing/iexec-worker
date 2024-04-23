@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
-import com.iexec.worker.config.BlockchainAdapterConfigurationService;
+import com.iexec.worker.config.ConfigServerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,10 +55,10 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     @Autowired
     public IexecHubService(CredentialsService credentialsService,
                            Web3jService web3jService,
-                           BlockchainAdapterConfigurationService blockchainAdapterConfigurationService) {
+                           ConfigServerConfigurationService configServerConfigurationService) {
         super(credentialsService.getCredentials(),
                 web3jService,
-                blockchainAdapterConfigurationService.getIexecHubContractAddress(),
+                configServerConfigurationService.getIexecHubContractAddress(),
                 1,
                 5);
         this.credentialsService = credentialsService;

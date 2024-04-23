@@ -49,7 +49,6 @@ dependencies {
     implementation "com.iexec.commons:iexec-commons-poco:$iexecCommonsPocoVersion"
     implementation "com.iexec.common:iexec-common:$iexecCommonVersion"
     implementation "com.iexec.commons:iexec-commons-containers:$iexecCommonsContainersVersion"
-    implementation "com.iexec.blockchain:iexec-blockchain-adapter-api-library:$iexecBlockchainAdapterVersion"
     implementation "com.iexec.result-proxy:iexec-result-proxy-library:$iexecResultVersion"
     implementation "com.iexec.sms:iexec-sms-library:$iexecSmsVersion"
     implementation "com.iexec.core:iexec-core-library:$iexecCoreVersion"

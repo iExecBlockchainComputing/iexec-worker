@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### New Features
 
 - Use `iexec-core-library` in `iexec-worker`. (#595)
+- Create `ConfigServerClient` instance and use it instead of `BlockchainAdapterApiClient`. (#596)
 
 ### Bug fixes
 
