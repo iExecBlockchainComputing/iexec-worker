@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package com.iexec.worker;
 
+import com.iexec.core.api.SchedulerClient;
 import com.iexec.worker.TestUtils.ThreadNameWrapper;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.LoginService;
-import com.iexec.worker.feign.client.CoreClient;
 import com.iexec.worker.worker.WorkerService;
 import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +39,7 @@ class PingServiceTests {
     private static final String OTHER_SESSION_ID = "OTHER_SESSION_ID";
 
     @Mock
-    private CoreClient coreClient;
+    private SchedulerClient coreClient;
     @Mock
     private CoreConfigurationService coreConfigurationService;
     @Mock
@@ -63,7 +63,7 @@ class PingServiceTests {
         String mainThreadName = Thread.currentThread().getName();
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethod(threadNameWrapper, invocation))
                 .when(pingService).pingScheduler();
-        
+
         pingService.triggerSchedulerPing();
         // Make sure pingScheduler() method is called 1 time
         verify(pingService, timeout(100)).pingScheduler();

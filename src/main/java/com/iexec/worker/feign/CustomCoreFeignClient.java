@@ -20,9 +20,9 @@ import com.iexec.common.config.PublicConfiguration;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
-import com.iexec.commons.poco.notification.TaskNotification;
-import com.iexec.commons.poco.notification.TaskNotificationType;
-import com.iexec.worker.feign.client.CoreClient;
+import com.iexec.core.api.SchedulerClient;
+import com.iexec.core.notification.TaskNotification;
+import com.iexec.core.notification.TaskNotificationType;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,9 +36,9 @@ import java.util.Optional;
 public class CustomCoreFeignClient extends BaseFeignClient {
 
     private final LoginService loginService;
-    private final CoreClient coreClient;
+    private final SchedulerClient coreClient;
 
-    public CustomCoreFeignClient(CoreClient coreClient, LoginService loginService) {
+    public CustomCoreFeignClient(SchedulerClient coreClient, LoginService loginService) {
         this.loginService = loginService;
         this.coreClient = coreClient;
     }

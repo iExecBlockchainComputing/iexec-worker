@@ -52,6 +52,7 @@ dependencies {
     implementation "com.iexec.blockchain:iexec-blockchain-adapter-api-library:$iexecBlockchainAdapterVersion"
     implementation "com.iexec.result-proxy:iexec-result-proxy-library:$iexecResultVersion"
     implementation "com.iexec.sms:iexec-sms-library:$iexecSmsVersion"
+    implementation "com.iexec.core:iexec-core-library:$iexecCoreVersion"
 
     // spring
     implementation "org.springframework.boot:spring-boot-starter"

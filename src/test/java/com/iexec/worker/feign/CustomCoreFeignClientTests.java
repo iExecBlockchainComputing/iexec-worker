@@ -21,9 +21,9 @@ import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.common.replicate.ReplicateTaskSummary;
-import com.iexec.commons.poco.notification.TaskNotification;
-import com.iexec.commons.poco.notification.TaskNotificationType;
-import com.iexec.worker.feign.client.CoreClient;
+import com.iexec.core.api.SchedulerClient;
+import com.iexec.core.notification.TaskNotification;
+import com.iexec.core.notification.TaskNotificationType;
 import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,7 @@ class CustomCoreFeignClientTests {
     @Mock
     private LoginService loginService;
     @Mock
-    private CoreClient coreClient;
+    private SchedulerClient coreClient;
     @InjectMocks
     private CustomCoreFeignClient customCoreFeignClient;
 

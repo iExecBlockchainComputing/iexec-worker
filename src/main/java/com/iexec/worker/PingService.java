@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 
 package com.iexec.worker;
 
+import com.iexec.core.api.SchedulerClient;
 import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.LoginService;
-import com.iexec.worker.feign.client.CoreClient;
 import com.iexec.worker.utils.AsyncUtils;
 import com.iexec.worker.utils.ExecutorUtils;
 import com.iexec.worker.worker.WorkerService;
@@ -38,12 +38,12 @@ public class PingService {
     private static final int PING_RATE_IN_SECONDS = 10;
 
     private final Executor executor;
-    private final CoreClient coreClient;
+    private final SchedulerClient coreClient;
     private final CoreConfigurationService coreConfigurationService;
     private final LoginService loginService;
     private final WorkerService workerService;
 
-    public PingService(CoreClient coreClient,
+    public PingService(SchedulerClient coreClient,
                        CoreConfigurationService coreConfigurationService,
                        LoginService loginService,
                        WorkerService workerService) {
@@ -105,8 +105,8 @@ public class PingService {
         }
         if (!sessionId.equalsIgnoreCase(currentSessionId)) {
             // need to reconnect to the core by restarting the worker
-            log.warn("Scheduler seems to have restarted [currentSessionId:{}, " +
-                    "coreSessionId:{}]", currentSessionId, sessionId);
+            log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]",
+                    currentSessionId, sessionId);
             workerService.restartGracefully();
         }
     }
