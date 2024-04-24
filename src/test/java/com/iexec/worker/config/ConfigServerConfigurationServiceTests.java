@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2021-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.iexec.worker.config;
 
-import com.iexec.blockchain.api.BlockchainAdapterApiClient;
+import com.iexec.common.config.ConfigServerClient;
 import com.iexec.common.config.PublicChainConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,9 +26,10 @@ import org.mockito.MockitoAnnotations;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-class BlockchainAdapterConfigurationServiceTest {
+class ConfigServerConfigurationServiceTests {
     private static final Integer CHAIN_ID = 0;
     private static final boolean IS_SIDECHAIN = true;
     private static final String NODE_ADDRESS = "https://node";
@@ -36,7 +37,7 @@ class BlockchainAdapterConfigurationServiceTest {
     private static final Duration BLOCK_TIME = Duration.ofSeconds(1);
 
     @Mock
-    private BlockchainAdapterApiClient blockchainAdapterClient;
+    private ConfigServerClient configServerClient;
 
     @BeforeEach
     void beforeEach() {
@@ -45,7 +46,7 @@ class BlockchainAdapterConfigurationServiceTest {
 
     @Test
     void shouldGetBlockTime() {
-        when(blockchainAdapterClient.getPublicChainConfig()).thenReturn(
+        when(configServerClient.getPublicChainConfig()).thenReturn(
                 PublicChainConfig.builder()
                         .chainId(CHAIN_ID)
                         .sidechain(IS_SIDECHAIN)
@@ -55,18 +56,26 @@ class BlockchainAdapterConfigurationServiceTest {
                         .build()
         );
 
-        BlockchainAdapterConfigurationService blockchainAdapterConfigurationService =
-                new BlockchainAdapterConfigurationService(blockchainAdapterClient);
+        ConfigServerConfigurationService configServerConfigurationService =
+                new ConfigServerConfigurationService(configServerClient);
 
-        assertThat(blockchainAdapterConfigurationService.getChainId())
+        assertThat(configServerConfigurationService.getChainId())
                 .isEqualTo(CHAIN_ID);
-        assertThat(blockchainAdapterConfigurationService.isSidechain())
+        assertThat(configServerConfigurationService.isSidechain())
                 .isEqualTo(IS_SIDECHAIN);
-        assertThat(blockchainAdapterConfigurationService.getChainNodeUrl())
+        assertThat(configServerConfigurationService.getChainNodeUrl())
                 .isEqualTo(NODE_ADDRESS);
-        assertThat(blockchainAdapterConfigurationService.getIexecHubContractAddress())
+        assertThat(configServerConfigurationService.getIexecHubContractAddress())
                 .isEqualTo(HUB_ADDRESS);
-        assertThat(blockchainAdapterConfigurationService.getBlockTime())
+        assertThat(configServerConfigurationService.getBlockTime())
                 .isEqualTo(BLOCK_TIME);
+    }
+
+    @Test()
+    void shouldRaiseMissingConfigurationExceptionWhenPublicChainConfigIsNull() {
+        when(configServerClient.getPublicChainConfig()).thenReturn(null);
+        assertThrows(MissingConfigurationException.class, () -> {
+            new ConfigServerConfigurationService(configServerClient);
+        });
     }
 }

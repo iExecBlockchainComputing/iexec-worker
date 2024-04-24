@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2021-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.iexec.worker.config;
 
-import com.iexec.blockchain.api.BlockchainAdapterApiClient;
+import com.iexec.common.config.ConfigServerClient;
 import com.iexec.common.config.PublicChainConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,14 +30,14 @@ import java.time.Duration;
  */
 @Slf4j
 @Service
-public class BlockchainAdapterConfigurationService {
+public class ConfigServerConfigurationService {
     private final PublicChainConfig publicChainConfig;
 
-    public BlockchainAdapterConfigurationService(BlockchainAdapterApiClient blockchainAdapterClient) {
-        this.publicChainConfig = blockchainAdapterClient.getPublicChainConfig();
+    public ConfigServerConfigurationService(ConfigServerClient configServerClient) {
+        this.publicChainConfig = configServerClient.getPublicChainConfig();
         if (publicChainConfig == null) {
             throw new MissingConfigurationException(
-                    "Received public chain config is null; can't create BlockchainAdapterConfigurationService");
+                    "Received public chain config is null; can't create ConfigServerConfigurationService");
         }
 
         log.info("Received public chain config [config:{}]", this.publicChainConfig);
