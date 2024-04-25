@@ -18,7 +18,6 @@ package com.iexec.worker;
 
 import com.iexec.core.api.SchedulerClient;
 import com.iexec.worker.TestUtils.ThreadNameWrapper;
-import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.worker.WorkerService;
 import feign.FeignException;
@@ -28,6 +27,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -39,9 +39,7 @@ class PingServiceTests {
     private static final String OTHER_SESSION_ID = "OTHER_SESSION_ID";
 
     @Mock
-    private SchedulerClient coreClient;
-    @Mock
-    private CoreConfigurationService coreConfigurationService;
+    private SchedulerClient schedulerClient;
     @Mock
     private LoginService loginService;
     @Mock
@@ -68,7 +66,7 @@ class PingServiceTests {
         // Make sure pingScheduler() method is called 1 time
         verify(pingService, timeout(100)).pingScheduler();
         // Make sure ping() method is called 1 time
-        verify(coreClient).ping(anyString());
+        verify(schedulerClient).ping(anyString());
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -93,7 +91,7 @@ class PingServiceTests {
         // Make sure pingScheduler() method is called 1 time
         verify(pingService, timeout(100)).pingScheduler();
         // Make sure ping() method is called 1 time
-        verify(coreClient).ping(anyString());
+        verify(schedulerClient).ping(anyString());
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -112,7 +110,7 @@ class PingServiceTests {
         // Make sure pingScheduler() method is called 1st time
         verify(pingService, timeout(500)).pingScheduler();
         // Make sure ping() method is called 1st time
-        verify(coreClient, timeout(500)).ping(anyString());
+        verify(schedulerClient, timeout(500)).ping(anyString());
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -123,7 +121,7 @@ class PingServiceTests {
         // Make sure pingScheduler() method is called 2nd time
         verify(pingService, timeout(500).times(2)).pingScheduler();
         // Make sure ping() method is called 2nd time
-        verify(coreClient, timeout(500).times(2)).ping(anyString());
+        verify(schedulerClient, timeout(500).times(2)).ping(anyString());
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -144,8 +142,7 @@ class PingServiceTests {
         doAnswer(invocation -> TestUtils.saveThreadNameThenCallRealMethodThenSleepSomeMillis(
                 threadNameWrapper, invocation, 10))
                 .when(pingService).pingScheduler();
-        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
-        when(coreConfigurationService.getCoreSessionId()).thenReturn(SESSION_ID);
+        when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
 
         // Trigger 4 times
         pingService.triggerSchedulerPing();
@@ -155,7 +152,7 @@ class PingServiceTests {
         // Make sure pingScheduler() method is called only 2 times
         verify(pingService, after(1000).times(2)).pingScheduler();
         // Make sure ping() method is called only 2 times
-        verify(coreClient, times(2)).ping(anyString());
+        verify(schedulerClient, times(2)).ping(anyString());
         assertThat(threadNameWrapper.value)
                 .isEqualTo(PING_THREAD_NAME)
                 .isNotEqualTo(mainThreadName);
@@ -163,56 +160,51 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndLogInWhenUnauthorized() {
-        when(coreClient.ping(any())).thenThrow(FeignException.Unauthorized.class);
+        when(schedulerClient.ping(any())).thenThrow(FeignException.Unauthorized.class);
         pingService.pingScheduler();
         verify(loginService).login();
-        verifyNoInteractions(coreConfigurationService, workerService);
+        verifyNoInteractions(workerService);
     }
 
     @Test
     void shouldPingAndDoNothingElseSincePongIsEmpty() {
-        when(coreClient.ping(anyString())).thenReturn("");
+        when(schedulerClient.ping(anyString())).thenReturn("");
         pingService.pingScheduler();
-        verifyNoInteractions(coreConfigurationService, workerService);
+        verifyNoInteractions(workerService);
     }
 
     @Test
     void shouldPingAndDoNothingElseSincePongIsNull() {
-        when(coreClient.ping(anyString())).thenReturn(null);
+        when(schedulerClient.ping(anyString())).thenReturn(null);
         pingService.pingScheduler();
-        verifyNoInteractions(coreConfigurationService, workerService);
+        verifyNoInteractions(workerService);
     }
 
     @Test
     void shouldPingAndDoNothingElseWhenSameSession() {
-        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
-        when(coreConfigurationService.getCoreSessionId()).thenReturn(SESSION_ID);
+        when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
         verifyNoInteractions(workerService);
     }
 
     @Test
     void shouldPingAndSetNewSessionSincePreviousSessionIsEmpty() {
-        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
-        when(coreConfigurationService.getCoreSessionId()).thenReturn("");
+        when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
-        verify(coreConfigurationService).setCoreSessionId(anyString());
         verifyNoInteractions(workerService);
     }
 
     @Test
     void shouldPingAndSetNewSessionSincePreviousSessionIsNull() {
-        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
-        when(coreConfigurationService.getCoreSessionId()).thenReturn(null);
+        when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
-        verify(coreConfigurationService).setCoreSessionId(anyString());
         verifyNoInteractions(workerService);
     }
 
     @Test
     void shouldPingAndRestart() {
-        when(coreClient.ping(anyString())).thenReturn(SESSION_ID);
-        when(coreConfigurationService.getCoreSessionId()).thenReturn(OTHER_SESSION_ID);
+        ReflectionTestUtils.setField(pingService, "coreSessionId", SESSION_ID);
+        when(schedulerClient.ping(anyString())).thenReturn(OTHER_SESSION_ID);
         pingService.pingScheduler();
         verify(workerService).restartGracefully();
     }

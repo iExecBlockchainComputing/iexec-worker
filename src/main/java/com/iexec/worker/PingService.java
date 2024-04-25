@@ -17,7 +17,6 @@
 package com.iexec.worker;
 
 import com.iexec.core.api.SchedulerClient;
-import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.feign.LoginService;
 import com.iexec.worker.utils.AsyncUtils;
 import com.iexec.worker.utils.ExecutorUtils;
@@ -38,19 +37,18 @@ public class PingService {
     private static final int PING_RATE_IN_SECONDS = 10;
 
     private final Executor executor;
-    private final SchedulerClient coreClient;
-    private final CoreConfigurationService coreConfigurationService;
+    private final SchedulerClient schedulerClient;
     private final LoginService loginService;
     private final WorkerService workerService;
 
-    public PingService(SchedulerClient coreClient,
-                       CoreConfigurationService coreConfigurationService,
+    private String coreSessionId;
+
+    public PingService(SchedulerClient schedulerClient,
                        LoginService loginService,
                        WorkerService workerService) {
         executor = ExecutorUtils
                 .newSingleThreadExecutorWithFixedSizeQueue(1, "ping-");
-        this.coreClient = coreClient;
-        this.coreConfigurationService = coreConfigurationService;
+        this.schedulerClient = schedulerClient;
         this.loginService = loginService;
         this.workerService = workerService;
     }
@@ -78,7 +76,7 @@ public class PingService {
         log.debug("Sending ping to scheduler");
         final String sessionId;
         try {
-            sessionId = coreClient.ping(loginService.getToken());
+            sessionId = schedulerClient.ping(loginService.getToken());
         } catch (FeignException e) {
             log.warn("The worker cannot ping the core [status:{}]", e.status());
             if (e instanceof FeignException.Unauthorized) {
@@ -97,16 +95,15 @@ public class PingService {
         if (now.getMinute() == 0 && now.getSecond() <= PING_RATE_IN_SECONDS) {
             log.info("Sent ping to scheduler [sessionId:{}]", sessionId);
         }
-        String currentSessionId = coreConfigurationService.getCoreSessionId();
-        if (StringUtils.isEmpty(currentSessionId)) {
+        if (StringUtils.isEmpty(coreSessionId)) {
             log.info("First ping from the worker, setting the sessionId [coreSessionId:{}]", sessionId);
-            coreConfigurationService.setCoreSessionId(sessionId);
+            coreSessionId = sessionId;
             return;
         }
-        if (!sessionId.equalsIgnoreCase(currentSessionId)) {
+        if (!sessionId.equalsIgnoreCase(coreSessionId)) {
             // need to reconnect to the core by restarting the worker
             log.warn("Scheduler seems to have restarted [currentSessionId:{}, coreSessionId:{}]",
-                    currentSessionId, sessionId);
+                    coreSessionId, sessionId);
             workerService.restartGracefully();
         }
     }

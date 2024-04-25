@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.iexec.worker.pubsub;
 
-import com.iexec.worker.config.CoreConfigurationService;
+import com.iexec.worker.config.SchedulerConfiguration;
 import com.iexec.worker.utils.AsyncUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,10 +51,10 @@ public class StompClientService {
     private StompSession stompSession;
 
     public StompClientService(ApplicationEventPublisher applicationEventPublisher,
-                              CoreConfigurationService coreConfigService,
+                              SchedulerConfiguration schedulerConfiguration,
                               WebSocketStompClient stompClient) {
         this.eventPublisher = applicationEventPublisher;
-        this.webSocketServerUrl = coreConfigService.getUrl() + "/connect";
+        this.webSocketServerUrl = schedulerConfiguration.getUrl() + "/connect";
         this.stompClient = stompClient;
     }
 

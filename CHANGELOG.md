@@ -6,19 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 
-- Use `iexec-core-library` in `iexec-worker`. (#595)
+- Add `iexec-core-library` dependency and use it. (#595)
 - Create `ConfigServerClient` instance and use it instead of `BlockchainAdapterApiClient`. (#596)
 
 ### Bug fixes
 
 - Fix `LoginServiceTests#shouldLoginOnceOnSimultaneousCalls` test. (#587)
-- Alwyas use `WorkerpoolAuhorization` to retrieve JWT on Result Proxy. (#588)
+- Always use `WorkerpoolAuhorization` to retrieve JWT on Result Proxy. (#588)
 
 ### Quality
 
 - Configure Gradle JVM Test Suite Plugin. (#589)
 - Remove `ResponseEntity` wrapper in feign client. (#593)
 - Use constructor injection in `Application` class. (#594)
+- Transform `CoreConfigurationService` to immutable `SchedulerConfiguration` class. (#597)
 
 ### Dependency Upgrades
 
