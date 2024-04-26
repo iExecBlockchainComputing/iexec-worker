@@ -56,7 +56,6 @@ import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 @Service
 public class ResultService implements Purgeable {
     public static final String ERROR_FILENAME = "error.txt";
-    public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
     private final CredentialsService credentialsService;
@@ -320,7 +319,7 @@ public class ResultService implements Purgeable {
             return false;
         }
         final String chainTaskId = computedFile.getTaskId();
-        log.debug("Received computed file" + WRITE_COMPUTED_FILE_LOG_ARGS, chainTaskId, computedFile);
+        log.debug("Received computed file [chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         final ChainTaskStatus chainTaskStatus = chainTask != null ? chainTask.getStatus() : null;
         if (chainTaskStatus != ChainTaskStatus.ACTIVE) {
@@ -331,7 +330,7 @@ public class ResultService implements Purgeable {
         final String computedFilePath = workerConfigService.getTaskOutputDir(chainTaskId)
                 + IexecFileHelper.SLASH_COMPUTED_JSON;
         if (new File(computedFilePath).exists()) {
-            log.error("Cannot write computed file if already written" + WRITE_COMPUTED_FILE_LOG_ARGS,
+            log.error("Cannot write computed file if already written [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
@@ -343,14 +342,14 @@ public class ResultService implements Purgeable {
         // TODO replace with fast getChainDeal access, only 1 on-chain read instead of 4
         final ChainDeal chainDeal = iexecHubService.getChainDeal(chainTask.getDealid()).orElse(null);
         if (chainDeal == null || !TeeUtils.isTeeTag(chainDeal.getTag())) {
-            log.error("Cannot write computed file if task is not of TEE type" + WRITE_COMPUTED_FILE_LOG_ARGS,
+            log.error("Cannot write computed file if task is not of TEE type [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
         // should always be TEE with a valid signature
         if (StringUtils.isEmpty(computedFile.getEnclaveSignature())
                 || stringToBytes(computedFile.getEnclaveSignature()).length != 65) {
-            log.error("Cannot write computed file if TEE signature is invalid" + WRITE_COMPUTED_FILE_LOG_ARGS,
+            log.error("Cannot write computed file if TEE signature is invalid [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
@@ -358,7 +357,7 @@ public class ResultService implements Purgeable {
             String json = mapper.writeValueAsString(computedFile);
             Files.write(Paths.get(computedFilePath), json.getBytes());
         } catch (IOException e) {
-            log.error("Cannot write computed file if write failed" + WRITE_COMPUTED_FILE_LOG_ARGS,
+            log.error("Cannot write computed file if write failed [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile, e);
             return false;
         }
@@ -375,7 +374,7 @@ public class ResultService implements Purgeable {
                     workerConfigService.getTaskOutputDir(chainTaskId));
         }
         if (resultDigest.isEmpty()) {
-            log.error("Failed to computeResultDigest (resultDigest empty)" + WRITE_COMPUTED_FILE_LOG_ARGS,
+            log.error("Failed to computeResultDigest (resultDigest empty) [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return "";
         }
