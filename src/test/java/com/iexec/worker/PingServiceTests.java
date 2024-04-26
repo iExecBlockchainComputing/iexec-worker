@@ -182,6 +182,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndDoNothingElseWhenSameSession() {
+        ReflectionTestUtils.setField(pingService, "coreSessionId", SESSION_ID);
         when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
         verifyNoInteractions(workerService);
@@ -189,6 +190,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndSetNewSessionSincePreviousSessionIsEmpty() {
+        ReflectionTestUtils.setField(pingService, "coreSessionId", "");
         when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
         verifyNoInteractions(workerService);
@@ -196,6 +198,7 @@ class PingServiceTests {
 
     @Test
     void shouldPingAndSetNewSessionSincePreviousSessionIsNull() {
+        ReflectionTestUtils.setField(pingService, "coreSessionId", null);
         when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
         verifyNoInteractions(workerService);
