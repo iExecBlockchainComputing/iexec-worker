@@ -27,10 +27,12 @@ import com.iexec.common.result.ResultModel;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
+import com.iexec.commons.poco.chain.ChainDeal;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.CredentialsService;
@@ -54,13 +56,13 @@ import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 @Service
 public class ResultService implements Purgeable {
     public static final String ERROR_FILENAME = "error.txt";
-    public static final String WRITE_COMPUTED_FILE_LOG_ARGS = " [chainTaskId:{}, computedFile:{}]";
 
     private final WorkerConfigurationService workerConfigService;
     private final CredentialsService credentialsService;
     private final IexecHubService iexecHubService;
     private final ResultProxyClient resultProxyClient;
     private final Map<String, ResultInfo> resultInfoMap = ExpiringTaskMapFactory.getExpiringTaskMap();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public ResultService(
             WorkerConfigurationService workerConfigService,
@@ -305,34 +307,30 @@ public class ResultService implements Purgeable {
     }
 
     /**
-     * Write computed file. Most likely used by tee-post-compute.
+     * Writes computed file submitted to the worker through a REST call.
      * TODO: check compute stage is successful
      *
      * @param computedFile computed file to be written
-     * @return true is computed file is successfully written to disk
+     * @return {@literal true} is computed file is successfully written to disk, {@literal false} otherwise
      */
     public boolean writeComputedFile(ComputedFile computedFile) {
         if (computedFile == null || StringUtils.isEmpty(computedFile.getTaskId())) {
             log.error("Cannot write computed file [computedFile:{}]", computedFile);
             return false;
         }
-        String chainTaskId = computedFile.getTaskId();
-        ChainTaskStatus chainTaskStatus =
-                iexecHubService.getChainTask(chainTaskId)
-                        .map(ChainTask::getStatus)
-                        .orElse(null);
+        final String chainTaskId = computedFile.getTaskId();
+        log.debug("Received computed file [chainTaskId:{}, computedFile:{}]", chainTaskId, computedFile);
+        final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
+        final ChainTaskStatus chainTaskStatus = chainTask != null ? chainTask.getStatus() : null;
         if (chainTaskStatus != ChainTaskStatus.ACTIVE) {
-            log.error("Cannot write computed file if task is not active " +
-                            "[chainTaskId:{}, computedFile:{}, chainTaskStatus:{}]",
+            log.error("Cannot write computed file if task is not active [chainTaskId:{}, computedFile:{}, chainTaskStatus:{}]",
                     chainTaskId, computedFile, chainTaskStatus);
             return false;
         }
-        String computedFilePath =
-                workerConfigService.getTaskOutputDir(chainTaskId)
-                        + IexecFileHelper.SLASH_COMPUTED_JSON;
+        final String computedFilePath = workerConfigService.getTaskOutputDir(chainTaskId)
+                + IexecFileHelper.SLASH_COMPUTED_JSON;
         if (new File(computedFilePath).exists()) {
-            log.error("Cannot write computed file if already written" +
-                            WRITE_COMPUTED_FILE_LOG_ARGS,
+            log.error("Cannot write computed file if already written [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
@@ -341,15 +339,20 @@ public class ResultService implements Purgeable {
                     chainTaskId, computedFile);
             return false;
         }
-        boolean isSignatureRequired = iexecHubService.isTeeTask(chainTaskId);
-        if (isSignatureRequired &&
-                (StringUtils.isEmpty(computedFile.getEnclaveSignature())
-                        || stringToBytes(computedFile.getEnclaveSignature()).length != 65)) {
+        // TODO replace with fast getChainDeal access, only 1 on-chain read instead of 4
+        final ChainDeal chainDeal = iexecHubService.getChainDeal(chainTask.getDealid()).orElse(null);
+        if (chainDeal == null || !TeeUtils.isTeeTag(chainDeal.getTag())) {
+            log.error("Cannot write computed file if task is not of TEE type [chainTaskId:{}, computedFile:{}]",
+                    chainTaskId, computedFile);
+            return false;
+        }
+        // should always be TEE with a valid signature
+        if (StringUtils.isEmpty(computedFile.getEnclaveSignature())
+                || stringToBytes(computedFile.getEnclaveSignature()).length != 65) {
             log.error("Cannot write computed file if TEE signature is invalid [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;
         }
-        ObjectMapper mapper = new ObjectMapper();
         try {
             String json = mapper.writeValueAsString(computedFile);
             Files.write(Paths.get(computedFilePath), json.getBytes());
