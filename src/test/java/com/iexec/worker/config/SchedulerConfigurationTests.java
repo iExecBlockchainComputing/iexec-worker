@@ -23,13 +23,13 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-class CoreConfigurationServiceTests {
+class SchedulerConfigurationTests {
     private final ApplicationContextRunner runner = new ApplicationContextRunner();
 
     @Test
     void shouldCreateBeanInstance() {
         runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000")
-                .withConfiguration(UserConfigurations.of(CoreConfigurationService.class))
+                .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> assertThat(context).hasSingleBean(SchedulerClient.class));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package com.iexec.worker.worker;
 
 import com.iexec.common.config.WorkerModel;
 import com.iexec.commons.poco.utils.WaitUtils;
-import com.iexec.worker.config.CoreConfigurationService;
 import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.SchedulerConfiguration;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -33,14 +33,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-
 @Slf4j
 @Service
 public class WorkerService {
 
     private final String workerWalletAddress;
     private final WorkerConfigurationService workerConfigService;
-    private final CoreConfigurationService coreConfigService;
+    private final SchedulerConfiguration schedulerConfiguration;
     private final PublicConfigurationService publicConfigService;
     private final CustomCoreFeignClient customCoreFeignClient;
     private final BuildProperties buildProperties;
@@ -50,7 +49,7 @@ public class WorkerService {
 
     public WorkerService(
             WorkerConfigurationService workerConfigService,
-            CoreConfigurationService coreConfigService,
+            SchedulerConfiguration schedulerConfiguration,
             PublicConfigurationService publicConfigService,
             CustomCoreFeignClient customCoreFeignClient,
             BuildProperties buildProperties,
@@ -59,7 +58,7 @@ public class WorkerService {
             DockerService dockerService,
             String workerWalletAddress) {
         this.workerConfigService = workerConfigService;
-        this.coreConfigService = coreConfigService;
+        this.schedulerConfiguration = schedulerConfiguration;
         this.publicConfigService = publicConfigService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.buildProperties = buildProperties;
@@ -71,7 +70,7 @@ public class WorkerService {
 
     public boolean registerWorker() {
         log.info("Number of CPUs [CPUs:{}]", workerConfigService.getCpuCount());
-        log.info("Core URL [url:{}]", coreConfigService.getUrl());
+        log.info("Core URL [url:{}]", schedulerConfiguration.getUrl());
         log.info("Core version [version:{}]", customCoreFeignClient.getCoreVersion());
         log.info("Getting public configuration from the core...");
         log.info("Got public configuration from the core [config:{}]", publicConfigService.getPublicConfiguration());
