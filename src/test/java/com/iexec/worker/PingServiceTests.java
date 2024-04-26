@@ -185,6 +185,7 @@ class PingServiceTests {
         ReflectionTestUtils.setField(pingService, "coreSessionId", SESSION_ID);
         when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
+        assertThat(pingService.getCoreSessionId()).isEqualTo(SESSION_ID);
         verifyNoInteractions(workerService);
     }
 
@@ -193,6 +194,7 @@ class PingServiceTests {
         ReflectionTestUtils.setField(pingService, "coreSessionId", "");
         when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
+        assertThat(pingService.getCoreSessionId()).isEqualTo(SESSION_ID);
         verifyNoInteractions(workerService);
     }
 
@@ -201,6 +203,7 @@ class PingServiceTests {
         ReflectionTestUtils.setField(pingService, "coreSessionId", null);
         when(schedulerClient.ping(anyString())).thenReturn(SESSION_ID);
         pingService.pingScheduler();
+        assertThat(pingService.getCoreSessionId()).isEqualTo(SESSION_ID);
         verifyNoInteractions(workerService);
     }
 

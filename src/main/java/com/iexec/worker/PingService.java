@@ -22,6 +22,7 @@ import com.iexec.worker.utils.AsyncUtils;
 import com.iexec.worker.utils.ExecutorUtils;
 import com.iexec.worker.worker.WorkerService;
 import feign.FeignException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -41,6 +42,7 @@ public class PingService {
     private final LoginService loginService;
     private final WorkerService workerService;
 
+    @Getter
     private String coreSessionId;
 
     public PingService(SchedulerClient schedulerClient,
