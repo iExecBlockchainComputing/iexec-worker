@@ -16,7 +16,10 @@
 
 package com.iexec.worker.executor;
 
-import com.iexec.common.replicate.*;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
+import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.task.TaskAbortCause;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -27,6 +30,7 @@ import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpiringMap;

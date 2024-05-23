@@ -19,7 +19,6 @@ package com.iexec.worker.executor;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.replicate.ComputeLogs;
-import com.iexec.common.replicate.ReplicateActionResponse;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
@@ -28,6 +27,7 @@ import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotificationExtra;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -37,6 +37,7 @@ import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
@@ -45,10 +46,11 @@ import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
@@ -59,6 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class TaskManagerServiceTests {
 
     private static final String CHAIN_TASK_ID = "0x1";
@@ -99,9 +102,6 @@ class TaskManagerServiceTests {
 
     @BeforeEach
     void init() {
-        MockitoAnnotations.openMocks(this);
-        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-
         taskManagerService = new TaskManagerService(
                 iexecHubService,
                 contributionService,
@@ -133,11 +133,8 @@ class TaskManagerServiceTests {
     //region start
     @Test
     void shouldStartStandardTask() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
-                .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(teeMockedService.isTeeEnabled()).thenReturn(false);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(getTaskDescriptionBuilder(false).build());
@@ -159,7 +156,10 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotStartSinceStandardTaskWithEncryption() {
-        final TaskDescription taskDescription = TaskDescription.builder().isResultEncryption(true).build();
+        final TaskDescription taskDescription = TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .isResultEncryption(true)
+                .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         ReplicateActionResponse actionResponse = taskManagerService.start(taskDescription);
@@ -169,11 +169,9 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldStartTeeTask() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
-                .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(teeMockedService.isTeeEnabled()).thenReturn(true);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(Optional.empty());
 
         ReplicateActionResponse actionResponse =
@@ -185,11 +183,9 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotStartSinceTeePrerequisitesAreNotMet() {
-        when(contributionService.isChainTaskInitialized(CHAIN_TASK_ID))
-                .thenReturn(true);
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(teeMockedService.isTeeEnabled()).thenReturn(true);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(Optional.of(TEE_NOT_SUPPORTED));
 
         ReplicateActionResponse actionResponse =
@@ -258,14 +254,13 @@ class TaskManagerServiceTests {
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
-        when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        verify(computeManagerService, never()).runPostCompute(any(TaskDescription.class), any(TeeSessionGenerationResponse.class));
     }
 
     @Test
@@ -374,8 +369,6 @@ class TaskManagerServiceTests {
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadStandardDataset(taskDescription))
-                .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -388,20 +381,16 @@ class TaskManagerServiceTests {
     // with dataset + with input files + TEE task
 
     @Test
-    void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess()
-            throws Exception {
+    void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(true).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
-        when(dataService.downloadStandardDataset(taskDescription))
-                .thenReturn(PATH_TO_DOWNLOADED_FILE);
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isTrue();
-        verify(dataService, never()).downloadStandardDataset(taskDescription);
-        verify(dataService, never()).downloadStandardInputFiles(anyString(), anyList());
+        verifyNoInteractions(dataService);
     }
 
     // DATASET_FILE_DOWNLOAD_FAILED exception
@@ -437,8 +426,6 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
-        when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -446,6 +433,7 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
                 .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        verifyNoInteractions(computeManagerService);
     }
 
     @Test
@@ -569,8 +557,6 @@ class TaskManagerServiceTests {
                 taskDescription.getInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
-        when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -578,6 +564,7 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause())
                 .isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        verifyNoInteractions(computeManagerService);
     }
 
     @Test
@@ -609,13 +596,9 @@ class TaskManagerServiceTests {
     //region compute
     @Test
     void shouldComputeStandardTask() {
-        final TaskDescription taskDescription = TaskDescription.builder()
-                .isTeeTask(false)
-                .build();
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(false).build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
-
-        ComputedFile computedFile1 = ComputedFile.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -629,8 +612,6 @@ class TaskManagerServiceTests {
                 .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder().build());
-        when(resultService.getComputedFile(CHAIN_TASK_ID))
-                .thenReturn(computedFile1);
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -645,6 +626,7 @@ class TaskManagerServiceTests {
                                         .stdout("stdout")
                                         .stderr("stderr")
                                         .build()));
+        verifyNoInteractions(teeServicesManager, resultService);
     }
 
     @Test
@@ -653,12 +635,11 @@ class TaskManagerServiceTests {
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
-        ComputedFile computedFile1 = ComputedFile.builder().build();
-
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
                 .thenReturn(true);
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
@@ -669,8 +650,6 @@ class TaskManagerServiceTests {
                 .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder().build());
-        when(resultService.getComputedFile(CHAIN_TASK_ID))
-                .thenReturn(computedFile1);
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -692,7 +671,6 @@ class TaskManagerServiceTests {
             names = {"CHAIN_UNREACHABLE", "STAKE_TOO_LOW", "TASK_NOT_ACTIVE", "CONTRIBUTION_TIMEOUT",
                     "CONTRIBUTION_ALREADY_SET", "WORKERPOOL_AUTHORIZATION_NOT_FOUND"})
     void shouldNotComputeSinceCannotContributeStatusIsPresent(ReplicateStatusCause replicateStatusCause) {
-
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.of(replicateStatusCause));
 
@@ -706,7 +684,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceAppNotDownloaded() {
-        final TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -725,7 +703,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedPreCompute() {
-        final TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
@@ -751,14 +729,13 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedLasStart() {
-        final TaskDescription taskDescription = TaskDescription.builder()
-                .isTeeTask(true)
-                .build();
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(true).build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
                 .thenReturn(false);
 
@@ -773,7 +750,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedAppCompute() {
-        final TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
@@ -809,7 +786,7 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotComputeSinceFailedPostCompute() {
-        final TaskDescription taskDescription = TaskDescription.builder().build();
+        final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
         WorkerpoolAuthorization workerpoolAuthorization =
                 WorkerpoolAuthorization.builder().build();
 
