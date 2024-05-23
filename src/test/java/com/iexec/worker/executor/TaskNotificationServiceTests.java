@@ -80,7 +80,7 @@ class TaskNotificationServiceTests {
     @Mock
     private TaskDescription taskDescription;
 
-    void init() {
+    void mockChainCalls() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
     }
@@ -177,7 +177,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldStart() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_START);
         when(taskManagerService.start(taskDescription)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // STARTED
@@ -193,7 +193,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToStart() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_START);
         when(taskManagerService.start(taskDescription)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -207,7 +207,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldDownloadApp() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_APP);
         when(taskManagerService.downloadApp(taskDescription)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // APP_DOWNLOADED
@@ -223,7 +223,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToDownloadApp() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_APP);
         when(taskManagerService.downloadApp(taskDescription)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -237,7 +237,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldDownloadData() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_DATA);
         when(taskManagerService.downloadData(taskDescription))
                 .thenReturn(ReplicateActionResponse.success());
@@ -254,7 +254,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToDownloadData() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_DOWNLOAD_DATA);
         when(taskManagerService.downloadData(taskDescription)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -268,7 +268,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldCompute() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_COMPUTE);
         when(taskManagerService.compute(taskDescription)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPUTED
@@ -284,7 +284,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToCompute() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_COMPUTE);
         when(taskManagerService.compute(taskDescription)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -298,7 +298,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldContribute() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE);
         when(taskManagerService.contribute(CHAIN_TASK_ID))
                 .thenReturn(ReplicateActionResponse.success());
@@ -315,7 +315,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToContribute() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE);
         when(taskManagerService.contribute(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -329,7 +329,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldContributeAndFinalize() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE_AND_FINALIZE);
         when(taskManagerService.contributeAndFinalize(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_WAIT);
@@ -342,7 +342,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToContributeAndFinalize() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_CONTRIBUTE_AND_FINALIZE);
         when(taskManagerService.contributeAndFinalize(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -355,7 +355,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldReveal() {
-        init();
+        mockChainCalls();
         TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(10).build();
         TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_REVEAL, extra);
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
@@ -373,7 +373,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToReveal() {
-        init();
+        mockChainCalls();
         TaskNotificationExtra extra = TaskNotificationExtra.builder().blockNumber(10).build();
         TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_REVEAL, extra);
         when(taskManagerService.reveal(CHAIN_TASK_ID, currentNotification.getTaskNotificationExtra()))
@@ -389,7 +389,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldUpload() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_UPLOAD);
         when(taskManagerService.uploadResult(CHAIN_TASK_ID))
                 .thenReturn(ReplicateActionResponse.success());
@@ -406,7 +406,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToUpload() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_UPLOAD);
         when(taskManagerService.uploadResult(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -420,7 +420,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldComplete() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_COMPLETE);
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
@@ -436,7 +436,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldFailToComplete() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_COMPLETE);
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.failure());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())).thenReturn(PLEASE_ABORT);
@@ -451,7 +451,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldAbort() {
-        init();
+        mockChainCalls();
         TaskNotificationExtra extra = TaskNotificationExtra.builder().taskAbortCause(TaskAbortCause.CONTRIBUTION_TIMEOUT).build();
         TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_ABORT, extra);
         when(taskManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
@@ -466,7 +466,7 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldRetryCompleteUntilAchieved() {
-        init();
+        mockChainCalls();
         TaskNotification currentNotification = getTaskNotification(PLEASE_COMPLETE);
         when(taskManagerService.complete(CHAIN_TASK_ID)).thenReturn(ReplicateActionResponse.success());
         when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // COMPLETED
