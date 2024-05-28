@@ -16,11 +16,11 @@
 
 package com.iexec.worker.replicate;
 
-import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.core.notification.TaskNotification;
 import com.iexec.core.notification.TaskNotificationExtra;
 import com.iexec.core.notification.TaskNotificationType;
+import com.iexec.core.replicate.ReplicateTaskSummary;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
@@ -119,14 +119,14 @@ public class ReplicateDemandService {
      * @param replicateTaskSummary replicate task summary for computing and contribution
      */
     void startTask(ReplicateTaskSummary replicateTaskSummary) {
-        WorkerpoolAuthorization authorization = 
-            replicateTaskSummary.getWorkerpoolAuthorization();
-        String chainTaskId = authorization.getChainTaskId();
-        TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
+        final WorkerpoolAuthorization authorization =
+                replicateTaskSummary.getWorkerpoolAuthorization();
+        final String chainTaskId = authorization.getChainTaskId();
+        final TaskNotificationExtra notificationExtra = TaskNotificationExtra.builder()
                 .workerpoolAuthorization(authorization)
                 .smsUrl(replicateTaskSummary.getSmsUrl())
                 .build();
-        TaskNotification taskNotification = TaskNotification.builder()
+        final TaskNotification taskNotification = TaskNotification.builder()
                 .chainTaskId(chainTaskId)
                 .workersAddress(Collections.emptyList())
                 .taskNotificationType(TaskNotificationType.PLEASE_START)

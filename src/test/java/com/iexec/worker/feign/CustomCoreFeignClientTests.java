@@ -19,19 +19,19 @@ package com.iexec.worker.feign;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.config.PublicConfiguration;
 import com.iexec.core.notification.TaskNotification;
 import com.iexec.core.notification.TaskNotificationType;
+import com.iexec.core.replicate.ReplicateTaskSummary;
 import feign.FeignException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class CustomCoreFeignClientTests {
     private static final String AUTHORIZATION = "authorization";
     private static final String CHAIN_TASK_ID = "0x123";
@@ -52,11 +53,6 @@ class CustomCoreFeignClientTests {
     private SchedulerClient coreClient;
     @InjectMocks
     private CustomCoreFeignClient customCoreFeignClient;
-
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     //region getCoreVersion
     @Test

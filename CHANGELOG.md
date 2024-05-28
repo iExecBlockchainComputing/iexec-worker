@@ -14,7 +14,6 @@ All notable changes to this project will be documented in this file.
 - Fix `LoginServiceTests#shouldLoginOnceOnSimultaneousCalls` test. (#587)
 - Always use `WorkerpoolAuhorization` to retrieve JWT on Result Proxy. (#588)
 - Improve checks when receiving a `computed.json` file from a REST call. (#598)
-- Move `ReplicateActionResponse` from `iexec-common` to `iexec-worker`. (#599)
 
 ### Quality
 
@@ -22,6 +21,8 @@ All notable changes to this project will be documented in this file.
 - Remove `ResponseEntity` wrapper in feign client. (#593)
 - Use constructor injection in `Application` class. (#594)
 - Transform `CoreConfigurationService` to immutable `SchedulerConfiguration` class. (#597)
+- Move `ReplicateActionResponse` from `iexec-common` to `iexec-worker`. (#599)
+- Use `ReplicateTaskSummary` from `iexce-core-library`. (#600)
 
 ### Dependency Upgrades
 
