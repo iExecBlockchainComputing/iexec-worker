@@ -16,18 +16,19 @@
 
 package com.iexec.worker.replicate;
 
-import com.iexec.common.replicate.ReplicateTaskSummary;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.core.notification.TaskNotification;
+import com.iexec.core.replicate.ReplicateTaskSummary;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.feign.CustomCoreFeignClient;
 import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.utils.AsyncUtils;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
@@ -36,6 +37,7 @@ import static com.iexec.core.notification.TaskNotificationType.PLEASE_START;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class ReplicateDemandServiceTests {
 
     private static final String ASK_FOR_REPLICATE_CONTEXT = "ask-for-replicate";
@@ -59,11 +61,6 @@ class ReplicateDemandServiceTests {
     @Spy
     @InjectMocks
     private ReplicateDemandService replicateDemandService;
-
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     // region triggerAskForReplicate()
     @Test
