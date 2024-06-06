@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Fix `LoginServiceTests#shouldLoginOnceOnSimultaneousCalls` test. (#587)
 - Always use `WorkerpoolAuhorization` to retrieve JWT on Result Proxy. (#588)
 - Improve checks when receiving a `computed.json` file from a REST call. (#598)
+- Avoid `NullPointerException` on empty enclave configuration during TEE pre-compute. (#601)
 
 ### Quality
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ import java.util.concurrent.TimeoutException;
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
 
-
 @Slf4j
 @Service
 public class PreComputeService {
@@ -89,22 +88,29 @@ public class PreComputeService {
      * If the task contains a dataset or some input files, the pre-compute enclave
      * is started to handle them.
      *
-     * @param taskDescription
-     * @param workerpoolAuth
+     * @param taskDescription Task description read on-chain
+     * @param workerpoolAuth  Workerpool authorization provided by scheduler
      * @return PreComputeResponse
      */
     public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
-        String chainTaskId = taskDescription.getChainTaskId();
+        final String chainTaskId = taskDescription.getChainTaskId();
         final PreComputeResponse.PreComputeResponseBuilder preComputeResponseBuilder = PreComputeResponse.builder()
                 .isTeeTask(taskDescription.isTeeTask());
 
         // verify enclave configuration for compute stage
-        TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
+        final TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
+        if (enclaveConfig == null) {
+            log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
+            return preComputeResponseBuilder
+                    .exitCause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION)
+                    .build();
+        }
         if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
-            preComputeResponseBuilder.exitCause(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
-            return preComputeResponseBuilder.build();
+            return preComputeResponseBuilder
+                    .exitCause(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION)
+                    .build();
         }
         long teeComputeMaxHeapSize = DataSize
                 .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGb())
@@ -117,8 +123,7 @@ public class PreComputeService {
             return preComputeResponseBuilder.build();
         }
         // create secure session
-        TeeSessionGenerationResponse secureSession = null;
-        TeeSessionGenerationError teeSessionGenerationError = null;
+        final TeeSessionGenerationResponse secureSession;
         try {
             secureSession = smsService.createTeeSession(workerpoolAuth);
             if (secureSession == null) {
@@ -127,16 +132,15 @@ public class PreComputeService {
             preComputeResponseBuilder.secureSession(secureSession);
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
-            teeSessionGenerationError = e.getTeeSessionGenerationError();
-            preComputeResponseBuilder.exitCause(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError()));
+            return preComputeResponseBuilder
+                    .exitCause(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError()))
+                    .build();
         }
 
         // run TEE pre-compute container if needed
-        if (teeSessionGenerationError == null &&
-                (taskDescription.containsDataset() || taskDescription.containsInputFiles())) {
-            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, " +
-                            "containsInputFiles:{}]", chainTaskId, taskDescription.containsDataset(),
-                    taskDescription.containsInputFiles());
+        if (taskDescription.containsDataset() || taskDescription.containsInputFiles()) {
+            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
+                    chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
             final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
             preComputeResponseBuilder.exitCause(exitCause);
         }
@@ -152,8 +156,8 @@ public class PreComputeService {
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
                 ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
-                log.error("Failed to prepare TEE input data [chainTaskId:{}, " +
-                        "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+                log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCause:{}]",
+                        chainTaskId, exitCode, exitCause);
                 return exitCause;
             }
         } catch (TimeoutException e) {
