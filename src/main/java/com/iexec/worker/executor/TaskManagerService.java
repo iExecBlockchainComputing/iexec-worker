@@ -228,11 +228,11 @@ public class TaskManagerService {
 
     ReplicateActionResponse compute(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        Optional<ReplicateStatusCause> oErrorStatus =
-                contributionService.getCannotContributeStatusCause(chainTaskId);
-        String context = "compute";
-        if (oErrorStatus.isPresent()) {
-            return getFailureResponseAndPrintError(oErrorStatus.get(), context, chainTaskId);
+        final ReplicateStatusCause errorStatus = contributionService.getCannotContributeStatusCause(chainTaskId)
+                .orElse(null);
+        final String context = "compute";
+        if (errorStatus != null) {
+            return getFailureResponseAndPrintError(errorStatus, context, chainTaskId);
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
@@ -255,13 +255,11 @@ public class TaskManagerService {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
-            final ReplicateActionResponse failureResponseAndPrintError;
-            failureResponseAndPrintError = getFailureResponseAndPrintError(
+            return getFailureResponseAndPrintError(
                     preResponse.getExitCause(),
                     context,
                     chainTaskId
             );
-            return failureResponseAndPrintError;
         }
 
         AppComputeResponse appResponse =
