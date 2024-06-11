@@ -68,8 +68,8 @@ public class LoginService {
             final String oldToken = jwtToken;
             expireToken();
 
-            String workerAddress = signerService.getCredentials().getAddress();
-            ECKeyPair ecKeyPair = signerService.getCredentials().getEcKeyPair();
+            final String workerAddress = signerService.getCredentials().getAddress();
+            final ECKeyPair ecKeyPair = signerService.getCredentials().getEcKeyPair();
 
             final String challenge;
             try {
@@ -83,7 +83,7 @@ public class LoginService {
                 return "";
             }
 
-            final Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
+            final Signature signature = SignatureUtils.hashAndSign(challenge, ecKeyPair);
             final String token;
             try {
                 token = coreClient.login(workerAddress, signature);

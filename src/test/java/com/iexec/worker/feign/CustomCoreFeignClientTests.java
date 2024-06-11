@@ -20,7 +20,6 @@ import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.core.api.SchedulerClient;
-import com.iexec.core.config.PublicConfiguration;
 import com.iexec.core.notification.TaskNotification;
 import com.iexec.core.notification.TaskNotificationType;
 import com.iexec.core.replicate.ReplicateTaskSummary;
@@ -74,29 +73,6 @@ class CustomCoreFeignClientTests {
         );
     }
     //endregion
-
-    // region getPublicConfiguration
-    @Test
-    void shouldGetPublicConfiguration() {
-        PublicConfiguration publicConfiguration = PublicConfiguration.builder()
-                .requiredWorkerVersion("X.Y.Z")
-                .build();
-        when(coreClient.getPublicConfiguration()).thenReturn(publicConfiguration);
-        assertAll(
-                () -> assertThat(customCoreFeignClient.getPublicConfiguration()).isEqualTo(publicConfiguration),
-                () -> verifyNoInteractions(loginService)
-        );
-    }
-
-    @Test
-    void shouldNotGetPublicConfigurationWhenError() {
-        when(coreClient.getPublicConfiguration()).thenThrow(FeignException.class);
-        assertAll(
-                () -> assertThat(customCoreFeignClient.getPublicConfiguration()).isNull(),
-                () -> verifyNoInteractions(loginService)
-        );
-    }
-    // endregion
 
     // region registerWorker
     @Test

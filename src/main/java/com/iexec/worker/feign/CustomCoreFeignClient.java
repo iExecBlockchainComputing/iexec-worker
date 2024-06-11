@@ -19,7 +19,6 @@ package com.iexec.worker.feign;
 import com.iexec.common.config.WorkerModel;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
 import com.iexec.core.api.SchedulerClient;
-import com.iexec.core.config.PublicConfiguration;
 import com.iexec.core.notification.TaskNotification;
 import com.iexec.core.notification.TaskNotificationType;
 import com.iexec.core.replicate.ReplicateTaskSummary;
@@ -73,12 +72,6 @@ public class CustomCoreFeignClient extends BaseFeignClient {
         return makeHttpCall(
                 jwtToken -> coreClient.getCoreVersion(),
                 "getCoreVersion", null, null);
-    }
-
-    public PublicConfiguration getPublicConfiguration() {
-        return makeHttpCall(
-                jwtToken -> coreClient.getPublicConfiguration(),
-                "getPublicConfiguration", null, null);
     }
 
     //TODO: Make registerWorker return Worker
