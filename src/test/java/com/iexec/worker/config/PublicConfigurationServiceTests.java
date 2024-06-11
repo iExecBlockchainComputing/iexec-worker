@@ -16,32 +16,28 @@
 
 package com.iexec.worker.config;
 
+import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.config.PublicConfiguration;
-import com.iexec.worker.feign.CustomCoreFeignClient;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class PublicConfigurationServiceTests {
 
     @Mock
-    private CustomCoreFeignClient customCoreFeignClient;
-
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-    }
+    private SchedulerClient schedulerClient;
 
     @ParameterizedTest
     @ValueSource(strings = {"", "http://localhost:8888"})
     void shouldBeOK(String configServerURL) {
-        when(customCoreFeignClient.getPublicConfiguration()).thenReturn(
+        when(schedulerClient.getPublicConfiguration()).thenReturn(
                 PublicConfiguration.builder()
                         .configServerUrl(configServerURL)
                         .blockchainAdapterUrl("http://localhost:13010")
@@ -51,7 +47,7 @@ class PublicConfigurationServiceTests {
                         .build()
         );
 
-        final PublicConfigurationService publicConfigurationService = new PublicConfigurationService(customCoreFeignClient);
+        final PublicConfigurationService publicConfigurationService = new PublicConfigurationService(schedulerClient);
 
         assertAll(
                 () -> assertThat(publicConfigurationService).isNotNull(),

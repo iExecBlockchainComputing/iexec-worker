@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.utils.EthAddress;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
 import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.EthAddress;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,8 +54,8 @@ public class EnclaveAuthorizationService {
             return false;
         }
         if (!EthAddress.validate(enclaveChallenge)) {
-            log.error(baseErrorMessage + "enclave challenge [chainTaskId:{}, " +
-                    "enclaveChallenge:{}]", chainTaskId, enclaveChallenge);
+            log.error(baseErrorMessage + "enclave challenge [chainTaskId:{}, enclaveChallenge:{}]",
+                    chainTaskId, enclaveChallenge);
             return false;
         }
 

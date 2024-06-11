@@ -16,10 +16,10 @@
 
 package com.iexec.worker.feign;
 
+import com.iexec.commons.poco.chain.SignerService;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import com.iexec.core.api.SchedulerClient;
-import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -36,12 +36,12 @@ public class LoginService {
     static final String TOKEN_PREFIX = "Bearer ";
     private String jwtToken;
 
-    private final CredentialsService credentialsService;
+    private final SignerService signerService;
     private final SchedulerClient coreClient;
     private final ReentrantLock lock = new ReentrantLock();
 
-    LoginService(CredentialsService credentialsService, SchedulerClient coreClient) {
-        this.credentialsService = credentialsService;
+    LoginService(SignerService signerService, SchedulerClient coreClient) {
+        this.signerService = signerService;
         this.coreClient = coreClient;
     }
 
@@ -68,8 +68,8 @@ public class LoginService {
             final String oldToken = jwtToken;
             expireToken();
 
-            String workerAddress = credentialsService.getCredentials().getAddress();
-            ECKeyPair ecKeyPair = credentialsService.getCredentials().getEcKeyPair();
+            String workerAddress = signerService.getCredentials().getAddress();
+            ECKeyPair ecKeyPair = signerService.getCredentials().getEcKeyPair();
 
             final String challenge;
             try {
@@ -83,7 +83,7 @@ public class LoginService {
                 return "";
             }
 
-            Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
+            final Signature signature = SignatureUtils.hashAndSign(challenge, workerAddress, ecKeyPair);
             final String token;
             try {
                 token = coreClient.login(workerAddress, signature);

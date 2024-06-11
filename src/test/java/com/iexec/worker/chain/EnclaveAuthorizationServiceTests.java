@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,10 @@ package com.iexec.worker.chain;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
 import com.iexec.commons.poco.utils.SignatureUtils;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Keys;
 import org.web3j.utils.Numeric;
@@ -32,15 +31,13 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+@ExtendWith(MockitoExtension.class)
 class EnclaveAuthorizationServiceTests {
 
     @InjectMocks
     private EnclaveAuthorizationService enclaveAuthorizationService;
-
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     @Test
     void isVerifiedEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
@@ -55,7 +52,7 @@ class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
-        Assertions.assertTrue(isVerifiedEnclaveSignature);
+        assertThat(isVerifiedEnclaveSignature).isTrue();
     }
 
     @Test
@@ -71,7 +68,7 @@ class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
-        Assertions.assertFalse(isVerifiedEnclaveSignature);
+        assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 
     @Test
@@ -87,7 +84,7 @@ class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
-        Assertions.assertFalse(isVerifiedEnclaveSignature);
+        assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 
     @Test
@@ -103,7 +100,7 @@ class EnclaveAuthorizationServiceTests {
         Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), "0x1");
-        Assertions.assertFalse(isVerifiedEnclaveSignature);
+        assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 
     @Test
@@ -115,6 +112,6 @@ class EnclaveAuthorizationServiceTests {
         Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
         boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, "0x1", credentials.getAddress());
-        Assertions.assertFalse(isVerifiedEnclaveSignature);
+        assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 }

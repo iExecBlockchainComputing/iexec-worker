@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Add `iexec-core-library` dependency and use it. (#595)
 - Create `ConfigServerClient` instance and use it instead of `BlockchainAdapterApiClient`. (#596)
+- Replace `CredentialsService` with `SignerService`. (#602)
 
 ### Bug fixes
 
