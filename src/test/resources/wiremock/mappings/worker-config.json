@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/workers/config"
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"workerPoolAddress\":\"0x1\",\"schedulerPublicAddress\":\"0x2\",\"blockchainAdapterUrl\":\"http://localhost:{{request.port}}\",\"configServerUrl\":\"http://localhost:{{request.port}}\",\"resultRepositoryURL\":\"http://localhost:{{request.port}}\",\"askForReplicatePeriod\":\"5\",\"requiredWorkerVersion\":\"x.y.z\"}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "transformers": [
+      "response-template"
+    ]
+  }
+}

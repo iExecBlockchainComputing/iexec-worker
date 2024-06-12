@@ -23,16 +23,12 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
-import com.iexec.commons.poco.chain.ChainDeal;
-import com.iexec.commons.poco.chain.ChainTask;
-import com.iexec.commons.poco.chain.ChainTaskStatus;
-import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
-import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import feign.FeignException;
@@ -89,7 +85,7 @@ class ResultServiceTests {
     @Mock
     private WorkerConfigurationService workerConfigurationService;
     @Mock
-    private CredentialsService credentialsService;
+    private SignerService signerService;
 
     @InjectMocks
     private ResultService resultService;
@@ -200,7 +196,7 @@ class ResultServiceTests {
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).resultStorageProvider(IPFS_RESULT_STORAGE_PROVIDER).build());
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
@@ -550,24 +546,24 @@ class ResultServiceTests {
     @Test
     void shouldGetIexecUploadTokenFromWorkerpoolAuthorization() {
         final String uploadToken = "uploadToken";
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEqualTo(uploadToken);
-        verify(credentialsService).hashAndSignMessage(anyString());
+        verify(signerService).signMessageHash(anyString());
         verify(resultProxyClient).getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION);
     }
 
     @Test
     void shouldNotGetIexecUploadTokenWorkerpoolAuthorizationSinceSigningReturnsEmpty() {
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(""));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(""));
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
-        verify(credentialsService).hashAndSignMessage(anyString());
+        verify(signerService).signMessageHash(anyString());
         verifyNoInteractions(resultProxyClient);
     }
 
     @Test
     void shouldNotGetIexecUploadTokenFromWorkerpoolAuthorizationSinceFeignException() {
-        when(credentialsService.hashAndSignMessage(anyString())).thenReturn(new Signature(AUTHORIZATION));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
     }

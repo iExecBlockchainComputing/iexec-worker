@@ -48,20 +48,20 @@ import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
 public class IexecHubService extends IexecHubAbstractService implements Purgeable {
 
     private static final String PENDING_RECEIPT_STATUS = "pending";
-    private final CredentialsService credentialsService;
+    private final SignerService signerService;
     private final ThreadPoolExecutor executor;
     private final Web3jService web3jService;
 
     @Autowired
-    public IexecHubService(CredentialsService credentialsService,
+    public IexecHubService(SignerService signerService,
                            Web3jService web3jService,
                            ConfigServerConfigurationService configServerConfigurationService) {
-        super(credentialsService.getCredentials(),
+        super(signerService.getCredentials(),
                 web3jService,
                 configServerConfigurationService.getIexecHubContractAddress(),
                 1,
                 5);
-        this.credentialsService = credentialsService;
+        this.signerService = signerService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
     }
@@ -89,7 +89,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
                 IexecHubContract.getTaskContributeEvents(contributeReceipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
-                                && Objects.equals(event.worker, credentialsService.getCredentials().getAddress()))
+                                && Objects.equals(event.worker, signerService.getAddress()))
                         .collect(Collectors.toList());
         log.debug("contributeEvents count {} [chainTaskId: {}]", contributeEvents.size(), chainTaskId);
 
@@ -124,7 +124,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         List<IexecHubContract.TaskRevealEventResponse> revealEvents =
                 IexecHubContract.getTaskRevealEvents(revealReceipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
-                                && Objects.equals(event.worker, credentialsService.getCredentials().getAddress()))
+                                && Objects.equals(event.worker, signerService.getAddress()))
                         .collect(Collectors.toList());
         log.debug("revealEvents count {} [chainTaskId:{}]", revealEvents.size(), chainTaskId);
 
@@ -239,15 +239,15 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     // endregion
 
     Optional<ChainContribution> getChainContribution(String chainTaskId) {
-        return getChainContribution(chainTaskId, credentialsService.getCredentials().getAddress());
+        return getChainContribution(chainTaskId, signerService.getAddress());
     }
 
     Optional<ChainAccount> getChainAccount() {
-        return getChainAccount(credentialsService.getCredentials().getAddress());
+        return getChainAccount(signerService.getAddress());
     }
 
     public boolean hasEnoughGas() {
-        return web3jService.hasEnoughGas(credentialsService.getCredentials().getAddress());
+        return web3jService.hasEnoughGas(signerService.getAddress());
     }
 
     public long getLatestBlockNumber() {

@@ -57,7 +57,7 @@ class IexecHubServiceTests {
     @Mock
     private ConfigServerConfigurationService configServerConfigurationService;
     @Mock
-    private CredentialsService credentialsService;
+    private SignerService signerService;
     @Mock
     private Web3jService web3jService;
     @Mock
@@ -76,9 +76,10 @@ class IexecHubServiceTests {
         when(configServerConfigurationService.getBlockTime()).thenReturn(Duration.ofSeconds(5L));
         when(configServerConfigurationService.getChainId()).thenReturn(65535);
         credentials = Credentials.create(Keys.createEcKeyPair());
-        when(credentialsService.getCredentials()).thenReturn(credentials);
+        when(signerService.getCredentials()).thenReturn(credentials);
+        when(signerService.getAddress()).thenReturn(credentials.getAddress());
         when(web3jService.getWeb3j()).thenReturn(web3jClient);
-        iexecHubService = spy(new IexecHubService(credentialsService, web3jService, configServerConfigurationService));
+        iexecHubService = spy(new IexecHubService(signerService, web3jService, configServerConfigurationService));
         ReflectionTestUtils.setField(iexecHubService, "iexecHubContract", iexecHubContract);
     }
 

@@ -27,15 +27,11 @@ import com.iexec.common.result.ResultModel;
 import com.iexec.common.utils.FileHelper;
 import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.common.worker.result.ResultUtils;
-import com.iexec.commons.poco.chain.ChainDeal;
-import com.iexec.commons.poco.chain.ChainTask;
-import com.iexec.commons.poco.chain.ChainTaskStatus;
-import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
-import com.iexec.worker.chain.CredentialsService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +54,7 @@ public class ResultService implements Purgeable {
     public static final String ERROR_FILENAME = "error.txt";
 
     private final WorkerConfigurationService workerConfigService;
-    private final CredentialsService credentialsService;
+    private final SignerService signerService;
     private final IexecHubService iexecHubService;
     private final ResultProxyClient resultProxyClient;
     private final Map<String, ResultInfo> resultInfoMap = ExpiringTaskMapFactory.getExpiringTaskMap();
@@ -66,11 +62,11 @@ public class ResultService implements Purgeable {
 
     public ResultService(
             WorkerConfigurationService workerConfigService,
-            CredentialsService credentialsService,
+            SignerService signerService,
             IexecHubService iexecHubService,
             ResultProxyClient resultProxyClient) {
         this.workerConfigService = workerConfigService;
-        this.credentialsService = credentialsService;
+        this.signerService = signerService;
         this.iexecHubService = iexecHubService;
         this.resultProxyClient = resultProxyClient;
     }
@@ -262,7 +258,7 @@ public class ResultService implements Purgeable {
     public String getIexecUploadToken(WorkerpoolAuthorization workerpoolAuthorization) {
         try {
             final String hash = workerpoolAuthorization.getHash();
-            final String authorization = credentialsService.hashAndSignMessage(hash).getValue();
+            final String authorization = signerService.signMessageHash(hash).getValue();
             if (authorization.isEmpty()) {
                 log.error("Couldn't sign hash for an unknown reason [hash:{}]", hash);
                 return "";

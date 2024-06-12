@@ -16,14 +16,13 @@
 
 package com.iexec.worker.feign;
 
+import com.iexec.commons.poco.chain.SignerService;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import com.iexec.core.api.SchedulerClient;
-import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.SneakyThrows;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,7 +30,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -52,31 +51,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 @ExtendWith(OutputCaptureExtension.class)
 class LoginServiceTests {
 
     @Mock
     SchedulerClient coreClient;
     @Mock
-    CredentialsService credentialsService;
+    SignerService signerService;
     @InjectMocks
     private LoginService loginService;
 
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-    }
-
     @SneakyThrows
     private Credentials generateCredentials() {
-        ECKeyPair ecKeyPair = Keys.createEcKeyPair();
-        return Credentials.create(ecKeyPair);
+        final ECKeyPair ecKeyPair = Keys.createEcKeyPair();
+        final Credentials credentials = Credentials.create(ecKeyPair);
+        when(signerService.getCredentials()).thenReturn(credentials);
+        return credentials;
     }
 
     @Test
     void shouldNotLoginOnBadChallengeStatusCode() {
         Credentials credentials = generateCredentials();
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenThrow(FeignException.class);
         assertAll(
                 () -> assertEquals("", loginService.login()),
@@ -89,7 +85,6 @@ class LoginServiceTests {
     @ValueSource(strings = "")
     void shouldNotLoginOnEmptyChallenge(String challenge) {
         Credentials credentials = generateCredentials();
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn(challenge);
         assertAll(
                 () -> assertEquals("", loginService.login()),
@@ -100,7 +95,6 @@ class LoginServiceTests {
     @Test
     void shouldNotLoginOnBadLoginStatusCode() {
         Credentials credentials = generateCredentials();
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenThrow(FeignException.class);
@@ -116,7 +110,6 @@ class LoginServiceTests {
     @ParameterizedTest
     void shouldNotLoginOnEmptyToken(String token) {
         Credentials credentials = generateCredentials();
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenReturn(token);
@@ -130,7 +123,6 @@ class LoginServiceTests {
     @Test
     void shouldLogin() {
         Credentials credentials = generateCredentials();
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
@@ -171,7 +163,6 @@ class LoginServiceTests {
         };
 
         final Credentials credentials = generateCredentials();
-        when(credentialsService.getCredentials()).thenReturn(credentials);
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
         final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature))

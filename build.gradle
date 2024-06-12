@@ -13,6 +13,7 @@ group = 'com.iexec.worker'
 ext {
     springCloudVersion = '2021.0.8'
     commonsMathsVersion = '3.6.1'
+    testContainersVersion = '1.19.3'
 }
 
 if (!project.hasProperty('gitBranch')) {
@@ -115,6 +116,9 @@ testing {
 
                 // awaitility
                 implementation "org.awaitility:awaitility"
+
+                // testcontainers
+                implementation "org.testcontainers:junit-jupiter:$testContainersVersion"
             }
         }
     }

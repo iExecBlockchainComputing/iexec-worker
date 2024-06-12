@@ -18,10 +18,10 @@ package com.iexec.worker.config;
 
 import com.iexec.common.config.ConfigServerClient;
 import com.iexec.common.config.ConfigServerClientBuilder;
+import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.config.PublicConfiguration;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
-import com.iexec.worker.feign.CustomCoreFeignClient;
 import feign.Logger;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
@@ -34,8 +34,8 @@ public class PublicConfigurationService {
 
     private final PublicConfiguration publicConfiguration;
 
-    public PublicConfigurationService(CustomCoreFeignClient customCoreFeignClient) {
-        this.publicConfiguration = customCoreFeignClient.getPublicConfiguration();
+    public PublicConfigurationService(SchedulerClient schedulerClient) {
+        this.publicConfiguration = schedulerClient.getPublicConfiguration();
     }
 
     public String getSchedulerPublicAddress() {
