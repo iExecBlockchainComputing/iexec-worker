@@ -31,6 +31,12 @@ All notable changes to this project will be documented in this file.
 - Upgrade to Gradle 8.7. (#590)
 - Upgrade to `eclipse-temurin:11.0.22_7-jre-focal`. (#591)
 - Upgrade to Spring Boot 2.7.18. (#592)
+- Upgrade to `iexec-commons-poco` 4.1.0. (#603)
+- Upgrade to `iexec-common` 8.5.0. (#603)
+- Upgrade to `iexec-commons-containers` 1.2.2. (#603)
+- Upgrade to `iexec-result-proxy-library` 8.5.0. (#603)
+- Upgrade to `iexec-sms-library` 8.6.0. (#603)
+- Upgrade to `iexec-core-library` 8.5.0. (#603)
 
 ## [[8.4.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.4.0) 2024-02-29
 
@@ -49,9 +55,9 @@ All notable changes to this project will be documented in this file.
 ### Dependency Upgrades
 
 - Upgrade to `iexec-common` 8.4.0. (#583)
-- Upgrade to `iexec-blockchain-adapter` 8.4.0. (#584)
-- Upgrade to `iexec-result-proxy` 8.4.0. (#584)
-- Upgrade to `iexec-sms` 8.5.0. (#584)
+- Upgrade to `iexec-blockchain-adapter-library` 8.4.0. (#584)
+- Upgrade to `iexec-result-proxy-library` 8.4.0. (#584)
+- Upgrade to `iexec-sms-library` 8.5.0. (#584)
 
 ## [[8.3.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.3.0) 2024-01-11
 
