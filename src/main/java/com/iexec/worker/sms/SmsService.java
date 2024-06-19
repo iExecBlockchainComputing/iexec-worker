@@ -19,10 +19,10 @@ package com.iexec.worker.sms;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.web.ApiResponseBodyDecoder;
+import com.iexec.commons.poco.chain.SignerService;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.sms.api.*;
-import com.iexec.worker.chain.CredentialsService;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -38,13 +38,13 @@ import static com.iexec.sms.secret.ReservedSecretKeyName.IEXEC_RESULT_IEXEC_IPFS
 @Service
 public class SmsService implements Purgeable {
 
-    private final CredentialsService credentialsService;
+    private final SignerService signerService;
     private final SmsClientProvider smsClientProvider;
     private final Map<String, String> taskIdToSmsUrl = ExpiringTaskMapFactory.getExpiringTaskMap();
 
-    public SmsService(CredentialsService credentialsService,
+    public SmsService(SignerService signerService,
                       SmsClientProvider smsClientProvider) {
-        this.credentialsService = credentialsService;
+        this.signerService = signerService;
         this.smsClientProvider = smsClientProvider;
     }
 
@@ -97,7 +97,7 @@ public class SmsService implements Purgeable {
                     workerpoolAuthorization.getWorkerWallet(),
                     Hash.sha3String(IEXEC_RESULT_IEXEC_IPFS_TOKEN),
                     Hash.sha3String(token));
-            final String authorization = credentialsService.hashAndSignMessage(challenge).getValue();
+            final String authorization = signerService.signMessageHash(challenge).getValue();
             if (authorization.isEmpty()) {
                 log.error("Couldn't sign challenge for an unknown reason [hash:{}]", challenge);
                 return false;
@@ -143,8 +143,8 @@ public class SmsService implements Purgeable {
     }
 
     private String getAuthorizationString(WorkerpoolAuthorization workerpoolAuthorization) {
-        String challenge = workerpoolAuthorization.getHash();
-        return credentialsService.hashAndSignMessage(challenge).getValue();
+        final String challenge = workerpoolAuthorization.getHash();
+        return signerService.signMessageHash(challenge).getValue();
     }
 
     @Override

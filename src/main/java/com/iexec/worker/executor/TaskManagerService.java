@@ -18,12 +18,15 @@ package com.iexec.worker.executor;
 
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
-import com.iexec.common.replicate.*;
+import com.iexec.common.replicate.ComputeLogs;
+import com.iexec.common.replicate.ReplicateStatus;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.ChainReceipt;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
-import com.iexec.commons.poco.notification.TaskNotificationExtra;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.core.notification.TaskNotificationExtra;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -33,6 +36,7 @@ import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.pubsub.SubscriptionService;
+import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
@@ -224,11 +228,11 @@ public class TaskManagerService {
 
     ReplicateActionResponse compute(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        Optional<ReplicateStatusCause> oErrorStatus =
-                contributionService.getCannotContributeStatusCause(chainTaskId);
-        String context = "compute";
-        if (oErrorStatus.isPresent()) {
-            return getFailureResponseAndPrintError(oErrorStatus.get(), context, chainTaskId);
+        final ReplicateStatusCause errorStatus = contributionService.getCannotContributeStatusCause(chainTaskId)
+                .orElse(null);
+        final String context = "compute";
+        if (errorStatus != null) {
+            return getFailureResponseAndPrintError(errorStatus, context, chainTaskId);
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
@@ -251,13 +255,11 @@ public class TaskManagerService {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
-            final ReplicateActionResponse failureResponseAndPrintError;
-            failureResponseAndPrintError = getFailureResponseAndPrintError(
+            return getFailureResponseAndPrintError(
                     preResponse.getExitCause(),
                     context,
                     chainTaskId
             );
-            return failureResponseAndPrintError;
         }
 
         AppComputeResponse appResponse =
@@ -333,10 +335,10 @@ public class TaskManagerService {
         ReplicateActionResponse response = ReplicateActionResponse.failure(CHAIN_RECEIPT_NOT_VALID);
         if (context.equals(CONTRIBUTE)) {
             log.debug("contribute [contribution:{}]", contribution);
-            Optional<ChainReceipt> oChainReceipt = contributionService.contribute(contribution);
+            final ChainReceipt chainReceipt = contributionService.contribute(contribution).orElse(null);
 
-            if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
-                response = ReplicateActionResponse.success(oChainReceipt.get());
+            if (isValidChainReceipt(chainTaskId, chainReceipt)) {
+                response = ReplicateActionResponse.success(chainReceipt);
             }
         } else if (context.equals(CONTRIBUTE_AND_FINALIZE)) {
             oErrorStatus = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
@@ -350,13 +352,13 @@ public class TaskManagerService {
             String resultLink = resultService.uploadResultAndGetLink(workerpoolAuthorization);
             log.debug("contributeAndFinalize [contribution:{}, resultLink:{}, callbackData:{}]",
                     contribution, resultLink, callbackData);
-            Optional<ChainReceipt> oChainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData);
 
-            if (oChainReceipt.isPresent() && isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
+            final ChainReceipt chainReceipt = iexecHubService.contributeAndFinalize(contribution, resultLink, callbackData).orElse(null);
+            if (isValidChainReceipt(chainTaskId, chainReceipt)) {
                 final ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                         .resultLink(resultLink)
                         .chainCallbackData(callbackData)
-                        .chainReceipt(oChainReceipt.get())
+                        .chainReceipt(chainReceipt)
                         .build();
                 response = ReplicateActionResponse.builder()
                         .isSuccess(true)

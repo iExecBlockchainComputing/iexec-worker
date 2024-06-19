@@ -16,14 +16,15 @@
 
 package com.iexec.worker.config;
 
-import com.iexec.blockchain.api.BlockchainAdapterApiClient;
-import com.iexec.blockchain.api.BlockchainAdapterApiClientBuilder;
-import com.iexec.common.config.PublicConfiguration;
+import com.iexec.common.config.ConfigServerClient;
+import com.iexec.common.config.ConfigServerClientBuilder;
+import com.iexec.core.api.SchedulerClient;
+import com.iexec.core.config.PublicConfiguration;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
-import com.iexec.worker.feign.CustomCoreFeignClient;
 import feign.Logger;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
@@ -33,8 +34,8 @@ public class PublicConfigurationService {
 
     private final PublicConfiguration publicConfiguration;
 
-    public PublicConfigurationService(CustomCoreFeignClient customCoreFeignClient) {
-        this.publicConfiguration = customCoreFeignClient.getPublicConfiguration();
+    public PublicConfigurationService(SchedulerClient schedulerClient) {
+        this.publicConfiguration = schedulerClient.getPublicConfiguration();
     }
 
     public String getSchedulerPublicAddress() {
@@ -46,10 +47,12 @@ public class PublicConfigurationService {
     }
 
     @Bean
-    public BlockchainAdapterApiClient blockchainAdapterApiClient() {
-        return BlockchainAdapterApiClientBuilder.getInstance(
+    public ConfigServerClient configServerClient() {
+        final String configServerURL = StringUtils.isBlank(publicConfiguration.getConfigServerUrl()) ?
+                publicConfiguration.getBlockchainAdapterUrl() : publicConfiguration.getConfigServerUrl();
+        return ConfigServerClientBuilder.getInstance(
                 Logger.Level.NONE,
-                publicConfiguration.getBlockchainAdapterUrl());
+                configServerURL);
     }
 
     @Bean

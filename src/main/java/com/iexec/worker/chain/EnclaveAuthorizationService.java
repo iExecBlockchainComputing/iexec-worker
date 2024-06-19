@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.utils.EthAddress;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
 import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.EthAddress;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,23 +39,23 @@ public class EnclaveAuthorizationService {
         String baseErrorMessage =
                 "Cannot verify enclave signature with invalid ";
         if (!BytesUtils.isNonZeroedBytes32(resultHash)) {
-            log.error(baseErrorMessage + "result hash [chainTaskId:{}, " +
-                    "resultHash:{}]", chainTaskId, resultHash);
+            log.error(baseErrorMessage + "result hash [chainTaskId:{}, resultHash:{}]",
+                    chainTaskId, resultHash);
             return false;
         }
         if (!BytesUtils.isNonZeroedBytes32(resultSeal)) {
-            log.error(baseErrorMessage + "result seal [chainTaskId:{}, " +
-                    "resultSeal:{}]", chainTaskId, resultSeal);
+            log.error(baseErrorMessage + "result seal [chainTaskId:{}, resultSeal:{}]",
+                    chainTaskId, resultSeal);
             return false;
         }
         if (!SignatureUtils.isSignature(enclaveSignature)) {
-            log.error(baseErrorMessage + "enclave signature [chainTaskId:{}, " +
-                    "enclaveSignature:{}]", chainTaskId, enclaveSignature);
+            log.error(baseErrorMessage + "enclave signature [chainTaskId:{}, enclaveSignature:{}]",
+                    chainTaskId, enclaveSignature);
             return false;
         }
         if (!EthAddress.validate(enclaveChallenge)) {
-            log.error(baseErrorMessage + "enclave challenge [chainTaskId:{}, " +
-                    "enclaveChallenge:{}]", chainTaskId, enclaveChallenge);
+            log.error(baseErrorMessage + "enclave challenge [chainTaskId:{}, enclaveChallenge:{}]",
+                    chainTaskId, enclaveChallenge);
             return false;
         }
 

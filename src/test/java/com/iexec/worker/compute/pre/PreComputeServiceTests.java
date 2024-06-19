@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,7 @@ import java.util.stream.Stream;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static com.iexec.sms.api.TeeSessionGenerationError.*;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -241,19 +242,29 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() throws TeeSessionGenerationException {
-        final TeeEnclaveConfiguration enclaveConfig = TeeEnclaveConfiguration.builder().build();
-        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfig).build();
-        Assertions.assertThat(enclaveConfig.getValidator().isValid()).isFalse();
+    void shouldFailToRunTeePreComputeSinceMissingEnclaveConfiguration() {
+        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(null).build();
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
-        Assertions.assertThat(response.isSuccessful()).isFalse();
-        Assertions.assertThat(response.getExitCause()).isEqualTo(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
-        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
+        assertThat(response.isSuccessful()).isFalse();
+        assertThat(response.getExitCause()).isEqualTo(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
+        verifyNoInteractions(smsService);
     }
 
     @Test
-    void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() throws TeeSessionGenerationException {
+    void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
+        final TeeEnclaveConfiguration enclaveConfig = TeeEnclaveConfiguration.builder().build();
+        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfig).build();
+        assertThat(enclaveConfig.getValidator().isValid()).isFalse();
+
+        final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+        assertThat(response.isSuccessful()).isFalse();
+        assertThat(response.getExitCause()).isEqualTo(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
+        verifyNoInteractions(smsService);
+    }
+
+    @Test
+    void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
         final TeeEnclaveConfiguration enclaveConfiguration = TeeEnclaveConfiguration.builder()
                 .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
                 .heapSize(DataSize.ofGigabytes(8).toBytes() + 1)
@@ -261,18 +272,17 @@ class PreComputeServiceTests {
                 .build();
         final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfiguration).build();
 
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
+        assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
                 .isFalse();
-        verify(smsService, never()).createTeeSession(workerpoolAuthorization);
+        verifyNoInteractions(smsService);
     }
 
     @Test
     void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(null);
 
-        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-
-        Assertions.assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
+        assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
                 .isFalse();
         verify(smsService).createTeeSession(workerpoolAuthorization);
         verify(teeMockedService, never()).buildPreComputeDockerEnv(any(), any());
@@ -394,14 +404,12 @@ class PreComputeServiceTests {
                 // Secure session generation
                 Arguments.of(SECURE_SESSION_STORAGE_CALL_FAILED, TEE_SESSION_GENERATION_SECURE_SESSION_STORAGE_CALL_FAILED),
                 Arguments.of(SECURE_SESSION_GENERATION_FAILED, TEE_SESSION_GENERATION_SECURE_SESSION_GENERATION_FAILED),
-                Arguments.of(SECURE_SESSION_NO_TEE_PROVIDER, TEE_SESSION_GENERATION_SECURE_SESSION_NO_TEE_PROVIDER),
-                Arguments.of(SECURE_SESSION_UNKNOWN_TEE_PROVIDER, TEE_SESSION_GENERATION_SECURE_SESSION_UNKNOWN_TEE_PROVIDER),
+                Arguments.of(SECURE_SESSION_NO_TEE_FRAMEWORK, TEE_SESSION_GENERATION_SECURE_SESSION_NO_TEE_FRAMEWORK),
 
                 // Miscellaneous
                 Arguments.of(GET_TASK_DESCRIPTION_FAILED, TEE_SESSION_GENERATION_GET_TASK_DESCRIPTION_FAILED),
                 Arguments.of(NO_SESSION_REQUEST, TEE_SESSION_GENERATION_NO_SESSION_REQUEST),
                 Arguments.of(NO_TASK_DESCRIPTION, TEE_SESSION_GENERATION_NO_TASK_DESCRIPTION),
-                Arguments.of(GET_SESSION_FAILED, TEE_SESSION_GENERATION_GET_SESSION_FAILED),
 
                 Arguments.of(UNKNOWN_ISSUE, TEE_SESSION_GENERATION_UNKNOWN_ISSUE)
         );
