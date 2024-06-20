@@ -68,7 +68,6 @@ class WorkerpoolAuthorizationServiceTests {
         when(iexecHubService.getOwner(any())).thenReturn(signingAddress);
         final WorkerpoolAuthorization workerpoolAuthorization = getWorkerpoolAuthorization();
         final WorkerpoolAuthorizationService wpAuthorizationService = new WorkerpoolAuthorizationService(schedulerConfiguration, iexecHubService);
-        wpAuthorizationService.init();
         assertTrue(wpAuthorizationService.putWorkerpoolAuthorization(workerpoolAuthorization));
         assertNotNull(wpAuthorizationService.getWorkerpoolAuthorization(workerpoolAuthorization.getChainTaskId()));
     }
@@ -76,7 +75,12 @@ class WorkerpoolAuthorizationServiceTests {
     @Test
     void shouldFailToPutWorkerpoolAuthorizationWhenAuthorizationIsInvalid() {
         when(iexecHubService.getOwner(any())).thenReturn("0x000a9c787a972f70f0903890e266f41c795c4dca");
-        workerpoolAuthorizationService.init();
+        assertFalse(workerpoolAuthorizationService.putWorkerpoolAuthorization(getWorkerpoolAuthorization()));
+    }
+
+    @Test
+    void shouldFailToPutWorkerpoolAuthorizationWhenCantGetWorkerPoolOwner() {
+        when(iexecHubService.getOwner(any())).thenReturn("");
         assertFalse(workerpoolAuthorizationService.putWorkerpoolAuthorization(getWorkerpoolAuthorization()));
     }
 

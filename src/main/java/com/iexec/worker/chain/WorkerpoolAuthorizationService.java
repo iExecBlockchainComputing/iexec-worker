@@ -24,9 +24,9 @@ import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import com.iexec.worker.config.SchedulerConfiguration;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.Map;
 
 
@@ -35,7 +35,6 @@ import java.util.Map;
 public class WorkerpoolAuthorizationService implements Purgeable {
 
     private final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
-    private String schedulerPublicAddress;
     private final String workerPoolAddress;
     private final IexecHubService iexecHubService;
 
@@ -43,11 +42,6 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         this.iexecHubService = iexecHubService;
         workerPoolAddress = schedulerConfiguration.getWorkerPoolAddress();
         workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
-    }
-
-    @PostConstruct
-    public void init() {
-        schedulerPublicAddress = iexecHubService.getOwner(workerPoolAddress);
     }
 
     public boolean isWorkerpoolAuthorizationValid(WorkerpoolAuthorization auth, String signerAddress) {
@@ -64,7 +58,13 @@ public class WorkerpoolAuthorizationService implements Purgeable {
             return false;
         }
 
-        if (!isWorkerpoolAuthorizationValid(workerpoolAuthorization, schedulerPublicAddress)) {
+        final String workerPoolOwner = iexecHubService.getOwner(workerPoolAddress);
+        if (StringUtils.isEmpty(workerPoolOwner)) {
+            log.error("Cant get workerpool owner [workerPoolAddress:{},workerpoolAuthorization:{}]", workerPoolAddress, workerpoolAuthorization);
+            return false;
+        }
+
+        if (!isWorkerpoolAuthorizationValid(workerpoolAuthorization, workerPoolOwner)) {
             log.error("Cant putWorkerpoolAuthorization (invalid) [workerpoolAuthorization:{}]", workerpoolAuthorization);
             return false;
         }
