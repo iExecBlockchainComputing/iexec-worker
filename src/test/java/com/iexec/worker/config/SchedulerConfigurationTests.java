@@ -28,8 +28,11 @@ class SchedulerConfigurationTests {
 
     @Test
     void shouldCreateBeanInstance() {
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000")
+        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.poolAddress=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
-                .run(context -> assertThat(context).hasSingleBean(SchedulerClient.class));
+                .run(context -> {
+                    assertThat(context).hasSingleBean(SchedulerClient.class);
+                    assertThat(((SchedulerConfiguration) context.getBean("schedulerConfiguration")).getWorkerPoolAddress()).isEqualTo("0x365E7BABAa85eC61Dffe5b520763062e6C29dA27");
+                });
     }
 }
