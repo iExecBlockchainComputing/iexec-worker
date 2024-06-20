@@ -5,6 +5,7 @@ core:
   protocol: ${IEXEC_CORE_PROTOCOL:http}
   host: ${IEXEC_CORE_HOST:localhost}
   port: ${IEXEC_CORE_PORT:13000}
+  address: ${IEXEC_CORE_ADDRESS:0x000a9c787a972f70f0903890e266f41c795c4dca}
 
 worker:
   name: ${IEXEC_WORKER_NAME:worker}

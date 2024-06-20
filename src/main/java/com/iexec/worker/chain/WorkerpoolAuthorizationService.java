@@ -22,11 +22,10 @@ import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.SchedulerConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.Map;
 
 
@@ -34,20 +33,13 @@ import java.util.Map;
 @Service
 public class WorkerpoolAuthorizationService implements Purgeable {
 
-    private final PublicConfigurationService publicConfigurationService;
     private final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
-    private String corePublicAddress;
+    private final String schedulerPublicAddress;
 
-    public WorkerpoolAuthorizationService(PublicConfigurationService publicConfigurationService) {
-        this.publicConfigurationService = publicConfigurationService;
+    public WorkerpoolAuthorizationService(SchedulerConfiguration schedulerConfiguration) {
+        schedulerPublicAddress = schedulerConfiguration.getSchedulerPublicAddress();
         workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
     }
-
-    @PostConstruct
-    public void initIt() {
-        corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
-    }
-
 
     public boolean isWorkerpoolAuthorizationValid(WorkerpoolAuthorization auth, String signerAddress) {
         // create the hash that was used in the signature in the core
@@ -63,7 +55,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
             return false;
         }
 
-        if (!isWorkerpoolAuthorizationValid(workerpoolAuthorization, corePublicAddress)) {
+        if (!isWorkerpoolAuthorizationValid(workerpoolAuthorization, schedulerPublicAddress)) {
             log.error("Cant putWorkerpoolAuthorization (invalid) [workerpoolAuthorization:{}]", workerpoolAuthorization);
             return false;
         }
@@ -77,6 +69,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
 
     /**
      * Try and remove workerpool authorization related to given task ID.
+     *
      * @param chainTaskId Task ID whose related workerpool authorization should be purged
      * @return {@literal true} if key is not stored anymore,
      * {@literal false} otherwise.
