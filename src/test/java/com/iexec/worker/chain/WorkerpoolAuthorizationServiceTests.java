@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -39,6 +40,9 @@ class WorkerpoolAuthorizationServiceTests {
 
     @Mock
     private SchedulerConfiguration schedulerConfiguration;
+
+    @Mock
+    private IexecHubService iexecHubService;
 
     @InjectMocks
     private WorkerpoolAuthorizationService workerpoolAuthorizationService;
@@ -61,9 +65,10 @@ class WorkerpoolAuthorizationServiceTests {
     @Test
     void shouldPutWorkerpoolAuthorization() {
         final String signingAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc";
-        when(schedulerConfiguration.getSchedulerPublicAddress()).thenReturn(signingAddress);
+        when(iexecHubService.getOwner(any())).thenReturn(signingAddress);
         final WorkerpoolAuthorization workerpoolAuthorization = getWorkerpoolAuthorization();
-        final WorkerpoolAuthorizationService wpAuthorizationService = new WorkerpoolAuthorizationService(schedulerConfiguration);
+        final WorkerpoolAuthorizationService wpAuthorizationService = new WorkerpoolAuthorizationService(schedulerConfiguration, iexecHubService);
+        wpAuthorizationService.init();
         assertTrue(wpAuthorizationService.putWorkerpoolAuthorization(workerpoolAuthorization));
         assertNotNull(wpAuthorizationService.getWorkerpoolAuthorization(workerpoolAuthorization.getChainTaskId()));
     }
@@ -71,7 +76,8 @@ class WorkerpoolAuthorizationServiceTests {
     @Test
     void shouldFailToPutWorkerpoolAuthorizationWhenAuthorizationIsInvalid() {
         final String signingAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc";
-        when(schedulerConfiguration.getSchedulerPublicAddress()).thenReturn("0x000a9c787a972f70f0903890e266f41c795c4dca");
+        when(iexecHubService.getOwner(any())).thenReturn("0x000a9c787a972f70f0903890e266f41c795c4dca");
+        workerpoolAuthorizationService.init();
         assertFalse(workerpoolAuthorizationService.putWorkerpoolAuthorization(getWorkerpoolAuthorization()));
     }
 

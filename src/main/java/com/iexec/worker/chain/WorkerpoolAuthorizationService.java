@@ -26,6 +26,7 @@ import com.iexec.worker.config.SchedulerConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.Map;
 
 
@@ -34,11 +35,19 @@ import java.util.Map;
 public class WorkerpoolAuthorizationService implements Purgeable {
 
     private final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
-    private final String schedulerPublicAddress;
+    private String schedulerPublicAddress;
+    private final String workerPoolAddress;
+    private final IexecHubService iexecHubService;
 
-    public WorkerpoolAuthorizationService(SchedulerConfiguration schedulerConfiguration) {
-        schedulerPublicAddress = schedulerConfiguration.getSchedulerPublicAddress();
+    public WorkerpoolAuthorizationService(SchedulerConfiguration schedulerConfiguration, IexecHubService iexecHubService) {
+        this.iexecHubService = iexecHubService;
+        workerPoolAddress = schedulerConfiguration.getWorkerPoolAddress();
         workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
+    }
+
+    @PostConstruct
+    public void init() {
+        schedulerPublicAddress = iexecHubService.getOwner(workerPoolAddress);
     }
 
     public boolean isWorkerpoolAuthorizationValid(WorkerpoolAuthorization auth, String signerAddress) {

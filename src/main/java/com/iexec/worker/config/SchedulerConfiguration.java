@@ -29,20 +29,20 @@ public class SchedulerConfiguration {
     private final String protocol;
     private final String host;
     private final String port;
-    private final String address;
+    private final String poolAddress;
 
     public SchedulerConfiguration(@Value("${core.protocol}") String protocol,
                                   @Value("${core.host}") String host,
                                   @Value("${core.port}") String port,
-                                  @Value("${core.address}") String address) {
+                                  @Value("${core.poolAddress}") String poolAddress) {
         this.protocol = protocol;
         this.host = host;
         this.port = port;
-        this.address = address;
+        this.poolAddress = poolAddress;
     }
 
-    public String getSchedulerPublicAddress() {
-        return address;
+    public String getWorkerPoolAddress() {
+        return poolAddress;
     }
 
     public String getUrl() {
