@@ -75,7 +75,6 @@ class WorkerpoolAuthorizationServiceTests {
 
     @Test
     void shouldFailToPutWorkerpoolAuthorizationWhenAuthorizationIsInvalid() {
-        final String signingAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc";
         when(iexecHubService.getOwner(any())).thenReturn("0x000a9c787a972f70f0903890e266f41c795c4dca");
         workerpoolAuthorizationService.init();
         assertFalse(workerpoolAuthorizationService.putWorkerpoolAuthorization(getWorkerpoolAuthorization()));
