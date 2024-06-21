@@ -32,7 +32,9 @@ class SchedulerConfigurationTests {
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> {
                     assertThat(context).hasSingleBean(SchedulerClient.class);
-                    assertThat(((SchedulerConfiguration) context.getBean("schedulerConfiguration")).getWorkerPoolAddress()).isEqualTo("0x365E7BABAa85eC61Dffe5b520763062e6C29dA27");
+                    assertThat(context).getBean("schedulerConfiguration", SchedulerConfiguration.class)
+                            .extracting("poolAddress")
+                            .isEqualTo("0x365E7BABAa85eC61Dffe5b520763062e6C29dA27");
                 });
     }
 }

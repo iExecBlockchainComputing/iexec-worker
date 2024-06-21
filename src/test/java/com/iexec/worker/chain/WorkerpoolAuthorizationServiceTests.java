@@ -20,11 +20,11 @@ import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.worker.config.SchedulerConfiguration;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class WorkerpoolAuthorizationServiceTests {
     private static final String CHAIN_TASK_ID = "chainTaskId";
 
@@ -46,12 +47,6 @@ class WorkerpoolAuthorizationServiceTests {
 
     @InjectMocks
     private WorkerpoolAuthorizationService workerpoolAuthorizationService;
-
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-    }
-
 
     // region isWorkerpoolAuthorizationValid()
     @Test
