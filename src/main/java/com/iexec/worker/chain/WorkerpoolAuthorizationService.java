@@ -40,7 +40,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
 
     public WorkerpoolAuthorizationService(SchedulerConfiguration schedulerConfiguration, IexecHubService iexecHubService) {
         this.iexecHubService = iexecHubService;
-        workerPoolAddress = schedulerConfiguration.getWorkerPoolAddress();
+        workerPoolAddress = schedulerConfiguration.getPoolAddress();
         workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
     }
 
