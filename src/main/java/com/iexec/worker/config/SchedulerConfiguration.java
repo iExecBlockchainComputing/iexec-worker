@@ -19,6 +19,7 @@ package com.iexec.worker.config;
 import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.api.SchedulerClientBuilder;
 import feign.Logger;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,15 +30,19 @@ public class SchedulerConfiguration {
     private final String protocol;
     private final String host;
     private final String port;
+    @Getter
+    private final String poolAddress;
 
     public SchedulerConfiguration(@Value("${core.protocol}") String protocol,
                                   @Value("${core.host}") String host,
-                                  @Value("${core.port}") String port) {
+                                  @Value("${core.port}") String port,
+                                  @Value("${core.poolAddress}") String poolAddress) {
         this.protocol = protocol;
         this.host = host;
         this.port = port;
+        this.poolAddress = poolAddress;
     }
-
+ 
     public String getUrl() {
         return String.format("%s://%s:%s", protocol, host, port);
     }

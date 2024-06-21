@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2024
 
+### New Features
+
+- Add workerpool address in configuration instead of reading from Scheduler `/workers/config` endpoint. (#607)
+
 ## [[8.5.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.5.0) 2024-06-19
 
 ### New Features
