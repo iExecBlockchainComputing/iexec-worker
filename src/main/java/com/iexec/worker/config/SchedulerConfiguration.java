@@ -20,9 +20,12 @@ import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.api.SchedulerClientBuilder;
 import feign.Logger;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import javax.annotation.PostConstruct;
 
 @Configuration
 public class SchedulerConfiguration {
@@ -42,7 +45,15 @@ public class SchedulerConfiguration {
         this.port = port;
         this.poolAddress = poolAddress;
     }
- 
+
+    @PostConstruct
+    private void postConstruct() {
+        if (StringUtils.isEmpty(poolAddress) || poolAddress.equalsIgnoreCase("0x0")) {
+            throw new MissingConfigurationException(
+                    "The workerpool address must be filled in");
+        }
+    }
+
     public String getUrl() {
         return String.format("%s://%s:%s", protocol, host, port);
     }
