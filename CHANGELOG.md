@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - Add workerpool address in configuration instead of reading from Scheduler `/workers/config` endpoint. (#607)
 - Set `0x0` as default value for Workerpool address and prevents startup if incorrectly configured. (#608)
 
+### Dependency Upgrades
+- Upgrade to `eclipse-temurin:11.0.24_8-jre-focal`. (#611)
+
 ## [[8.5.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.5.0) 2024-06-19
 
 ### New Features
