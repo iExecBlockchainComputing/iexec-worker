@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 - Upgrade to `iexec-result-proxy-library` 8.5.0. (#603)
 - Upgrade to `iexec-sms-library` 8.6.0. (#603)
 - Upgrade to `iexec-core-library` 8.5.0. (#603)
+- Upgrade to `eclipse-temurin:11.0.24_8-jre-focal`. (#609)
 
 ## [[8.4.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.4.0) 2024-02-29
 
