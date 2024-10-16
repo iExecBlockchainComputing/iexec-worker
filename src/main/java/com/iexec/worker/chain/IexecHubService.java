@@ -21,20 +21,25 @@ import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
+import com.iexec.commons.poco.encoding.PoCoDataEncoder;
 import com.iexec.worker.config.ConfigServerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
@@ -51,6 +56,8 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     private final SignerService signerService;
     private final ThreadPoolExecutor executor;
     private final Web3jService web3jService;
+    private final String hubContractAddress;
+    private final Duration blockTime;
 
     @Autowired
     public IexecHubService(SignerService signerService,
@@ -61,6 +68,8 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                 configServerConfigurationService.getIexecHubContractAddress(),
                 1,
                 5);
+        this.hubContractAddress = configServerConfigurationService.getIexecHubContractAddress();
+        this.blockTime = configServerConfigurationService.getBlockTime();
         this.signerService = signerService;
         this.web3jService = web3jService;
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
@@ -73,18 +82,18 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     }
 
     private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(Contribution contribution) {
-        String chainTaskId = contribution.getChainTaskId();
-
-        RemoteCall<TransactionReceipt> contributeCall = iexecHubContract.contribute(
-                stringToBytes(chainTaskId),
-                stringToBytes(contribution.getResultHash()),
-                stringToBytes(contribution.getResultSeal()),
+        final String chainTaskId = contribution.getChainTaskId();
+        final String txData = PoCoDataEncoder.encodeContribute(
+                chainTaskId,
+                contribution.getResultHash(),
+                contribution.getResultSeal(),
                 contribution.getEnclaveChallenge(),
-                stringToBytes(contribution.getEnclaveSignature()),
-                stringToBytes(contribution.getWorkerPoolSignature()));
+                contribution.getEnclaveSignature(),
+                contribution.getWorkerPoolSignature()
+        );
         log.info("Sent contribute [chainTaskId:{}, contribution:{}]", chainTaskId, contribution);
 
-        TransactionReceipt contributeReceipt = submit(chainTaskId, "contribute", contributeCall);
+        final TransactionReceipt contributeReceipt = submit("contribute", txData);
 
         List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
                 IexecHubContract.getTaskContributeEvents(contributeReceipt).stream()
@@ -114,12 +123,13 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     }
 
     private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
-        RemoteCall<TransactionReceipt> revealCall = iexecHubContract.reveal(
-                stringToBytes(chainTaskId),
-                stringToBytes(resultDigest));
+        final String txData = PoCoDataEncoder.encodeReveal(
+                chainTaskId,
+                resultDigest
+        );
         log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
 
-        TransactionReceipt revealReceipt = submit(chainTaskId, "reveal", revealCall);
+        final TransactionReceipt revealReceipt = submit("reveal", txData);
 
         List<IexecHubContract.TaskRevealEventResponse> revealEvents =
                 IexecHubContract.getTaskRevealEvents(revealReceipt).stream()
@@ -152,20 +162,20 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     }
 
     private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultLink, String callbackData) {
-        String chainTaskId = contribution.getChainTaskId();
-
-        RemoteCall<TransactionReceipt> contributeAndFinalizeCall = iexecHubContract.contributeAndFinalize(
-                stringToBytes(chainTaskId),
-                stringToBytes(contribution.getResultDigest()),
+        final String chainTaskId = contribution.getChainTaskId();
+        final String txData = PoCoDataEncoder.encodeContributeAndFinalize(
+                chainTaskId,
+                contribution.getResultDigest(),
                 StringUtils.isNotEmpty(resultLink) ? resultLink.getBytes(StandardCharsets.UTF_8) : new byte[0],
                 StringUtils.isNotEmpty(callbackData) ? stringToBytes(callbackData) : new byte[0],
                 contribution.getEnclaveChallenge(),
-                stringToBytes(contribution.getEnclaveSignature()),
-                stringToBytes(contribution.getWorkerPoolSignature()));
+                contribution.getEnclaveSignature(),
+                contribution.getWorkerPoolSignature()
+        );
         log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, contribution, resultLink, callbackData);
 
-        TransactionReceipt receipt = submit(chainTaskId, "contributeAndFinalize", contributeAndFinalizeCall);
+        final TransactionReceipt receipt = submit("contributeAndFinalize", txData);
 
         List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
                 IexecHubContract.getTaskFinalizeEvents(receipt).stream()
@@ -274,48 +284,30 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         super.purgeAllTasksData();
     }
 
-    TransactionReceipt submit(String chainTaskId, String transactionType, RemoteCall<TransactionReceipt> remoteCall) {
+    synchronized TransactionReceipt submit(String txType, String txData) {
         try {
-            final RemoteCallTask remoteCallSend = new RemoteCallTask(chainTaskId, transactionType, remoteCall);
-            return submit(remoteCallSend);
-        } catch (ExecutionException e) {
-            log.error("{} asynchronous execution did not complete", transactionType, e);
+            final BigInteger nonce = signerService.getNonce();
+            final String txHash = signerService.signAndSendTransaction(
+                    nonce, web3jService.getUserGasPrice(), hubContractAddress, txData);
+            return waitTxMined(txHash);
+        } catch (IOException e) {
+            log.error("{} asynchronous execution did not complete", txType, e);
         } catch (InterruptedException e) {
-            log.error("{} thread has been interrupted", transactionType, e);
+            log.error("{} thread has been interrupted", txType, e);
             Thread.currentThread().interrupt();
         }
         // return non-null receipt with empty logs on failure
-        TransactionReceipt receipt = new TransactionReceipt();
+        final TransactionReceipt receipt = new TransactionReceipt();
         receipt.setLogs(List.of());
         return receipt;
     }
 
-    TransactionReceipt submit(RemoteCallTask remoteCallTask) throws ExecutionException, InterruptedException {
-        Future<TransactionReceipt> future = executor.submit(remoteCallTask);
-        return future.get();
-    }
-
-    /**
-     * Sends a transaction to the blockchain and returns its receipt.
-     */
-    static class RemoteCallTask implements Callable<TransactionReceipt> {
-        private final String chainTaskId;
-        private final String transactionType;
-        private final RemoteCall<TransactionReceipt> remoteCall;
-
-        public RemoteCallTask(String chainTaskId, String transactionType, RemoteCall<TransactionReceipt> remoteCall) {
-            this.chainTaskId = chainTaskId;
-            this.transactionType = transactionType;
-            this.remoteCall = remoteCall;
+    TransactionReceipt waitTxMined(String txHash) throws InterruptedException {
+        int attempt = 0;
+        while (web3jService.getTransactionReceipt(txHash) == null && attempt < 3 * blockTime.toSeconds()) {
+            TimeUnit.SECONDS.sleep(1L);
+            attempt++;
         }
-
-        @Override
-        public TransactionReceipt call() throws Exception {
-            TransactionReceipt receipt = remoteCall.send();
-            log.debug("{} transaction hash {} at block {} [chainTaskId:{}]",
-                    transactionType, receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
-            log.info("{} receipt [chainTaskId:{}]", transactionType, chainTaskId);
-            return receipt;
-        }
+        return web3jService.getTransactionReceipt(txHash);
     }
 }

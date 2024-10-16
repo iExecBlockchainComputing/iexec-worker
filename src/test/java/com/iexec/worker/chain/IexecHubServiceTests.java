@@ -32,15 +32,15 @@ import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
 import org.web3j.crypto.Keys;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.RemoteFunctionCall;
 import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.utils.Numeric;
 
+import java.io.IOException;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,6 +53,10 @@ class IexecHubServiceTests {
     private static final String TASK_REVEAL_NOTICE = Hash.sha3String("TaskReveal(bytes32,address,bytes32)");
     private static final String TASK_FINALIZE_NOTICE = Hash.sha3String("TaskFinalize(bytes32,bytes)");
     private static final String CHAIN_TASK_ID = "0x5125c4ca7176e40d8c5386072a6f262029609a5d3a896fbf592cd965e65098d9";
+    private static final String ENCLAVE_CHALLENGE = "0x123";
+    private static final String RESULT_DIGEST = "0x456";
+    private static final String RESULT_HASH = "0x789";
+    private static final String RESULT_SEAL = "0xabc";
 
     @Mock
     private ConfigServerConfigurationService configServerConfigurationService;
@@ -62,8 +66,6 @@ class IexecHubServiceTests {
     private Web3jService web3jService;
     @Mock
     private IexecHubContract iexecHubContract;
-    @Mock
-    private RemoteFunctionCall<TransactionReceipt> remoteFunctionCall;
     @Mock
     private Web3j web3jClient;
     private IexecHubService iexecHubService;
@@ -93,56 +95,57 @@ class IexecHubServiceTests {
 
     // region contribute
     @Test
-    void shouldContribute() throws Exception {
-        String workerAddress = Numeric.toHexStringNoPrefixZeroPadded(
+    void shouldContribute() throws IOException {
+        final String workerAddress = Numeric.toHexStringNoPrefixZeroPadded(
                 Numeric.toBigInt(credentials.getAddress()), 64);
-        Log web3Log = new Log();
+        final Log web3Log = new Log();
         web3Log.setData("0x1a538512b510ee384ce649b58a938d5c2df4ace50ef51d33f353276501e95662");
         web3Log.setTopics(List.of(TASK_CONTRIBUTE_NOTICE, CHAIN_TASK_ID, workerAddress));
-        TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
-        when(iexecHubContract.contribute(any(), any(), any(), any(), any(), any())).thenReturn(remoteFunctionCall);
-        when(remoteFunctionCall.send()).thenReturn(transactionReceipt);
+        final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
+        when(signerService.getNonce()).thenReturn(BigInteger.TEN);
+        when(signerService.signAndSendTransaction(any(), any(), any(), any())).thenReturn("txHash");
+        when(web3jService.getTransactionReceipt(anyString())).thenReturn(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge("enclaveChallenge")
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .enclaveSignature("enclaveSignature")
-                .resultHash("resultHash")
-                .resultSeal("resultSeal")
+                .resultHash(RESULT_HASH)
+                .resultSeal(RESULT_SEAL)
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
+        final IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
         assertThat(response).isNotNull();
     }
 
     @Test
-    void shouldNotContributeOnExecutionException() throws ExecutionException, InterruptedException {
+    void shouldNotContributeOnIOException() throws IOException {
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge("enclaveChallenge")
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .enclaveSignature("enclaveSignature")
-                .resultHash("resultHash")
-                .resultSeal("resultSeal")
+                .resultHash(RESULT_HASH)
+                .resultSeal(RESULT_SEAL)
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        doThrow(ExecutionException.class).when(iexecHubService).submit(any());
-        IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
+        doThrow(IOException.class).when(signerService).signAndSendTransaction(any(), any(), any(), any());
+        final IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
         assertThat(response).isNull();
     }
 
     @Test
-    void shouldNotContributeWhenInterrupted() throws ExecutionException, InterruptedException {
+    void shouldNotContributeWhenInterrupted() throws InterruptedException {
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge("enclaveChallenge")
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .enclaveSignature("enclaveSignature")
-                .resultHash("resultHash")
-                .resultSeal("resultSeal")
+                .resultHash(RESULT_HASH)
+                .resultSeal(RESULT_SEAL)
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        doThrow(InterruptedException.class).when(iexecHubService).submit(any());
-        IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
+        doThrow(InterruptedException.class).when(iexecHubService).waitTxMined(any());
+        final IexecHubContract.TaskContributeEventResponse response = iexecHubService.contribute(contribution);
         assertThat(response).isNull();
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
     }
@@ -150,32 +153,33 @@ class IexecHubServiceTests {
 
     // region reveal
     @Test
-    void shouldReveal() throws Exception {
-        String workerAddress = Numeric.toHexStringNoPrefixZeroPadded(
+    void shouldReveal() throws IOException {
+        final String workerAddress = Numeric.toHexStringNoPrefixZeroPadded(
                 Numeric.toBigInt(credentials.getAddress()), 64);
-        Log web3Log = new Log();
+        final Log web3Log = new Log();
         web3Log.setData("0x88f79ce47dc9096bab83327fb3ae0cd99694fd36db6b5f22a4e4e7bf72e79989");
         web3Log.setTopics(List.of(TASK_REVEAL_NOTICE, CHAIN_TASK_ID, workerAddress));
-        TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
-        when(iexecHubContract.reveal(any(), any())).thenReturn(remoteFunctionCall);
-        when(remoteFunctionCall.send()).thenReturn(transactionReceipt);
+        final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
+        when(signerService.getNonce()).thenReturn(BigInteger.TEN);
+        when(signerService.signAndSendTransaction(any(), any(), any(), any())).thenReturn("txHash");
+        when(web3jService.getTransactionReceipt(anyString())).thenReturn(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
-        IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
+        final IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, RESULT_DIGEST);
         assertThat(response).isNotNull();
     }
 
     @Test
-    void shouldNotRevealOnExecutionException() throws ExecutionException, InterruptedException {
-        doThrow(ExecutionException.class).when(iexecHubService).submit(any());
-        IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
+    void shouldNotRevealOnIOException() throws IOException {
+        doThrow(IOException.class).when(signerService).signAndSendTransaction(any(), any(), any(), any());
+        final IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, RESULT_DIGEST);
         assertThat(response).isNull();
     }
 
     @Test
-    void shouldNotRevealWhenInterrupted() throws ExecutionException, InterruptedException {
-        doThrow(InterruptedException.class).when(iexecHubService).submit(any());
-        IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, "resultDigest");
+    void shouldNotRevealWhenInterrupted() throws InterruptedException {
+        doThrow(InterruptedException.class).when(iexecHubService).waitTxMined(any());
+        final IexecHubContract.TaskRevealEventResponse response = iexecHubService.reveal(CHAIN_TASK_ID, RESULT_DIGEST);
         assertThat(response).isNull();
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
     }
@@ -183,51 +187,52 @@ class IexecHubServiceTests {
 
     // region contributeAndFinalize
     @Test
-    void shouldContributeAndFinalize() throws Exception {
-        Log web3Log = new Log();
+    void shouldContributeAndFinalize() throws IOException {
+        final Log web3Log = new Log();
         web3Log.setData("0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000597b202273746f72616765223a202269706673222c20226c6f636174696f6e223a20222f697066732f516d6435763668723848385642444644746f777332786978466f76314833576f704a317645707758756d5a37325522207d00000000000000");
         web3Log.setTopics(List.of(TASK_FINALIZE_NOTICE, CHAIN_TASK_ID));
-        TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
-        when(iexecHubContract.contributeAndFinalize(any(), any(), any(), any(), any(), any(), any())).thenReturn(remoteFunctionCall);
-        when(remoteFunctionCall.send()).thenReturn(transactionReceipt);
+        final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
+        when(signerService.getNonce()).thenReturn(BigInteger.TEN);
+        when(signerService.signAndSendTransaction(any(), any(), any(), any())).thenReturn("txHash");
+        when(web3jService.getTransactionReceipt(anyString())).thenReturn(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge("enclaveChallenge")
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .enclaveSignature("enclaveSignature")
-                .resultDigest("resultDigest")
+                .resultDigest(RESULT_DIGEST)
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
+        final Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
         assertThat(chainReceipt).isNotEmpty();
     }
 
     @Test
-    void shouldNotContributeAndFinalizeOnExecutionException() throws Exception {
+    void shouldNotContributeAndFinalizeOnIOException() throws IOException {
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge("enclaveChallenge")
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .enclaveSignature("enclaveSignature")
-                .resultDigest("resultDigest")
+                .resultDigest(RESULT_DIGEST)
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        doThrow(ExecutionException.class).when(iexecHubService).submit(any());
-        Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
+        doThrow(IOException.class).when(signerService).signAndSendTransaction(any(), any(), any(), any());
+        final Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
         assertThat(chainReceipt).isEmpty();
     }
 
     @Test
-    void shouldNotContributeAndFinalizeWhenInterrupted() throws Exception {
+    void shouldNotContributeAndFinalizeWhenInterrupted() throws InterruptedException {
         final Contribution contribution = Contribution.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .enclaveChallenge("enclaveChallenge")
+                .enclaveChallenge(ENCLAVE_CHALLENGE)
                 .enclaveSignature("enclaveSignature")
-                .resultDigest("resultDigest")
+                .resultDigest(RESULT_DIGEST)
                 .workerPoolSignature("workerPoolSignature")
                 .build();
-        doThrow(InterruptedException.class).when(iexecHubService).submit(any());
-        Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
+        doThrow(InterruptedException.class).when(iexecHubService).waitTxMined(any());
+        final Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "callbackData");
         assertThat(chainReceipt).isEmpty();
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
     }
