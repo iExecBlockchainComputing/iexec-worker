@@ -31,8 +31,8 @@ import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
-import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -56,7 +56,7 @@ public class ResultService implements Purgeable {
     private final WorkerConfigurationService workerConfigService;
     private final SignerService signerService;
     private final IexecHubService iexecHubService;
-    private final ResultProxyClient resultProxyClient;
+    private final PublicConfigurationService publicConfigurationService;
     private final Map<String, ResultInfo> resultInfoMap = ExpiringTaskMapFactory.getExpiringTaskMap();
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -64,11 +64,11 @@ public class ResultService implements Purgeable {
             WorkerConfigurationService workerConfigService,
             SignerService signerService,
             IexecHubService iexecHubService,
-            ResultProxyClient resultProxyClient) {
+            PublicConfigurationService publicConfigurationService) {
         this.workerConfigService = workerConfigService;
         this.signerService = signerService;
         this.iexecHubService = iexecHubService;
-        this.resultProxyClient = resultProxyClient;
+        this.publicConfigurationService = publicConfigurationService;
     }
 
     public ResultInfo getResultInfos(String chainTaskId) {
@@ -89,6 +89,21 @@ public class ResultService implements Purgeable {
 
     public boolean isResultZipFound(String chainTaskId) {
         return new File(getResultZipFilePath(chainTaskId)).exists();
+    }
+
+    public String getResultProxyUrl(String chainTaskId) {
+        ChainTask task = iexecHubService.getChainTask(chainTaskId).orElse(null);
+        if (task == null) {
+            log.error("Cannot get result proxy URL (task missing) [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+        final String chainDealId = task.getDealid();
+        ChainDeal chainDeal = iexecHubService.getChainDeal(chainDealId).orElse(null);
+        if (chainDeal == null) {
+            log.error("Cannot get result proxy URL (deal missing) [chainTaskId:{}]", chainTaskId);
+            return null;
+        }
+        return chainDeal.getParams().getIexecResultStorageProxy();
     }
 
     public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
@@ -215,7 +230,10 @@ public class ResultService implements Purgeable {
         }
 
         try {
-            resultProxyClient.addResult(authorizationToken, getResultModelWithZip(chainTaskId));
+            final String resultProxyUrl = getResultProxyUrl(chainTaskId);
+            publicConfigurationService
+                    .resultProxyClientFromURL(resultProxyUrl)
+                    .addResult(authorizationToken, getResultModelWithZip(chainTaskId));
             return true;
         } catch (Exception e) {
             log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId, e);
@@ -230,7 +248,10 @@ public class ResultService implements Purgeable {
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
                 try {
-                    final String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
+                    final String resultProxyUrl = getResultProxyUrl(chainTaskId);
+                    final String ipfsHash = publicConfigurationService
+                            .resultProxyClientFromURL(resultProxyUrl)
+                            .getIpfsHashForTask(chainTaskId);
                     return buildResultLink(storage, "/ipfs/" + ipfsHash);
                 } catch (RuntimeException e) {
                     log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId, e);
@@ -263,7 +284,11 @@ public class ResultService implements Purgeable {
                 log.error("Couldn't sign hash for an unknown reason [hash:{}]", hash);
                 return "";
             }
-            return resultProxyClient.getJwt(authorization, workerpoolAuthorization);
+            final String chainTaskId = workerpoolAuthorization.getChainTaskId();
+            final String resultProxyUrl = getResultProxyUrl(chainTaskId);
+            return publicConfigurationService
+                    .resultProxyClientFromURL(resultProxyUrl)
+                    .getJwt(authorization, workerpoolAuthorization);
         } catch (Exception e) {
             log.error("Failed to get upload token", e);
             return "";

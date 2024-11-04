@@ -24,10 +24,12 @@ import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
 import feign.Logger;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Getter
 @Service
 public class PublicConfigurationService {
@@ -55,10 +57,16 @@ public class PublicConfigurationService {
                 configServerURL);
     }
 
-    @Bean
-    public ResultProxyClient resultProxyClient() {
+    public ResultProxyClient resultProxyClientFromURL(String url) {
+        final String resultProxyClientURL = StringUtils.isBlank(url) ?
+                publicConfiguration.getResultRepositoryURL() : url;
+        if (StringUtils.isBlank(url)) {
+            log.debug("Using default URL: {}", resultProxyClientURL);
+        } else {
+            log.debug("Using provided URL: {}", resultProxyClientURL);
+        }
         return ResultProxyClientBuilder.getInstance(
                 Logger.Level.NONE,
-                publicConfiguration.getResultRepositoryURL());
+                resultProxyClientURL);
     }
 }
