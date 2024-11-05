@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ComputeDurationsConfigTests {
     private static final int WINDOW_SIZE = 1_000;
-    private final static String WALLET_ADDRESS = "0x1a69b2eb604db8eba185df03ea4f5288dcbbd248";
+    private static final String WALLET_ADDRESS = "0x1a69b2eb604db8eba185df03ea4f5288dcbbd248";
 
     private ComputeDurationsConfig computeDurationsConfig;
 

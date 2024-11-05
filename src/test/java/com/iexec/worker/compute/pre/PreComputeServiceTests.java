@@ -82,7 +82,7 @@ class PreComputeServiceTests {
                     .build());
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
-    private final static TeeSessionGenerationResponse secureSession = mock(TeeSessionGenerationResponse.class);
+    private static final TeeSessionGenerationResponse secureSession = mock(TeeSessionGenerationResponse.class);
 
 
     @InjectMocks
