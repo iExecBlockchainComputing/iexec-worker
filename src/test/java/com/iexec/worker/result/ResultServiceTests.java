@@ -32,7 +32,6 @@ import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -167,22 +166,23 @@ class ResultServiceTests {
     void shouldGetTeeWeb2ResultLinkSinceIpfs() {
         String storage = IPFS_RESULT_STORAGE_PROVIDER;
         String ipfsHash = "QmcipfsHash";
-
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
-
+                TaskDescription.builder()
+                        .chainTaskId(CHAIN_TASK_ID)
+                        .isTeeTask(true)
+                        .resultStorageProvider(storage)
+                        .resultStorageProxy(CUSTOM_RESULT_PROXY_URL)
+                        .build());
         ResultProxyClient mockClient = mock(ResultProxyClient.class);
         when(mockClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
         doReturn(mockClient)
                 .when(publicConfigurationService)
-                .resultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+                .createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash));
-        verify(publicConfigurationService).resultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        verify(publicConfigurationService).createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
         verify(mockClient).getIpfsHashForTask(CHAIN_TASK_ID);
     }
 
@@ -222,7 +222,7 @@ class ResultServiceTests {
 
         ResultProxyClient mockClient = mock(ResultProxyClient.class);
         when(mockClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
-        when(publicConfigurationService.resultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
+        when(publicConfigurationService.createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
                 .thenReturn(mockClient);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
@@ -563,37 +563,10 @@ class ResultServiceTests {
     // region getResultProxyUrl
     @Test
     void shouldGetCustomResultProxyUrl() {
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
-
+        when(iexecHubService.getTaskDescription(anyString())).thenReturn(
+                TaskDescription.builder().resultStorageProxy(CUSTOM_RESULT_PROXY_URL).build());
         String resultProxyUrl = resultService.getResultProxyUrl(CHAIN_TASK_ID);
-
-        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         assertThat(resultProxyUrl).isEqualTo(CUSTOM_RESULT_PROXY_URL);
-    }
-
-    @Test
-    void shouldReturnNullWhenNoChainTask() {
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.empty());
-
-        String resultProxyUrl = resultService.getResultProxyUrl(CHAIN_TASK_ID);
-
-        assertThat(resultProxyUrl).isNull();
-        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        verifyNoMoreInteractions(iexecHubService);
-    }
-
-    @Test
-    void shouldReturnNullWhenNoChainDeal() {
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.empty());
-
-        String resultProxyUrl = resultService.getResultProxyUrl(CHAIN_TASK_ID);
-
-        assertThat(resultProxyUrl).isNull();
-        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
     }
     // endregion
 
@@ -601,21 +574,20 @@ class ResultServiceTests {
     @Test
     void shouldGetIexecUploadTokenFromWorkerpoolAuthorization() {
         final String uploadToken = "uploadToken";
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
-
+        when(iexecHubService.getTaskDescription(anyString())).thenReturn(
+                TaskDescription.builder().resultStorageProxy(CUSTOM_RESULT_PROXY_URL).build());
         ResultProxyClient mockClient = mock(ResultProxyClient.class);
         when(mockClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
         doReturn(mockClient)
                 .when(publicConfigurationService)
-                .resultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+                .createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
 
         String result = resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION);
 
         assertThat(result).isEqualTo(uploadToken);
         verify(signerService).signMessageHash(anyString());
-        verify(publicConfigurationService).resultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        verify(publicConfigurationService).createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
         verify(mockClient).getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION);
     }
 
@@ -629,15 +601,7 @@ class ResultServiceTests {
 
     @Test
     void shouldNotGetIexecUploadTokenFromWorkerpoolAuthorizationSinceFeignException() {
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
-
-        ResultProxyClient mockClient = mock(ResultProxyClient.class);
-        when(mockClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION))
-                .thenThrow(FeignException.Unauthorized.class);
-        when(publicConfigurationService.resultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
-                .thenReturn(mockClient);
 
         assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
     }

@@ -57,16 +57,10 @@ public class PublicConfigurationService {
                 configServerURL);
     }
 
-    public ResultProxyClient resultProxyClientFromURL(String url) {
-        final String resultProxyClientURL = StringUtils.isBlank(url) ?
-                publicConfiguration.getResultRepositoryURL() : url;
-        if (StringUtils.isBlank(url)) {
-            log.debug("Using default URL: {}", resultProxyClientURL);
-        } else {
-            log.debug("Using provided URL: {}", resultProxyClientURL);
-        }
-        return ResultProxyClientBuilder.getInstance(
-                Logger.Level.NONE,
-                resultProxyClientURL);
+    public ResultProxyClient createProxyClientFromURL(String url) {
+        final boolean shouldOverride = StringUtils.isBlank(url);
+        final String resultProxyClientURL = shouldOverride ? publicConfiguration.getResultRepositoryURL() : url;
+        log.debug("result-proxy URL [url:{}, task-override:{}]", resultProxyClientURL, shouldOverride);
+        return ResultProxyClientBuilder.getInstance(Logger.Level.NONE, resultProxyClientURL);
     }
 }

@@ -92,18 +92,7 @@ public class ResultService implements Purgeable {
     }
 
     public String getResultProxyUrl(String chainTaskId) {
-        ChainTask task = iexecHubService.getChainTask(chainTaskId).orElse(null);
-        if (task == null) {
-            log.error("Cannot get result proxy URL (task missing) [chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-        final String chainDealId = task.getDealid();
-        ChainDeal chainDeal = iexecHubService.getChainDeal(chainDealId).orElse(null);
-        if (chainDeal == null) {
-            log.error("Cannot get result proxy URL (deal missing) [chainTaskId:{}]", chainTaskId);
-            return null;
-        }
-        return chainDeal.getParams().getIexecResultStorageProxy();
+        return iexecHubService.getTaskDescription(chainTaskId).getResultStorageProxy();
     }
 
     public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
@@ -232,7 +221,7 @@ public class ResultService implements Purgeable {
         try {
             final String resultProxyUrl = getResultProxyUrl(chainTaskId);
             publicConfigurationService
-                    .resultProxyClientFromURL(resultProxyUrl)
+                    .createProxyClientFromURL(resultProxyUrl)
                     .addResult(authorizationToken, getResultModelWithZip(chainTaskId));
             return true;
         } catch (Exception e) {
@@ -248,9 +237,9 @@ public class ResultService implements Purgeable {
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
                 try {
-                    final String resultProxyUrl = getResultProxyUrl(chainTaskId);
+                    final String resultProxyUrl = task.getResultStorageProxy();
                     final String ipfsHash = publicConfigurationService
-                            .resultProxyClientFromURL(resultProxyUrl)
+                            .createProxyClientFromURL(resultProxyUrl)
                             .getIpfsHashForTask(chainTaskId);
                     return buildResultLink(storage, "/ipfs/" + ipfsHash);
                 } catch (RuntimeException e) {
@@ -287,7 +276,7 @@ public class ResultService implements Purgeable {
             final String chainTaskId = workerpoolAuthorization.getChainTaskId();
             final String resultProxyUrl = getResultProxyUrl(chainTaskId);
             return publicConfigurationService
-                    .resultProxyClientFromURL(resultProxyUrl)
+                    .createProxyClientFromURL(resultProxyUrl)
                     .getJwt(authorization, workerpoolAuthorization);
         } catch (Exception e) {
             log.error("Failed to get upload token", e);
