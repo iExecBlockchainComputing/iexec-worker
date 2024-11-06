@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
-- Fix result-proxy URL resolution. (#613)
+- Use Result Proxy URL defined in deal parameters if any, fall back to scheduler default one otherwisea. (#613)
 
 ### Dependency Upgrades
 
