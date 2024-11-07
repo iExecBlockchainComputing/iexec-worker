@@ -60,7 +60,7 @@ public class PublicConfigurationService {
     public ResultProxyClient createResultProxyClientFromURL(String url) {
         final boolean UseDefaultURL = StringUtils.isBlank(url);
         final String resultProxyClientURL = UseDefaultURL ? publicConfiguration.getResultRepositoryURL() : url;
-        log.debug("result-proxy URL [url:{}, task-override:{}]", resultProxyClientURL, UseDefaultURL);
+        log.debug("result-proxy URL [url:{}, default-url:{}]", resultProxyClientURL, UseDefaultURL);
         return ResultProxyClientBuilder.getInstance(Logger.Level.NONE, resultProxyClientURL);
     }
 }
