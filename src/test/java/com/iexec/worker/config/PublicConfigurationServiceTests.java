@@ -56,10 +56,10 @@ class PublicConfigurationServiceTests {
                 () -> assertThat(publicConfigurationService.getSchedulerPublicAddress()).isEqualTo("http://localhost:1300"),
                 () -> assertThat(publicConfigurationService.getRequiredWorkerVersion()).isEqualTo("v8"),
                 () -> assertThat(publicConfigurationService.configServerClient()).isNotNull(),
-                () -> assertThat(publicConfigurationService.createProxyClientFromURL(null)).isNotNull(),
-                () -> assertThat(publicConfigurationService.createProxyClientFromURL(""))
+                () -> assertThat(publicConfigurationService.createResultProxyClientFromURL(null)).isNotNull(),
+                () -> assertThat(publicConfigurationService.createResultProxyClientFromURL(""))
                         .isEqualTo(ResultProxyClientBuilder.getInstance(Logger.Level.NONE, "http://localhost:13300")),
-                () -> assertThat(publicConfigurationService.createProxyClientFromURL("https://www.result-proxy-repo.iex.ec"))
+                () -> assertThat(publicConfigurationService.createResultProxyClientFromURL("https://www.result-proxy-repo.iex.ec"))
                         .isEqualTo(ResultProxyClientBuilder.getInstance(Logger.Level.NONE, "https://www.result-proxy-repo.iex.ec"))
         );
     }

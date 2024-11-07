@@ -91,6 +91,8 @@ class ResultServiceTests {
     @Mock
     private IexecHubService iexecHubService;
     @Mock
+    private ResultProxyClient resultProxyClient;
+    @Mock
     private PublicConfigurationService publicConfigurationService;
     @Mock
     private WorkerConfigurationService workerConfigurationService;
@@ -173,17 +175,15 @@ class ResultServiceTests {
                         .resultStorageProvider(storage)
                         .resultStorageProxy(CUSTOM_RESULT_PROXY_URL)
                         .build());
-        ResultProxyClient mockClient = mock(ResultProxyClient.class);
-        when(mockClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
-        doReturn(mockClient)
-                .when(publicConfigurationService)
-                .createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
+        when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
+                .thenReturn(resultProxyClient);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash));
-        verify(publicConfigurationService).createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
-        verify(mockClient).getIpfsHashForTask(CHAIN_TASK_ID);
+        verify(publicConfigurationService).createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        verify(resultProxyClient).getIpfsHashForTask(CHAIN_TASK_ID);
     }
 
     @Test
@@ -222,7 +222,7 @@ class ResultServiceTests {
 
         ResultProxyClient mockClient = mock(ResultProxyClient.class);
         when(mockClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
-        when(publicConfigurationService.createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
+        when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
                 .thenReturn(mockClient);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
@@ -560,41 +560,26 @@ class ResultServiceTests {
     }
     //endregion
 
-    // region getResultProxyUrl
-    @Test
-    void shouldGetCustomResultProxyUrl() {
-        when(iexecHubService.getTaskDescription(anyString())).thenReturn(
-                TaskDescription.builder().resultStorageProxy(CUSTOM_RESULT_PROXY_URL).build());
-        String resultProxyUrl = resultService.getResultProxyUrl(CHAIN_TASK_ID);
-        assertThat(resultProxyUrl).isEqualTo(CUSTOM_RESULT_PROXY_URL);
-    }
-    // endregion
-
     //region getIexecUploadToken
     @Test
     void shouldGetIexecUploadTokenFromWorkerpoolAuthorization() {
         final String uploadToken = "uploadToken";
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
-        when(iexecHubService.getTaskDescription(anyString())).thenReturn(
-                TaskDescription.builder().resultStorageProxy(CUSTOM_RESULT_PROXY_URL).build());
-        ResultProxyClient mockClient = mock(ResultProxyClient.class);
-        when(mockClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
-        doReturn(mockClient)
-                .when(publicConfigurationService)
-                .createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
+        when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL)).thenReturn(resultProxyClient);
 
-        String result = resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION);
+        String result = resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION, CUSTOM_RESULT_PROXY_URL);
 
         assertThat(result).isEqualTo(uploadToken);
         verify(signerService).signMessageHash(anyString());
-        verify(publicConfigurationService).createProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
-        verify(mockClient).getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION);
+        verify(publicConfigurationService).createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        verify(resultProxyClient).getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION);
     }
 
     @Test
     void shouldNotGetIexecUploadTokenWorkerpoolAuthorizationSinceSigningReturnsEmpty() {
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(""));
-        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION, CUSTOM_RESULT_PROXY_URL)).isEmpty();
         verify(signerService).signMessageHash(anyString());
         verifyNoInteractions(publicConfigurationService);
     }
@@ -603,7 +588,7 @@ class ResultServiceTests {
     void shouldNotGetIexecUploadTokenFromWorkerpoolAuthorizationSinceFeignException() {
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
 
-        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION, CUSTOM_RESULT_PROXY_URL)).isEmpty();
     }
     //endregion
 

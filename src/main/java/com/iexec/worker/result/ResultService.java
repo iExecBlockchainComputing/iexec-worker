@@ -91,10 +91,6 @@ public class ResultService implements Purgeable {
         return new File(getResultZipFilePath(chainTaskId)).exists();
     }
 
-    public String getResultProxyUrl(String chainTaskId) {
-        return iexecHubService.getTaskDescription(chainTaskId).getResultStorageProxy();
-    }
-
     public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
                                         ReplicateStatusCause errorCause) {
         String errorContent = String.format("[IEXEC] Error occurred while computing"
@@ -185,6 +181,7 @@ public class ResultService implements Purgeable {
             return "";
         }
 
+        final String resultProxyURL = task.getResultStorageProxy();
         // Offchain computing - basic & tee
         if (task.containsCallback()) {
             log.info("Web3 storage, no need to upload [chainTaskId:{}]", chainTaskId);
@@ -199,7 +196,7 @@ public class ResultService implements Purgeable {
 
         // Cloud computing - basic
         final boolean isIpfsStorageRequest = IPFS_RESULT_STORAGE_PROVIDER.equals(task.getResultStorageProvider());
-        final boolean isUpload = upload(workerpoolAuthorization);
+        final boolean isUpload = upload(workerpoolAuthorization, resultProxyURL);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
             return getWeb2ResultLink(task);//retrieves ipfs only
@@ -210,18 +207,17 @@ public class ResultService implements Purgeable {
         return "";
     }
 
-    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization) {
+    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization, String resultProxyUrl) {
         final String chainTaskId = workerpoolAuthorization.getChainTaskId();
-        final String authorizationToken = getIexecUploadToken(workerpoolAuthorization);
+        final String authorizationToken = getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
         if (authorizationToken.isEmpty()) {
             log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         try {
-            final String resultProxyUrl = getResultProxyUrl(chainTaskId);
             publicConfigurationService
-                    .createProxyClientFromURL(resultProxyUrl)
+                    .createResultProxyClientFromURL(resultProxyUrl)
                     .addResult(authorizationToken, getResultModelWithZip(chainTaskId));
             return true;
         } catch (Exception e) {
@@ -239,7 +235,7 @@ public class ResultService implements Purgeable {
                 try {
                     final String resultProxyUrl = task.getResultStorageProxy();
                     final String ipfsHash = publicConfigurationService
-                            .createProxyClientFromURL(resultProxyUrl)
+                            .createResultProxyClientFromURL(resultProxyUrl)
                             .getIpfsHashForTask(chainTaskId);
                     return buildResultLink(storage, "/ipfs/" + ipfsHash);
                 } catch (RuntimeException e) {
@@ -265,7 +261,7 @@ public class ResultService implements Purgeable {
      * @return The JWT
      */
     // TODO Add JWT validation
-    public String getIexecUploadToken(WorkerpoolAuthorization workerpoolAuthorization) {
+    public String getIexecUploadToken(WorkerpoolAuthorization workerpoolAuthorization, String resultProxyUrl) {
         try {
             final String hash = workerpoolAuthorization.getHash();
             final String authorization = signerService.signMessageHash(hash).getValue();
@@ -273,10 +269,8 @@ public class ResultService implements Purgeable {
                 log.error("Couldn't sign hash for an unknown reason [hash:{}]", hash);
                 return "";
             }
-            final String chainTaskId = workerpoolAuthorization.getChainTaskId();
-            final String resultProxyUrl = getResultProxyUrl(chainTaskId);
             return publicConfigurationService
-                    .createProxyClientFromURL(resultProxyUrl)
+                    .createResultProxyClientFromURL(resultProxyUrl)
                     .getJwt(authorization, workerpoolAuthorization);
         } catch (Exception e) {
             log.error("Failed to get upload token", e);
