@@ -181,7 +181,6 @@ public class ResultService implements Purgeable {
             return "";
         }
 
-        final String resultProxyURL = task.getResultStorageProxy();
         // Offchain computing - basic & tee
         if (task.containsCallback()) {
             log.info("Web3 storage, no need to upload [chainTaskId:{}]", chainTaskId);
@@ -196,6 +195,7 @@ public class ResultService implements Purgeable {
 
         // Cloud computing - basic
         final boolean isIpfsStorageRequest = IPFS_RESULT_STORAGE_PROVIDER.equals(task.getResultStorageProvider());
+        final String resultProxyURL = task.getResultStorageProxy();
         final boolean isUpload = upload(workerpoolAuthorization, resultProxyURL);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
@@ -207,7 +207,8 @@ public class ResultService implements Purgeable {
         return "";
     }
 
-    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization, String resultProxyUrl) {
+    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization,
+                           final String resultProxyUrl) {
         final String chainTaskId = workerpoolAuthorization.getChainTaskId();
         final String authorizationToken = getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
         if (authorizationToken.isEmpty()) {
@@ -261,7 +262,8 @@ public class ResultService implements Purgeable {
      * @return The JWT
      */
     // TODO Add JWT validation
-    public String getIexecUploadToken(WorkerpoolAuthorization workerpoolAuthorization, String resultProxyUrl) {
+    public String getIexecUploadToken(final WorkerpoolAuthorization workerpoolAuthorization,
+                                      final String resultProxyUrl) {
         try {
             final String hash = workerpoolAuthorization.getHash();
             final String authorization = signerService.signMessageHash(hash).getValue();

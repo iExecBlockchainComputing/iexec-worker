@@ -58,9 +58,9 @@ public class PublicConfigurationService {
     }
 
     public ResultProxyClient createResultProxyClientFromURL(String url) {
-        final boolean shouldOverride = StringUtils.isBlank(url);
-        final String resultProxyClientURL = shouldOverride ? publicConfiguration.getResultRepositoryURL() : url;
-        log.debug("result-proxy URL [url:{}, task-override:{}]", resultProxyClientURL, shouldOverride);
+        final boolean UseDefaultURL = StringUtils.isBlank(url);
+        final String resultProxyClientURL = UseDefaultURL ? publicConfiguration.getResultRepositoryURL() : url;
+        log.debug("result-proxy URL [url:{}, task-override:{}]", resultProxyClientURL, UseDefaultURL);
         return ResultProxyClientBuilder.getInstance(Logger.Level.NONE, resultProxyClientURL);
     }
 }
