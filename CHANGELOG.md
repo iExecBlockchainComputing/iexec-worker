@@ -11,7 +11,11 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
-- Use Result Proxy URL defined in deal parameters if any, fall back to scheduler default one otherwisea. (#613)
+- Use Result Proxy URL defined in deal parameters if any, fall back to scheduler default one otherwise. (#613)
+
+### Quality
+
+- Reorder `static` and `final` keywords. (#614)
 
 ### Dependency Upgrades
 

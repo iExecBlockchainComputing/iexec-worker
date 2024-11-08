@@ -42,7 +42,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(OutputCaptureExtension.class)
 class StompClientServiceTests {
-    private final static String SESSION_ID = "SESSION_ID";
+    private static final String SESSION_ID = "SESSION_ID";
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;

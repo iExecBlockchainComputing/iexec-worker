@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,14 +53,14 @@ import static org.mockito.Mockito.*;
 
 class AppComputeServiceTests {
 
-    private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private final static String DATASET_URI = "DATASET_URI";
-    private final static String APP_URI = "APP_URI";
-    private final static String WORKER_NAME = "WORKER_NAME";
-    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
-    private final static long MAX_EXECUTION_TIME = 1000;
-    private final static String INPUT = "INPUT";
-    private final static String IEXEC_OUT = "IEXEC_OUT";
+    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String DATASET_URI = "DATASET_URI";
+    private static final String APP_URI = "APP_URI";
+    private static final String WORKER_NAME = "WORKER_NAME";
+    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
+    private static final long MAX_EXECUTION_TIME = 1000;
+    private static final String INPUT = "INPUT";
+    private static final String IEXEC_OUT = "IEXEC_OUT";
     public static final long heapSize = 1024;
 
     private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()

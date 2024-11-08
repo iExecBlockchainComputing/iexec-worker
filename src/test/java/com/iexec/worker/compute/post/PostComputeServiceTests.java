@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,14 +68,14 @@ import static org.mockito.Mockito.*;
 @Slf4j
 class PostComputeServiceTests {
 
-    private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private final static String DATASET_URI = "DATASET_URI";
-    private final static String WORKER_NAME = "WORKER_NAME";
-    private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
-    private final static long TEE_POST_COMPUTE_HEAP = 1024;
-    private final static String TEE_POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
-    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
-    private final static long MAX_EXECUTION_TIME = 1000;
+    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String DATASET_URI = "DATASET_URI";
+    private static final String WORKER_NAME = "WORKER_NAME";
+    private static final String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
+    private static final long TEE_POST_COMPUTE_HEAP = 1024;
+    private static final String TEE_POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
+    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
+    private static final long MAX_EXECUTION_TIME = 1000;
 
     @TempDir
     public File jUnitTemporaryFolder;

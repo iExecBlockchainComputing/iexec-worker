@@ -58,13 +58,13 @@ import static org.mockito.Mockito.*;
 
 class ComputeManagerServiceTests {
 
-    private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private final static String DATASET_URI = "DATASET_URI";
-    private final static String DIGEST = "digest";
-    private final static String APP_URI = "APP_URI";
-    private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
-    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
-    private final static long MAX_EXECUTION_TIME = 1000;
+    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String DATASET_URI = "DATASET_URI";
+    private static final String DIGEST = "digest";
+    private static final String APP_URI = "APP_URI";
+    private static final String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
+    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
+    private static final long MAX_EXECUTION_TIME = 1000;
 
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder()
