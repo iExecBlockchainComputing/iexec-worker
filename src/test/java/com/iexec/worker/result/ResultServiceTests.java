@@ -30,12 +30,16 @@ import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
-import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
@@ -50,6 +54,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 //@Slf4j
+@ExtendWith(MockitoExtension.class)
 class ResultServiceTests {
 
     public static final String RESULT_DIGEST = "0x0000000000000000000000000000000000000000000000000000000000000001";
@@ -60,15 +65,20 @@ class ResultServiceTests {
     private static final String CHAIN_TASK_ID_2 = "taskId2";
     private static final String IEXEC_WORKER_TMP_FOLDER = "./src/test/resources/tmp/test-worker/";
     private static final String CALLBACK = "0x0000000000000000000000000000000000000abc";
+    private static final String CUSTOM_RESULT_PROXY_URL = "https://custom-proxy.iex.ec";
 
     private static final String AUTHORIZATION = "0x4";
     private static final ChainTask CHAIN_TASK = ChainTask.builder()
             .dealid(CHAIN_DEAL_ID)
+            .chainTaskId(CHAIN_TASK_ID)
             .status(ChainTaskStatus.ACTIVE)
             .build();
     private static final ChainDeal CHAIN_DEAL = ChainDeal.builder()
             .chainDealId(CHAIN_DEAL_ID)
             .tag(TeeUtils.TEE_SCONE_ONLY_TAG)
+            .params(DealParams.builder()
+                    .iexecResultStorageProxy(CUSTOM_RESULT_PROXY_URL)
+                    .build())
             .build();
     private static final WorkerpoolAuthorization WORKERPOOL_AUTHORIZATION = WorkerpoolAuthorization.builder()
             .chainTaskId(CHAIN_TASK_ID)
@@ -83,17 +93,19 @@ class ResultServiceTests {
     @Mock
     private ResultProxyClient resultProxyClient;
     @Mock
+    private PublicConfigurationService publicConfigurationService;
+    @Mock
     private WorkerConfigurationService workerConfigurationService;
     @Mock
     private SignerService signerService;
 
     @InjectMocks
     private ResultService resultService;
+
     private String tmp;
 
     @BeforeEach
     void init() {
-        MockitoAnnotations.openMocks(this);
         tmp = folderRule.getAbsolutePath();
     }
 
@@ -156,14 +168,22 @@ class ResultServiceTests {
     void shouldGetTeeWeb2ResultLinkSinceIpfs() {
         String storage = IPFS_RESULT_STORAGE_PROVIDER;
         String ipfsHash = "QmcipfsHash";
-
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
+                TaskDescription.builder()
+                        .chainTaskId(CHAIN_TASK_ID)
+                        .isTeeTask(true)
+                        .resultStorageProvider(storage)
+                        .resultStorageProxy(CUSTOM_RESULT_PROXY_URL)
+                        .build());
         when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
+        when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
+                .thenReturn(resultProxyClient);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/ipfs/" + ipfsHash));
+        verify(publicConfigurationService).createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
+        verify(resultProxyClient).getIpfsHashForTask(CHAIN_TASK_ID);
     }
 
     @Test
@@ -194,10 +214,16 @@ class ResultServiceTests {
     void shouldNotGetWeb2ResultLinkForStandardTaskOnIpfs() {
         final String uploadToken = "uploadToken";
 
+        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
+        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).resultStorageProvider(IPFS_RESULT_STORAGE_PROVIDER).build());
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
-        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
+
+        ResultProxyClient mockClient = mock(ResultProxyClient.class);
+        when(mockClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
+        when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
+                .thenReturn(mockClient);
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
@@ -210,9 +236,6 @@ class ResultServiceTests {
     void shouldGetComputedFileWithWeb2ResultDigestSinceFile() {
         String chainTaskId = "deterministic-output-file";
 
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
-                        "/output/iexec_out");
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
                         "/output");
@@ -231,9 +254,6 @@ class ResultServiceTests {
     void shouldGetComputedFileWithWeb2ResultDigestSinceFileTree() {
         String chainTaskId = "deterministic-output-directory";
 
-        when(workerConfigurationService.getTaskIexecOutDir(chainTaskId))
-                .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
-                        "/output/iexec_out");
         when(workerConfigurationService.getTaskOutputDir(chainTaskId))
                 .thenReturn(IEXEC_WORKER_TMP_FOLDER + chainTaskId +
                         "/output");
@@ -421,7 +441,6 @@ class ResultServiceTests {
                 .thenReturn(Optional.of(CHAIN_TASK));
         when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID))
                 .thenReturn(tmp);
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
 
         boolean isWritten = resultService.writeComputedFile(computedFile);
 
@@ -443,7 +462,6 @@ class ResultServiceTests {
                 .thenReturn(Optional.of(CHAIN_TASK));
         when(workerConfigurationService.getTaskOutputDir(CHAIN_TASK_ID))
                 .thenReturn(tmp);
-        when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
 
         boolean isWritten = resultService.writeComputedFile(computedFile);
 
@@ -548,24 +566,29 @@ class ResultServiceTests {
         final String uploadToken = "uploadToken";
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
         when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenReturn(uploadToken);
-        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEqualTo(uploadToken);
+        when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL)).thenReturn(resultProxyClient);
+
+        String result = resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION, CUSTOM_RESULT_PROXY_URL);
+
+        assertThat(result).isEqualTo(uploadToken);
         verify(signerService).signMessageHash(anyString());
+        verify(publicConfigurationService).createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL);
         verify(resultProxyClient).getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION);
     }
 
     @Test
     void shouldNotGetIexecUploadTokenWorkerpoolAuthorizationSinceSigningReturnsEmpty() {
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(""));
-        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION, CUSTOM_RESULT_PROXY_URL)).isEmpty();
         verify(signerService).signMessageHash(anyString());
-        verifyNoInteractions(resultProxyClient);
+        verifyNoInteractions(publicConfigurationService);
     }
 
     @Test
     void shouldNotGetIexecUploadTokenFromWorkerpoolAuthorizationSinceFeignException() {
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
-        when(resultProxyClient.getJwt(AUTHORIZATION, WORKERPOOL_AUTHORIZATION)).thenThrow(FeignException.Unauthorized.class);
-        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION)).isEmpty();
+
+        assertThat(resultService.getIexecUploadToken(WORKERPOOL_AUTHORIZATION, CUSTOM_RESULT_PROXY_URL)).isEmpty();
     }
     //endregion
 
@@ -584,7 +607,7 @@ class ResultServiceTests {
         when(workerConfigurationService.getTaskBaseDir(CHAIN_TASK_ID))
                 .thenReturn(tmp);
 
-        try (MockedStatic<FileHelper> fileHelper = Mockito.mockStatic(FileHelper.class)) {
+        try (MockedStatic<FileHelper> fileHelper = mockStatic(FileHelper.class)) {
             fileHelper.when(() -> FileHelper.deleteFolder(tmp))
                     .thenReturn(false);
 

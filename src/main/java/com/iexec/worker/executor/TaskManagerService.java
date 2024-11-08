@@ -125,7 +125,8 @@ public class TaskManagerService {
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
-            final String token = resultService.getIexecUploadToken(workerpoolAuthorization);
+            final String resultProxyUrl = taskDescription.getResultStorageProxy();
+            final String token = resultService.getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
             smsService.pushToken(workerpoolAuthorization, token);
         }
 

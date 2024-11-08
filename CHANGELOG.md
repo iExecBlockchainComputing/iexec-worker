@@ -9,9 +9,13 @@ All notable changes to this project will be documented in this file.
 - Add workerpool address in configuration instead of reading from Scheduler `/workers/config` endpoint. (#607)
 - Set `0x0` as default value for Workerpool address and prevents startup if incorrectly configured. (#608)
 
+### Bug fixes
+
+- Use Result Proxy URL defined in deal parameters if any, fall back to scheduler default one otherwise. (#613)
+
 ### Quality
 
-- Reorder static and final keywords. (#614)
+- Reorder `static` and `final` keywords. (#614)
 
 ### Dependency Upgrades
 

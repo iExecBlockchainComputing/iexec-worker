@@ -31,8 +31,8 @@ import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
-import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -56,7 +56,7 @@ public class ResultService implements Purgeable {
     private final WorkerConfigurationService workerConfigService;
     private final SignerService signerService;
     private final IexecHubService iexecHubService;
-    private final ResultProxyClient resultProxyClient;
+    private final PublicConfigurationService publicConfigurationService;
     private final Map<String, ResultInfo> resultInfoMap = ExpiringTaskMapFactory.getExpiringTaskMap();
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -64,11 +64,11 @@ public class ResultService implements Purgeable {
             WorkerConfigurationService workerConfigService,
             SignerService signerService,
             IexecHubService iexecHubService,
-            ResultProxyClient resultProxyClient) {
+            PublicConfigurationService publicConfigurationService) {
         this.workerConfigService = workerConfigService;
         this.signerService = signerService;
         this.iexecHubService = iexecHubService;
-        this.resultProxyClient = resultProxyClient;
+        this.publicConfigurationService = publicConfigurationService;
     }
 
     public ResultInfo getResultInfos(String chainTaskId) {
@@ -195,7 +195,8 @@ public class ResultService implements Purgeable {
 
         // Cloud computing - basic
         final boolean isIpfsStorageRequest = IPFS_RESULT_STORAGE_PROVIDER.equals(task.getResultStorageProvider());
-        final boolean isUpload = upload(workerpoolAuthorization);
+        final String resultProxyURL = task.getResultStorageProxy();
+        final boolean isUpload = upload(workerpoolAuthorization, resultProxyURL);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
             return getWeb2ResultLink(task);//retrieves ipfs only
@@ -206,16 +207,19 @@ public class ResultService implements Purgeable {
         return "";
     }
 
-    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization) {
+    private boolean upload(final WorkerpoolAuthorization workerpoolAuthorization,
+                           final String resultProxyUrl) {
         final String chainTaskId = workerpoolAuthorization.getChainTaskId();
-        final String authorizationToken = getIexecUploadToken(workerpoolAuthorization);
+        final String authorizationToken = getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
         if (authorizationToken.isEmpty()) {
             log.error("Empty authorizationToken, cannot upload result [chainTaskId:{}]", chainTaskId);
             return false;
         }
 
         try {
-            resultProxyClient.addResult(authorizationToken, getResultModelWithZip(chainTaskId));
+            publicConfigurationService
+                    .createResultProxyClientFromURL(resultProxyUrl)
+                    .addResult(authorizationToken, getResultModelWithZip(chainTaskId));
             return true;
         } catch (Exception e) {
             log.error("Empty location, cannot upload result [chainTaskId:{}]", chainTaskId, e);
@@ -230,7 +234,10 @@ public class ResultService implements Purgeable {
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
                 try {
-                    final String ipfsHash = resultProxyClient.getIpfsHashForTask(chainTaskId);
+                    final String resultProxyUrl = task.getResultStorageProxy();
+                    final String ipfsHash = publicConfigurationService
+                            .createResultProxyClientFromURL(resultProxyUrl)
+                            .getIpfsHashForTask(chainTaskId);
                     return buildResultLink(storage, "/ipfs/" + ipfsHash);
                 } catch (RuntimeException e) {
                     log.error("Cannot get tee web2 result link (result-proxy issue) [chainTaskId:{}]", chainTaskId, e);
@@ -255,7 +262,8 @@ public class ResultService implements Purgeable {
      * @return The JWT
      */
     // TODO Add JWT validation
-    public String getIexecUploadToken(WorkerpoolAuthorization workerpoolAuthorization) {
+    public String getIexecUploadToken(final WorkerpoolAuthorization workerpoolAuthorization,
+                                      final String resultProxyUrl) {
         try {
             final String hash = workerpoolAuthorization.getHash();
             final String authorization = signerService.signMessageHash(hash).getValue();
@@ -263,7 +271,9 @@ public class ResultService implements Purgeable {
                 log.error("Couldn't sign hash for an unknown reason [hash:{}]", hash);
                 return "";
             }
-            return resultProxyClient.getJwt(authorization, workerpoolAuthorization);
+            return publicConfigurationService
+                    .createResultProxyClientFromURL(resultProxyUrl)
+                    .getJwt(authorization, workerpoolAuthorization);
         } catch (Exception e) {
             log.error("Failed to get upload token", e);
             return "";
