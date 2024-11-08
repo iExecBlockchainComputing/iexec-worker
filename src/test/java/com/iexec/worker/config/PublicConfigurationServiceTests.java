@@ -18,6 +18,8 @@ package com.iexec.worker.config;
 
 import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.config.PublicConfiguration;
+import com.iexec.resultproxy.api.ResultProxyClientBuilder;
+import feign.Logger;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -54,7 +56,11 @@ class PublicConfigurationServiceTests {
                 () -> assertThat(publicConfigurationService.getSchedulerPublicAddress()).isEqualTo("http://localhost:1300"),
                 () -> assertThat(publicConfigurationService.getRequiredWorkerVersion()).isEqualTo("v8"),
                 () -> assertThat(publicConfigurationService.configServerClient()).isNotNull(),
-                () -> assertThat(publicConfigurationService.resultProxyClient()).isNotNull()
+                () -> assertThat(publicConfigurationService.createResultProxyClientFromURL(null)).isNotNull(),
+                () -> assertThat(publicConfigurationService.createResultProxyClientFromURL(""))
+                        .isEqualTo(ResultProxyClientBuilder.getInstance(Logger.Level.NONE, "http://localhost:13300")),
+                () -> assertThat(publicConfigurationService.createResultProxyClientFromURL("https://www.result-proxy-repo.iex.ec"))
+                        .isEqualTo(ResultProxyClientBuilder.getInstance(Logger.Level.NONE, "https://www.result-proxy-repo.iex.ec"))
         );
     }
 }
