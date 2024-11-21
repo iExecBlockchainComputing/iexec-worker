@@ -35,12 +35,12 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -51,6 +51,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class AppComputeServiceTests {
 
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
@@ -61,7 +62,7 @@ class AppComputeServiceTests {
     private static final long MAX_EXECUTION_TIME = 1000;
     private static final String INPUT = "INPUT";
     private static final String IEXEC_OUT = "IEXEC_OUT";
-    public static final long heapSize = 1024;
+    public static final long HEAP_SIZE = 1024;
 
     private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
@@ -87,12 +88,6 @@ class AppComputeServiceTests {
     @Mock
     private TeeService teeMockedService;
 
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-    }
-
     @Test
     void shouldRunCompute() {
         final TaskDescription taskDescription = taskDescriptionBuilder
@@ -109,14 +104,13 @@ class AppComputeServiceTests {
                 .executionDuration(Duration.ofSeconds(10))
                 .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
                         SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
         verify(dockerService).run(argumentCaptor.capture());
@@ -142,8 +136,9 @@ class AppComputeServiceTests {
     void shouldRunComputeWithTeeAndConnectAppToLas() {
         final TaskDescription taskDescription = taskDescriptionBuilder
                 .appEnclaveConfiguration(
-                        TeeEnclaveConfiguration.builder().heapSize(heapSize).build())
+                        TeeEnclaveConfiguration.builder().heapSize(HEAP_SIZE).build())
                 .build();
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
@@ -170,7 +165,7 @@ class AppComputeServiceTests {
                 appComputeService.runCompute(taskDescription, SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
         verify(dockerService).run(argumentCaptor.capture());
@@ -205,7 +200,6 @@ class AppComputeServiceTests {
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,

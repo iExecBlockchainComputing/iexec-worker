@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@ import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.TestUtils;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.web3j.crypto.Credentials;
 
 import java.math.BigInteger;
@@ -37,9 +37,12 @@ import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class ContributionServiceTests {
 
     private static final String CHAIN_DEAL_ID = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
@@ -63,14 +66,12 @@ class ContributionServiceTests {
 
     @BeforeEach
     void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-
         contributionService = new ContributionService(iexecHubService, workerpoolAuthorizationService, enclaveAuthorizationService, WORKER_WALLET_ADDRESS);
     }
 
     @Test
     void shouldChainTaskBeInitialized() {
-        String chainTaskId = "0xabc";
+        final String chainTaskId = "0xabc";
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(TaskDescription.builder().build());
 
         assertThat(contributionService.isChainTaskInitialized(chainTaskId)).isTrue();
@@ -78,7 +79,7 @@ class ContributionServiceTests {
 
     @Test
     void shouldChainTaskNotBeInitialized() {
-        String chainTaskId = "0xabc";
+        final String chainTaskId = "0xabc";
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(null);
 
         assertThat(contributionService.isChainTaskInitialized(chainTaskId)).isFalse();
@@ -87,7 +88,7 @@ class ContributionServiceTests {
     //region getCannotContributeStatusCause
     @Test
     void getCannotContributeStatusShouldReturnChainUnreachable() {
-        String chainTaskId = "chainTaskId";
+        final String chainTaskId = "chainTaskId";
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
@@ -100,7 +101,7 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeStatusShouldReturnStakeTooLow() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(0).build()));
@@ -117,7 +118,7 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeStatusShouldReturnTaskNotActive() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
@@ -136,15 +137,15 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeStatusShouldReturnAfterDeadline() {
-        ChainTask chainTask = ChainTask.builder()
+        final ChainTask timedOutChainTask = ChainTask.builder()
                 .dealid(CHAIN_DEAL_ID)
                 .idx(0)
                 .contributionDeadline(new Date().getTime() - 1000)
                 .build();
 
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = timedOutChainTask.getChainTaskId();
 
-        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(timedOutChainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
@@ -163,7 +164,7 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeStatusShouldReturnContributionAlreadySet() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
@@ -188,7 +189,7 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeStatusCauseShouldReturnWorkerpoolAuthorizationNotFound() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
@@ -213,7 +214,7 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeStatusCauseShouldReturnEmpty() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
         when(iexecHubService.getChainTask(chainTaskId))
                 .thenReturn(Optional.of(chainTask));
@@ -242,7 +243,7 @@ class ContributionServiceTests {
     // region getCannotContributeAndFinalizeStatusCause
     @Test
     void getCannotContributeAndFinalizeStatusCauseShouldReturnChainUnreachable() {
-        String chainTaskId = "chainTaskId";
+        final String chainTaskId = "chainTaskId";
 
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
@@ -254,7 +255,7 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeAndFinalizeStatusCauseShouldReturnTrustNotOne() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
         ChainDeal chainDeal = ChainDeal.builder()
                 .chainDealId(CHAIN_DEAL_ID)
@@ -270,21 +271,21 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeAndFinalizeStatusCauseShouldReturnTaskAlreadyContributed() {
-        ChainTask chainTask = ChainTask.builder()
+        final ChainTask chainTaskWithContribution = ChainTask.builder()
                 .dealid(CHAIN_DEAL_ID)
                 .idx(0)
                 .contributionDeadline(new Date().getTime() + 1000)
                 .contributors(List.of("CONTRIBUTED"))
                 .build();
 
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTaskWithContribution.getChainTaskId();
 
-        ChainDeal chainDeal = ChainDeal.builder()
+        final ChainDeal chainDeal = ChainDeal.builder()
                 .chainDealId(CHAIN_DEAL_ID)
                 .trust(BigInteger.ONE)
                 .build();
 
-        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTaskWithContribution));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(chainDeal));
 
         assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
@@ -293,9 +294,9 @@ class ContributionServiceTests {
 
     @Test
     void getCannotContributeAndFinalizeStatusCauseShouldReturnEmpty() {
-        String chainTaskId = chainTask.getChainTaskId();
+        final String chainTaskId = chainTask.getChainTaskId();
 
-        ChainDeal chainDeal = ChainDeal.builder()
+        final ChainDeal chainDeal = ChainDeal.builder()
                 .chainDealId(CHAIN_DEAL_ID)
                 .trust(BigInteger.ONE)
                 .build();
@@ -325,11 +326,9 @@ class ContributionServiceTests {
                 .build();
         Contribution contribution = contributionService.getContribution(computedFile);
 
-        System.out.println(contribution);
+        assertNotNull(contribution);
 
-        Assertions.assertNotNull(contribution);
-
-        Assertions.assertEquals(contribution,
+        assertEquals(contribution,
                 Contribution.builder()
                         .chainTaskId(chainTaskId)
                         .resultDigest(resultDigest)
@@ -365,13 +364,13 @@ class ContributionServiceTests {
                 .build();
         Contribution contribution = contributionService.getContribution(computedFile);
 
-        Assertions.assertNotNull(contribution);
-        Assertions.assertEquals(chainTaskId, contribution.getChainTaskId());
-        Assertions.assertEquals(resultDigest, contribution.getResultDigest());
-        Assertions.assertEquals(resultSeal, contribution.getResultSeal());
-        Assertions.assertEquals(TestUtils.ENCLAVE_ADDRESS, contribution.getEnclaveChallenge());
-        Assertions.assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
-        Assertions.assertEquals(teeWorkerpoolAuth.getSignature().getValue(), contribution.getWorkerPoolSignature());
+        assertNotNull(contribution);
+        assertEquals(chainTaskId, contribution.getChainTaskId());
+        assertEquals(resultDigest, contribution.getResultDigest());
+        assertEquals(resultSeal, contribution.getResultSeal());
+        assertEquals(TestUtils.ENCLAVE_ADDRESS, contribution.getEnclaveChallenge());
+        assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
+        assertEquals(teeWorkerpoolAuth.getSignature().getValue(), contribution.getWorkerPoolSignature());
 
         Contribution expectedContribution = Contribution.builder()
                 .chainTaskId(chainTaskId)
@@ -382,7 +381,7 @@ class ContributionServiceTests {
                 .enclaveSignature("0xenclaveSignature")
                 .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
                 .build();
-        Assertions.assertEquals(contribution, expectedContribution);
+        assertEquals(contribution, expectedContribution);
 
     }
 

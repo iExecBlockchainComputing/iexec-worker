@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,9 @@ import com.iexec.commons.poco.utils.HashUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
 import org.web3j.protocol.core.methods.response.Log;
@@ -38,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class RevealServiceTests {
     private static final String WORKER_WALLET_ADDRESS = "0x2D29bfBEc903479fe4Ba991918bAB99B494f2bEf";
 
@@ -50,8 +52,6 @@ class RevealServiceTests {
 
     @BeforeEach
     void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-
         revealService = new RevealService(iexecHubService, web3jService, WORKER_WALLET_ADDRESS);
     }
 
@@ -77,9 +77,7 @@ class RevealServiceTests {
                         .resultHash(contributionValue)
                         .resultSeal(contributionSeal)
                         .build());
-        when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        // when(resultService.getDeterministHashForTask(chainTaskId)).thenReturn(determinismHash);
         when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isTrue();

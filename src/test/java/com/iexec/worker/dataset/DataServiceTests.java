@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 @ExtendWith(OutputCaptureExtension.class)
 class DataServiceTests {
 
@@ -76,9 +77,8 @@ class DataServiceTests {
 
     @BeforeEach
     void beforeEach() {
-        MockitoAnnotations.openMocks(this);
         iexecIn = temporaryFolder.getAbsolutePath();
-        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+        when(workerConfigurationService.getTaskInputDir(anyString())) // can be CHAIN_TASK_ID or ""
                 .thenReturn(iexecIn);
     }
 
@@ -143,7 +143,7 @@ class DataServiceTests {
     }
 
     @Test
-    void shouldNotDownloadDatasetWhenFailureOnAllGateways(CapturedOutput output) throws WorkflowException {
+    void shouldNotDownloadDatasetWhenFailureOnAllGateways(CapturedOutput output) {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetUri(IPFS_URI)
                 .build();
@@ -186,7 +186,6 @@ class DataServiceTests {
     }
 
     @Test
-
     void shouldNotDownloadDatasetSinceEmptyDatasetAddress() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetAddress("")
