@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 ### Quality
 
 - Reorder `static` and `final` keywords. (#614)
+- Improve code maintainability in test classes. (#615)
 
 ### Dependency Upgrades
 
