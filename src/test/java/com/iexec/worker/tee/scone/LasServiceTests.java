@@ -29,10 +29,11 @@ import com.iexec.worker.sgx.SgxService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.List;
@@ -43,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class LasServiceTests {
     private static final String CONTAINER_NAME = "iexec-las";
     private static final String REGISTRY_NAME = "registryName";
@@ -64,11 +66,10 @@ class LasServiceTests {
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
 
-    LasService lasService;
+    private LasService lasService;
 
     @BeforeEach
     void init() {
-        MockitoAnnotations.openMocks(this);
         lasService = spy(new LasService(
                 CONTAINER_NAME,
                 IMAGE_URI,
@@ -77,19 +78,20 @@ class LasServiceTests {
                 sgxService,
                 dockerService
         ));
+    }
 
-        final SconeConfiguration.SconeRegistry registry = new SconeConfiguration.SconeRegistry(
-                REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD);
-        when(sconeConfiguration.getRegistry()).thenReturn(registry);
-        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+    private void createLasServiceStubs() {
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NATIVE);
+        when(sconeConfiguration.getRegistry())
+                .thenReturn(new SconeConfiguration.SconeRegistry(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD));
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(dockerClientInstanceMock);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NATIVE);
     }
 
     // region start
     @Test
     void shouldStartLasService() {
+        createLasServiceStubs();
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
@@ -113,6 +115,7 @@ class LasServiceTests {
 
     @Test
     void shouldStartLasServiceOnlyOnce() {
+        createLasServiceStubs();
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
@@ -126,7 +129,11 @@ class LasServiceTests {
 
     @Test
     void shouldNotStartLasServiceSinceUnknownRegistry() {
-        LasService lasService = new LasService(
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NATIVE);
+        when(sconeConfiguration.getRegistry())
+                .thenReturn(new SconeConfiguration.SconeRegistry(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD));
+
+        final LasService corruptLasService = new LasService(
                 CONTAINER_NAME,
                 "unknownRegistry",
                 sconeConfiguration,
@@ -135,12 +142,13 @@ class LasServiceTests {
                 dockerService
         );
 
-        assertFalse(lasService.start());
-        assertFalse(lasService.isStarted());
+        assertFalse(corruptLasService.start());
+        assertFalse(corruptLasService.isStarted());
     }
 
     @Test
     void shouldNotStartLasServiceSinceClientError() {
+        createLasServiceStubs();
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenReturn(null);
 
@@ -150,6 +158,7 @@ class LasServiceTests {
 
     @Test
     void shouldNotStartLasServiceSinceClientException() {
+        createLasServiceStubs();
         // getClient calls DockerClientFactory.getDockerClientInstance which can throw runtime exceptions
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
                 .thenThrow(RuntimeException.class);
@@ -160,6 +169,7 @@ class LasServiceTests {
 
     @Test
     void shouldNotStartLasServiceSinceCannotPullImage() {
+        createLasServiceStubs();
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(false);
 
         assertFalse(lasService.start());
@@ -168,6 +178,7 @@ class LasServiceTests {
 
     @Test
     void shouldNotStartLasServiceSinceCannotRunDockerContainer() {
+        createLasServiceStubs();
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build());
@@ -181,6 +192,7 @@ class LasServiceTests {
     @Test
     void shouldStopAndRemoveContainer() {
         when(lasService.isStarted()).thenReturn(true).thenCallRealMethod();
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(false);
 
         assertTrue(lasService.stopAndRemoveContainer());
@@ -196,12 +208,13 @@ class LasServiceTests {
         assertTrue(lasService.stopAndRemoveContainer());
         assertFalse(lasService.isStarted());
 
-        verify(dockerClientInstanceMock, times(0)).stopAndRemoveContainer(CONTAINER_NAME);
+        verifyNoInteractions(dockerClientInstanceMock);
     }
 
     @Test
     void shouldFailTotStopAndRemoveContainer() {
         when(lasService.isStarted()).thenReturn(true).thenCallRealMethod();
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(dockerClientInstanceMock.stopAndRemoveContainer(CONTAINER_NAME)).thenReturn(true);
 
         assertFalse(lasService.stopAndRemoveContainer());

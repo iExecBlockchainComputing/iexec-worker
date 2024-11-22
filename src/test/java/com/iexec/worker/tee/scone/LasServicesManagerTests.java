@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,28 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.commons.poco.tee.TeeFramework;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.web3j.crypto.ECKeyPair;
 
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class LasServicesManagerTests {
-    private static final String CONTAINER_NAME = "containerName";
-
     private static final String CHAIN_TASK_ID_1 = "chainTaskId1";
     private static final String CHAIN_TASK_ID_2 = "chainTaskId2";
 
@@ -86,23 +79,23 @@ class LasServicesManagerTests {
     @Spy
     LasServicesManager lasServicesManager;
 
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-
-        doReturn(CONTAINER_NAME).when(lasServicesManager).createLasContainerName();
+    private void stubLasService1() {
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
         when(lasServicesManager.createLasService(LAS_IMAGE_URI_1)).thenReturn(mockedLasService1);
+    }
+
+    private void stubLasService2() {
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_2)).thenReturn(PROPERTIES_2);
         when(lasServicesManager.createLasService(LAS_IMAGE_URI_2)).thenReturn(mockedLasService2);
     }
 
     // region startLasService
     @Test
     void shouldStartLasServiceWhenLasNotYetCreated() {
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
+        stubLasService1();
         when(mockedLasService1.start()).thenReturn(true);
 
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
     }
 
     @Test
@@ -110,7 +103,7 @@ class LasServicesManagerTests {
         when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(mockedLasService1);
         when(mockedLasService1.isStarted()).thenReturn(true);
 
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
 
         verifyNoInteractions(teeServicesPropertiesService, mockedSmsClient);
     }
@@ -121,51 +114,43 @@ class LasServicesManagerTests {
         when(mockedLasService1.isStarted()).thenReturn(false);
         when(mockedLasService1.start()).thenReturn(true);
 
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
 
         verifyNoInteractions(teeServicesPropertiesService, mockedSmsClient);
     }
 
     @Test
     void shouldStartTwoLasServicesForDifferentLasImageUri() {
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_2)).thenReturn(PROPERTIES_2);
+        stubLasService1();
+        stubLasService2();
         when(mockedLasService1.start()).thenReturn(true);
         when(mockedLasService2.start()).thenReturn(true);
 
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
 
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenCallRealMethod();
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenCallRealMethod();
-        Assertions.assertNotEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
+        assertNotEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
+        assertNotNull(lasServicesManager.getLas(CHAIN_TASK_ID_1));
     }
 
     @Test
     void shouldStartOnlyOneLasServiceForSameLasImageUri() {
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_2)).thenReturn(null);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
+        stubLasService1();
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_2)).thenReturn(PROPERTIES_3);
-        when(mockedSmsClient.getTeeServicesProperties(TeeFramework.SCONE))
-                .thenReturn(PROPERTIES_1)
-                .thenReturn(PROPERTIES_3);
         when(mockedLasService1.start()).thenReturn(true);
 
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
-        Assertions.assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertTrue(lasServicesManager.startLasService(CHAIN_TASK_ID_2));
 
-        Assertions.assertEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
+        assertEquals(lasServicesManager.getLas(CHAIN_TASK_ID_1), lasServicesManager.getLas(CHAIN_TASK_ID_2));
+        assertNotNull(lasServicesManager.getLas(CHAIN_TASK_ID_1));
     }
 
     @Test
     void shouldNotStartLasServiceSinceMissingTeeWorkflowConfiguration() {
-        when(lasServicesManager.getLas(CHAIN_TASK_ID_1)).thenReturn(null);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(null);
 
-        Assertions.assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
 
         verify(mockedLasService1, times(0)).start();
     }
@@ -174,7 +159,7 @@ class LasServicesManagerTests {
     void shouldNotStartLasServiceSinceMissingImageName() {
         SconeServicesProperties properties = new SconeServicesProperties(null, null, "");
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(properties);
-        Assertions.assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
+        assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
     }
     // endregion
 
@@ -182,9 +167,9 @@ class LasServicesManagerTests {
     @Test
     void shouldStopLasServices() {
         // Two steps:
-        // 1- Filling the LAS map with `lasServicesManager.startLasService(...)`
-        //    and setting their `isStarted` values to `true`;
-        // 2- Calling `lasServicesManager.stopLasServices` and checking `isStarted` is back to `false`.
+        // 1- Filling the LAS map with lasServicesManager.startLasService(...)
+        //    and setting their isStarted values to true
+        // 2- Calling lasServicesManager.stopLasServices and checking isStarted is back to false
         final Map<String, Boolean> areStarted = new HashMap<>(Map.of(
                 CHAIN_TASK_ID_1, false,
                 CHAIN_TASK_ID_2, false
@@ -194,8 +179,8 @@ class LasServicesManagerTests {
         startLasService(CHAIN_TASK_ID_2, PROPERTIES_2, mockedLasService2, areStarted);
 
         lasServicesManager.stopLasServices();
-        Assertions.assertFalse(areStarted.get(CHAIN_TASK_ID_1));
-        Assertions.assertFalse(areStarted.get(CHAIN_TASK_ID_2));
+        assertFalse(areStarted.get(CHAIN_TASK_ID_1));
+        assertFalse(areStarted.get(CHAIN_TASK_ID_2));
     }
 
     private void startLasService(String chainTaskId,
@@ -203,6 +188,7 @@ class LasServicesManagerTests {
                                  LasService lasService,
                                  Map<String, Boolean> areStarted) {
         when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(config);
+        when(lasServicesManager.createLasService(config.getLasImage())).thenReturn(lasService);
 
         when(lasService.start()).then(invocation -> {
             areStarted.put(chainTaskId, true);
@@ -211,69 +197,64 @@ class LasServicesManagerTests {
         doAnswer(invocation -> areStarted.put(chainTaskId, false)).when(lasService).stopAndRemoveContainer();
 
         lasServicesManager.startLasService(chainTaskId);
-        Assertions.assertTrue(areStarted.get(chainTaskId));
+        assertTrue(areStarted.get(chainTaskId));
     }
     // endregion
 
     // region createLasContainerName
     @Test
     void shouldCreateLasContainerNameWithProperCharLength() {
-        LasServicesManager lasServicesManager = new LasServicesManager(
+        final LasServicesManager lasServicesManagerWithWalletAddress = new LasServicesManager(
                 sconeConfiguration, teeServicesPropertiesService, workerConfigService,
                 sgxService, dockerService, WORKER_WALLET_ADDRESS);
-        ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
-        String createdLasContainerName = lasServicesManager.createLasContainerName();
-        Assertions.assertTrue(
+        final String createdLasContainerName = lasServicesManagerWithWalletAddress.createLasContainerName();
+        assertTrue(
                 createdLasContainerName.length() < 64);
         //more checks about
-        String expectedPrefix = "iexec-las";
-        Assertions.assertTrue(createdLasContainerName.startsWith(expectedPrefix));
-        Assertions.assertTrue(createdLasContainerName
+        final String expectedPrefix = "iexec-las";
+        assertTrue(createdLasContainerName.startsWith(expectedPrefix));
+        assertTrue(createdLasContainerName
                 .contains(WORKER_WALLET_ADDRESS));
         int minimumLength = String.format("%s-%s-",
                 expectedPrefix, WORKER_WALLET_ADDRESS).length();
-        Assertions.assertTrue(createdLasContainerName.length() > minimumLength);
+        assertTrue(createdLasContainerName.length() > minimumLength);
     }
 
     @Test
     void shouldCreateLasContainerNameWithRandomness() {
-        LasServicesManager lasServicesManager = new LasServicesManager(
+        final LasServicesManager lasServicesManagerWithWalletAddress = new LasServicesManager(
                 sconeConfiguration, teeServicesPropertiesService, workerConfigService,
                 sgxService, dockerService, WORKER_WALLET_ADDRESS);
-        ECKeyPair keyPair = ECKeyPair.create(new BigInteger(32, new Random()));
         //calling twice should return different values
-        Assertions.assertNotEquals(lasServicesManager.createLasContainerName(),
-                lasServicesManager.createLasContainerName());
+        assertNotEquals(lasServicesManagerWithWalletAddress.createLasContainerName(),
+                lasServicesManagerWithWalletAddress.createLasContainerName());
     }
     // endregion
 
     // region getLas
     @Test
     void shouldGetLas() {
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
+        stubLasService1();
         when(mockedLasService1.start()).thenReturn(true);
 
         lasServicesManager.startLasService(CHAIN_TASK_ID_1); // Filling the LAS map
 
-        Assertions.assertEquals(mockedLasService1, lasServicesManager.getLas(CHAIN_TASK_ID_1));
+        assertEquals(mockedLasService1, lasServicesManager.getLas(CHAIN_TASK_ID_1));
     }
 
     @Test
     void shouldNotGetLasSinceNoLasInMap() {
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
-        when(mockedLasService1.start()).thenReturn(true);
-
-        Assertions.assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_1));
+        assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_1));
     }
 
     @Test
     void shouldNotGetLasSinceNoLasInMapForGivenTask() {
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(PROPERTIES_1);
+        stubLasService1();
         when(mockedLasService1.start()).thenReturn(true);
 
         lasServicesManager.startLasService(CHAIN_TASK_ID_1); // Filling the LAS map
 
-        Assertions.assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_2));
+        assertNull(lasServicesManager.getLas(CHAIN_TASK_ID_2));
     }
     // endregion
 
