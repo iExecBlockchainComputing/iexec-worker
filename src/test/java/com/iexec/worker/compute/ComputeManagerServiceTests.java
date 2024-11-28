@@ -20,6 +20,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.containers.DockerLogs;
 import com.iexec.commons.containers.client.DockerClientInstance;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -49,6 +50,7 @@ import java.io.File;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,13 +98,16 @@ class ComputeManagerServiceTests {
     private ResultService resultService;
 
     private TaskDescription.TaskDescriptionBuilder createTaskDescriptionBuilder(boolean isTeeTask) {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(Arrays.asList("file0", "file1"))
+                .build();
         return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .appType(DappType.DOCKER)
                 .appUri(APP_URI)
                 .datasetUri(DATASET_URI)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .inputFiles(Arrays.asList("file0", "file1"))
+                .dealParams(dealParams)
                 .isTeeTask(isTeeTask)
                 .maxExecutionTime(3000);
     }

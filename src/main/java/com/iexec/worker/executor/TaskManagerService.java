@@ -108,7 +108,7 @@ public class TaskManagerService {
         }
 
         // result encryption is not supported for standard tasks
-        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
+        if (!taskDescription.isTeeTask() && taskDescription.getDealParams().isIexecResultEncryption()) {
             return getFailureResponseAndPrintError(TASK_DESCRIPTION_INVALID,
                     context, chainTaskId);
         }
@@ -125,7 +125,7 @@ public class TaskManagerService {
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
-            final String resultProxyUrl = taskDescription.getResultStorageProxy();
+            final String resultProxyUrl = taskDescription.getDealParams().getIexecResultStorageProxy();
             final String token = resultService.getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
             smsService.pushToken(workerpoolAuthorization, token);
         }
@@ -200,7 +200,7 @@ public class TaskManagerService {
                 log.info("No input files for this task [chainTaskId:{}]", chainTaskId);
             } else {
                 log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
-                dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getInputFiles());
+                dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getDealParams().getIexecInputFiles());
             }
         } catch (WorkflowException e) {
             return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,

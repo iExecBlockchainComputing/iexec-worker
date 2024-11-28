@@ -25,6 +25,7 @@ import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.SgxDriverMode;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -64,12 +65,16 @@ class AppComputeServiceTests {
     private static final String IEXEC_OUT = "IEXEC_OUT";
     public static final long HEAP_SIZE = 1024;
 
+    final DealParams dealParams = DealParams.builder()
+            .iexecInputFiles(Arrays.asList("file0", "file1"))
+            .build();
+
     private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .appUri(APP_URI)
             .datasetUri(DATASET_URI)
             .maxExecutionTime(MAX_EXECUTION_TIME)
-            .inputFiles(Arrays.asList("file0", "file1"))
+            .dealParams(dealParams)
             .isTeeTask(true);
 
     @InjectMocks

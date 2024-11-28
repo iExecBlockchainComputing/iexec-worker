@@ -23,6 +23,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.ChainReceipt;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -118,6 +119,9 @@ class TaskManagerServiceTests {
     }
 
     TaskDescription.TaskDescriptionBuilder getTaskDescriptionBuilder(boolean isTeeTask) {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(List.of("https://ab.cd/ef.jpeg"))
+                .build();
         return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .appType(DappType.DOCKER)
@@ -127,7 +131,7 @@ class TaskManagerServiceTests {
                 .datasetChecksum("datasetChecksum")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
-                .inputFiles(List.of("http://file1"));
+                .dealParams(dealParams);
     }
 
     //region start
@@ -156,9 +160,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotStartSinceStandardTaskWithEncryption() {
+        final DealParams dealParams = DealParams.builder()
+                .iexecResultEncryption(true)
+                .build();
         final TaskDescription taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .isResultEncryption(true)
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -307,9 +314,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldReturnSuccessAndNotDownloadDataSinceEmptyUrls() throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(null)
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(null)
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -344,8 +354,11 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldDownloadDatasetAndNotInputFiles() throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(null)
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
-                .inputFiles(null)
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -501,35 +514,41 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldWithInputFilesDownloadData() throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         doNothing().when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isTrue();
         verify(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
     }
 
     @Test
     void shouldWithInputFilesDataDownloadFailedAndTriggerPostComputeHookWithSuccess()
             throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
@@ -546,15 +565,18 @@ class TaskManagerServiceTests {
     @Test
     void shouldWithInputFilesDataDownloadFailedAndTriggerPostComputeHookWithFailure1()
             throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
 
@@ -570,15 +592,18 @@ class TaskManagerServiceTests {
     @Test
     void shouldWithInputFilesDataDownloadFailedAndTriggerPostComputeHookWithFailure2()
             throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))

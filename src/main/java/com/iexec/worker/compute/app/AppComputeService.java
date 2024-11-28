@@ -95,7 +95,7 @@ public class AppComputeService {
                 .chainTaskId(chainTaskId)
                 .imageUri(taskDescription.getAppUri())
                 .containerName(getTaskContainerName(chainTaskId))
-                .cmd(taskDescription.getCmd())
+                .cmd(taskDescription.getDealParams().getIexecArgs())
                 .env(env)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .sgxDriverMode(
