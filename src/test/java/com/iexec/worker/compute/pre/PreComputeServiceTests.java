@@ -22,6 +22,7 @@ import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
@@ -131,7 +132,10 @@ class PreComputeServiceTests {
     //region runTeePreCompute
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenDatasetAndInputFilesArePresent() throws TeeSessionGenerationException {
-        final TaskDescription taskDescription = taskDescriptionBuilder.inputFiles(List.of("input-file1")).build();
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(List.of("input-file1"))
+                .build();
+        final TaskDescription taskDescription = taskDescriptionBuilder.dealParams(dealParams).build();
 
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
         when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
@@ -204,9 +208,12 @@ class PreComputeServiceTests {
 
     @Test
     void shouldRunTeePreComputeAndPrepareInputDataWhenOnlyInputFilesArePresent() throws TeeSessionGenerationException {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(List.of("input-file1"))
+                .build();
         final TaskDescription taskDescription = taskDescriptionBuilder
                 .datasetAddress("")
-                .inputFiles(List.of("input-file1"))
+                .dealParams(dealParams)
                 .build();
 
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ public class AppComputeService {
                 .chainTaskId(chainTaskId)
                 .imageUri(taskDescription.getAppUri())
                 .containerName(getTaskContainerName(chainTaskId))
-                .cmd(taskDescription.getCmd())
+                .cmd(taskDescription.getDealParams().getIexecArgs())
                 .env(env)
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .sgxDriverMode(

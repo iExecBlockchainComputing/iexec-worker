@@ -166,14 +166,17 @@ class ResultServiceTests {
 
     @Test
     void shouldGetTeeWeb2ResultLinkSinceIpfs() {
-        String storage = IPFS_RESULT_STORAGE_PROVIDER;
-        String ipfsHash = "QmcipfsHash";
+        final String storage = IPFS_RESULT_STORAGE_PROVIDER;
+        final String ipfsHash = "QmcipfsHash";
+        final DealParams dealParams = DealParams.builder()
+                .iexecResultStorageProvider(storage)
+                .iexecResultStorageProxy(CUSTOM_RESULT_PROXY_URL)
+                .build();
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
                 TaskDescription.builder()
                         .chainTaskId(CHAIN_TASK_ID)
                         .isTeeTask(true)
-                        .resultStorageProvider(storage)
-                        .resultStorageProxy(CUSTOM_RESULT_PROXY_URL)
+                        .dealParams(dealParams)
                         .build());
         when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
         when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
@@ -188,10 +191,13 @@ class ResultServiceTests {
 
     @Test
     void shouldGetTeeWeb2ResultLinkSinceDropbox() {
-        String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
+        final String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
+        final DealParams dealParams = DealParams.builder()
+                .iexecResultStorageProvider(storage)
+                .build();
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).dealParams(dealParams).build());
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
@@ -200,10 +206,13 @@ class ResultServiceTests {
 
     @Test
     void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
-        String storage = "some-unsupported-third-party-storage";
+        final String storage = "some-unsupported-third-party-storage";
+        final DealParams dealParams = DealParams.builder()
+                .iexecResultStorageProvider(storage)
+                .build();
 
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).resultStorageProvider(storage).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).dealParams(dealParams).build());
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
@@ -213,11 +222,14 @@ class ResultServiceTests {
     @Test
     void shouldNotGetWeb2ResultLinkForStandardTaskOnIpfs() {
         final String uploadToken = "uploadToken";
+        final DealParams dealParams = DealParams.builder()
+                .iexecResultStorageProvider(IPFS_RESULT_STORAGE_PROVIDER)
+                .build();
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).resultStorageProvider(IPFS_RESULT_STORAGE_PROVIDER).build());
+                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).dealParams(dealParams).build());
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
 
         ResultProxyClient mockClient = mock(ResultProxyClient.class);

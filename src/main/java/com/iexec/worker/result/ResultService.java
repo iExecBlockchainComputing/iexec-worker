@@ -118,7 +118,7 @@ public class ResultService implements Purgeable {
     public void saveResultInfo(String chainTaskId, TaskDescription taskDescription, ComputedFile computedFile) {
         ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
-                .cmd(taskDescription.getCmd())
+                .cmd(taskDescription.getDealParams().getIexecArgs())
                 .deterministHash(computedFile != null ? computedFile.getResultDigest() : "")
                 .datasetUri(taskDescription.getDatasetUri())
                 .build();
@@ -194,8 +194,8 @@ public class ResultService implements Purgeable {
         }
 
         // Cloud computing - basic
-        final boolean isIpfsStorageRequest = IPFS_RESULT_STORAGE_PROVIDER.equals(task.getResultStorageProvider());
-        final String resultProxyURL = task.getResultStorageProxy();
+        final boolean isIpfsStorageRequest = IPFS_RESULT_STORAGE_PROVIDER.equals(task.getDealParams().getIexecResultStorageProvider());
+        final String resultProxyURL = task.getDealParams().getIexecResultStorageProxy();
         final boolean isUpload = upload(workerpoolAuthorization, resultProxyURL);
         if (isIpfsStorageRequest && isUpload) {
             log.info("Web2 storage, just uploaded (with basic) [chainTaskId:{}]", chainTaskId);
@@ -229,12 +229,12 @@ public class ResultService implements Purgeable {
 
     private String getWeb2ResultLink(final TaskDescription task) {
         final String chainTaskId = task.getChainTaskId();
-        final String storage = task.getResultStorageProvider();
+        final String storage = task.getDealParams().getIexecResultStorageProvider();
 
         switch (storage) {
             case IPFS_RESULT_STORAGE_PROVIDER:
                 try {
-                    final String resultProxyUrl = task.getResultStorageProxy();
+                    final String resultProxyUrl = task.getDealParams().getIexecResultStorageProxy();
                     final String ipfsHash = publicConfigurationService
                             .createResultProxyClientFromURL(resultProxyUrl)
                             .getIpfsHashForTask(chainTaskId);
