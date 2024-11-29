@@ -49,7 +49,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.File;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,7 +98,7 @@ class ComputeManagerServiceTests {
 
     private TaskDescription.TaskDescriptionBuilder createTaskDescriptionBuilder(boolean isTeeTask) {
         final DealParams dealParams = DealParams.builder()
-                .iexecInputFiles(Arrays.asList("file0", "file1"))
+                .iexecInputFiles(List.of("file0", "file1"))
                 .build();
         return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)

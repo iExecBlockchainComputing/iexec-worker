@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 
 - Reorder `static` and `final` keywords. (#614)
 - Improve code maintainability in test classes. (#615)
-- Resolve deprecations in `AppComputeService`, `TaskManagerService`, and `ResultService`. (#616)
+- Resolve deprecations caused by `TaskDescription` in `AppComputeService`, `TaskManagerService`, and `ResultService`. (#616)
 
 ### Dependency Upgrades
 

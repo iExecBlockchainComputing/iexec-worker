@@ -65,7 +65,7 @@ class AppComputeServiceTests {
     private static final String IEXEC_OUT = "IEXEC_OUT";
     public static final long HEAP_SIZE = 1024;
 
-    final DealParams dealParams = DealParams.builder()
+    private final DealParams dealParams = DealParams.builder()
             .iexecInputFiles(Arrays.asList("file0", "file1"))
             .build();
 

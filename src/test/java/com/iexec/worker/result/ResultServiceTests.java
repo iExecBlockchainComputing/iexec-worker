@@ -166,8 +166,8 @@ class ResultServiceTests {
 
     @Test
     void shouldGetTeeWeb2ResultLinkSinceIpfs() {
-        String storage = IPFS_RESULT_STORAGE_PROVIDER;
-        String ipfsHash = "QmcipfsHash";
+        final String storage = IPFS_RESULT_STORAGE_PROVIDER;
+        final String ipfsHash = "QmcipfsHash";
         final DealParams dealParams = DealParams.builder()
                 .iexecResultStorageProvider(storage)
                 .iexecResultStorageProxy(CUSTOM_RESULT_PROXY_URL)
@@ -191,7 +191,7 @@ class ResultServiceTests {
 
     @Test
     void shouldGetTeeWeb2ResultLinkSinceDropbox() {
-        String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
+        final String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
         final DealParams dealParams = DealParams.builder()
                 .iexecResultStorageProvider(storage)
                 .build();
@@ -206,7 +206,7 @@ class ResultServiceTests {
 
     @Test
     void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
-        String storage = "some-unsupported-third-party-storage";
+        final String storage = "some-unsupported-third-party-storage";
         final DealParams dealParams = DealParams.builder()
                 .iexecResultStorageProvider(storage)
                 .build();
