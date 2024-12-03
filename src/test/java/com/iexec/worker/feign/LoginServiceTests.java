@@ -72,7 +72,7 @@ class LoginServiceTests {
 
     @Test
     void shouldNotLoginOnBadChallengeStatusCode() {
-        Credentials credentials = generateCredentials();
+        final Credentials credentials = generateCredentials();
         when(coreClient.getChallenge(credentials.getAddress())).thenThrow(FeignException.class);
         assertAll(
                 () -> assertEquals("", loginService.login()),
@@ -83,8 +83,8 @@ class LoginServiceTests {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = "")
-    void shouldNotLoginOnEmptyChallenge(String challenge) {
-        Credentials credentials = generateCredentials();
+    void shouldNotLoginOnEmptyChallenge(final String challenge) {
+        final Credentials credentials = generateCredentials();
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn(challenge);
         assertAll(
                 () -> assertEquals("", loginService.login()),
@@ -94,9 +94,9 @@ class LoginServiceTests {
 
     @Test
     void shouldNotLoginOnBadLoginStatusCode() {
-        Credentials credentials = generateCredentials();
+        final Credentials credentials = generateCredentials();
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
-        Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenThrow(FeignException.class);
         assertAll(
                 () -> assertEquals("", loginService.login()),
@@ -108,10 +108,10 @@ class LoginServiceTests {
     @NullSource
     @ValueSource(strings = "")
     @ParameterizedTest
-    void shouldNotLoginOnEmptyToken(String token) {
-        Credentials credentials = generateCredentials();
+    void shouldNotLoginOnEmptyToken(final String token) {
+        final Credentials credentials = generateCredentials();
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
-        Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenReturn(token);
         assertAll(
                 () -> assertEquals("", loginService.login()),
@@ -122,9 +122,9 @@ class LoginServiceTests {
 
     @Test
     void shouldLogin() {
-        Credentials credentials = generateCredentials();
+        final Credentials credentials = generateCredentials();
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
-        Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature)).thenReturn("token");
         assertAll(
                 () -> assertEquals(TOKEN_PREFIX + "token", loginService.login()),
@@ -143,7 +143,7 @@ class LoginServiceTests {
      * </ul>
      */
     @Test
-    void shouldLoginOnceOnSimultaneousCalls(CapturedOutput output)
+    void shouldLoginOnceOnSimultaneousCalls(final CapturedOutput output)
             throws InterruptedException,
             ExecutionException,
             TimeoutException {
@@ -164,7 +164,7 @@ class LoginServiceTests {
 
         final Credentials credentials = generateCredentials();
         when(coreClient.getChallenge(credentials.getAddress())).thenReturn("challenge");
-        final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getAddress(), credentials.getEcKeyPair());
+        final Signature signature = SignatureUtils.hashAndSign("challenge", credentials.getEcKeyPair());
         when(coreClient.login(credentials.getAddress(), signature))
                 .then(waitForOtherThreads)
                 .thenReturn("token");

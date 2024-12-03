@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Reorder `static` and `final` keywords. (#614)
 - Improve code maintainability in test classes. (#615)
 - Resolve deprecations caused by `TaskDescription` in `AppComputeService`, `TaskManagerService`, and `ResultService`. (#616)
+- Replace `SignatureUtils#hashAndSign` deprecated calls in `LoginServiceTests`. (#618)
 
 ### Dependency Upgrades
 
