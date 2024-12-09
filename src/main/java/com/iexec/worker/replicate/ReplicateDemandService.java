@@ -64,8 +64,8 @@ public class ReplicateDemandService {
      * Trigger ask for replicate action every t seconds (e.g: t=30s).
      * The method that asks for the replicate runs asynchronously inside a new
      * thread to liberate the thread used for @Scheduled tasks.
-     * We use single thread task to make sure the worker does not ask for more
-     * than one replicate at the same time. The task's queue is of size 1 to
+     * We use single thread executor to make sure the worker does not ask for more
+     * than one replicate at the same time. The executor's queue is of size 1 to
      * avoid memory leak if the thread halts for any reason.
      */
     @Scheduled(fixedDelayString = "#{publicConfigurationService.publicConfiguration.askForReplicatePeriod}")
