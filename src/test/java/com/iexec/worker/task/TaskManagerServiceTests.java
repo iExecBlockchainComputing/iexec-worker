@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.executor;
+package com.iexec.worker.task;
 
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
