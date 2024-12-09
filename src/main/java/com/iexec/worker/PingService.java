@@ -57,7 +57,7 @@ public class PingService {
      * Trigger the scheduler ping every t seconds. The method that pings the
      * scheduler runs asynchronously inside a new thread to liberate the thread
      * used for @Scheduled tasks.
-     * We use single thread executor to make sure the worker does not ping more
+     * We use single thread task to make sure the worker does not ping more
      * than once at the same time. The executors queue is of size 1 to avoid memory
      * leak if the thread halts for any reason.
      */

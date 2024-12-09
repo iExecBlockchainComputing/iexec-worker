@@ -34,7 +34,7 @@ public class AsyncUtils {
      * 
      * @param context custom identified logged in the error message
      * @param runnable the task to run
-     * @param executor the executor used to run the task
+     * @param executor the task used to run the task
      * @return A {@link CompletableFuture} representing the executing task.
      */
     public static CompletableFuture<Void> runAsyncTask(String context, Runnable runnable, Executor executor) {

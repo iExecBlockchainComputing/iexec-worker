@@ -128,7 +128,7 @@ class PingServiceTests {
     }
 
     /**
-     * This test makes sure that the queue of the executor which runs "pingScheduler()"
+     * This test makes sure that the queue of the task which runs "pingScheduler()"
      * method is of size 1 and that it drops excessive incoming requests when an existing
      * request is already in the queue.
      * As you will notice, in the test we check that the method was called 2 times not
