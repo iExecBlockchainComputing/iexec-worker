@@ -75,7 +75,7 @@ class SubscriptionServiceTests {
     }
     // endregion
 
-    // region unsubscribe
+    // region unsubscribe & purge task
     @Test
     void shouldUnsubscribeFromTopic() {
         when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
@@ -92,6 +92,15 @@ class SubscriptionServiceTests {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
         assertThat(subscriptionService.purgeTask(CHAIN_TASK_ID)).isTrue();
         verify(subscription, never()).unsubscribe();
+    }
+
+    @Test
+    void shouldReturnTrueWhenPurgeTaskSuccessful() {
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
+        subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
+        assertThat(subscriptionService.purgeTask(CHAIN_TASK_ID)).isTrue();
+        verify(subscription).unsubscribe();
+        assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
     }
     // endregion
 
