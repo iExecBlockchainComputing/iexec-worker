@@ -16,6 +16,7 @@
 
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.core.notification.TaskNotification;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -29,6 +30,8 @@ import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,8 +41,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
-// FIXME: implement `Purgeable`
-public class SubscriptionService {
+public class SubscriptionService implements Purgeable {
 
     private final Map<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>();
     private final ApplicationEventPublisher eventPublisher;
@@ -84,16 +86,25 @@ public class SubscriptionService {
     /**
      * Unsubscribe from topic if already subscribed.
      *
-     * @param chainTaskId
+     * @param chainTaskId id of the task to unsubscribe and purge
+     * @return true if unsubscribed and purge topic successfully, false otherwise
      */
-    public void unsubscribeFromTopic(String chainTaskId) {
+    @Override
+    public boolean purgeTask(String chainTaskId) {
         if (!isSubscribedToTopic(chainTaskId)) {
             log.error("Already unsubscribed from topic [chainTaskId:{}]", chainTaskId);
-            return;
+            return true;
         }
         this.chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
         this.chainTaskIdToSubscription.remove(chainTaskId);
         log.info("Unsubscribed from topic [chainTaskId:{}]", chainTaskId);
+        return !isSubscribedToTopic(chainTaskId);
+    }
+
+    @Override
+    public void purgeAllTasksData() {
+        final List<String> tasksIds = new ArrayList<>(chainTaskIdToSubscription.keySet());
+        tasksIds.forEach(this::purgeTask);
     }
 
     /**

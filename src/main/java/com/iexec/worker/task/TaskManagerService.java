@@ -468,7 +468,6 @@ public class TaskManagerService {
      */
     boolean abort(String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
-        subscriptionService.unsubscribeFromTopic(chainTaskId);
         boolean allContainersStopped = computeManagerService.abort(chainTaskId);
         boolean allServicesPurged = purgeService.purgeAllServices(chainTaskId);
         final boolean isSuccess = allContainersStopped && allServicesPurged;
