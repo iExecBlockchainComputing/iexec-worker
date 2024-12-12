@@ -35,7 +35,6 @@ import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
@@ -68,7 +67,6 @@ public class TaskManagerService {
     private final DataService dataService;
     private final ResultService resultService;
     private final SmsService smsService;
-    private final SubscriptionService subscriptionService;
     private final PurgeService purgeService;
     private final String workerWalletAddress;
 
@@ -81,7 +79,6 @@ public class TaskManagerService {
             DataService dataService,
             ResultService resultService,
             SmsService smsService,
-            SubscriptionService subscriptionService,
             PurgeService purgeService,
             String workerWalletAddress) {
         this.iexecHubService = iexecHubService;
@@ -92,7 +89,6 @@ public class TaskManagerService {
         this.dataService = dataService;
         this.resultService = resultService;
         this.smsService = smsService;
-        this.subscriptionService = subscriptionService;
         this.purgeService = purgeService;
         this.workerWalletAddress = workerWalletAddress;
     }
