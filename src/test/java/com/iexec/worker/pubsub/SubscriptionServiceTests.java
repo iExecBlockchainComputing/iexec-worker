@@ -83,7 +83,7 @@ class SubscriptionServiceTests {
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
         assertThat(subscriptionService.purgeTask(CHAIN_TASK_ID)).isTrue();
-        verify(subscription, times(1)).unsubscribe();
+        verify(subscription).unsubscribe();
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
     }
 

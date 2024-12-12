@@ -30,8 +30,6 @@ import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -103,8 +101,8 @@ public class SubscriptionService implements Purgeable {
 
     @Override
     public void purgeAllTasksData() {
-        final List<String> tasksIds = new ArrayList<>(chainTaskIdToSubscription.keySet());
-        tasksIds.forEach(this::purgeTask);
+        chainTaskIdToSubscription.keySet().forEach(this::purgeTask);
+        chainTaskIdToSubscription.clear();
     }
 
     /**
