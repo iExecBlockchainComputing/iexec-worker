@@ -167,7 +167,6 @@ public class TaskNotificationService {
             case PLEASE_COMPLETE:
                 updateStatusAndGetNextAction(chainTaskId, COMPLETING);
                 actionResponse = taskManagerService.complete(chainTaskId);
-                subscriptionService.unsubscribeFromTopic(chainTaskId);
                 nextStatus = actionResponse.isSuccess() ? COMPLETED : COMPLETE_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
