@@ -21,7 +21,6 @@ import com.iexec.core.notification.TaskNotification;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.lang.Nullable;
@@ -193,14 +192,13 @@ public class SubscriptionService implements Purgeable {
         private final String chainTaskId;
         private final String workerWalletAddress;
 
-        @NotNull
         @Override
-        public Type getPayloadType(@NotNull final StompHeaders headers) {
+        public Type getPayloadType(final StompHeaders headers) {
             return TaskNotification.class;
         }
 
         @Override
-        public void handleFrame(@NotNull final StompHeaders headers, @Nullable final Object payload) {
+        public void handleFrame(final StompHeaders headers, @Nullable final Object payload) {
             if (payload == null) {
                 log.error("Payload of TaskNotification is null [chainTaskId:{}]", this.chainTaskId);
                 return;
