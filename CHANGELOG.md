@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Add workerpool address in configuration instead of reading from Scheduler `/workers/config` endpoint. (#607)
 - Set `0x0` as default value for Workerpool address and prevents startup if incorrectly configured. (#608)
 - Implement `Purgeable` on `SubscriptionService`. (#620)
+- Use new `FileHashUtils` API. (#622)
 
 ### Bug fixes
 

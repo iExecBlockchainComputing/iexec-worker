@@ -17,6 +17,7 @@
 package com.iexec.worker.dataset;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.utils.FileHashUtils;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
@@ -85,7 +86,7 @@ class DataServiceTests {
     @Test
     void shouldDownloadStandardTaskDataset() throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder().build();
-        String filepath = dataService.downloadStandardDataset(taskDescription);
+        final String filepath = dataService.downloadStandardDataset(taskDescription);
         assertThat(filepath).isEqualTo(iexecIn + "/" + DATASET_ADDRESS);
     }
 
@@ -178,7 +179,7 @@ class DataServiceTests {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetUri("")
                 .build();
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -190,7 +191,7 @@ class DataServiceTests {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetAddress("")
                 .build();
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -201,7 +202,7 @@ class DataServiceTests {
     void shouldNotDownloadDatasetSinceEmptyParentDirectory() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder().build();
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -213,7 +214,7 @@ class DataServiceTests {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetChecksum("badChecksum")
                 .build();
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -231,9 +232,9 @@ class DataServiceTests {
 
     @Test
     void shouldDownloadInputFiles() throws Exception {
-        List<String> uris = List.of(HTTP_URI);
+        final List<String> uris = List.of(HTTP_URI);
         dataService.downloadStandardInputFiles(CHAIN_TASK_ID, uris);
-        File inputFile = new File(iexecIn, "iExec-RLC-RLC-icon.png");
+        final File inputFile = new File(iexecIn, FileHashUtils.createFileNameFromUri(HTTP_URI));
         assertThat(inputFile).exists();
     }
 }
