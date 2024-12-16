@@ -76,15 +76,14 @@ public class DataService {
         }
         final String expectedSha256 = taskDescription.getDatasetChecksum();
         if (StringUtils.isEmpty(expectedSha256)) {
-            log.warn("INSECURE! Cannot check empty on-chain dataset checksum " +
-                    "[chainTaskId:{}]", chainTaskId);
+            log.warn("INSECURE! Cannot check empty on-chain dataset checksum [chainTaskId:{}]",
+                    chainTaskId);
             return datasetLocalFilePath;
         }
         final String actualSha256 = FileHashUtils.sha256(new File(datasetLocalFilePath));
         if (!expectedSha256.equals(actualSha256)) {
-            log.error("Dataset checksum mismatch [chainTaskId:{}, " +
-                            "expected:{}, actual:{}]", chainTaskId, expectedSha256,
-                    actualSha256);
+            log.error("Dataset checksum mismatch [chainTaskId:{}, expected:{}, actual:{}]",
+                    chainTaskId, expectedSha256, actualSha256);
             throw new WorkflowException(ReplicateStatusCause.DATASET_FILE_BAD_CHECKSUM);
         }
         return datasetLocalFilePath;
