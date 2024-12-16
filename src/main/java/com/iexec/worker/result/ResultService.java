@@ -401,6 +401,7 @@ public class ResultService implements Purgeable {
      */
     @Override
     public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         final String taskBaseDir = workerConfigService.getTaskBaseDir(chainTaskId);
 
         resultInfoMap.remove(chainTaskId);
@@ -427,6 +428,7 @@ public class ResultService implements Purgeable {
     @Override
     @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         final List<String> tasksIds = new ArrayList<>(resultInfoMap.keySet());
         tasksIds.forEach(this::purgeTask);
     }

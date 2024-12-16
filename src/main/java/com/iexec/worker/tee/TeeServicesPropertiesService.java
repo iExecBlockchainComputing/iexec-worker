@@ -109,6 +109,7 @@ public class TeeServicesPropertiesService implements Purgeable {
      */
     @Override
     public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         propertiesForTask.remove(chainTaskId);
         return !propertiesForTask.containsKey(chainTaskId);
     }
@@ -116,6 +117,7 @@ public class TeeServicesPropertiesService implements Purgeable {
     @Override
     @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         propertiesForTask.clear();
     }
 }

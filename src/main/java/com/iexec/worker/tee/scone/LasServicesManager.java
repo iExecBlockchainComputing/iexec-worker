@@ -133,6 +133,7 @@ public class LasServicesManager implements Purgeable {
      */
     @Override
     public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         chainTaskIdToLasService.remove(chainTaskId);
         return !chainTaskIdToLasService.containsKey(chainTaskId);
     }
@@ -140,6 +141,7 @@ public class LasServicesManager implements Purgeable {
     @Override
     @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         chainTaskIdToLasService.clear();
     }
 }

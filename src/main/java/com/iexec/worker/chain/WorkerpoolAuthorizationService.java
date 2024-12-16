@@ -86,6 +86,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
      */
     @Override
     public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         workerpoolAuthorizations.remove(chainTaskId);
         return !workerpoolAuthorizations.containsKey(chainTaskId);
     }
@@ -93,6 +94,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
     @Override
     @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         workerpoolAuthorizations.clear();
     }
 }
