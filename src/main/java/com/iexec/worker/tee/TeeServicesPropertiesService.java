@@ -53,11 +53,11 @@ public class TeeServicesPropertiesService implements Purgeable {
         this.iexecHubService = iexecHubService;
     }
 
-    public TeeServicesProperties getTeeServicesProperties(String chainTaskId) {
+    public TeeServicesProperties getTeeServicesProperties(final String chainTaskId) {
         return propertiesForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesProperties);
     }
 
-    <T extends TeeServicesProperties> T retrieveTeeServicesProperties(String chainTaskId) {
+    <T extends TeeServicesProperties> T retrieveTeeServicesProperties(final String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         // SMS client should already have been created once before.
@@ -90,7 +90,7 @@ public class TeeServicesPropertiesService implements Purgeable {
         return properties;
     }
 
-    private void checkImageIsPresentOrDownload(String image, String chainTaskId, String imageType) {
+    private void checkImageIsPresentOrDownload(final String image, final String chainTaskId, final String imageType) {
         final DockerClientInstance client = dockerService.getClient(image);
         if (!client.isImagePresent(image)
                 && !client.pullImage(image)) {
@@ -108,7 +108,7 @@ public class TeeServicesPropertiesService implements Purgeable {
      * {@literal false} otherwise.
      */
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
         propertiesForTask.remove(chainTaskId);
         return !propertiesForTask.containsKey(chainTaskId);
     }

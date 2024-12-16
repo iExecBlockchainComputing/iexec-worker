@@ -68,7 +68,7 @@ public class LasServicesManager implements Purgeable {
         this.workerWalletAddress = workerWalletAddress;
     }
 
-    public boolean startLasService(String chainTaskId) {
+    public boolean startLasService(final String chainTaskId) {
         // Just checking no LAS is already created/started for this task
         final LasService alreadyCreatedLas = getLas(chainTaskId);
         if (alreadyCreatedLas != null) {
@@ -104,7 +104,7 @@ public class LasServicesManager implements Purgeable {
                 + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
-    LasService createLasService(String lasImageUri) {
+    LasService createLasService(final String lasImageUri) {
         return new LasService(
                 createLasContainerName(),
                 lasImageUri,
@@ -120,7 +120,7 @@ public class LasServicesManager implements Purgeable {
                 .forEach(LasService::stopAndRemoveContainer);
     }
 
-    public LasService getLas(String chainTaskId) {
+    public LasService getLas(final String chainTaskId) {
         return chainTaskIdToLasService.get(chainTaskId);
     }
 
@@ -132,7 +132,7 @@ public class LasServicesManager implements Purgeable {
      * {@literal false} otherwise.
      */
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
         chainTaskIdToLasService.remove(chainTaskId);
         return !chainTaskIdToLasService.containsKey(chainTaskId);
     }

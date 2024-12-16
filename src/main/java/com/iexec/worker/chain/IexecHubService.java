@@ -68,15 +68,15 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     }
 
     // region contribute
-    IexecHubContract.TaskContributeEventResponse contribute(Contribution contribution) {
+    IexecHubContract.TaskContributeEventResponse contribute(final Contribution contribution) {
         log.info("contribute request [chainTaskId:{}, waitingTxCount:{}]", contribution.getChainTaskId(), getWaitingTransactionCount());
         return sendContributeTransaction(contribution);
     }
 
-    private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(Contribution contribution) {
-        String chainTaskId = contribution.getChainTaskId();
+    private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(final Contribution contribution) {
+        final String chainTaskId = contribution.getChainTaskId();
 
-        RemoteCall<TransactionReceipt> contributeCall = iexecHubContract.contribute(
+        final RemoteCall<TransactionReceipt> contributeCall = iexecHubContract.contribute(
                 stringToBytes(chainTaskId),
                 stringToBytes(contribution.getResultHash()),
                 stringToBytes(contribution.getResultSeal()),
@@ -85,9 +85,9 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                 stringToBytes(contribution.getWorkerPoolSignature()));
         log.info("Sent contribute [chainTaskId:{}, contribution:{}]", chainTaskId, contribution);
 
-        TransactionReceipt contributeReceipt = submit(chainTaskId, "contribute", contributeCall);
+        final TransactionReceipt contributeReceipt = submit(chainTaskId, "contribute", contributeCall);
 
-        List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
+        final List<IexecHubContract.TaskContributeEventResponse> contributeEvents =
                 IexecHubContract.getTaskContributeEvents(contributeReceipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
                                 && Objects.equals(event.worker, signerService.getAddress()))
@@ -95,7 +95,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         log.debug("contributeEvents count {} [chainTaskId: {}]", contributeEvents.size(), chainTaskId);
 
         if (!contributeEvents.isEmpty()) {
-            IexecHubContract.TaskContributeEventResponse contributeEvent = contributeEvents.get(0);
+            final IexecHubContract.TaskContributeEventResponse contributeEvent = contributeEvents.get(0);
             if (isSuccessTx(chainTaskId, contributeEvent.log, CONTRIBUTED)) {
                 log.info("Contributed [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
                         chainTaskId, contribution, contributeReceipt.getGasUsed(), contributeEvent.log);
@@ -109,20 +109,20 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     // endregion
 
     // region reveal
-    IexecHubContract.TaskRevealEventResponse reveal(String chainTaskId, String resultDigest) {
+    IexecHubContract.TaskRevealEventResponse reveal(final String chainTaskId, final String resultDigest) {
         log.info("reveal request [chainTaskId:{}, waitingTxCount:{}]", chainTaskId, getWaitingTransactionCount());
         return sendRevealTransaction(chainTaskId, resultDigest);
     }
 
-    private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(String chainTaskId, String resultDigest) {
-        RemoteCall<TransactionReceipt> revealCall = iexecHubContract.reveal(
+    private IexecHubContract.TaskRevealEventResponse sendRevealTransaction(final String chainTaskId, final String resultDigest) {
+        final RemoteCall<TransactionReceipt> revealCall = iexecHubContract.reveal(
                 stringToBytes(chainTaskId),
                 stringToBytes(resultDigest));
         log.info("Sent reveal [chainTaskId:{}, resultDigest:{}]", chainTaskId, resultDigest);
 
-        TransactionReceipt revealReceipt = submit(chainTaskId, "reveal", revealCall);
+        final TransactionReceipt revealReceipt = submit(chainTaskId, "reveal", revealCall);
 
-        List<IexecHubContract.TaskRevealEventResponse> revealEvents =
+        final List<IexecHubContract.TaskRevealEventResponse> revealEvents =
                 IexecHubContract.getTaskRevealEvents(revealReceipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
                                 && Objects.equals(event.worker, signerService.getAddress()))
@@ -130,7 +130,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         log.debug("revealEvents count {} [chainTaskId:{}]", revealEvents.size(), chainTaskId);
 
         if (!revealEvents.isEmpty()) {
-            IexecHubContract.TaskRevealEventResponse revealEvent = revealEvents.get(0);
+            final IexecHubContract.TaskRevealEventResponse revealEvent = revealEvents.get(0);
             if (isSuccessTx(chainTaskId, revealEvent.log, REVEALED)) {
                 log.info("Revealed [chainTaskId:{}, resultDigest:{}, gasUsed:{}, log:{}]",
                         chainTaskId, resultDigest, revealReceipt.getGasUsed(), revealEvent.log);
@@ -144,18 +144,21 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     // endregion reveal
 
     // region contributeAndFinalize
-    public Optional<ChainReceipt> contributeAndFinalize(Contribution contribution, String resultLink, String callbackData) {
+    public Optional<ChainReceipt> contributeAndFinalize(final Contribution contribution, final String resultLink,
+                                                        final String callbackData) {
         log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
                 contribution.getChainTaskId(), getWaitingTransactionCount());
-        IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
+        final IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
         return Optional.ofNullable(finalizeEvent)
                 .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
     }
 
-    private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(Contribution contribution, String resultLink, String callbackData) {
-        String chainTaskId = contribution.getChainTaskId();
+    private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(final Contribution contribution,
+                                                                                            final String resultLink,
+                                                                                            final String callbackData) {
+        final String chainTaskId = contribution.getChainTaskId();
 
-        RemoteCall<TransactionReceipt> contributeAndFinalizeCall = iexecHubContract.contributeAndFinalize(
+        final RemoteCall<TransactionReceipt> contributeAndFinalizeCall = iexecHubContract.contributeAndFinalize(
                 stringToBytes(chainTaskId),
                 stringToBytes(contribution.getResultDigest()),
                 StringUtils.isNotEmpty(resultLink) ? resultLink.getBytes(StandardCharsets.UTF_8) : new byte[0],
@@ -166,16 +169,16 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, contribution, resultLink, callbackData);
 
-        TransactionReceipt receipt = submit(chainTaskId, "contributeAndFinalize", contributeAndFinalizeCall);
+        final TransactionReceipt receipt = submit(chainTaskId, "contributeAndFinalize", contributeAndFinalizeCall);
 
-        List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
+        final List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
                 IexecHubContract.getTaskFinalizeEvents(receipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId))
                         .collect(Collectors.toList());
         log.debug("finalizeEvents count {} [chainTaskId:{}]", finalizeEvents.size(), chainTaskId);
 
         if (!finalizeEvents.isEmpty()) {
-            IexecHubContract.TaskFinalizeEventResponse finalizeEvent = finalizeEvents.get(0);
+            final IexecHubContract.TaskFinalizeEventResponse finalizeEvent = finalizeEvents.get(0);
             if (isSuccessTx(chainTaskId, finalizeEvent.log, REVEALED)) {
                 log.info("contributeAndFinalize done [chainTaskId:{}, contribution:{}, gasUsed:{}, log:{}]",
                         chainTaskId, contribution, receipt.getGasUsed(), finalizeEvent.log);
@@ -193,7 +196,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return executor.getTaskCount() - 1 - executor.getCompletedTaskCount();
     }
 
-    boolean isSuccessTx(String chainTaskId, Log eventLog, ChainContributionStatus pretendedStatus) {
+    boolean isSuccessTx(final String chainTaskId, final Log eventLog, final ChainContributionStatus pretendedStatus) {
         if (eventLog == null) {
             return false;
         }
@@ -206,12 +209,12 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return true;
     }
 
-    private boolean isContributionStatusValidOnChain(String chainTaskId, ChainContributionStatus chainContributionStatus) {
-        Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
+    private boolean isContributionStatusValidOnChain(final String chainTaskId, final ChainContributionStatus chainContributionStatus) {
+        final Optional<ChainContribution> chainContribution = getChainContribution(chainTaskId);
         return chainContribution.isPresent() && chainContribution.get().getStatus() == chainContributionStatus;
     }
 
-    private boolean isStatusValidOnChainAfterPendingReceipt(String chainTaskId, ChainContributionStatus onchainStatus) {
+    private boolean isStatusValidOnChainAfterPendingReceipt(final String chainTaskId, final ChainContributionStatus onchainStatus) {
         long maxWaitingTime = 10 * web3jService.getBlockTime().toMillis();
         log.info("Waiting for on-chain status after pending receipt " +
                         "[chainTaskId:{}, status:{}, maxWaitingTime:{}]",
@@ -239,7 +242,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     }
     // endregion
 
-    Optional<ChainContribution> getChainContribution(String chainTaskId) {
+    Optional<ChainContribution> getChainContribution(final String chainTaskId) {
         return getChainContribution(chainTaskId, signerService.getAddress());
     }
 
@@ -255,18 +258,18 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return web3jService.getLatestBlockNumber();
     }
 
-    boolean isChainTaskActive(String chainTaskId) {
-        Optional<ChainTask> chainTask = getChainTask(chainTaskId);
+    boolean isChainTaskActive(final String chainTaskId) {
+        final Optional<ChainTask> chainTask = getChainTask(chainTaskId);
         return chainTask.filter(task -> task.getStatus() == ChainTaskStatus.ACTIVE).isPresent();
     }
 
-    boolean isChainTaskRevealing(String chainTaskId) {
-        Optional<ChainTask> chainTask = getChainTask(chainTaskId);
+    boolean isChainTaskRevealing(final String chainTaskId) {
+        final Optional<ChainTask> chainTask = getChainTask(chainTaskId);
         return chainTask.filter(task -> task.getStatus() == ChainTaskStatus.REVEALING).isPresent();
     }
 
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
         return super.purgeTask(chainTaskId);
     }
 
@@ -276,7 +279,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         super.purgeAllTasksData();
     }
 
-    TransactionReceipt submit(String chainTaskId, String transactionType, RemoteCall<TransactionReceipt> remoteCall) {
+    TransactionReceipt submit(final String chainTaskId, final String transactionType, final RemoteCall<TransactionReceipt> remoteCall) {
         try {
             final RemoteCallTask remoteCallSend = new RemoteCallTask(chainTaskId, transactionType, remoteCall);
             return submit(remoteCallSend);
@@ -287,13 +290,13 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
             Thread.currentThread().interrupt();
         }
         // return non-null receipt with empty logs on failure
-        TransactionReceipt receipt = new TransactionReceipt();
+        final TransactionReceipt receipt = new TransactionReceipt();
         receipt.setLogs(List.of());
         return receipt;
     }
 
-    TransactionReceipt submit(RemoteCallTask remoteCallTask) throws ExecutionException, InterruptedException {
-        Future<TransactionReceipt> future = executor.submit(remoteCallTask);
+    TransactionReceipt submit(final RemoteCallTask remoteCallTask) throws ExecutionException, InterruptedException {
+        final Future<TransactionReceipt> future = executor.submit(remoteCallTask);
         return future.get();
     }
 
@@ -313,7 +316,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
 
         @Override
         public TransactionReceipt call() throws Exception {
-            TransactionReceipt receipt = remoteCall.send();
+            final TransactionReceipt receipt = remoteCall.send();
             log.debug("{} transaction hash {} at block {} [chainTaskId:{}]",
                     transactionType, receipt.getTransactionHash(), receipt.getBlockNumber(), chainTaskId);
             log.info("{} receipt [chainTaskId:{}]", transactionType, chainTaskId);
