@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Resolve deprecations caused by `TaskDescription` in `AppComputeService`, `TaskManagerService`, and `ResultService`. (#616)
 - Replace `SignatureUtils#hashAndSign` deprecated calls in `LoginServiceTests`. (#618)
 - Rename `executor` package to `task` package. (#619)
+- Add missing `@PreDestroy` annotation in services implementing `Purgeable`. (#621)
 
 ### Dependency Upgrades
 
