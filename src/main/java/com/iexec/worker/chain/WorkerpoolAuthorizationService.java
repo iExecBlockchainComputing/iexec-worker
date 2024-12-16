@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Map;
 
 
@@ -44,15 +45,15 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
     }
 
-    public boolean isWorkerpoolAuthorizationValid(WorkerpoolAuthorization auth, String signerAddress) {
+    public boolean isWorkerpoolAuthorizationValid(final WorkerpoolAuthorization auth, final String signerAddress) {
         // create the hash that was used in the signature in the core
-        byte[] message = BytesUtils.stringToBytes(
+        final byte[] message = BytesUtils.stringToBytes(
                 HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
 
         return SignatureUtils.isSignatureValid(message, auth.getSignature(), signerAddress);
     }
 
-    public boolean putWorkerpoolAuthorization(WorkerpoolAuthorization workerpoolAuthorization) {
+    public boolean putWorkerpoolAuthorization(final WorkerpoolAuthorization workerpoolAuthorization) {
         if (workerpoolAuthorization == null || workerpoolAuthorization.getChainTaskId() == null) {
             log.error("Cant putWorkerpoolAuthorization (null) [workerpoolAuthorization:{}]", workerpoolAuthorization);
             return false;
@@ -72,7 +73,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         return true;
     }
 
-    WorkerpoolAuthorization getWorkerpoolAuthorization(String chainTaskId) {
+    WorkerpoolAuthorization getWorkerpoolAuthorization(final String chainTaskId) {
         return workerpoolAuthorizations.get(chainTaskId);
     }
 
@@ -84,13 +85,16 @@ public class WorkerpoolAuthorizationService implements Purgeable {
      * {@literal false} otherwise.
      */
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         workerpoolAuthorizations.remove(chainTaskId);
         return !workerpoolAuthorizations.containsKey(chainTaskId);
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         workerpoolAuthorizations.clear();
     }
 }

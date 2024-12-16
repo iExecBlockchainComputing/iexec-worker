@@ -104,6 +104,7 @@ public class SubscriptionService implements Purgeable {
     @Override
     @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         this.chainTaskIdToSubscription.keySet().forEach(this::purgeTask);
         this.chainTaskIdToSubscription.clear();
     }

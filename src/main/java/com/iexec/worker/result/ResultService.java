@@ -38,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -71,42 +72,42 @@ public class ResultService implements Purgeable {
         this.publicConfigurationService = publicConfigurationService;
     }
 
-    public ResultInfo getResultInfos(String chainTaskId) {
+    public ResultInfo getResultInfos(final String chainTaskId) {
         return resultInfoMap.get(chainTaskId);
     }
 
-    public String getResultFolderPath(String chainTaskId) {
+    public String getResultFolderPath(final String chainTaskId) {
         return workerConfigService.getTaskIexecOutDir(chainTaskId);
     }
 
-    public boolean isResultFolderFound(String chainTaskId) {
+    public boolean isResultFolderFound(final String chainTaskId) {
         return new File(getResultFolderPath(chainTaskId)).exists();
     }
 
-    public String getResultZipFilePath(String chainTaskId) {
+    public String getResultZipFilePath(final String chainTaskId) {
         return getResultFolderPath(chainTaskId) + ".zip";
     }
 
-    public boolean isResultZipFound(String chainTaskId) {
+    public boolean isResultZipFound(final String chainTaskId) {
         return new File(getResultZipFilePath(chainTaskId)).exists();
     }
 
-    public boolean writeErrorToIexecOut(String chainTaskId, ReplicateStatus errorStatus,
-                                        ReplicateStatusCause errorCause) {
-        String errorContent = String.format("[IEXEC] Error occurred while computing"
+    public boolean writeErrorToIexecOut(final String chainTaskId, final ReplicateStatus errorStatus,
+                                        final ReplicateStatusCause errorCause) {
+        final String errorContent = String.format("[IEXEC] Error occurred while computing"
                 + " the task [error:%s, cause:%s]", errorStatus, errorCause);
-        ComputedFile computedFile = ComputedFile.builder()
+        final ComputedFile computedFile = ComputedFile.builder()
                 .deterministicOutputPath(IexecFileHelper.SLASH_IEXEC_OUT +
                         File.separator + ERROR_FILENAME)
                 .build();
-        String computedFileJsonAsString;
+        final String computedFileJsonAsString;
         try {
             computedFileJsonAsString = new ObjectMapper().writeValueAsString(computedFile);
         } catch (JsonProcessingException e) {
             log.error("Failed to prepare computed file [chainTaskId:{}]", chainTaskId, e);
             return false;
         }
-        String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
+        final String hostIexecOutSlash = workerConfigService.getTaskIexecOutDir(chainTaskId)
                 + File.separator;
         return FileHelper.createFolder(hostIexecOutSlash)
                 && FileHelper.writeFile(hostIexecOutSlash + ERROR_FILENAME,
@@ -115,8 +116,9 @@ public class ResultService implements Purgeable {
                 + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString.getBytes());
     }
 
-    public void saveResultInfo(String chainTaskId, TaskDescription taskDescription, ComputedFile computedFile) {
-        ResultInfo resultInfo = ResultInfo.builder()
+    public void saveResultInfo(final String chainTaskId, final TaskDescription taskDescription,
+                               final ComputedFile computedFile) {
+        final ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
                 .cmd(taskDescription.getDealParams().getIexecArgs())
                 .deterministHash(computedFile != null ? computedFile.getResultDigest() : "")
@@ -126,10 +128,10 @@ public class ResultService implements Purgeable {
         resultInfoMap.put(chainTaskId, resultInfo);
     }
 
-    public ResultModel getResultModelWithZip(String chainTaskId) {
-        ResultInfo resultInfo = getResultInfos(chainTaskId);
+    public ResultModel getResultModelWithZip(final String chainTaskId) {
+        final ResultInfo resultInfo = getResultInfos(chainTaskId);
         byte[] zipResultAsBytes = new byte[0];
-        String zipLocation = getResultZipFilePath(chainTaskId);
+        final String zipLocation = getResultZipFilePath(chainTaskId);
         try {
             zipResultAsBytes = Files.readAllBytes(Paths.get(zipLocation));
         } catch (IOException e) {
@@ -145,8 +147,8 @@ public class ResultService implements Purgeable {
                 .build();
     }
 
-    public void cleanUnusedResultFolders(List<String> recoveredTasks) {
-        for (String chainTaskId : getAllChainTaskIdsInResultFolder()) {
+    public void cleanUnusedResultFolders(final List<String> recoveredTasks) {
+        for (final String chainTaskId : getAllChainTaskIdsInResultFolder()) {
             if (!recoveredTasks.contains(chainTaskId)) {
                 purgeTask(chainTaskId);
             }
@@ -154,8 +156,8 @@ public class ResultService implements Purgeable {
     }
 
     public List<String> getAllChainTaskIdsInResultFolder() {
-        File resultsFolder = new File(workerConfigService.getWorkerBaseDir());
-        String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
+        final File resultsFolder = new File(workerConfigService.getWorkerBaseDir());
+        final String[] chainTaskIdFolders = resultsFolder.list((current, name) -> new File(current, name).isDirectory());
 
         if (chainTaskIdFolders == null || chainTaskIdFolders.length == 0) {
             return Collections.emptyList();
@@ -172,7 +174,7 @@ public class ResultService implements Purgeable {
      * - link could be retrieved from core before finalize
      *
      * */
-    public String uploadResultAndGetLink(WorkerpoolAuthorization workerpoolAuthorization) {
+    public String uploadResultAndGetLink(final WorkerpoolAuthorization workerpoolAuthorization) {
         final String chainTaskId = workerpoolAuthorization.getChainTaskId();
         final TaskDescription task = iexecHubService.getTaskDescription(chainTaskId);
 
@@ -251,7 +253,7 @@ public class ResultService implements Purgeable {
         }
     }
 
-    String buildResultLink(String storage, String location) {
+    String buildResultLink(final String storage, final String location) {
         return String.format("{ \"storage\": \"%s\", \"location\": \"%s\" }", storage, location);
     }
 
@@ -280,12 +282,12 @@ public class ResultService implements Purgeable {
         }
     }
 
-    public boolean isResultAvailable(String chainTaskId) {
+    public boolean isResultAvailable(final String chainTaskId) {
         return isResultZipFound(chainTaskId);
     }
 
-    public ComputedFile readComputedFile(String chainTaskId) {
-        ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
+    public ComputedFile readComputedFile(final String chainTaskId) {
+        final ComputedFile computedFile = IexecFileHelper.readComputedFile(chainTaskId,
                 workerConfigService.getTaskOutputDir(chainTaskId));
         if (computedFile == null) {
             log.error("Failed to read computed file (computed.json missing) [chainTaskId:{}]", chainTaskId);
@@ -293,8 +295,8 @@ public class ResultService implements Purgeable {
         return computedFile;
     }
 
-    public ComputedFile getComputedFile(String chainTaskId) {
-        ComputedFile computedFile = readComputedFile(chainTaskId);
+    public ComputedFile getComputedFile(final String chainTaskId) {
+        final ComputedFile computedFile = readComputedFile(chainTaskId);
         if (computedFile == null) {
             log.error("Failed to getComputedFile (computed.json missing) [chainTaskId:{}]", chainTaskId);
             return null;
@@ -319,7 +321,7 @@ public class ResultService implements Purgeable {
      * @param computedFile computed file to be written
      * @return {@literal true} is computed file is successfully written to disk, {@literal false} otherwise
      */
-    public boolean writeComputedFile(ComputedFile computedFile) {
+    public boolean writeComputedFile(final ComputedFile computedFile) {
         if (computedFile == null || StringUtils.isEmpty(computedFile.getTaskId())) {
             log.error("Cannot write computed file [computedFile:{}]", computedFile);
             return false;
@@ -360,7 +362,7 @@ public class ResultService implements Purgeable {
             return false;
         }
         try {
-            String json = mapper.writeValueAsString(computedFile);
+            final String json = mapper.writeValueAsString(computedFile);
             Files.write(Paths.get(computedFilePath), json.getBytes());
         } catch (IOException e) {
             log.error("Cannot write computed file if write failed [chainTaskId:{}, computedFile:{}]",
@@ -370,9 +372,9 @@ public class ResultService implements Purgeable {
         return true;
     }
 
-    public String computeResultDigest(ComputedFile computedFile) {
-        String chainTaskId = computedFile.getTaskId();
-        String resultDigest;
+    public String computeResultDigest(final ComputedFile computedFile) {
+        final String chainTaskId = computedFile.getTaskId();
+        final String resultDigest;
         if (iexecHubService.getTaskDescription(chainTaskId).containsCallback()) {
             resultDigest = ResultUtils.computeWeb3ResultDigest(computedFile);
         } else {
@@ -398,7 +400,8 @@ public class ResultService implements Purgeable {
      * {@literal false} otherwise.
      */
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         final String taskBaseDir = workerConfigService.getTaskBaseDir(chainTaskId);
 
         resultInfoMap.remove(chainTaskId);
@@ -423,7 +426,9 @@ public class ResultService implements Purgeable {
      * Purge results from all known tasks, especially their result folders.
      */
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         final List<String> tasksIds = new ArrayList<>(resultInfoMap.keySet());
         tasksIds.forEach(this::purgeTask);
     }
