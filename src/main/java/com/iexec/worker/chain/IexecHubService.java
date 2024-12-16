@@ -30,6 +30,7 @@ import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+import javax.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
@@ -270,6 +271,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
         super.purgeAllTasksData();
     }

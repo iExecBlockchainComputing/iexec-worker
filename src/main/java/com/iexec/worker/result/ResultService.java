@@ -38,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -423,6 +424,7 @@ public class ResultService implements Purgeable {
      * Purge results from all known tasks, especially their result folders.
      */
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
         final List<String> tasksIds = new ArrayList<>(resultInfoMap.keySet());
         tasksIds.forEach(this::purgeTask);

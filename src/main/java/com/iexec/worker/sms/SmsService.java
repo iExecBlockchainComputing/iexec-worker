@@ -29,6 +29,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
+import javax.annotation.PreDestroy;
 import java.util.Map;
 import java.util.Optional;
 
@@ -154,6 +155,7 @@ public class SmsService implements Purgeable {
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
         taskIdToSmsUrl.clear();
     }

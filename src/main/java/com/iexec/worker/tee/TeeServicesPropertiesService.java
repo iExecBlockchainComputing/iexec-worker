@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Map;
 
 /**
@@ -77,7 +78,7 @@ public class TeeServicesPropertiesService implements Purgeable {
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(
-                    "Missing TEE services properties [chainTaskId:" + chainTaskId +"]");
+                    "Missing TEE services properties [chainTaskId:" + chainTaskId + "]");
         }
 
         final String preComputeImage = properties.getPreComputeProperties().getImage();
@@ -95,12 +96,13 @@ public class TeeServicesPropertiesService implements Purgeable {
                 && !client.pullImage(image)) {
             throw new TeeServicesPropertiesCreationException(
                     "Failed to download image " +
-                            "[chainTaskId:" + chainTaskId +", " + imageType + ":" + image + "]");
+                            "[chainTaskId:" + chainTaskId + ", " + imageType + ":" + image + "]");
         }
     }
 
     /**
      * Try and remove properties related to given task ID.
+     *
      * @param chainTaskId Task ID whose related properties should be purged
      * @return {@literal true} if key is not stored anymore,
      * {@literal false} otherwise.
@@ -112,6 +114,7 @@ public class TeeServicesPropertiesService implements Purgeable {
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
         propertiesForTask.clear();
     }
