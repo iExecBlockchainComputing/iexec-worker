@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.Map;
 
 /**
@@ -52,11 +53,11 @@ public class TeeServicesPropertiesService implements Purgeable {
         this.iexecHubService = iexecHubService;
     }
 
-    public TeeServicesProperties getTeeServicesProperties(String chainTaskId) {
+    public TeeServicesProperties getTeeServicesProperties(final String chainTaskId) {
         return propertiesForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesProperties);
     }
 
-    <T extends TeeServicesProperties> T retrieveTeeServicesProperties(String chainTaskId) {
+    <T extends TeeServicesProperties> T retrieveTeeServicesProperties(final String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         // SMS client should already have been created once before.
@@ -77,7 +78,7 @@ public class TeeServicesPropertiesService implements Purgeable {
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(
-                    "Missing TEE services properties [chainTaskId:" + chainTaskId +"]");
+                    "Missing TEE services properties [chainTaskId:" + chainTaskId + "]");
         }
 
         final String preComputeImage = properties.getPreComputeProperties().getImage();
@@ -89,30 +90,34 @@ public class TeeServicesPropertiesService implements Purgeable {
         return properties;
     }
 
-    private void checkImageIsPresentOrDownload(String image, String chainTaskId, String imageType) {
+    private void checkImageIsPresentOrDownload(final String image, final String chainTaskId, final String imageType) {
         final DockerClientInstance client = dockerService.getClient(image);
         if (!client.isImagePresent(image)
                 && !client.pullImage(image)) {
             throw new TeeServicesPropertiesCreationException(
                     "Failed to download image " +
-                            "[chainTaskId:" + chainTaskId +", " + imageType + ":" + image + "]");
+                            "[chainTaskId:" + chainTaskId + ", " + imageType + ":" + image + "]");
         }
     }
 
     /**
      * Try and remove properties related to given task ID.
+     *
      * @param chainTaskId Task ID whose related properties should be purged
      * @return {@literal true} if key is not stored anymore,
      * {@literal false} otherwise.
      */
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         propertiesForTask.remove(chainTaskId);
         return !propertiesForTask.containsKey(chainTaskId);
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         propertiesForTask.clear();
     }
 }

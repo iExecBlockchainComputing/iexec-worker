@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.SgxDriverMode;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -35,12 +36,12 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -51,24 +52,29 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class AppComputeServiceTests {
 
-    private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private final static String DATASET_URI = "DATASET_URI";
-    private final static String APP_URI = "APP_URI";
-    private final static String WORKER_NAME = "WORKER_NAME";
-    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
-    private final static long MAX_EXECUTION_TIME = 1000;
-    private final static String INPUT = "INPUT";
-    private final static String IEXEC_OUT = "IEXEC_OUT";
-    public static final long heapSize = 1024;
+    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String DATASET_URI = "DATASET_URI";
+    private static final String APP_URI = "APP_URI";
+    private static final String WORKER_NAME = "WORKER_NAME";
+    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
+    private static final long MAX_EXECUTION_TIME = 1000;
+    private static final String INPUT = "INPUT";
+    private static final String IEXEC_OUT = "IEXEC_OUT";
+    public static final long HEAP_SIZE = 1024;
+
+    private final DealParams dealParams = DealParams.builder()
+            .iexecInputFiles(Arrays.asList("file0", "file1"))
+            .build();
 
     private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
             .chainTaskId(CHAIN_TASK_ID)
             .appUri(APP_URI)
             .datasetUri(DATASET_URI)
             .maxExecutionTime(MAX_EXECUTION_TIME)
-            .inputFiles(Arrays.asList("file0", "file1"))
+            .dealParams(dealParams)
             .isTeeTask(true);
 
     @InjectMocks
@@ -87,12 +93,6 @@ class AppComputeServiceTests {
     @Mock
     private TeeService teeMockedService;
 
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-    }
-
     @Test
     void shouldRunCompute() {
         final TaskDescription taskDescription = taskDescriptionBuilder
@@ -109,14 +109,13 @@ class AppComputeServiceTests {
                 .executionDuration(Duration.ofSeconds(10))
                 .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NONE);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,
                         SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
         verify(dockerService).run(argumentCaptor.capture());
@@ -142,8 +141,9 @@ class AppComputeServiceTests {
     void shouldRunComputeWithTeeAndConnectAppToLas() {
         final TaskDescription taskDescription = taskDescriptionBuilder
                 .appEnclaveConfiguration(
-                        TeeEnclaveConfiguration.builder().heapSize(heapSize).build())
+                        TeeEnclaveConfiguration.builder().heapSize(HEAP_SIZE).build())
                 .build();
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(Arrays.asList("var0", "var1"));
         List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
@@ -170,7 +170,7 @@ class AppComputeServiceTests {
                 appComputeService.runCompute(taskDescription, SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
-        verify(dockerService, times(1)).run(any());
+        verify(dockerService).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
         verify(dockerService).run(argumentCaptor.capture());
@@ -205,7 +205,6 @@ class AppComputeServiceTests {
         DockerRunResponse expectedDockerRunResponse =
                 DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription,

@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
 
 class ReplicateRecoveryServiceTests {
 
-    private final static String CHAIN_TASK_ID = "0xfoobar";
+    private static final String CHAIN_TASK_ID = "0xfoobar";
     @InjectMocks
     ReplicateRecoveryService replicateRecoveryService;
     final long blockNumber = 5;

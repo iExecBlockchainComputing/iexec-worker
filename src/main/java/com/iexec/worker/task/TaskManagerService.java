@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.executor;
+package com.iexec.worker.task;
 
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
@@ -35,7 +35,6 @@ import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
@@ -68,7 +67,6 @@ public class TaskManagerService {
     private final DataService dataService;
     private final ResultService resultService;
     private final SmsService smsService;
-    private final SubscriptionService subscriptionService;
     private final PurgeService purgeService;
     private final String workerWalletAddress;
 
@@ -81,7 +79,6 @@ public class TaskManagerService {
             DataService dataService,
             ResultService resultService,
             SmsService smsService,
-            SubscriptionService subscriptionService,
             PurgeService purgeService,
             String workerWalletAddress) {
         this.iexecHubService = iexecHubService;
@@ -92,7 +89,6 @@ public class TaskManagerService {
         this.dataService = dataService;
         this.resultService = resultService;
         this.smsService = smsService;
-        this.subscriptionService = subscriptionService;
         this.purgeService = purgeService;
         this.workerWalletAddress = workerWalletAddress;
     }
@@ -108,7 +104,7 @@ public class TaskManagerService {
         }
 
         // result encryption is not supported for standard tasks
-        if (!taskDescription.isTeeTask() && taskDescription.isResultEncryption()) {
+        if (!taskDescription.isTeeTask() && taskDescription.getDealParams().isIexecResultEncryption()) {
             return getFailureResponseAndPrintError(TASK_DESCRIPTION_INVALID,
                     context, chainTaskId);
         }
@@ -125,7 +121,8 @@ public class TaskManagerService {
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
-            final String token = resultService.getIexecUploadToken(workerpoolAuthorization);
+            final String resultProxyUrl = taskDescription.getDealParams().getIexecResultStorageProxy();
+            final String token = resultService.getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
             smsService.pushToken(workerpoolAuthorization, token);
         }
 
@@ -199,7 +196,7 @@ public class TaskManagerService {
                 log.info("No input files for this task [chainTaskId:{}]", chainTaskId);
             } else {
                 log.info("Downloading input files [chainTaskId:{}]", chainTaskId);
-                dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getInputFiles());
+                dataService.downloadStandardInputFiles(chainTaskId, taskDescription.getDealParams().getIexecInputFiles());
             }
         } catch (WorkflowException e) {
             return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
@@ -467,7 +464,6 @@ public class TaskManagerService {
      */
     boolean abort(String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
-        subscriptionService.unsubscribeFromTopic(chainTaskId);
         boolean allContainersStopped = computeManagerService.abort(chainTaskId);
         boolean allServicesPurged = purgeService.purgeAllServices(chainTaskId);
         final boolean isSuccess = allContainersStopped && allServicesPurged;

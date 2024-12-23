@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package com.iexec.worker.dataset;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.utils.FileHashUtils;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.utils.WorkflowException;
@@ -26,8 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
@@ -40,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 @ExtendWith(OutputCaptureExtension.class)
 class DataServiceTests {
 
@@ -76,16 +78,15 @@ class DataServiceTests {
 
     @BeforeEach
     void beforeEach() {
-        MockitoAnnotations.openMocks(this);
         iexecIn = temporaryFolder.getAbsolutePath();
-        when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID))
+        when(workerConfigurationService.getTaskInputDir(anyString())) // can be CHAIN_TASK_ID or ""
                 .thenReturn(iexecIn);
     }
 
     @Test
     void shouldDownloadStandardTaskDataset() throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder().build();
-        String filepath = dataService.downloadStandardDataset(taskDescription);
+        final String filepath = dataService.downloadStandardDataset(taskDescription);
         assertThat(filepath).isEqualTo(iexecIn + "/" + DATASET_ADDRESS);
     }
 
@@ -143,7 +144,7 @@ class DataServiceTests {
     }
 
     @Test
-    void shouldNotDownloadDatasetWhenFailureOnAllGateways(CapturedOutput output) throws WorkflowException {
+    void shouldNotDownloadDatasetWhenFailureOnAllGateways(CapturedOutput output) {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetUri(IPFS_URI)
                 .build();
@@ -178,7 +179,7 @@ class DataServiceTests {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetUri("")
                 .build();
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -186,12 +187,11 @@ class DataServiceTests {
     }
 
     @Test
-
     void shouldNotDownloadDatasetSinceEmptyDatasetAddress() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetAddress("")
                 .build();
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -202,7 +202,7 @@ class DataServiceTests {
     void shouldNotDownloadDatasetSinceEmptyParentDirectory() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder().build();
         when(workerConfigurationService.getTaskInputDir(CHAIN_TASK_ID)).thenReturn("");
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -214,7 +214,7 @@ class DataServiceTests {
         final TaskDescription taskDescription = getTaskDescriptionBuilder()
                 .datasetChecksum("badChecksum")
                 .build();
-        WorkflowException e = assertThrows(
+        final WorkflowException e = assertThrows(
                 WorkflowException.class,
                 () -> dataService.downloadStandardDataset(taskDescription));
         assertThat(e.getReplicateStatusCause())
@@ -232,9 +232,9 @@ class DataServiceTests {
 
     @Test
     void shouldDownloadInputFiles() throws Exception {
-        List<String> uris = List.of(HTTP_URI);
+        final List<String> uris = List.of(HTTP_URI);
         dataService.downloadStandardInputFiles(CHAIN_TASK_ID, uris);
-        File inputFile = new File(iexecIn, "iExec-RLC-RLC-icon.png");
+        final File inputFile = new File(iexecIn, FileHashUtils.createFileNameFromUri(HTTP_URI));
         assertThat(inputFile).exists();
     }
 }

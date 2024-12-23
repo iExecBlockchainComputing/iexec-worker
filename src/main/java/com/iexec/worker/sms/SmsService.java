@@ -29,6 +29,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Hash;
 
+import javax.annotation.PreDestroy;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,12 +49,12 @@ public class SmsService implements Purgeable {
         this.smsClientProvider = smsClientProvider;
     }
 
-    public void attachSmsUrlToTask(String chainTaskId, String smsUrl) {
+    public void attachSmsUrlToTask(final String chainTaskId, final String smsUrl) {
         taskIdToSmsUrl.put(chainTaskId, smsUrl);
     }
 
-    public SmsClient getSmsClient(String chainTaskId) {
-        String url = taskIdToSmsUrl.get(chainTaskId);
+    public SmsClient getSmsClient(final String chainTaskId) {
+        final String url = taskIdToSmsUrl.get(chainTaskId);
         if (StringUtils.isEmpty(url)) {
             // if url is not here anymore, worker might hit core on GET /tasks 
             // to retrieve SMS URL
@@ -69,7 +70,7 @@ public class SmsService implements Purgeable {
      * @param workerpoolAuthorization Authorization
      * @return {@literal true} if an entry was found, {@literal false} if the secret was not found or an error happened
      */
-    private boolean isTokenPresent(WorkerpoolAuthorization workerpoolAuthorization) {
+    private boolean isTokenPresent(final WorkerpoolAuthorization workerpoolAuthorization) {
         final SmsClient smsClient = getSmsClient(workerpoolAuthorization.getChainTaskId());
         try {
             smsClient.isWeb2SecretSet(workerpoolAuthorization.getWorkerWallet(), IEXEC_RESULT_IEXEC_IPFS_TOKEN);
@@ -89,7 +90,7 @@ public class SmsService implements Purgeable {
      * @param token                   JWT to push in the SMS
      * @return {@literal true} if secret is in SMS, {@literal false} otherwise
      */
-    public boolean pushToken(WorkerpoolAuthorization workerpoolAuthorization, String token) {
+    public boolean pushToken(final WorkerpoolAuthorization workerpoolAuthorization, final String token) {
         final SmsClient smsClient = getSmsClient(workerpoolAuthorization.getChainTaskId());
         try {
             final String challenge = HashUtils.concatenateAndHash(
@@ -117,10 +118,10 @@ public class SmsService implements Purgeable {
     }
 
     // TODO: use the below method with retry.
-    public TeeSessionGenerationResponse createTeeSession(WorkerpoolAuthorization workerpoolAuthorization) throws TeeSessionGenerationException {
-        String chainTaskId = workerpoolAuthorization.getChainTaskId();
+    public TeeSessionGenerationResponse createTeeSession(final WorkerpoolAuthorization workerpoolAuthorization) throws TeeSessionGenerationException {
+        final String chainTaskId = workerpoolAuthorization.getChainTaskId();
         log.info("Creating TEE session [chainTaskId:{}]", chainTaskId);
-        String authorization = getAuthorizationString(workerpoolAuthorization);
+        final String authorization = getAuthorizationString(workerpoolAuthorization);
 
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
@@ -128,7 +129,7 @@ public class SmsService implements Purgeable {
         final SmsClient smsClient = getSmsClient(chainTaskId);
 
         try {
-            TeeSessionGenerationResponse session = smsClient
+            final TeeSessionGenerationResponse session = smsClient
                     .generateTeeSession(authorization, workerpoolAuthorization)
                     .getData();
             log.info("Created TEE session [chainTaskId:{}, session:{}]",
@@ -142,19 +143,22 @@ public class SmsService implements Purgeable {
         }
     }
 
-    private String getAuthorizationString(WorkerpoolAuthorization workerpoolAuthorization) {
+    private String getAuthorizationString(final WorkerpoolAuthorization workerpoolAuthorization) {
         final String challenge = workerpoolAuthorization.getHash();
         return signerService.signMessageHash(challenge).getValue();
     }
 
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         taskIdToSmsUrl.remove(chainTaskId);
         return !taskIdToSmsUrl.containsKey(chainTaskId);
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         taskIdToSmsUrl.clear();
     }
 

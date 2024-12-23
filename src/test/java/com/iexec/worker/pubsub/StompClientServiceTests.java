@@ -17,13 +17,12 @@
 package com.iexec.worker.pubsub;
 
 import com.iexec.worker.config.SchedulerConfiguration;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,9 +39,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 @ExtendWith(OutputCaptureExtension.class)
 class StompClientServiceTests {
-    private final static String SESSION_ID = "SESSION_ID";
+    private static final String SESSION_ID = "SESSION_ID";
 
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
@@ -59,12 +59,6 @@ class StompClientServiceTests {
     @Spy
     @InjectMocks
     private StompClientService stompClientService;
-
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-        when(mockedStompSession.getSessionId()).thenReturn(SESSION_ID);
-    }
 
     //region subscribeToTopic
     @Test
@@ -95,7 +89,7 @@ class StompClientServiceTests {
 
     // region createStompSessionIfDisconnected
     @Test
-    void shouldNotCreateStompSessionIfAlreadyConnected(CapturedOutput output) throws Exception {
+    void shouldNotCreateStompSessionIfAlreadyConnected(CapturedOutput output) {
         final StompSession connectedSession = mock(StompSession.class);
         when(connectedSession.isConnected()).thenReturn(true);
         when(connectedSession.getSessionId()).thenReturn(SESSION_ID);
@@ -107,10 +101,11 @@ class StompClientServiceTests {
     }
 
     @Test
-    void shouldCreateStompSessionIfNoSession(CapturedOutput output) throws Exception {
+    void shouldCreateStompSessionIfNoSession(CapturedOutput output) {
         final SettableListenableFuture<StompSession> futureSession = new SettableListenableFuture<>();
         futureSession.set(mockedStompSession);
         when(stompClient.connect(any(), any())).thenReturn(futureSession);
+        when(mockedStompSession.getSessionId()).thenReturn(SESSION_ID);
 
         final String sessionId = stompClientService.createStompSessionIfDisconnected();
         assertThat(sessionId).isEqualTo(SESSION_ID);
@@ -118,7 +113,7 @@ class StompClientServiceTests {
     }
 
     @Test
-    void shouldCreateStompSessionIfDisconnected(CapturedOutput output) throws Exception {
+    void shouldCreateStompSessionIfDisconnected(CapturedOutput output) {
         final StompSession disconnectedSession = mock(StompSession.class);
         when(disconnectedSession.isConnected()).thenReturn(false);
         ReflectionTestUtils.setField(stompClientService, "stompSession", disconnectedSession);
@@ -126,6 +121,7 @@ class StompClientServiceTests {
         final SettableListenableFuture<StompSession> futureSession = new SettableListenableFuture<>();
         futureSession.set(mockedStompSession);
         when(stompClient.connect(any(), any())).thenReturn(futureSession);
+        when(mockedStompSession.getSessionId()).thenReturn(SESSION_ID);
 
         final String sessionId = stompClientService.createStompSessionIfDisconnected();
         assertThat(sessionId).isEqualTo(SESSION_ID);

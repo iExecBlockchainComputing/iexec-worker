@@ -20,6 +20,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.containers.DockerLogs;
 import com.iexec.commons.containers.client.DockerClientInstance;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -34,8 +35,8 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -43,12 +44,12 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.File;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,15 +57,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class ComputeManagerServiceTests {
 
-    private final static String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private final static String DATASET_URI = "DATASET_URI";
-    private final static String DIGEST = "digest";
-    private final static String APP_URI = "APP_URI";
-    private final static String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
-    private final static TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
-    private final static long MAX_EXECUTION_TIME = 1000;
+    private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private static final String DATASET_URI = "DATASET_URI";
+    private static final String DIGEST = "digest";
+    private static final String APP_URI = "APP_URI";
+    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
+    private static final long MAX_EXECUTION_TIME = 1000;
 
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder()
@@ -95,19 +96,17 @@ class ComputeManagerServiceTests {
     @Mock
     private ResultService resultService;
 
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-    }
-
     private TaskDescription.TaskDescriptionBuilder createTaskDescriptionBuilder(boolean isTeeTask) {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(List.of("file0", "file1"))
+                .build();
         return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .appType(DappType.DOCKER)
                 .appUri(APP_URI)
                 .datasetUri(DATASET_URI)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
-                .inputFiles(Arrays.asList("file0", "file1"))
+                .dealParams(dealParams)
                 .isTeeTask(isTeeTask)
                 .maxExecutionTime(3000);
     }
@@ -127,7 +126,7 @@ class ComputeManagerServiceTests {
     void shouldNotDownloadAppSincePullImageFailed() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
-        when(dockerClient.pullImage(taskDescription.getAppUri())).thenReturn(false);
+        when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.ofMinutes(0))).thenReturn(false);
         assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 

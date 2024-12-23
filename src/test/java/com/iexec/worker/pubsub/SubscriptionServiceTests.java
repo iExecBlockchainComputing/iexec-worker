@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 package com.iexec.worker.pubsub;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -36,8 +36,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTests {
 
+    @Mock
+    private Subscription subscription;
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
     @Mock
@@ -47,19 +50,10 @@ class SubscriptionServiceTests {
     @InjectMocks
     SubscriptionService subscriptionService;
 
-    private static final String WORKER_WALLET_ADDRESS = "0x1234";
     private static final String CHAIN_TASK_ID = "chaintaskid";
     private static final String CHAIN_TASK_ID_2 = "chaintaskid2";
 
-    @Mock
-    private Subscription subscription;
-
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-        subscriptionService = spy(new SubscriptionService(applicationEventPublisher, stompClientService, WORKER_WALLET_ADDRESS));
-    }
-
+    // region subscribe
     @Test
     void shouldSubscribeToTopic() {
         when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
@@ -79,24 +73,27 @@ class SubscriptionServiceTests {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
         verify(stompClientService, atMost(1)).subscribeToTopic(anyString(), any());
     }
+    // endregion
 
+    // region unsubscribe
     @Test
     void shouldUnsubscribeFromTopic() {
         when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
 
         subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isTrue();
-        subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
+        assertThat(subscriptionService.purgeTask(CHAIN_TASK_ID)).isTrue();
+        verify(subscription).unsubscribe();
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
-        verify(subscription, times(1)).unsubscribe();
     }
 
     @Test
     void shouldNotUnsubscribeFromNonexistentTopic() {
         assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
-        subscriptionService.unsubscribeFromTopic(CHAIN_TASK_ID);
+        assertThat(subscriptionService.purgeTask(CHAIN_TASK_ID)).isTrue();
         verify(subscription, never()).unsubscribe();
     }
+    // endregion
 
     // region reSubscribeToTopics
     @Test
@@ -184,6 +181,28 @@ class SubscriptionServiceTests {
         // 10 ms should now be enough for the future to complete
         // If it is not, then it is probably stuck somewhere
         future.get(10, TimeUnit.MILLISECONDS);
+    }
+    // endregion
+
+    // region purgeAllTasksData
+    @Test
+    void shouldPurgeMultipleTasks() {
+        when(stompClientService.subscribeToTopic(anyString(), any())).thenReturn(Optional.of(subscription));
+
+        subscriptionService.subscribeToTopic(CHAIN_TASK_ID);
+        subscriptionService.subscribeToTopic(CHAIN_TASK_ID_2);
+
+        subscriptionService.purgeAllTasksData();
+
+        verify(subscription, times(2)).unsubscribe();
+        assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID)).isFalse();
+        assertThat(subscriptionService.isSubscribedToTopic(CHAIN_TASK_ID_2)).isFalse();
+    }
+
+    @Test
+    void shouldHandleEmptyPurgeAllTasksData() {
+        subscriptionService.purgeAllTasksData();
+        verify(subscription, never()).unsubscribe();
     }
     // endregion
 }

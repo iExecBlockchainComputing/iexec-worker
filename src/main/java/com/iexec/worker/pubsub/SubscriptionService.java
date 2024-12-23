@@ -16,6 +16,7 @@
 
 package com.iexec.worker.pubsub;
 
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.core.notification.TaskNotification;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -28,6 +29,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Set;
@@ -38,8 +40,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
-// FIXME: implement `Purgeable`
-public class SubscriptionService {
+public class SubscriptionService implements Purgeable {
 
     private final Map<String, Subscription> chainTaskIdToSubscription = new ConcurrentHashMap<>();
     private final ApplicationEventPublisher eventPublisher;
@@ -64,14 +65,14 @@ public class SubscriptionService {
      *
      * @param chainTaskId id of the task to which to subscribe
      */
-    public void subscribeToTopic(String chainTaskId) {
-        String topic = getTaskTopicName(chainTaskId);
+    public void subscribeToTopic(final String chainTaskId) {
+        final String topic = getTaskTopicName(chainTaskId);
         if (this.chainTaskIdToSubscription.containsKey(chainTaskId)) {
             log.info("Already subscribed to topic [chainTaskId:{}, topic:{}]",
                     chainTaskId, topic);
             return;
         }
-        MessageHandler messageHandler = new MessageHandler(chainTaskId, this.workerWalletAddress);
+        final MessageHandler messageHandler = new MessageHandler(chainTaskId, this.workerWalletAddress);
         stompClientService.subscribeToTopic(topic, messageHandler).ifPresentOrElse(
                 subscription -> {
                     this.chainTaskIdToSubscription.put(chainTaskId, subscription);
@@ -84,16 +85,28 @@ public class SubscriptionService {
     /**
      * Unsubscribe from topic if already subscribed.
      *
-     * @param chainTaskId
+     * @param chainTaskId id of the task to unsubscribe and purge
+     * @return true if unsubscribed and purge topic successfully, false otherwise
      */
-    public void unsubscribeFromTopic(String chainTaskId) {
+    @Override
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         if (!isSubscribedToTopic(chainTaskId)) {
             log.error("Already unsubscribed from topic [chainTaskId:{}]", chainTaskId);
-            return;
+            return true;
         }
         this.chainTaskIdToSubscription.get(chainTaskId).unsubscribe();
         this.chainTaskIdToSubscription.remove(chainTaskId);
         log.info("Unsubscribed from topic [chainTaskId:{}]", chainTaskId);
+        return !isSubscribedToTopic(chainTaskId);
+    }
+
+    @Override
+    @PreDestroy
+    public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
+        this.chainTaskIdToSubscription.keySet().forEach(this::purgeTask);
+        this.chainTaskIdToSubscription.clear();
     }
 
     /**
@@ -102,7 +115,7 @@ public class SubscriptionService {
      * @param chainTaskId id of the task to check
      * @return true if subscribed, false otherwise
      */
-    public boolean isSubscribedToTopic(String chainTaskId) {
+    public boolean isSubscribedToTopic(final String chainTaskId) {
         return this.chainTaskIdToSubscription.containsKey(chainTaskId);
     }
 
@@ -113,7 +126,7 @@ public class SubscriptionService {
     @EventListener(SessionCreatedEvent.class)
     synchronized void reSubscribeToTopics() {
         log.debug("Received new SessionCreatedEvent");
-        Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
+        final Set<String> chainTaskIds = this.chainTaskIdToSubscription.keySet();
         if (chainTaskIds.isEmpty()) {
             log.info("No topic to resubscribe to");
         } else {
@@ -166,7 +179,7 @@ public class SubscriptionService {
         }
     }
 
-    private String getTaskTopicName(String chainTaskId) {
+    private String getTaskTopicName(final String chainTaskId) {
         return "/topic/task/" + chainTaskId;
     }
 
@@ -181,17 +194,17 @@ public class SubscriptionService {
         private final String workerWalletAddress;
 
         @Override
-        public Type getPayloadType(StompHeaders headers) {
+        public Type getPayloadType(final StompHeaders headers) {
             return TaskNotification.class;
         }
 
         @Override
-        public void handleFrame(StompHeaders headers, @Nullable Object payload) {
+        public void handleFrame(final StompHeaders headers, @Nullable final Object payload) {
             if (payload == null) {
                 log.error("Payload of TaskNotification is null [chainTaskId:{}]", this.chainTaskId);
                 return;
             }
-            TaskNotification taskNotification = (TaskNotification) payload;
+            final TaskNotification taskNotification = (TaskNotification) payload;
             if (!isWorkerInvolved(taskNotification)) {
                 return;
             }
@@ -200,7 +213,7 @@ public class SubscriptionService {
             eventPublisher.publishEvent(taskNotification);
         }
 
-        private boolean isWorkerInvolved(TaskNotification notification) {
+        private boolean isWorkerInvolved(final TaskNotification notification) {
             return notification.getWorkersAddress() != null &&
                     (notification.getWorkersAddress().isEmpty() || // for all workers
                             notification.getWorkersAddress().contains(this.workerWalletAddress));

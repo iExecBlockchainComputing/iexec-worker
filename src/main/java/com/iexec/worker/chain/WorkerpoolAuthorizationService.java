@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,12 @@ import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
-import com.iexec.worker.config.PublicConfigurationService;
+import com.iexec.worker.config.SchedulerConfiguration;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.Map;
 
 
@@ -34,36 +35,37 @@ import java.util.Map;
 @Service
 public class WorkerpoolAuthorizationService implements Purgeable {
 
-    private final PublicConfigurationService publicConfigurationService;
     private final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations;
-    private String corePublicAddress;
+    private final String workerPoolAddress;
+    private final IexecHubService iexecHubService;
 
-    public WorkerpoolAuthorizationService(PublicConfigurationService publicConfigurationService) {
-        this.publicConfigurationService = publicConfigurationService;
+    public WorkerpoolAuthorizationService(SchedulerConfiguration schedulerConfiguration, IexecHubService iexecHubService) {
+        this.iexecHubService = iexecHubService;
+        workerPoolAddress = schedulerConfiguration.getPoolAddress();
         workerpoolAuthorizations = ExpiringTaskMapFactory.getExpiringTaskMap();
     }
 
-    @PostConstruct
-    public void initIt() {
-        corePublicAddress = publicConfigurationService.getSchedulerPublicAddress();
-    }
-
-
-    public boolean isWorkerpoolAuthorizationValid(WorkerpoolAuthorization auth, String signerAddress) {
+    public boolean isWorkerpoolAuthorizationValid(final WorkerpoolAuthorization auth, final String signerAddress) {
         // create the hash that was used in the signature in the core
-        byte[] message = BytesUtils.stringToBytes(
+        final byte[] message = BytesUtils.stringToBytes(
                 HashUtils.concatenateAndHash(auth.getWorkerWallet(), auth.getChainTaskId(), auth.getEnclaveChallenge()));
 
         return SignatureUtils.isSignatureValid(message, auth.getSignature(), signerAddress);
     }
 
-    public boolean putWorkerpoolAuthorization(WorkerpoolAuthorization workerpoolAuthorization) {
+    public boolean putWorkerpoolAuthorization(final WorkerpoolAuthorization workerpoolAuthorization) {
         if (workerpoolAuthorization == null || workerpoolAuthorization.getChainTaskId() == null) {
             log.error("Cant putWorkerpoolAuthorization (null) [workerpoolAuthorization:{}]", workerpoolAuthorization);
             return false;
         }
 
-        if (!isWorkerpoolAuthorizationValid(workerpoolAuthorization, corePublicAddress)) {
+        final String workerPoolOwner = iexecHubService.getOwner(workerPoolAddress);
+        if (StringUtils.isEmpty(workerPoolOwner)) {
+            log.error("Cant get workerpool owner [workerPoolAddress:{},workerpoolAuthorization:{}]", workerPoolAddress, workerpoolAuthorization);
+            return false;
+        }
+
+        if (!isWorkerpoolAuthorizationValid(workerpoolAuthorization, workerPoolOwner)) {
             log.error("Cant putWorkerpoolAuthorization (invalid) [workerpoolAuthorization:{}]", workerpoolAuthorization);
             return false;
         }
@@ -71,24 +73,28 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         return true;
     }
 
-    WorkerpoolAuthorization getWorkerpoolAuthorization(String chainTaskId) {
+    WorkerpoolAuthorization getWorkerpoolAuthorization(final String chainTaskId) {
         return workerpoolAuthorizations.get(chainTaskId);
     }
 
     /**
      * Try and remove workerpool authorization related to given task ID.
+     *
      * @param chainTaskId Task ID whose related workerpool authorization should be purged
      * @return {@literal true} if key is not stored anymore,
      * {@literal false} otherwise.
      */
     @Override
-    public boolean purgeTask(String chainTaskId) {
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         workerpoolAuthorizations.remove(chainTaskId);
         return !workerpoolAuthorizations.containsKey(chainTaskId);
     }
 
     @Override
+    @PreDestroy
     public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
         workerpoolAuthorizations.clear();
     }
 }

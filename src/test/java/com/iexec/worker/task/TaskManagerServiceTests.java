@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.executor;
+package com.iexec.worker.task;
 
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
@@ -23,6 +23,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.ChainReceipt;
+import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -36,7 +37,6 @@ import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.post.PostComputeResponse;
 import com.iexec.worker.compute.pre.PreComputeResponse;
 import com.iexec.worker.dataset.DataService;
-import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
@@ -44,15 +44,14 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.WorkflowException;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -75,6 +74,7 @@ class TaskManagerServiceTests {
                     .workerWallet(WORKER_ADDRESS)
                     .build();
 
+    @InjectMocks
     private TaskManagerService taskManagerService;
     @Mock
     private IexecHubService iexecHubService;
@@ -93,31 +93,15 @@ class TaskManagerServiceTests {
     @Mock
     private SmsService smsService;
     @Mock
-    private SubscriptionService subscriptionService;
-    @Mock
     private PurgeService purgeService;
 
     @Mock
     private TeeService teeMockedService;
 
-    @BeforeEach
-    void init() {
-        taskManagerService = new TaskManagerService(
-                iexecHubService,
-                contributionService,
-                revealService,
-                computeManagerService,
-                teeServicesManager,
-                dataService,
-                resultService,
-                smsService,
-                subscriptionService,
-                purgeService,
-                WORKER_ADDRESS
-        );
-    }
-
     TaskDescription.TaskDescriptionBuilder getTaskDescriptionBuilder(boolean isTeeTask) {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(List.of("https://ab.cd/ef.jpeg"))
+                .build();
         return TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .appType(DappType.DOCKER)
@@ -127,7 +111,7 @@ class TaskManagerServiceTests {
                 .datasetChecksum("datasetChecksum")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
-                .inputFiles(List.of("http://file1"));
+                .dealParams(dealParams);
     }
 
     //region start
@@ -156,9 +140,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldNotStartSinceStandardTaskWithEncryption() {
+        final DealParams dealParams = DealParams.builder()
+                .iexecResultEncryption(true)
+                .build();
         final TaskDescription taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
-                .isResultEncryption(true)
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -307,9 +294,12 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldReturnSuccessAndNotDownloadDataSinceEmptyUrls() throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(null)
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(null)
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -344,8 +334,11 @@ class TaskManagerServiceTests {
 
     @Test
     void shouldDownloadDatasetAndNotInputFiles() throws Exception {
+        final DealParams dealParams = DealParams.builder()
+                .iexecInputFiles(null)
+                .build();
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
-                .inputFiles(null)
+                .dealParams(dealParams)
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
@@ -503,19 +496,18 @@ class TaskManagerServiceTests {
     void shouldWithInputFilesDownloadData() throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         doNothing().when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
 
         assertThat(actionResponse.isSuccess()).isTrue();
         verify(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
     }
 
     @Test
@@ -523,13 +515,12 @@ class TaskManagerServiceTests {
             throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
@@ -548,13 +539,12 @@ class TaskManagerServiceTests {
             throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(false);
 
@@ -572,13 +562,12 @@ class TaskManagerServiceTests {
             throws Exception {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false)
                 .datasetUri("")
-                .inputFiles(Collections.singletonList("https://ab.cd/ef.jpeg"))
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(Optional.empty());
         WorkflowException e = new WorkflowException(INPUT_FILES_DOWNLOAD_FAILED);
         doThrow(e).when(dataService).downloadStandardInputFiles(CHAIN_TASK_ID,
-                taskDescription.getInputFiles());
+                taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
@@ -1356,7 +1345,6 @@ class TaskManagerServiceTests {
         when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(false);
         when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(true);
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isFalse();
-        verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(computeManagerService).abort(CHAIN_TASK_ID);
         verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
     }
@@ -1366,7 +1354,6 @@ class TaskManagerServiceTests {
         when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(false);
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isFalse();
-        verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(computeManagerService).abort(CHAIN_TASK_ID);
         verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
     }
@@ -1376,7 +1363,6 @@ class TaskManagerServiceTests {
         when(computeManagerService.abort(CHAIN_TASK_ID)).thenReturn(true);
         when(purgeService.purgeAllServices(CHAIN_TASK_ID)).thenReturn(true);
         assertThat(taskManagerService.abort(CHAIN_TASK_ID)).isTrue();
-        verify(subscriptionService).unsubscribeFromTopic(CHAIN_TASK_ID);
         verify(computeManagerService).abort(CHAIN_TASK_ID);
         verify(purgeService).purgeAllServices(CHAIN_TASK_ID);
     }

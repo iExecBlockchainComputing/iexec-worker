@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.executor;
+package com.iexec.worker.task;
 
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -429,7 +429,6 @@ class TaskNotificationServiceTests {
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
-        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
         TaskNotification nextNotification = getTaskNotification(PLEASE_WAIT);
         verify(applicationEventPublisher).publishEvent(nextNotification);
     }
@@ -444,7 +443,6 @@ class TaskNotificationServiceTests {
         taskNotificationService.onTaskNotification(currentNotification);
 
         verify(taskManagerService).complete(CHAIN_TASK_ID);
-        verify(subscriptionService).unsubscribeFromTopic(any());
         TaskNotification nextNotification = getTaskNotification(PLEASE_ABORT);
         verify(applicationEventPublisher).publishEvent(nextNotification);
     }
@@ -478,7 +476,6 @@ class TaskNotificationServiceTests {
 
         verify(customCoreFeignClient, Mockito.times(4)).updateReplicateStatus(anyString(), any());
         verify(taskManagerService, Mockito.times(1)).complete(CHAIN_TASK_ID);
-        verify(subscriptionService, Mockito.times(1)).unsubscribeFromTopic(any());
         verify(applicationEventPublisher, Mockito.times(0))
                 .publishEvent(any());
     }

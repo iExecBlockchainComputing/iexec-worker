@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[8.6.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.6.0) 2024-12-23
+
+### New Features
+
+- Add workerpool address in configuration instead of reading from Scheduler `/workers/config` endpoint. (#607)
+- Set `0x0` as default value for Workerpool address and prevents startup if incorrectly configured. (#608)
+- Implement `Purgeable` on `SubscriptionService`. (#620)
+- Use new `FileHashUtils` API. (#622)
+
+### Bug fixes
+
+- Use Result Proxy URL defined in deal parameters if any, fall back to scheduler default one otherwise. (#613)
+
+### Quality
+
+- Reorder `static` and `final` keywords. (#614)
+- Improve code maintainability in test classes. (#615)
+- Resolve deprecations caused by `TaskDescription` in `AppComputeService`, `TaskManagerService`, and `ResultService`. (#616)
+- Replace `SignatureUtils#hashAndSign` deprecated calls in `LoginServiceTests`. (#618)
+- Rename `executor` package to `task` package. (#619)
+- Add missing `@PreDestroy` annotation in services implementing `Purgeable`. (#621)
+
+### Dependency Upgrades
+
+- Upgrade to `eclipse-temurin:11.0.24_8-jre-focal`. (#611)
+- Upgrade to Gradle 8.10.2. (#612)
+- Upgrade to `testcontainers` 1.20.4. (#617)
+- Upgrade to `iexec-commons-poco` 4.2.0. (#623)
+- Upgrade to `iexec-common` 8.6.0. (#623)
+- Upgrade to `iexec-commons-containers` 1.2.3. (#623)
+- Upgrade to `iexec-result-proxy-library` 8.6.0. (#623)
+- Upgrade to `iexec-sms-library` 8.7.0. (#623)
+- Upgrade to `iexec-core-library` 8.6.0. (#623)
+
 ## [[8.5.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.5.0) 2024-06-19
 
 ### New Features
