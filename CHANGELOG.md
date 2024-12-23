@@ -29,6 +29,12 @@ All notable changes to this project will be documented in this file.
 - Upgrade to `eclipse-temurin:11.0.24_8-jre-focal`. (#611)
 - Upgrade to Gradle 8.10.2. (#612)
 - Upgrade to `testcontainers` 1.20.4. (#617)
+- Upgrade to `iexec-commons-poco` 4.2.0. (#623)
+- Upgrade to `iexec-common` 8.6.0. (#623)
+- Upgrade to `iexec-commons-containers` 1.2.3. (#623)
+- Upgrade to `iexec-result-proxy-library` 8.6.0. (#623)
+- Upgrade to `iexec-sms-library` 8.7.0. (#623)
+- Upgrade to `iexec-core-library` 8.6.0. (#623)
 
 ## [[8.5.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.5.0) 2024-06-19
 
