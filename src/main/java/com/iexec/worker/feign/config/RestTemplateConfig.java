@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package com.iexec.worker.feign.config;
 
 import com.iexec.worker.config.WorkerConfigurationService;
-
-import org.apache.http.HttpHost;
-import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpHost;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -34,30 +34,34 @@ public class RestTemplateConfig {
     public RestTemplateConfig(WorkerConfigurationService workerConfService) {
         this.workerConfService = workerConfService;
     }
+
     @Bean
     public RestTemplate restTemplate() {
-        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        setProxy(clientBuilder);
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setProxy(getProxy())
+                .build();
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setHttpClient(clientBuilder.build());
+        factory.setHttpClient(httpClient);
         return new RestTemplate(factory);
     }
 
     /*
-    * TODO
-    * Set multiple proxies
-    * Use HttpRoutePlanner to support both http & https proxies at the same time
-    * https://stackoverflow.com/a/34432952
-    * */
-    private void setProxy(HttpClientBuilder clientBuilder) {
-        HttpHost proxy = null;
-        if (workerConfService.getHttpsProxyHost() != null && workerConfService.getHttpsProxyPort() != null) {
-            proxy = new HttpHost(workerConfService.getHttpsProxyHost(), workerConfService.getHttpsProxyPort(), "https");
-        } else if (workerConfService.getHttpProxyHost() != null && workerConfService.getHttpProxyPort() != null) {
-            proxy = new HttpHost(workerConfService.getHttpProxyHost(), workerConfService.getHttpProxyPort(), "http");
+     * TODO
+     * Set multiple proxies
+     * Use HttpRoutePlanner to support both http & https proxies at the same time
+     * https://stackoverflow.com/a/34432952
+     * */
+    private HttpHost getProxy() {
+        String httpsProxyHost = workerConfService.getHttpsProxyHost();
+        Integer httpsProxyPort = workerConfService.getHttpsProxyPort();
+        String httpProxyHost = workerConfService.getHttpProxyHost();
+        Integer httpProxyPort = workerConfService.getHttpProxyPort();
+
+        if (httpsProxyHost != null && httpsProxyPort != null) {
+            return new HttpHost("https", httpsProxyHost, httpsProxyPort);
+        } else if (httpProxyHost != null && httpProxyPort != null) {
+            return new HttpHost("http", httpProxyHost, httpProxyPort);
         }
-        if (proxy != null){
-            clientBuilder.setProxy(proxy);
-        }
+        return null;
     }
 }

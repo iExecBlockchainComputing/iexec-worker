@@ -29,7 +29,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession.Subscription;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PreDestroy;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Set;
