@@ -37,10 +37,10 @@ public class RestTemplateConfig {
 
     @Bean
     public RestTemplate restTemplate() {
-        CloseableHttpClient httpClient = HttpClients.custom()
+        final CloseableHttpClient httpClient = HttpClients.custom()
                 .setProxy(getProxy())
                 .build();
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+        final HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
         factory.setHttpClient(httpClient);
         return new RestTemplate(factory);
     }
@@ -52,10 +52,10 @@ public class RestTemplateConfig {
      * https://stackoverflow.com/a/34432952
      * */
     private HttpHost getProxy() {
-        String httpsProxyHost = workerConfService.getHttpsProxyHost();
-        Integer httpsProxyPort = workerConfService.getHttpsProxyPort();
-        String httpProxyHost = workerConfService.getHttpProxyHost();
-        Integer httpProxyPort = workerConfService.getHttpProxyPort();
+        final String httpsProxyHost = workerConfService.getHttpsProxyHost();
+        final Integer httpsProxyPort = workerConfService.getHttpsProxyPort();
+        final String httpProxyHost = workerConfService.getHttpProxyHost();
+        final Integer httpProxyPort = workerConfService.getHttpProxyPort();
 
         if (httpsProxyHost != null && httpsProxyPort != null) {
             return new HttpHost("https", httpsProxyHost, httpsProxyPort);
