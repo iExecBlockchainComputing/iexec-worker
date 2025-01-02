@@ -24,11 +24,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.context.annotation.UserConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(OutputCaptureExtension.class)
 class SchedulerConfigurationTests {
@@ -48,14 +47,16 @@ class SchedulerConfigurationTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"", "0x0"})
-    void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress, CapturedOutput output) {
+    void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress) {
         runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.poolAddress=" + poolAddress)
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> {
-                    assertThatThrownBy(() -> context.getBean(SchedulerConfiguration.class))
-                            .isInstanceOf(IllegalStateException.class)
-                            .hasCauseInstanceOf(BeanCreationException.class);
-                    assertThat(output.getOut()).contains("The workerpool address must be filled in");
+                    IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> context.getBean(SchedulerConfiguration.class));
+                    assertThat(thrown.getCause())
+                            .isInstanceOf(BeanCreationException.class);
+                    assertThat(thrown.getCause().getCause()).isInstanceOf(MissingConfigurationException.class);
+                    assertThat(thrown.getCause().getCause().getMessage())
+                            .isEqualTo("The workerpool address must be filled in");
                 });
     }
 }

@@ -18,7 +18,6 @@ package com.iexec.worker.tee.scone;
 
 import lombok.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.ConstructorBinding;
 
 /**
  * LAS: local attestation service.
@@ -36,7 +35,6 @@ import org.springframework.boot.context.properties.ConstructorBinding;
  * It also assumes every LAS uses the same port.
  */
 @Value
-@ConstructorBinding
 @ConfigurationProperties(prefix = "scone")
 public class SconeConfiguration {
     boolean showVersion;
