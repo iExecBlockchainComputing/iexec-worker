@@ -6,8 +6,6 @@ All notable changes to this project will be documented in this file.
 
 ### Quality
 
-- Update source and target compatibility to Java 17. (#626)
-- Migrated to Jakarta EE APIs. (#626)
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
 
 ### Dependency Upgrades
