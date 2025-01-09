@@ -29,7 +29,6 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
@@ -69,7 +68,7 @@ public class DockerRegistryConfiguration {
                         && StringUtils.isNotBlank(registryAuth.getUsername()))
                 // from those registries get the ones where the password is missing
                 .filter(registryAuth -> StringUtils.isBlank(registryAuth.getPassword()))
-                .collect(Collectors.toList());
+                .toList();
         if (!registriesWithMissingPasswords.isEmpty()) {
             throw new IllegalArgumentException("Missing passwords for registries with usernames: "
                     + registriesWithMissingPasswords);

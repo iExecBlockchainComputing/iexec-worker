@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.commons.poco.chain.ChainContributionStatus.REVEALED;
@@ -91,7 +90,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                 IexecHubContract.getTaskContributeEvents(contributeReceipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
                                 && Objects.equals(event.worker, signerService.getAddress()))
-                        .collect(Collectors.toList());
+                        .toList();
         log.debug("contributeEvents count {} [chainTaskId: {}]", contributeEvents.size(), chainTaskId);
 
         if (!contributeEvents.isEmpty()) {
@@ -126,7 +125,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
                 IexecHubContract.getTaskRevealEvents(revealReceipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId)
                                 && Objects.equals(event.worker, signerService.getAddress()))
-                        .collect(Collectors.toList());
+                        .toList();
         log.debug("revealEvents count {} [chainTaskId:{}]", revealEvents.size(), chainTaskId);
 
         if (!revealEvents.isEmpty()) {
@@ -174,7 +173,7 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         final List<IexecHubContract.TaskFinalizeEventResponse> finalizeEvents =
                 IexecHubContract.getTaskFinalizeEvents(receipt).stream()
                         .filter(event -> Objects.equals(bytesToString(event.taskid), chainTaskId))
-                        .collect(Collectors.toList());
+                        .toList();
         log.debug("finalizeEvents count {} [chainTaskId:{}]", finalizeEvents.size(), chainTaskId);
 
         if (!finalizeEvents.isEmpty()) {

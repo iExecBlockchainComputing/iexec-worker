@@ -76,7 +76,7 @@ public class SgxService {
     public List<Device> getSgxDevices() {
         return Arrays.stream(sgxDriverMode.getDevices())
                 .map(Device::parse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private boolean isSgxSupported(SgxDriverMode sgxDriverMode) {
@@ -117,7 +117,7 @@ public class SgxService {
 
         final List<Device> devicesBind = Arrays.stream(devices)
                 .map(Device::parse)
-                .collect(Collectors.toList());
+                .toList();
 
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withDevices(devicesBind);
