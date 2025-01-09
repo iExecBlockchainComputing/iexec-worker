@@ -110,11 +110,11 @@ testing {
         test {
             useJUnitJupiter()
             dependencies {
-                implementation "org.springframework.boot:spring-boot-starter-test"
-                implementation "org.mockito:mockito-inline" // activates mocking final classes/methods
-
                 // awaitility
                 implementation "org.awaitility:awaitility"
+
+                implementation "org.mockito:mockito-inline" // activates mocking final classes/methods
+                implementation "org.springframework.boot:spring-boot-starter-test"
 
                 // testcontainers
                 implementation "org.testcontainers:junit-jupiter:$testContainersVersion"

@@ -16,7 +16,6 @@
 
 package com.iexec.worker.chain;
 
-
 import com.iexec.commons.poco.chain.SignerService;
 import lombok.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
