@@ -18,7 +18,7 @@ package com.iexec.worker.feign.config;
 
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.HttpHost;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,7 +36,7 @@ public class RestTemplateConfig {
 
     @Bean
     public RestTemplate restTemplate() {
-        final CloseableHttpClient httpClient = HttpClients.custom()
+        final CloseableHttpClient httpClient = HttpClientBuilder.create()
                 .setProxy(getProxy())
                 .build();
         final HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();

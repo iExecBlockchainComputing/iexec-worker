@@ -73,9 +73,6 @@ dependencies {
     // Required for com.iexec.worker.feign.config.RestTemplateConfig
     implementation 'org.apache.httpcomponents.client5:httpclient5'
 
-    implementation 'org.glassfish.jersey.inject:jersey-hk2'
-    implementation 'org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1'
-
     // Removes 'warning: unknown enum constant When.MAYBE'
     implementation 'com.google.code.findbugs:annotations:3.0.1'
 
