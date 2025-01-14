@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * This service is used to remind the worker of possible interrupted works
@@ -71,7 +70,7 @@ public class ReplicateRecoveryService {
         return missedTaskNotifications.stream()
                 .filter(this::canReplicateBeRecovered)
                 .map(TaskNotification::getChainTaskId)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     boolean canReplicateBeRecovered(TaskNotification missedTaskNotification) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -95,7 +94,7 @@ class LasServiceTests {
         when(dockerClientInstanceMock.pullImage(IMAGE_URI)).thenReturn(true);
         when(dockerService.run(any()))
                 .thenReturn(DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.SUCCESS).build());
-        List<Device> devices = Arrays.stream(SgxDriverMode.NATIVE.getDevices()).map(Device::parse).collect(Collectors.toList());
+        List<Device> devices = Arrays.stream(SgxDriverMode.NATIVE.getDevices()).map(Device::parse).toList();
         when(sgxService.getSgxDevices()).thenReturn(devices);
 
         assertTrue(lasService.start());

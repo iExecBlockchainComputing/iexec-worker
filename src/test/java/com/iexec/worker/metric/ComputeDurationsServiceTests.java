@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2023-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -42,7 +41,7 @@ class ComputeDurationsServiceTests {
     private static final String EXPORTED_STAT_PREFIX = "iexec_";
     private static final String CONTEXT = "test";
     private static final int STATISTICS_WINDOW = 100;
-    private static final List<Double> LONG_LIST_OF_VALUES = IntStream.range(0, STATISTICS_WINDOW + 1).mapToObj(i -> (double) i).collect(Collectors.toList());
+    private static final List<Double> LONG_LIST_OF_VALUES = IntStream.range(0, STATISTICS_WINDOW + 1).mapToObj(i -> (double) i).toList();
 
     private ComputeDurationsService computeDurationsService;
     private Gauge minGauge;

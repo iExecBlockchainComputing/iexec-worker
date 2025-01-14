@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
@@ -188,7 +187,7 @@ public class PostComputeService {
                         teeService.getAdditionalBindings())
                 .flatMap(Collection::stream)
                 .map(Bind::parse)
-                .collect(Collectors.toList());
+                .toList();
 
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(binds)
