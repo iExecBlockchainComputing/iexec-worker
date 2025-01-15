@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.github.dockerjava.api.model.Device;
 import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.commons.containers.*;
 import com.iexec.worker.docker.DockerService;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +28,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
@@ -76,7 +76,7 @@ public class SgxService {
     public List<Device> getSgxDevices() {
         return Arrays.stream(sgxDriverMode.getDevices())
                 .map(Device::parse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private boolean isSgxSupported(SgxDriverMode sgxDriverMode) {
@@ -117,7 +117,7 @@ public class SgxService {
 
         final List<Device> devicesBind = Arrays.stream(devices)
                 .map(Device::parse)
-                .collect(Collectors.toList());
+                .toList();
 
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withDevices(devicesBind);

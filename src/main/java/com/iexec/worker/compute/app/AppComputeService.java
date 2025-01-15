@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class AppComputeService {
@@ -79,7 +78,7 @@ public class AppComputeService {
             env.addAll(strings);
 
             final List<Bind> additionalBindings =
-                    teeService.getAdditionalBindings().stream().map(Bind::parse).collect(Collectors.toList());
+                    teeService.getAdditionalBindings().stream().map(Bind::parse).toList();
             binds.addAll(additionalBindings);
         }
 

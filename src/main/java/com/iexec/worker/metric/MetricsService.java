@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2023-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class MetricsService {
@@ -72,7 +71,7 @@ public class MetricsService {
                 .map(this::getCompleteComputeDuration)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**

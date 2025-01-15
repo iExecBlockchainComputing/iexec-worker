@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2024-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,15 @@ package com.iexec.worker.config;
 
 import com.iexec.core.api.SchedulerClient;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.context.annotation.UserConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-@ExtendWith(OutputCaptureExtension.class)
 class SchedulerConfigurationTests {
     private final ApplicationContextRunner runner = new ApplicationContextRunner();
 
@@ -48,14 +44,14 @@ class SchedulerConfigurationTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"", "0x0"})
-    void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress, CapturedOutput output) {
+    void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress) {
         runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.poolAddress=" + poolAddress)
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> {
                     assertThatThrownBy(() -> context.getBean(SchedulerConfiguration.class))
                             .isInstanceOf(IllegalStateException.class)
-                            .hasCauseInstanceOf(BeanCreationException.class);
-                    assertThat(output.getOut()).contains("The workerpool address must be filled in");
+                            .hasCauseInstanceOf(BeanCreationException.class)
+                            .hasRootCauseMessage("The workerpool address must be filled in");
                 });
     }
 }

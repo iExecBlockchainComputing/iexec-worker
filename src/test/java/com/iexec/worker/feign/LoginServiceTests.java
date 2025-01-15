@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,6 @@ import org.web3j.crypto.Keys;
 
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -179,7 +178,7 @@ class LoginServiceTests {
         final List<String> expectedOutput = Stream.concat(
                 Stream.of("Retrieved new JWT token from scheduler"),
                 IntStream.range(0, threadsCount - 1).mapToObj(i -> "login already ongoing")
-        ).collect(Collectors.toList());
+        ).toList();
         assertThat(output.getOut())
                 .contains(expectedOutput);
         assertAll(

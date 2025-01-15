@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 IEXEC BLOCKCHAIN TECH
+ * Copyright 2021-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.iexec.worker.docker;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -25,11 +26,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
@@ -69,7 +68,7 @@ public class DockerRegistryConfiguration {
                         && StringUtils.isNotBlank(registryAuth.getUsername()))
                 // from those registries get the ones where the password is missing
                 .filter(registryAuth -> StringUtils.isBlank(registryAuth.getPassword()))
-                .collect(Collectors.toList());
+                .toList();
         if (!registriesWithMissingPasswords.isEmpty()) {
             throw new IllegalArgumentException("Missing passwords for registries with usernames: "
                     + registriesWithMissingPasswords);

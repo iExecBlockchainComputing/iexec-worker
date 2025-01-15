@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,10 @@ import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.util.Map;
 
 /**
