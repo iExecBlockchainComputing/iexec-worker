@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Quality
 
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
+- Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 
 ### Dependency Upgrades
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.util.concurrent.SettableListenableFuture;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -52,6 +52,9 @@ class StompClientServiceTests {
 
     @Mock
     WebSocketStompClient stompClient;
+
+    @Mock
+    CompletableFuture<StompSession> mockedFutureSession;
 
     @Mock
     StompSession mockedStompSession;
@@ -102,9 +105,8 @@ class StompClientServiceTests {
 
     @Test
     void shouldCreateStompSessionIfNoSession(CapturedOutput output) {
-        final SettableListenableFuture<StompSession> futureSession = new SettableListenableFuture<>();
-        futureSession.set(mockedStompSession);
-        when(stompClient.connect(any(), any())).thenReturn(futureSession);
+        final CompletableFuture<StompSession> futureSession = CompletableFuture.supplyAsync(() -> mockedStompSession);
+        when(stompClient.connectAsync(any(), any())).thenReturn(futureSession);
         when(mockedStompSession.getSessionId()).thenReturn(SESSION_ID);
 
         final String sessionId = stompClientService.createStompSessionIfDisconnected();
@@ -118,9 +120,8 @@ class StompClientServiceTests {
         when(disconnectedSession.isConnected()).thenReturn(false);
         ReflectionTestUtils.setField(stompClientService, "stompSession", disconnectedSession);
 
-        final SettableListenableFuture<StompSession> futureSession = new SettableListenableFuture<>();
-        futureSession.set(mockedStompSession);
-        when(stompClient.connect(any(), any())).thenReturn(futureSession);
+        final CompletableFuture<StompSession> futureSession = CompletableFuture.supplyAsync(() -> mockedStompSession);
+        when(stompClient.connectAsync(any(), any())).thenReturn(futureSession);
         when(mockedStompSession.getSessionId()).thenReturn(SESSION_ID);
 
         final String sessionId = stompClientService.createStompSessionIfDisconnected();
@@ -130,9 +131,8 @@ class StompClientServiceTests {
 
     @Test
     void shouldNotCreateStompSessionButThrowIfTimeout(CapturedOutput output) throws ExecutionException, InterruptedException, TimeoutException {
-        final SettableListenableFuture<StompSession> futureSession = getMockedFutureSession();
-        when(stompClient.connect(any(), any())).thenReturn(futureSession);
-        when(futureSession.get(anyLong(), any())).thenThrow(TimeoutException.class);
+        when(stompClient.connectAsync(any(), any())).thenReturn(mockedFutureSession);
+        when(mockedFutureSession.get(anyLong(), any())).thenThrow(TimeoutException.class);
 
         assertThat(stompClientService.createStompSessionIfDisconnected()).isNull();
         assertThat(output.getOut()).contains("STOMP session creation timed out");
@@ -140,17 +140,11 @@ class StompClientServiceTests {
 
     @Test
     void shouldNotCreateStompSessionButThrowIfAnyException(CapturedOutput output) throws ExecutionException, InterruptedException, TimeoutException {
-        final SettableListenableFuture<StompSession> futureSession = getMockedFutureSession();
-        when(stompClient.connect(any(), any())).thenReturn(futureSession);
-        when(futureSession.get(anyLong(), any())).thenThrow(InterruptedException.class);
+        when(stompClient.connectAsync(any(), any())).thenReturn(mockedFutureSession);
+        when(mockedFutureSession.get(anyLong(), any())).thenThrow(InterruptedException.class);
 
         assertThat(stompClientService.createStompSessionIfDisconnected()).isNull();
         assertThat(output.getOut()).contains("An error occurred while listening to STOMP session requests");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static SettableListenableFuture<StompSession> getMockedFutureSession() {
-        return mock(SettableListenableFuture.class);
     }
     // endregion
 }
