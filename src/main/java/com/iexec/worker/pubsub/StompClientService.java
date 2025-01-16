@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,9 +50,9 @@ public class StompClientService {
     private final WebSocketStompClient stompClient;
     private StompSession stompSession;
 
-    public StompClientService(ApplicationEventPublisher applicationEventPublisher,
-                              SchedulerConfiguration schedulerConfiguration,
-                              WebSocketStompClient stompClient) {
+    public StompClientService(final ApplicationEventPublisher applicationEventPublisher,
+                              final SchedulerConfiguration schedulerConfiguration,
+                              final WebSocketStompClient stompClient) {
         this.eventPublisher = applicationEventPublisher;
         this.webSocketServerUrl = schedulerConfiguration.getUrl() + "/connect";
         this.stompClient = stompClient;
@@ -61,12 +61,12 @@ public class StompClientService {
     /**
      * Subscribe to a topic and provide a {@link StompFrameHandler}
      * to handle received messages.
-     * 
-     * @param topic
+     *
+     * @param topic          The topic {@code /topic/task/{chainTaskId}} to subscribe to
      * @param messageHandler an implementation of {@link StompFrameHandler}
-     * @return
+     * @return An optional containing the subscription, can be empty
      */
-    Optional<Subscription> subscribeToTopic(String topic, StompFrameHandler messageHandler) {
+    Optional<Subscription> subscribeToTopic(final String topic, final StompFrameHandler messageHandler) {
         Objects.requireNonNull(topic, "topic must not be null");
         Objects.requireNonNull(messageHandler, "messageHandler must not be null");
         // Should not let other threads subscribe
@@ -85,6 +85,7 @@ public class StompClientService {
     /**
      * Create a new STOMP session
      * if none exists or the last one is disconnected.
+     *
      * @return A {@link String} representing the session ID.
      */
     String createStompSessionIfDisconnected() {
@@ -96,7 +97,7 @@ public class StompClientService {
         try {
             log.info("Creating new STOMP session");
             this.stompSession = stompClient
-                    .connect(webSocketServerUrl, new SessionHandler())
+                    .connectAsync(webSocketServerUrl, new SessionHandler())
                     .get(SESSION_REFRESH_DELAY_MS, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             log.error("STOMP session creation timed out [timeout:{}ms]", SESSION_REFRESH_DELAY_MS, e);
@@ -114,8 +115,7 @@ public class StompClientService {
     }
 
     /**
-     * Provide callbacks to handle STOMP session establishment or
-     * failure.
+     * Provide callbacks to handle STOMP session establishment or failure.
      */
     private class SessionHandler extends StompSessionHandlerAdapter {
 
@@ -131,17 +131,17 @@ public class StompClientService {
          * Handle any exception arising while processing a STOMP frame such as a
          * failure to convert the payload or an unhandled exception in the
          * application {@code StompFrameHandler}.
-         * 
-         * @param session the client STOMP session
-         * @param command the STOMP command of the frame
-         * @param headers the headers
-         * @param payload the raw payload
+         *
+         * @param session   the client STOMP session
+         * @param command   the STOMP command of the frame
+         * @param headers   the headers
+         * @param payload   the raw payload
          * @param exception the exception
          */
         @Override
         public void handleException(StompSession session, @Nullable StompCommand command,
                                     StompHeaders headers, byte[] payload, Throwable exception) {
-            SimpMessageType messageType = command != null ? command.getMessageType() : null;
+            final SimpMessageType messageType = command != null ? command.getMessageType() : null;
             log.error("STOMP frame processing error [session: {}, isConnected: {}, command: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
         }
@@ -154,8 +154,8 @@ public class StompClientService {
          * ConnectionLostException} will be passed into this method when the
          * connection is lost rather than closed normally via
          * {@link StompSession#disconnect()}.
-         * 
-         * @param session the client STOMP session
+         *
+         * @param session   the client STOMP session
          * @param exception the exception that occurred
          */
         @Override
