@@ -141,7 +141,7 @@ public class StompClientService {
         @Override
         public void handleException(StompSession session, @Nullable StompCommand command,
                                     StompHeaders headers, byte[] payload, Throwable exception) {
-            final SimpMessageType messageType = command != null ? command.getMessageType() : null;
+            SimpMessageType messageType = command != null ? command.getMessageType() : null;
             log.error("STOMP frame processing error [session: {}, isConnected: {}, command: {}, exception: {}]",
                     session.getSessionId(), session.isConnected(), messageType, exception.getMessage());
         }
