@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,8 +50,8 @@ public class PublicConfigurationService {
 
     @Bean
     public ConfigServerClient configServerClient() {
-        final String configServerURL = StringUtils.isBlank(publicConfiguration.getConfigServerUrl()) ?
-                publicConfiguration.getBlockchainAdapterUrl() : publicConfiguration.getConfigServerUrl();
+        final String configServerURL = publicConfiguration.getConfigServerUrl();
+        log.debug("config-server url [url:{}]", configServerURL);
         return ConfigServerClientBuilder.getInstance(
                 Logger.Level.NONE,
                 configServerURL);

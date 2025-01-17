@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 
+### Breaking API changes
+
+- Do not fall back to blockchain adapter URL when fetching public configuration. (#628)
+
 ### Dependency Upgrades
 
 - Upgrade to `eclipse-temurin:17.0.13_11-jre-focal`. (#626)

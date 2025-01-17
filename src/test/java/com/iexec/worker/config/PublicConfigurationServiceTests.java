@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2024-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,8 @@ import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.config.PublicConfiguration;
 import com.iexec.resultproxy.api.ResultProxyClientBuilder;
 import feign.Logger;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -36,13 +35,11 @@ class PublicConfigurationServiceTests {
     @Mock
     private SchedulerClient schedulerClient;
 
-    @ParameterizedTest
-    @ValueSource(strings = {"", "http://localhost:8888"})
-    void shouldBeOK(String configServerURL) {
+    @Test
+    void shouldBeOK() {
         when(schedulerClient.getPublicConfiguration()).thenReturn(
                 PublicConfiguration.builder()
-                        .configServerUrl(configServerURL)
-                        .blockchainAdapterUrl("http://localhost:13010")
+                        .configServerUrl("http://localhost:8888")
                         .resultRepositoryURL("http://localhost:13300")
                         .requiredWorkerVersion("v8")
                         .schedulerPublicAddress(("http://localhost:1300"))
