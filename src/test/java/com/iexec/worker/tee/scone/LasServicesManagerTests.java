@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,20 +40,24 @@ import static org.mockito.Mockito.*;
 class LasServicesManagerTests {
     private static final String CHAIN_TASK_ID_1 = "chainTaskId1";
     private static final String CHAIN_TASK_ID_2 = "chainTaskId2";
+    private static final String TEE_FRAMEWORK_VERSION = "v5";
 
     private static final String LAS_IMAGE_URI_1 = "lasImage1";
     private static final String LAS_IMAGE_URI_2 = "lasImage2";
     private static final String WORKER_WALLET_ADDRESS = "0x2D29bfBEc903479fe4Ba991918bAB99B494f2bEf";
 
     private static final SconeServicesProperties PROPERTIES_1 = new SconeServicesProperties(
+            TEE_FRAMEWORK_VERSION,
             null,
             null,
             LAS_IMAGE_URI_1);
     private static final SconeServicesProperties PROPERTIES_2 = new SconeServicesProperties(
+            TEE_FRAMEWORK_VERSION,
             null,
             null,
             LAS_IMAGE_URI_2);
     private static final SconeServicesProperties PROPERTIES_3 = new SconeServicesProperties(
+            TEE_FRAMEWORK_VERSION,
             null,
             null,
             LAS_IMAGE_URI_1);
@@ -157,7 +161,7 @@ class LasServicesManagerTests {
 
     @Test
     void shouldNotStartLasServiceSinceMissingImageName() {
-        SconeServicesProperties properties = new SconeServicesProperties(null, null, "");
+        SconeServicesProperties properties = new SconeServicesProperties(TEE_FRAMEWORK_VERSION, null, null, "");
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID_1)).thenReturn(properties);
         assertFalse(lasServicesManager.startLasService(CHAIN_TASK_ID_1));
     }

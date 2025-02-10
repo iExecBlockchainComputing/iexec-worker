@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,10 @@ class TeeServicesPropertiesServiceTests {
     private static final String POST_COMPUTE_IMAGE = "postComputeImage";
     private static final long POST_COMPUTE_HEAP_SIZE = 1024L;
     private static final String POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
+    private static final String TEE_FRAMEWORK_VERSION = "v5";
+
     private static final GramineServicesProperties GRAMINE_PROPERTIES = new GramineServicesProperties(
+            TEE_FRAMEWORK_VERSION,
             TeeAppProperties.builder().image(PRE_COMPUTE_IMAGE).fingerprint("")
                     .entrypoint(PRE_COMPUTE_ENTRYPOINT).heapSizeInBytes(PRE_COMPUTE_HEAP_SIZE).build(),
             TeeAppProperties.builder().image(POST_COMPUTE_IMAGE).fingerprint("")
