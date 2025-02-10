@@ -74,7 +74,8 @@ public class TeeServicesPropertiesService implements Purgeable {
                             ", actualFramework:" + smsTeeFramework + "]");
         }
 
-        final T properties = smsClient.getTeeServicesProperties(teeFramework);
+        final String version = taskDescription.getAppEnclaveConfiguration().getVersion();
+        final T properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, version);
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(
