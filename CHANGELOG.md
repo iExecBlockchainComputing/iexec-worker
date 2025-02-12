@@ -4,11 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2025
 
+### New Features
+
+- Use enclave version of dApp for retrieving pre/post-compute properties via SMS endpoint. (#630)
+
 ### Quality
 
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
-- Replace deprecated `SconeServicesProperties` and `GramineServicesProperties` to support the `teeFrameworkVersion` field. (#630)
 
 ### Breaking API changes
 

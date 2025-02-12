@@ -21,6 +21,7 @@ import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.chain.IexecHubAbstractService;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.commons.poco.tee.TeeFramework;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.TeeServicesProperties;
@@ -74,8 +75,12 @@ public class TeeServicesPropertiesService implements Purgeable {
                             ", actualFramework:" + smsTeeFramework + "]");
         }
 
-        final String version = taskDescription.getAppEnclaveConfiguration().getVersion();
-        final T properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, version);
+        final TeeEnclaveConfiguration teeEnclaveConfiguration = taskDescription.getAppEnclaveConfiguration();
+        if (teeEnclaveConfiguration == null) {
+            throw new IllegalArgumentException(
+                    "Missing TEE enclave configuration [chainTaskId:" + chainTaskId + "]");
+        }
+        final T properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, teeEnclaveConfiguration.getVersion());
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             throw new TeeServicesPropertiesCreationException(

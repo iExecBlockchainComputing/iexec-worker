@@ -65,6 +65,9 @@ public abstract class TeeService {
             // Try to load the `TeeServicesProperties` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
             teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
+        } catch (IllegalArgumentException e) {
+            log.error("TEE enclave configuration is null [chainTaskId: {}]", chainTaskId, e);
+            return Optional.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
