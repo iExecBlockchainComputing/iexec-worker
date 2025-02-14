@@ -27,20 +27,20 @@ import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class TeeServicesPropertiesServiceTests {
     private static final String VERSION = "v5";
     private static final String CHAIN_TASK_ID = "chainTaskId";
@@ -81,16 +81,10 @@ class TeeServicesPropertiesServiceTests {
     @InjectMocks
     TeeServicesPropertiesService teeServicesPropertiesService;
 
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-
-        when(dockerService.getClient(any())).thenReturn(dockerClient);
-    }
-
     // region retrieveTeeServicesConfiguration
     @Test
     void shouldRetrieveTeeServicesConfiguration() {
+        when(dockerService.getClient(any())).thenReturn(dockerClient);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeFramework()).thenReturn(TeeFramework.GRAMINE);
@@ -146,6 +140,30 @@ class TeeServicesPropertiesServiceTests {
     }
 
     @Test
+    void shouldNotRetrieveTeeServicesConfigurationWhenTeeEnclaveConfigurationIsNull() {
+        final TaskDescription taskDescription = TaskDescription
+                .builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .teeFramework(TeeFramework.GRAMINE)
+                .build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
+        when(smsClient.getTeeFramework()).thenReturn(TeeFramework.GRAMINE);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
+        assertEquals("Missing TEE enclave configuration [chainTaskId:" + CHAIN_TASK_ID + "]", exception.getMessage());
+
+        verify(smsService).getSmsClient(CHAIN_TASK_ID);
+        verify(smsClient).getTeeFramework();
+        verify(smsClient, times(0)).getTeeServicesPropertiesVersion(TeeFramework.GRAMINE, VERSION);
+        verify(dockerClient, times(0)).isImagePresent(PRE_COMPUTE_IMAGE);
+        verify(dockerClient, times(0)).pullImage(PRE_COMPUTE_IMAGE);
+        verify(dockerClient, times(0)).isImagePresent(POST_COMPUTE_IMAGE);
+        verify(dockerClient, times(0)).pullImage(POST_COMPUTE_IMAGE);
+    }
+
+    @Test
     void shouldNotRetrieveTeeServicesConfigurationWhenNoConfigRetrieved() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
@@ -167,6 +185,7 @@ class TeeServicesPropertiesServiceTests {
 
     @Test
     void shouldNotRetrieveTeeServicesConfigurationWhenFailedToDownloadPreComputeImage() {
+        when(dockerService.getClient(any())).thenReturn(dockerClient);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeFramework()).thenReturn(TeeFramework.GRAMINE);
@@ -190,6 +209,7 @@ class TeeServicesPropertiesServiceTests {
 
     @Test
     void shouldNotRetrieveTeeServicesConfigurationWhenFailedToDownloadPostComputeImage() {
+        when(dockerService.getClient(any())).thenReturn(dockerClient);
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeFramework()).thenReturn(TeeFramework.GRAMINE);

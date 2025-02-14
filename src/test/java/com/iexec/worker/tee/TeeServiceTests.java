@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,17 @@
 package com.iexec.worker.tee;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.commons.poco.chain.IexecHubAbstractService;
-import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
@@ -39,19 +37,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class TeeServiceTests {
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private static final TaskDescription TASK_DESCRIPTION = TaskDescription
-            .builder()
-            .chainTaskId(CHAIN_TASK_ID)
-            .build();
 
     @Mock
     SgxService sgxService;
     @Mock
     SmsService smsService;
-    @Mock
-    IexecHubAbstractService iexecHubService;
     @Mock
     SmsClient smsClient;
     @Mock
@@ -60,11 +53,6 @@ class TeeServiceTests {
     @Spy
     @InjectMocks
     TeeServiceMock teeService;
-
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     // region isTeeEnabled
     @Test
@@ -90,7 +78,6 @@ class TeeServiceTests {
     @Test
     void shouldTeePrerequisitesBeMet() {
         when(teeService.isTeeEnabled()).thenReturn(true);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
 
@@ -112,7 +99,6 @@ class TeeServiceTests {
     @Test
     void shouldTeePrerequisitesNotBeMetSinceSmsClientCantBeLoaded() {
         when(teeService.isTeeEnabled()).thenReturn(true);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
@@ -122,9 +108,20 @@ class TeeServiceTests {
     }
 
     @Test
+    void shouldTeePrerequisitesNotBeMetSinceTeeEnclaveConfigurationIsNull() {
+        when(teeService.isTeeEnabled()).thenReturn(true);
+        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(IllegalArgumentException.class);
+
+        Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
+
+        Assertions.assertTrue(teePrerequisitesIssue.isPresent());
+        Assertions.assertEquals(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION, teePrerequisitesIssue.get());
+    }
+
+    @Test
     void shouldTeePrerequisitesNotBeMetSinceTeeWorkflowConfigurationCantBeLoaded() {
         when(teeService.isTeeEnabled()).thenReturn(true);
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(TASK_DESCRIPTION);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(RuntimeException.class);
 
