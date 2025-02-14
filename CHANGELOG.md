@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 
-- Use enclave version of dApp for retrieving pre/post-compute properties via SMS endpoint. (#630)
+- Use TEE framework version of dApp to retrieve pre/post-compute properties via SMS endpoint. (#630)
 
 ### Quality
 

@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Manages the {@link TeeServicesProperties}, providing an easy way to get properties for a task
@@ -76,10 +77,8 @@ public class TeeServicesPropertiesService implements Purgeable {
         }
 
         final TeeEnclaveConfiguration teeEnclaveConfiguration = taskDescription.getAppEnclaveConfiguration();
-        if (teeEnclaveConfiguration == null) {
-            throw new IllegalArgumentException(
-                    "Missing TEE enclave configuration [chainTaskId:" + chainTaskId + "]");
-        }
+        Objects.requireNonNull(teeEnclaveConfiguration, "Missing TEE enclave configuration [chainTaskId:" + chainTaskId + "]");
+        
         final T properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, teeEnclaveConfiguration.getVersion());
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {

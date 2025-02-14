@@ -111,7 +111,7 @@ class TeeServiceTests {
     void shouldTeePrerequisitesNotBeMetSinceTeeEnclaveConfigurationIsNull() {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(IllegalArgumentException.class);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(NullPointerException.class);
 
         Optional<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 

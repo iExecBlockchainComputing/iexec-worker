@@ -150,7 +150,7 @@ class TeeServicesPropertiesServiceTests {
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(smsClient.getTeeFramework()).thenReturn(TeeFramework.GRAMINE);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        NullPointerException exception = assertThrows(NullPointerException.class,
                 () -> teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID));
         assertEquals("Missing TEE enclave configuration [chainTaskId:" + CHAIN_TASK_ID + "]", exception.getMessage());
 
