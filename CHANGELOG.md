@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [[NEXT]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/vNEXT) 2025
 
+### New Features
+
+- Use TEE framework version of dApp to retrieve pre/post-compute properties via SMS endpoint. (#630)
+
 ### Quality
 
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)

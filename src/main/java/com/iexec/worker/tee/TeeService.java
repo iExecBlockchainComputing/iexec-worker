@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,9 @@ public abstract class TeeService {
             // Try to load the `TeeServicesProperties` relative to the task.
             // If it can't be loaded, then we won't be able to run the task.
             teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
+        } catch (NullPointerException e) {
+            log.error("TEE enclave configuration is null [chainTaskId: {}]", chainTaskId, e);
+            return Optional.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
             return Optional.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
