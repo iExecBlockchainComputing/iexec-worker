@@ -61,8 +61,10 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.boot:spring-boot-starter-websocket"
     implementation "org.springframework.cloud:spring-cloud-starter"
-    implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation "org.springframework.retry:spring-retry"
+
+    // required for spring-retry
+    runtimeOnly 'org.aspectj:aspectjweaver'
 
     // apache commons-lang3
     implementation 'org.apache.commons:commons-lang3'
