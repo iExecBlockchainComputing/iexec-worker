@@ -20,8 +20,8 @@ All notable changes to this project will be documented in this file.
 ### Dependency Upgrades
 
 - Upgrade to `eclipse-temurin:17.0.13_11-jre-focal`. (#626)
-- Upgrade to Spring Boot 3.0.13. (#626)
 - Upgrade to Sring Cloud 2022.0.5. (#626)
+- Upgrade to Spring Boot 3.3.8. (#631)
 
 ## [[8.6.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.6.0) 2024-12-23
 
