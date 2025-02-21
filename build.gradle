@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '8.10.2'
-    id 'org.springframework.boot' version '3.0.13'
+    id 'org.springframework.boot' version '3.3.8'
     id 'io.spring.dependency-management' version '1.1.6'
     id 'jacoco'
     id 'org.sonarqube' version '5.1.0.4882'
@@ -11,7 +11,7 @@ plugins {
 group = 'com.iexec.worker'
 
 ext {
-    springCloudVersion = '2022.0.5'
+    springCloudVersion = '2023.0.5'
     commonsMathsVersion = '3.6.1'
     testContainersVersion = '1.20.4'
 }
@@ -61,8 +61,10 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.boot:spring-boot-starter-websocket"
     implementation "org.springframework.cloud:spring-cloud-starter"
-    implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation "org.springframework.retry:spring-retry"
+
+    // required for spring-retry
+    runtimeOnly 'org.aspectj:aspectjweaver'
 
     // apache commons-lang3
     implementation 'org.apache.commons:commons-lang3'
@@ -91,6 +93,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')
+}
+
 springBoot {
     buildInfo()
 }
@@ -110,7 +116,6 @@ testing {
                 // awaitility
                 implementation "org.awaitility:awaitility"
 
-                implementation "org.mockito:mockito-inline" // activates mocking final classes/methods
                 implementation "org.springframework.boot:spring-boot-starter-test"
 
                 // testcontainers
