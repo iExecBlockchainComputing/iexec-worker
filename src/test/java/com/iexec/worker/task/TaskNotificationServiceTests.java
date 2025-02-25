@@ -18,7 +18,6 @@ package com.iexec.worker.task;
 
 import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskAbortCause;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -535,14 +534,6 @@ class TaskNotificationServiceTests {
         assertEquals(PLEASE_CONTINUE, notification);
     }
     // endregion
-
-    private ChainTask getChainTask() {
-        return ChainTask
-                .builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .finalDeadline(Instant.now().toEpochMilli() + 100_000)  // 100 seconds from now
-                .build();
-    }
 
     private TaskNotification getTaskNotificationWithExtra(TaskNotificationType notificationType, TaskNotificationExtra notificationExtra) {
         return TaskNotification.builder()
