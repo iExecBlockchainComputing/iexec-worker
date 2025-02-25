@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import com.iexec.common.replicate.ReplicateStatus;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.task.TaskAbortCause;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotification;
@@ -33,19 +32,14 @@ import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.sms.SmsService;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.expiringmap.ExpiringMap;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import static com.iexec.common.replicate.ReplicateStatus.*;
-import static com.iexec.common.replicate.ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND;
 
 @Slf4j
 @Service
@@ -58,19 +52,13 @@ public class TaskNotificationService {
     private final IexecHubService iexecHubService;
     private final SmsService smsService;
 
-    private final Map<String, Long> finalDeadlineForTask = ExpiringMap
-            .builder()
-            .expiration(1, TimeUnit.HOURS)
-            .build();
-
-    public TaskNotificationService(
-            TaskManagerService taskManagerService,
-            CustomCoreFeignClient customCoreFeignClient,
-            ApplicationEventPublisher applicationEventPublisher,
-            SubscriptionService subscriptionService,
-            WorkerpoolAuthorizationService workerpoolAuthorizationService,
-            IexecHubService iexecHubService,
-            SmsService smsService) {
+    public TaskNotificationService(final TaskManagerService taskManagerService,
+                                   final CustomCoreFeignClient customCoreFeignClient,
+                                   final ApplicationEventPublisher applicationEventPublisher,
+                                   final SubscriptionService subscriptionService,
+                                   final WorkerpoolAuthorizationService workerpoolAuthorizationService,
+                                   final IexecHubService iexecHubService,
+                                   final SmsService smsService) {
         this.taskManagerService = taskManagerService;
         this.customCoreFeignClient = customCoreFeignClient;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -105,13 +93,7 @@ public class TaskNotificationService {
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
             return;
         }
-        TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
-        if (taskDescription == null) {
-            log.error("Failed to get task description [chainTaskId:{}]", chainTaskId);
-            taskManagerService.abort(chainTaskId);
-            updateStatusAndGetNextAction(chainTaskId, ABORTED, TASK_DESCRIPTION_NOT_FOUND);
-            return;
-        }
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         switch (action) {
             case PLEASE_START:
                 updateStatusAndGetNextAction(chainTaskId, STARTING);
@@ -241,14 +223,13 @@ public class TaskNotificationService {
         TaskNotificationType next = null;
 
         // As long as the Core doesn't reply, we try to contact it. It may be rebooting.
-        while (next == null && !isFinalDeadlineReached(chainTaskId, Instant.now().toEpochMilli())) {
+        while (next == null && !isFinalDeadlineReached(chainTaskId)) {
             // Let's wait for the STOMP session to be ready.
             // Otherwise, an update could be lost.
             try {
                 subscriptionService.waitForSessionReady();
             } catch (InterruptedException e) {
-                log.warn("Replicate status update has been interrupted" +
-                                " [chainTaskId:{}, statusUpdate:{}]",
+                log.warn("Replicate status update has been interrupted [chainTaskId:{}, statusUpdate:{}]",
                         chainTaskId, statusUpdate);
                 Thread.currentThread().interrupt();
                 return null;
@@ -269,26 +250,10 @@ public class TaskNotificationService {
      * Note that if the task is unknown on the chain, then the final deadline is considered as reached.
      *
      * @param chainTaskId Task ID whose final deadline should be checked.
-     * @param now         Time to check final deadline against.
-     * @return {@literal true} if the final deadline is met or the task is unknown on-chain,
-     * {@literal false} otherwise.
+     * @return {@literal true} if the final deadline is met or the task is unknown on-chain, {@literal false} otherwise.
      */
-    boolean isFinalDeadlineReached(String chainTaskId, long now) {
-        final Long finalDeadline;
-
-        if (finalDeadlineForTask.containsKey(chainTaskId)) {
-            finalDeadline = finalDeadlineForTask.get(chainTaskId);
-        } else {
-            final Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-            if (oTask.isEmpty()) {
-                //TODO: Handle case where task exists on-chain but call on Ethereum node failed
-                return true;
-            }
-
-            finalDeadline = oTask.get().getFinalDeadline();
-            finalDeadlineForTask.put(chainTaskId, finalDeadline);
-        }
-
-        return now >= finalDeadline;
+    boolean isFinalDeadlineReached(final String chainTaskId) {
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        return taskDescription != null && taskDescription.getFinalDeadline() < Instant.now().toEpochMilli();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@
 package com.iexec.worker.task;
 
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskAbortCause;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -33,7 +31,6 @@ import com.iexec.worker.pubsub.SubscriptionService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.sms.SmsService;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -41,8 +38,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -77,12 +74,14 @@ class TaskNotificationServiceTests {
     private TaskNotificationService taskNotificationService;
     @Captor
     private ArgumentCaptor<ReplicateStatusUpdate> replicateStatusUpdateCaptor;
-    @Mock
-    private TaskDescription taskDescription;
+
+    private final TaskDescription taskDescription = TaskDescription.builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .finalDeadline(Instant.now().plus(10, ChronoUnit.SECONDS).toEpochMilli())
+            .build();
 
     void mockChainCalls() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
     }
 
     @Test
@@ -124,8 +123,7 @@ class TaskNotificationServiceTests {
                 .smsUrl(smsUrl)
                 .build();
         TaskNotification currentNotification = getTaskNotificationWithExtra(PLEASE_CONTINUE, extra);
-        when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
-                .thenReturn(false);
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(workerpoolAuthorizationService.putWorkerpoolAuthorization(auth))
                 .thenReturn(true);
 
@@ -156,23 +154,6 @@ class TaskNotificationServiceTests {
 
         verify(smsService, times(0))
                 .attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-    }
-
-    @Test
-    void shouldAbortSinceNoTaskDescription() {
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(getChainTask()));
-        TaskNotification currentNotification = getTaskNotification(PLEASE_START);
-        when(customCoreFeignClient.updateReplicateStatus(anyString(), any())) // ABORTED
-                .thenReturn(PLEASE_WAIT);
-
-        taskNotificationService.onTaskNotification(currentNotification);
-
-        verify(taskManagerService).abort(CHAIN_TASK_ID);
-        verify(customCoreFeignClient).updateReplicateStatus(anyString(), replicateStatusUpdateCaptor.capture());
-        ReplicateStatusUpdate replicateStatusUpdate = replicateStatusUpdateCaptor.getValue();
-        Assertions.assertEquals(ReplicateStatus.ABORTED, replicateStatusUpdate.getStatus());
-        Assertions.assertEquals(ReplicateStatusCause.TASK_DESCRIPTION_NOT_FOUND, replicateStatusUpdate.getDetails().getCause());
     }
 
     @Test
@@ -483,53 +464,29 @@ class TaskNotificationServiceTests {
     // region isFinalDeadlineReached
     @Test
     void shouldFinalDeadlineBeReached() {
-        final ChainTask chainTask = getChainTask();
-        final long afterFinalDeadline = chainTask.getFinalDeadline() + 1;
+        final TaskDescription expiredTaskDescription = TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .finalDeadline(Instant.now().minus(1, ChronoUnit.SECONDS).toEpochMilli())
+                .build();
 
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(expiredTaskDescription);
 
-        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, afterFinalDeadline);
-
+        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID);
         assertTrue(finalDeadlineReached);
-        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
     }
 
     @Test
     void shouldFinalDeadlineNotBeReached() {
-        final ChainTask chainTask = getChainTask();
-        final long beforeFinalDeadline = chainTask.getFinalDeadline() - 1;
-
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(chainTask));
-
-        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
-
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        final boolean finalDeadlineReached = taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID);
         assertFalse(finalDeadlineReached);
-        verify(iexecHubService).getChainTask(CHAIN_TASK_ID);
-    }
-
-    @Test
-    void shouldGetChainTaskOnlyOnce() {
-        final ChainTask chainTask = getChainTask();
-        final long beforeFinalDeadline = chainTask.getFinalDeadline() - 1;
-
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(chainTask));
-
-        taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
-        taskNotificationService.isFinalDeadlineReached(CHAIN_TASK_ID, beforeFinalDeadline);
-
-        verify(iexecHubService, times(1)).getChainTask(CHAIN_TASK_ID);
     }
     // endregion
 
     // region STOMP not ready
     @Test
     void shouldAbortUpdateStatusWhenInterruptedThread() throws InterruptedException {
-        final ChainTask chainTask = getChainTask();
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
 
         doThrow(InterruptedException.class).when(subscriptionService).waitForSessionReady();
 
@@ -545,15 +502,13 @@ class TaskNotificationServiceTests {
 
     @Test
     void shouldResumeUpdateWhenStompReady() throws InterruptedException {
-        final ChainTask chainTask = getChainTask();
         final ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate
                 .builder()
                 .status(ReplicateStatus.COMPUTING)
                 .date(new Date())
                 .build();
 
-        when(iexecHubService.getChainTask(CHAIN_TASK_ID))
-                .thenReturn(Optional.of(chainTask));
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
         when(customCoreFeignClient.updateReplicateStatus(CHAIN_TASK_ID, statusUpdate))
                 .thenReturn(PLEASE_CONTINUE);
 
@@ -579,14 +534,6 @@ class TaskNotificationServiceTests {
         assertEquals(PLEASE_CONTINUE, notification);
     }
     // endregion
-
-    private ChainTask getChainTask() {
-        return ChainTask
-                .builder()
-                .chainTaskId(CHAIN_TASK_ID)
-                .finalDeadline(Instant.now().toEpochMilli() + 100_000)  // 100 seconds from now
-                .build();
-    }
 
     private TaskNotification getTaskNotificationWithExtra(TaskNotificationType notificationType, TaskNotificationExtra notificationExtra) {
         return TaskNotification.builder()

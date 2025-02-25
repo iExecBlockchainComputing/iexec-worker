@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
+import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
-import java.util.Date;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
@@ -56,53 +56,49 @@ public class ContributionService {
         return iexecHubService.getTaskDescription(chainTaskId) != null;
     }
 
-    public Optional<ReplicateStatusCause> getCannotContributeStatusCause(String chainTaskId) {
-        Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
-        if (optionalChainTask.isEmpty()) {
-            return Optional.of(CHAIN_UNREACHABLE);
+    public Optional<ReplicateStatusCause> getCannotContributeStatusCause(final String chainTaskId) {
+        if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
+            return Optional.of(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
         }
 
-        ChainTask chainTask = optionalChainTask.get();
+        final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
+        if (chainTask == null) {
+            return Optional.of(CHAIN_UNREACHABLE);
+        }
 
         if (!hasEnoughStakeToContribute(chainTask)) {
             return Optional.of(STAKE_TOO_LOW);
         }
 
-        if (!isTaskActiveToContribute(chainTask)) {
+        if (chainTask.getStatus() != ChainTaskStatus.ACTIVE) {
             return Optional.of(TASK_NOT_ACTIVE);
         }
 
-        if (!isBeforeContributionDeadlineToContribute(chainTask)) {
+        if (chainTask.isContributionDeadlineReached()) {
             return Optional.of(CONTRIBUTION_TIMEOUT);
         }
 
-        if (!isContributionUnsetToContribute(chainTask)) {
+        if (chainTask.hasContributionFrom(workerWalletAddress)) {
             return Optional.of(CONTRIBUTION_ALREADY_SET);
-        }
-
-        if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
-            return Optional.of(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
         }
 
         return Optional.empty();
     }
 
-    // TODO: trust could become part of TaskDescription to avoid fetching deal on-chain
-    public Optional<ReplicateStatusCause> getCannotContributeAndFinalizeStatusCause(String chainTaskId) {
-        Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
-        if (optionalChainTask.isEmpty()) {
-            return Optional.of(CHAIN_UNREACHABLE);
-        }
-        ChainTask chainTask = optionalChainTask.get();
-
+    public Optional<ReplicateStatusCause> getCannotContributeAndFinalizeStatusCause(final String chainTaskId) {
         // check TRUST is 1
-        Optional<ChainDeal> oChainDeal = iexecHubService.getChainDeal(chainTask.getDealid());
-        if (oChainDeal.isEmpty() || !BigInteger.ONE.equals(oChainDeal.get().getTrust())) {
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription == null || !BigInteger.ONE.equals(taskDescription.getTrust())) {
             return Optional.of(TRUST_NOT_1);
         }
 
+        final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
+        if (chainTask == null) {
+            return Optional.of(CHAIN_UNREACHABLE);
+        }
+
         // check TASK_ALREADY_CONTRIBUTED
-        if (!chainTask.getContributors().isEmpty()) {
+        if (chainTask.hasContributions()) {
             return Optional.of(TASK_ALREADY_CONTRIBUTED);
         }
 
@@ -126,28 +122,6 @@ public class ContributionService {
             return false;
         }
         return optionalChainAccount.get().getDeposit() >= optionalChainDeal.get().getWorkerStake().longValue();
-    }
-
-    private boolean isTaskActiveToContribute(ChainTask chainTask) {
-        return iexecHubService.isChainTaskActive(chainTask.getChainTaskId());
-    }
-
-    private boolean isBeforeContributionDeadlineToContribute(ChainTask chainTask) {
-        return new Date().getTime() < chainTask.getContributionDeadline();
-    }
-
-    private boolean isContributionUnsetToContribute(ChainTask chainTask) {
-        Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTask.getChainTaskId());
-        if (optionalContribution.isEmpty()) return false;
-
-        ChainContribution chainContribution = optionalContribution.get();
-        return chainContribution.getStatus() == ChainContributionStatus.UNSET;
-    }
-
-    public boolean isContributionDeadlineReached(String chainTaskId) {
-        Optional<ChainTask> oTask = iexecHubService.getChainTask(chainTaskId);
-
-        return oTask.isEmpty() || !isBeforeContributionDeadlineToContribute(oTask.get());
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
