@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2023-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,10 @@
 package com.iexec.worker.chain;
 
 import com.iexec.common.contribution.Contribution;
-import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.chain.ChainContribution;
+import com.iexec.commons.poco.chain.ChainContributionStatus;
+import com.iexec.commons.poco.chain.ChainReceipt;
+import com.iexec.commons.poco.chain.SignerService;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.worker.config.ConfigServerConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -266,40 +269,6 @@ class IexecHubServiceTests {
         when(web3jService.getBlockTime()).thenReturn(Duration.ofMillis(100L));
         doReturn(Optional.of(chainContribution)).when(iexecHubService).getChainContribution(CHAIN_TASK_ID);
         assertThat(iexecHubService.isSuccessTx(CHAIN_TASK_ID, log, chainContributionStatus)).isTrue();
-    }
-    // endregion
-
-    // region ChainTask status
-    @ParameterizedTest
-    @EnumSource(value = ChainTaskStatus.class, names = "ACTIVE")
-    void shouldChainTaskBeActive(ChainTaskStatus chainTaskStatus) {
-        doReturn(Optional.of(ChainTask.builder().status(chainTaskStatus).build()))
-                .when(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        assertThat(iexecHubService.isChainTaskActive(CHAIN_TASK_ID)).isTrue();
-    }
-
-    @ParameterizedTest
-    @EnumSource(value = ChainTaskStatus.class, names = "ACTIVE", mode = EnumSource.Mode.EXCLUDE)
-    void shouldChainTaskNotBeActive(ChainTaskStatus chainTaskStatus) {
-        doReturn(Optional.of(ChainTask.builder().status(chainTaskStatus).build()))
-                .when(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        assertThat(iexecHubService.isChainTaskActive(CHAIN_TASK_ID)).isFalse();
-    }
-
-    @ParameterizedTest
-    @EnumSource(value = ChainTaskStatus.class, names = "REVEALING")
-    void shouldChainTaskBeRevealing(ChainTaskStatus chainTaskStatus) {
-        doReturn(Optional.of(ChainTask.builder().status(chainTaskStatus).build()))
-                .when(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        assertThat(iexecHubService.isChainTaskRevealing(CHAIN_TASK_ID)).isTrue();
-    }
-
-    @ParameterizedTest
-    @EnumSource(value = ChainTaskStatus.class, names = "REVEALING", mode = EnumSource.Mode.EXCLUDE)
-    void shouldChainTaskNotBeRevealing(ChainTaskStatus chainTaskStatus) {
-        doReturn(Optional.of(ChainTask.builder().status(chainTaskStatus).build()))
-                .when(iexecHubService).getChainTask(CHAIN_TASK_ID);
-        assertThat(iexecHubService.isChainTaskRevealing(CHAIN_TASK_ID)).isFalse();
     }
     // endregion
 }

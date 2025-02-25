@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
+import com.iexec.commons.poco.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -50,44 +50,43 @@ public class RevealService {
      * params: String chainTaskId, String determinismHash
      * */
     public boolean canReveal(String... args) {
-        String chainTaskId = args[0];
-        String resultDigest = args[1];
+        final String chainTaskId = args[0];
+        final String resultDigest = args[1];
 
-        Optional<ChainTask> optionalChainTask = iexecHubService.getChainTask(chainTaskId);
-        if (optionalChainTask.isEmpty()) {
+        // fail fast when result digest is invalid, should not happen with check in TaskManagerService#reveal
+        if (resultDigest.isEmpty()) {
+            log.error("Result digest not found, impossible to compute result hash or result seal [chainTaskId:{}]",
+                    chainTaskId);
+            return false;
+        }
+
+        final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
+        if (chainTask == null) {
             log.error("Task couldn't be retrieved [chainTaskId:{}]", chainTaskId);
             return false;
         }
-        ChainTask chainTask = optionalChainTask.get();
 
-        boolean isChainTaskRevealing = iexecHubService.isChainTaskRevealing(chainTaskId);
-        boolean isRevealDeadlineReached = chainTask.getRevealDeadline() < new Date().getTime();
+        final boolean isChainTaskRevealing = chainTask.getStatus() == ChainTaskStatus.REVEALING;
+        final boolean isRevealDeadlineReached = chainTask.isRevealDeadlineReached();
 
-        Optional<ChainContribution> optionalContribution = iexecHubService.getChainContribution(chainTaskId);
-        if (optionalContribution.isEmpty()) {
+        final ChainContribution chainContribution = iexecHubService.getChainContribution(chainTaskId).orElse(null);
+        if (chainContribution == null) {
             log.error("Contribution couldn't be retrieved [chainTaskId:{}]", chainTaskId);
             return false;
         }
-        ChainContribution chainContribution = optionalContribution.get();
-        boolean isChainContributionStatusContributed = chainContribution.getStatus().equals(ChainContributionStatus.CONTRIBUTED);
-        boolean isContributionResultHashConsensusValue = chainContribution.getResultHash().equals(chainTask.getConsensusValue());
+        final boolean isChainContributionStatusContributed = chainContribution.getStatus() == ChainContributionStatus.CONTRIBUTED;
+        final boolean isContributionResultHashConsensusValue = Objects.equals(chainContribution.getResultHash(), chainTask.getConsensusValue());
 
-        boolean isContributionResultHashCorrect = false;
-        boolean isContributionResultSealCorrect = false;
+        final boolean isContributionResultHashCorrect = Objects.equals(
+                chainContribution.getResultHash(), HashUtils.concatenateAndHash(chainTaskId, resultDigest));
+        final boolean isContributionResultSealCorrect = Objects.equals(
+                chainContribution.getResultSeal(), HashUtils.concatenateAndHash(workerWalletAddress, chainTaskId, resultDigest));
 
-        if (!resultDigest.isEmpty()) {//TODO
-            isContributionResultHashCorrect = chainContribution.getResultHash().equals(ResultUtils.computeResultHash(chainTaskId, resultDigest));
-
-            isContributionResultSealCorrect = chainContribution.getResultSeal().equals(
-                    ResultUtils.computeResultSeal(workerWalletAddress, chainTaskId, resultDigest)
-            );
-        }
-
-        boolean ret = isChainTaskRevealing && !isRevealDeadlineReached &&
+        final boolean canReveal = isChainTaskRevealing && !isRevealDeadlineReached &&
                 isChainContributionStatusContributed && isContributionResultHashConsensusValue &&
                 isContributionResultHashCorrect && isContributionResultSealCorrect;
 
-        if (ret) {
+        if (canReveal) {
             log.info("All the conditions are valid for the reveal to happen [chainTaskId:{}]", chainTaskId);
         } else {
             log.warn("One or more conditions are not met for the reveal to happen [chainTaskId:{}, " +
@@ -99,7 +98,7 @@ public class RevealService {
                     isContributionResultHashCorrect, isContributionResultSealCorrect);
         }
 
-        return ret;
+        return canReveal;
     }
 
     public boolean isConsensusBlockReached(String chainTaskId, long consensusBlock) {

@@ -257,16 +257,6 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return web3jService.getLatestBlockNumber();
     }
 
-    boolean isChainTaskActive(final String chainTaskId) {
-        final Optional<ChainTask> chainTask = getChainTask(chainTaskId);
-        return chainTask.filter(task -> task.getStatus() == ChainTaskStatus.ACTIVE).isPresent();
-    }
-
-    boolean isChainTaskRevealing(final String chainTaskId) {
-        final Optional<ChainTask> chainTask = getChainTask(chainTaskId);
-        return chainTask.filter(task -> task.getStatus() == ChainTaskStatus.REVEALING).isPresent();
-    }
-
     @Override
     public boolean purgeTask(final String chainTaskId) {
         log.debug("purgeTask [chainTaskId:{}]", chainTaskId);

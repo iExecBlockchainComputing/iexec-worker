@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -376,12 +376,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(true).build();
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-
-        ReplicateActionResponse actionResponse =
+        final ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
-
         assertThat(actionResponse.isSuccess()).isTrue();
         verifyNoInteractions(dataService);
     }

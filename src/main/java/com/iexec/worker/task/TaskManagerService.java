@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,9 +166,14 @@ public class TaskManagerService {
      * @return ReplicateActionResponse containing success
      * or error statuses.
      */
-    ReplicateActionResponse downloadData(TaskDescription taskDescription) {
+    ReplicateActionResponse downloadData(final TaskDescription taskDescription) {
         requireNonNull(taskDescription, "task description must not be null");
-        String chainTaskId = taskDescription.getChainTaskId();
+        final String chainTaskId = taskDescription.getChainTaskId();
+        // Return early if TEE task
+        if (taskDescription.isTeeTask()) {
+            log.info("Dataset and input files will be downloaded by the pre-compute enclave [chainTaskId:{}]", chainTaskId);
+            return ReplicateActionResponse.success();
+        }
         Optional<ReplicateStatusCause> errorStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download data";
@@ -176,19 +181,11 @@ public class TaskManagerService {
             return getFailureResponseAndPrintError(errorStatus.get(),
                     context, chainTaskId);
         }
-        // Return early if TEE task
-        if (taskDescription.isTeeTask()) {
-            log.info("Dataset and input files will be downloaded by the pre-compute enclave [chainTaskId:{}]", chainTaskId);
-            return ReplicateActionResponse.success();
-        }
         try {
             // download dataset for standard task
             if (!taskDescription.containsDataset()) {
                 log.info("No dataset for this task [chainTaskId:{}]", chainTaskId);
             } else {
-                String datasetUri = taskDescription.getDatasetUri();
-                log.info("Downloading dataset [chainTaskId:{}, uri:{}, name:{}]",
-                        chainTaskId, datasetUri, taskDescription.getDatasetName());
                 dataService.downloadStandardDataset(taskDescription);
             }
             // download input files for standard task
