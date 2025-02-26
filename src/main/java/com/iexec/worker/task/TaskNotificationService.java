@@ -73,11 +73,11 @@ public class TaskNotificationService {
      */
     @Async
     @EventListener
-    public void onTaskNotification(TaskNotification notification) {
-        String chainTaskId = notification.getChainTaskId();
-        TaskNotificationType action = notification.getTaskNotificationType();
-        ReplicateActionResponse actionResponse;
-        ReplicateStatus nextStatus;
+    public void onTaskNotification(final TaskNotification notification) {
+        final String chainTaskId = notification.getChainTaskId();
+        final TaskNotificationType action = notification.getTaskNotificationType();
+        final ReplicateActionResponse actionResponse;
+        final ReplicateStatus nextStatus;
         TaskNotificationType nextAction = null;
         log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
@@ -86,7 +86,7 @@ public class TaskNotificationService {
             return;
         }
 
-        TaskNotificationExtra extra = notification.getTaskNotificationExtra();
+        final TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
         if (!storeWorkerpoolAuthAndSmsFromExtraIfPresent(extra)) {
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
@@ -179,7 +179,7 @@ public class TaskNotificationService {
 
     }
 
-    private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(TaskNotificationExtra extra) {
+    private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(final TaskNotificationExtra extra) {
         boolean success = true;
         if (extra != null && extra.getWorkerpoolAuthorization() != null) {
             success = workerpoolAuthorizationService
@@ -192,15 +192,15 @@ public class TaskNotificationService {
         return success;
     }
 
-    private void updateStatus(String chainTaskId,
-                              ReplicateStatus status) {
+    private void updateStatus(final String chainTaskId,
+                              final ReplicateStatus status) {
         final ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
         updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status,
-                                                              ReplicateStatusDetails details) {
+    private TaskNotificationType updateStatusAndGetNextAction(final String chainTaskId,
+                                                              final ReplicateStatus status,
+                                                              final ReplicateStatusDetails details) {
         ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.builder()
                 .status(status)
                 .details(details)
@@ -209,7 +209,8 @@ public class TaskNotificationService {
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+    TaskNotificationType updateStatusAndGetNextAction(final String chainTaskId,
+                                                      final ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
