@@ -107,7 +107,6 @@ class TaskManagerServiceTests {
                 .appType(DappType.DOCKER)
                 .appUri("appUri")
                 .datasetAddress("datasetAddress")
-                .datasetName("datasetName")
                 .datasetChecksum("datasetChecksum")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)

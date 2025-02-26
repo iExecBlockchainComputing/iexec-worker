@@ -17,11 +17,10 @@
 package com.iexec.worker.task;
 
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.common.replicate.ReplicateStatusUpdate;
-import com.iexec.commons.poco.task.TaskAbortCause;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.core.notification.TaskAbortCause;
 import com.iexec.core.notification.TaskNotification;
 import com.iexec.core.notification.TaskNotificationExtra;
 import com.iexec.core.notification.TaskNotificationType;
@@ -74,11 +73,11 @@ public class TaskNotificationService {
      */
     @Async
     @EventListener
-    public void onTaskNotification(TaskNotification notification) {
-        String chainTaskId = notification.getChainTaskId();
-        TaskNotificationType action = notification.getTaskNotificationType();
-        ReplicateActionResponse actionResponse;
-        ReplicateStatus nextStatus;
+    public void onTaskNotification(final TaskNotification notification) {
+        final String chainTaskId = notification.getChainTaskId();
+        final TaskNotificationType action = notification.getTaskNotificationType();
+        final ReplicateActionResponse actionResponse;
+        final ReplicateStatus nextStatus;
         TaskNotificationType nextAction = null;
         log.debug("Received TaskNotification [chainTaskId:{}, action:{}]", chainTaskId, action);
 
@@ -87,7 +86,7 @@ public class TaskNotificationService {
             return;
         }
 
-        TaskNotificationExtra extra = notification.getTaskNotificationExtra();
+        final TaskNotificationExtra extra = notification.getTaskNotificationExtra();
 
         if (!storeWorkerpoolAuthAndSmsFromExtraIfPresent(extra)) {
             log.error("Should storeWorkerpoolAuthorizationFromExtraIfPresent [chainTaskId:{}]", chainTaskId);
@@ -96,25 +95,25 @@ public class TaskNotificationService {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         switch (action) {
             case PLEASE_START:
-                updateStatusAndGetNextAction(chainTaskId, STARTING);
+                updateStatus(chainTaskId, STARTING);
                 actionResponse = taskManagerService.start(taskDescription);
                 nextStatus = actionResponse.isSuccess() ? STARTED : START_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_DOWNLOAD_APP:
-                updateStatusAndGetNextAction(chainTaskId, APP_DOWNLOADING);
+                updateStatus(chainTaskId, APP_DOWNLOADING);
                 actionResponse = taskManagerService.downloadApp(taskDescription);
                 nextStatus = actionResponse.isSuccess() ? APP_DOWNLOADED : APP_DOWNLOAD_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_DOWNLOAD_DATA:
-                updateStatusAndGetNextAction(chainTaskId, DATA_DOWNLOADING);
+                updateStatus(chainTaskId, DATA_DOWNLOADING);
                 actionResponse = taskManagerService.downloadData(taskDescription);
                 nextStatus = actionResponse.isSuccess() ? DATA_DOWNLOADED : DATA_DOWNLOAD_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_COMPUTE:
-                updateStatusAndGetNextAction(chainTaskId, COMPUTING);
+                updateStatus(chainTaskId, COMPUTING);
                 actionResponse = taskManagerService.compute(taskDescription);
                 if (actionResponse.getDetails() != null) {
                     actionResponse.getDetails().tailLogs();
@@ -123,31 +122,31 @@ public class TaskNotificationService {
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_CONTRIBUTE:
-                updateStatusAndGetNextAction(chainTaskId, CONTRIBUTING);
+                updateStatus(chainTaskId, CONTRIBUTING);
                 actionResponse = taskManagerService.contribute(chainTaskId);
                 nextStatus = actionResponse.isSuccess() ? CONTRIBUTED : CONTRIBUTE_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_REVEAL:
-                updateStatusAndGetNextAction(chainTaskId, REVEALING);
+                updateStatus(chainTaskId, REVEALING);
                 actionResponse = taskManagerService.reveal(chainTaskId, extra);
                 nextStatus = actionResponse.isSuccess() ? REVEALED : REVEAL_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_UPLOAD:
-                updateStatusAndGetNextAction(chainTaskId, RESULT_UPLOADING);
+                updateStatus(chainTaskId, RESULT_UPLOADING);
                 actionResponse = taskManagerService.uploadResult(chainTaskId);
                 nextStatus = actionResponse.isSuccess() ? RESULT_UPLOADED : RESULT_UPLOAD_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_CONTRIBUTE_AND_FINALIZE:
-                updateStatusAndGetNextAction(chainTaskId, CONTRIBUTE_AND_FINALIZE_ONGOING);
+                updateStatus(chainTaskId, CONTRIBUTE_AND_FINALIZE_ONGOING);
                 actionResponse = taskManagerService.contributeAndFinalize(chainTaskId);
                 nextStatus = actionResponse.isSuccess() ? CONTRIBUTE_AND_FINALIZE_DONE : CONTRIBUTE_AND_FINALIZE_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
                 break;
             case PLEASE_COMPLETE:
-                updateStatusAndGetNextAction(chainTaskId, COMPLETING);
+                updateStatus(chainTaskId, COMPLETING);
                 actionResponse = taskManagerService.complete(chainTaskId);
                 nextStatus = actionResponse.isSuccess() ? COMPLETED : COMPLETE_FAILED;
                 nextAction = updateStatusAndGetNextAction(chainTaskId, nextStatus, actionResponse.getDetails());
@@ -157,12 +156,13 @@ public class TaskNotificationService {
                     log.error("Failed to abort task [chainTaskId:{}]", chainTaskId);
                     return;
                 }
-                TaskAbortCause taskAbortCause = notification.getTaskAbortCause();
-                ReplicateStatusCause replicateAbortCause = ReplicateStatusCause.getReplicateAbortCause(taskAbortCause);
-                updateStatusAndGetNextAction(chainTaskId, ABORTED, replicateAbortCause);
+                final TaskAbortCause taskAbortCause = notification.getTaskAbortCause();
+                final ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(
+                        ABORTED, taskAbortCause.toReplicateStatusCause());
+                updateStatusAndGetNextAction(chainTaskId, statusUpdate);
                 break;
-            case PLEASE_CONTINUE:
-            case PLEASE_WAIT:
+            case PLEASE_CONTINUE,
+                 PLEASE_WAIT:
                 break;
         }
 
@@ -179,7 +179,7 @@ public class TaskNotificationService {
 
     }
 
-    private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(TaskNotificationExtra extra) {
+    private boolean storeWorkerpoolAuthAndSmsFromExtraIfPresent(final TaskNotificationExtra extra) {
         boolean success = true;
         if (extra != null && extra.getWorkerpoolAuthorization() != null) {
             success = workerpoolAuthorizationService
@@ -192,22 +192,15 @@ public class TaskNotificationService {
         return success;
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status) {
-        ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
-        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
+    private void updateStatus(final String chainTaskId,
+                              final ReplicateStatus status) {
+        final ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status);
+        updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status,
-                                                              ReplicateStatusCause cause) {
-        ReplicateStatusUpdate statusUpdate = new ReplicateStatusUpdate(status, cause);
-        return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
-    }
-
-    private TaskNotificationType updateStatusAndGetNextAction(String chainTaskId,
-                                                              ReplicateStatus status,
-                                                              ReplicateStatusDetails details) {
+    private TaskNotificationType updateStatusAndGetNextAction(final String chainTaskId,
+                                                              final ReplicateStatus status,
+                                                              final ReplicateStatusDetails details) {
         ReplicateStatusUpdate statusUpdate = ReplicateStatusUpdate.builder()
                 .status(status)
                 .details(details)
@@ -216,7 +209,8 @@ public class TaskNotificationService {
         return updateStatusAndGetNextAction(chainTaskId, statusUpdate);
     }
 
-    TaskNotificationType updateStatusAndGetNextAction(String chainTaskId, ReplicateStatusUpdate statusUpdate) {
+    TaskNotificationType updateStatusAndGetNextAction(final String chainTaskId,
+                                                      final ReplicateStatusUpdate statusUpdate) {
         log.info("update replicate request [chainTaskId:{}, status:{}, details:{}]",
                 chainTaskId, statusUpdate.getStatus(), statusUpdate.getDetailsWithoutLogs());
 
