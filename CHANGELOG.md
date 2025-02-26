@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 ### Breaking API changes
 
 - Do not fall back to blockchain adapter URL when fetching public configuration. (#628 #629)
+- Move `WorkerModel` from `iexec-common` to `iexec-core-library`. (#633)
 
 ### Dependency Upgrades
 
