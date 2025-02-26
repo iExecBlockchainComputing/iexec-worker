@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 - Do not fall back to blockchain adapter URL when fetching public configuration. (#628 #629)
 - Move `WorkerModel` from `iexec-common` to `iexec-core-library`. (#633)
+- Move `TaskAbortCause` from `iexec-commons-poco` to `iexec-core-library`. (#634)
 
 ### Dependency Upgrades
 
