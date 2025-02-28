@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,21 +19,25 @@ package com.iexec.worker.chain;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.HashUtils;
+import com.iexec.commons.poco.utils.SignatureUtils;
 import com.iexec.worker.config.SchedulerConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class WorkerpoolAuthorizationServiceTests {
@@ -122,6 +126,78 @@ class WorkerpoolAuthorizationServiceTests {
     @Test
     void shouldPurgeAllTasksData() {
         assertDoesNotThrow(workerpoolAuthorizationService::purgeAllTasksData);
+    }
+    // endregion
+
+    // region getChallenge
+    @Test
+    void shouldGetChallenge() {
+        final WorkerpoolAuthorization workerpoolAuthorization = getWorkerpoolAuthorization();
+
+        final String expectedChallenge = HashUtils.concatenateAndHash(
+                workerpoolAuthorization.getChainTaskId(),
+                workerpoolAuthorization.getWorkerWallet()
+        );
+
+        final String challenge = ReflectionTestUtils.invokeMethod(
+                workerpoolAuthorizationService,
+                "getChallenge",
+                workerpoolAuthorization);
+
+        assertEquals(expectedChallenge, challenge);
+    }
+    // endregion
+
+    // region isSignedWithEnclaveChallenge
+    @Test
+    void shouldConfirmSignatureIsSignedWithEnclaveChallenge() {
+        final WorkerpoolAuthorization workerpoolAuthorization = getWorkerpoolAuthorization();
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
+        workerpoolAuthorizations.put(workerpoolAuthorization.getChainTaskId(), workerpoolAuthorization);
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
+
+        try (final MockedStatic<SignatureUtils> signatureUtilsMock = mockStatic(SignatureUtils.class)) {
+            signatureUtilsMock.when(() -> SignatureUtils.isSignatureValid(any(), any(), any())).thenReturn(true);
+
+            assertTrue(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(
+                    workerpoolAuthorization.getChainTaskId(),
+                    "mockSignature"));
+
+            signatureUtilsMock.verify(() ->
+                    SignatureUtils.isSignatureValid(
+                            any(byte[].class),
+                            any(Signature.class),
+                            eq(workerpoolAuthorization.getWorkerWallet())
+                    )
+            );
+        }
+    }
+
+    @Test
+    void shouldRejectSignatureNotSignedWithEnclaveChallenge() {
+        final WorkerpoolAuthorization workerpoolAuthorization = getWorkerpoolAuthorization();
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
+        workerpoolAuthorizations.put(workerpoolAuthorization.getChainTaskId(), workerpoolAuthorization);
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
+
+        final Signature invalidSignature = SignatureUtils.signMessageHashAndGetSignature(
+                Arrays.toString(BytesUtils.stringToBytes("wrong-challenge")),
+                workerpoolAuthorization.getWorkerWallet()
+        );
+
+        assertFalse(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(
+                workerpoolAuthorization.getChainTaskId(),
+                invalidSignature.toString()));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenWorkerpoolAuthorizationNotFound() {
+        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
+        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
+
+        assertThrows(NoSuchElementException.class, () ->
+                workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, "anySignature")
+        );
     }
     // endregion
 

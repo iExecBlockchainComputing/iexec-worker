@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.api.ExitMessage;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.result.ResultService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.NoSuchElementException;
 
 import static org.springframework.http.ResponseEntity.ok;
 
@@ -34,18 +34,34 @@ public class ComputeController {
 
     private final ComputeExitCauseService computeStageExitService;
     private final ResultService resultService;
+    private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
 
     public ComputeController(ComputeExitCauseService computeStageExitService,
-                             ResultService resultService) {
+                             ResultService resultService,
+                             WorkerpoolAuthorizationService workerpoolAuthorizationService) {
         this.computeStageExitService = computeStageExitService;
         this.resultService = resultService;
+        this.workerpoolAuthorizationService = workerpoolAuthorizationService;
     }
 
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
     public ResponseEntity<Void> sendExitCauseForGivenComputeStage(
+            @RequestHeader("Authorization") String authorization,
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
+        try {
+            if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED.value())
+                        .build();
+            }
+        } catch (NoSuchElementException e) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .build();
+        }
+
         if (exitMessage.getCause() == null) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
@@ -65,8 +81,20 @@ public class ComputeController {
             "/iexec_out/{chainTaskId}/computed", //@Deprecated
             "/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed"
     })
-    public ResponseEntity<String> sendComputedFileForTee(@PathVariable String chainTaskId,
+    public ResponseEntity<String> sendComputedFileForTee(@RequestHeader("Authorization") String authorization,
+                                                         @PathVariable String chainTaskId,
                                                          @RequestBody ComputedFile computedFile) {
+        try {
+            if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED.value())
+                        .build();
+            }
+        } catch (NoSuchElementException e) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .build();
+        }
         if (!chainTaskId.equals(computedFile.getTaskId())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST.value()).build();
         }

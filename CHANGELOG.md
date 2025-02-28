@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### New Features
 
 - Use TEE framework version of dApp to retrieve pre/post-compute properties via SMS endpoint. (#630)
+- Validate authorization proof for pre/post-compute requests. (#635)
 
 ### Quality
 

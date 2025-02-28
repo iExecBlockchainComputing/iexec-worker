@@ -19,6 +19,7 @@ package com.iexec.worker.chain;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
+import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
@@ -29,6 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 
 @Slf4j
@@ -75,6 +77,28 @@ public class WorkerpoolAuthorizationService implements Purgeable {
 
     WorkerpoolAuthorization getWorkerpoolAuthorization(final String chainTaskId) {
         return workerpoolAuthorizations.get(chainTaskId);
+    }
+
+    public boolean isSignedWithEnclaveChallenge(final String chainTaskId, final String authorization) {
+        final WorkerpoolAuthorization workerpoolAuthorization = workerpoolAuthorizations.get(chainTaskId);
+        if (workerpoolAuthorization == null) {
+            throw new NoSuchElementException("Cant get workerpool authorization for chainTaskId: " + chainTaskId);
+        }
+        final String challenge = getChallenge(workerpoolAuthorization);
+        final Signature signature = new Signature(authorization);
+
+        return SignatureUtils.isSignatureValid(
+                BytesUtils.stringToBytes(challenge),
+                signature,
+                workerpoolAuthorization.getWorkerWallet()
+        );
+    }
+
+    private String getChallenge(final WorkerpoolAuthorization workerpoolAuthorization) {
+        return HashUtils.concatenateAndHash(
+                workerpoolAuthorization.getChainTaskId(),
+                workerpoolAuthorization.getWorkerWallet()
+        );
     }
 
     /**
