@@ -17,6 +17,7 @@
 package com.iexec.worker.compute;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.result.ResultService;
@@ -39,6 +40,14 @@ public class ComputeControllerTests {
     public static final String CHAIN_TASK_ID = "0xtask";
     public static final ReplicateStatusCause CAUSE = ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED;
     private static final String AUTH_HEADER = "Bearer validToken";
+    private final ComputedFile computedFile = new ComputedFile(
+            "/path",
+            "callback",
+            "task_123",
+            "digest_abc",
+            "signature",
+            null
+    );
     private ComputeExitCauseService computeStageExitService;
     @Mock
     private ResultService resultService;
@@ -56,6 +65,7 @@ public class ComputeControllerTests {
         );
     }
 
+    // region sendExitCauseForComputeComputeStage
     @Test
     void sendExitCauseForComputeComputeStage() {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
@@ -128,4 +138,94 @@ public class ComputeControllerTests {
         );
         Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode().value());
     }
+    // endregion
+
+    // region sendComputedFileForTee
+
+    @Test
+    void shouldSendComputedFileForTeeSuccessfully() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        when(resultService.writeComputedFile(computedFile)).thenReturn(true);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
+        Assertions.assertEquals(CHAIN_TASK_ID, response.getBody());
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenAuthFailsForComputedFile() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(false);
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenWrongChainTaskIdForComputedFile() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenThrow(new NoSuchElementException());
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenTaskIdMismatch() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        computedFile.setTaskId("0x_differentTask");
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenWriteComputedFileFails() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        when(resultService.writeComputedFile(computedFile)).thenReturn(false);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatusCode().value());
+    }
+    // endregion
 }
