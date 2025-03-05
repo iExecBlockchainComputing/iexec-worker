@@ -62,14 +62,14 @@ public class ComputeController {
                     .build();
         }
 
-        if (exitMessage.getCause() == null) {
+        if (exitMessage.cause() == null) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
         }
         if (!computeStageExitService.setExitCause(stage,
                 chainTaskId,
-                exitMessage.getCause())) {
+                exitMessage.cause())) {
             return ResponseEntity
                     .status(HttpStatus.ALREADY_REPORTED.value())
                     .build();

@@ -89,7 +89,7 @@ public class ComputeControllerTests {
                 computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
                         ComputeStage.PRE,
                         CHAIN_TASK_ID,
-                        new ExitMessage());
+                        new ExitMessage(null));
         Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatusCode().value());
     }
 

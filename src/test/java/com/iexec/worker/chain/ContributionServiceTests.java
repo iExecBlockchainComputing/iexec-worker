@@ -18,10 +18,10 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.TestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -298,8 +298,8 @@ class ContributionServiceTests {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
         String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000002";
 
-        String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
-        String resultSeal = ResultUtils.computeResultSeal(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
+        String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
+        String resultSeal = HashUtils.concatenateAndHash(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
         WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
@@ -331,8 +331,8 @@ class ContributionServiceTests {
         String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
-        String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
-        String resultSeal = ResultUtils.computeResultSeal(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
+        String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
+        String resultSeal = HashUtils.concatenateAndHash(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
         WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
         teeWorkerpoolAuth.setEnclaveChallenge(TestUtils.ENCLAVE_ADDRESS);
