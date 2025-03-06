@@ -26,9 +26,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.ECKeyPair;
+import org.web3j.crypto.Keys;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -37,7 +39,8 @@ import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class WorkerpoolAuthorizationServiceTests {
@@ -150,27 +153,32 @@ class WorkerpoolAuthorizationServiceTests {
 
     // region isSignedWithEnclaveChallenge
     @Test
-    void shouldConfirmSignatureIsSignedWithEnclaveChallenge() {
-        final WorkerpoolAuthorization workerpoolAuthorization = getWorkerpoolAuthorization();
+    void shouldConfirmSignatureIsSignedWithEnclaveChallenge() throws Exception {
+        final ECKeyPair workerKeyPair = Keys.createEcKeyPair();
+        final Credentials workerCredentials = Credentials.create(workerKeyPair);
+        final String workerWallet = workerCredentials.getAddress();
+
+        final ECKeyPair enclaveKeyPair = Keys.createEcKeyPair();
+        final Credentials enclaveCredentials = Credentials.create(enclaveKeyPair);
+        final String enclaveWallet = enclaveCredentials.getAddress();
+
+        final WorkerpoolAuthorization workerpoolAuthorization = WorkerpoolAuthorization.builder()
+                .workerWallet(workerWallet)
+                .chainTaskId(CHAIN_TASK_ID)
+                .enclaveChallenge(enclaveWallet)
+                .build();
+
         final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
-        workerpoolAuthorizations.put(workerpoolAuthorization.getChainTaskId(), workerpoolAuthorization);
+        workerpoolAuthorizations.put(CHAIN_TASK_ID, workerpoolAuthorization);
         ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
 
-        try (final MockedStatic<SignatureUtils> signatureUtilsMock = mockStatic(SignatureUtils.class)) {
-            signatureUtilsMock.when(() -> SignatureUtils.isSignatureValid(any(), any(), any())).thenReturn(true);
+        final String challenge = HashUtils.concatenateAndHash(CHAIN_TASK_ID, workerWallet);
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(challenge, enclaveKeyPair);
+        final boolean isValid = workerpoolAuthorizationService.isSignedWithEnclaveChallenge(
+                CHAIN_TASK_ID,
+                signature.getValue());
 
-            assertTrue(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(
-                    workerpoolAuthorization.getChainTaskId(),
-                    "mockSignature"));
-
-            signatureUtilsMock.verify(() ->
-                    SignatureUtils.isSignatureValid(
-                            any(byte[].class),
-                            any(Signature.class),
-                            eq(workerpoolAuthorization.getWorkerWallet())
-                    )
-            );
-        }
+        assertTrue(isValid);
     }
 
     @Test
@@ -192,9 +200,6 @@ class WorkerpoolAuthorizationServiceTests {
 
     @Test
     void shouldThrowExceptionWhenWorkerpoolAuthorizationNotFound() {
-        final Map<String, WorkerpoolAuthorization> workerpoolAuthorizations = new HashMap<>();
-        ReflectionTestUtils.setField(workerpoolAuthorizationService, "workerpoolAuthorizations", workerpoolAuthorizations);
-
         assertThrows(NoSuchElementException.class, () ->
                 workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, "anySignature")
         );

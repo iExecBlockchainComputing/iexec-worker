@@ -129,7 +129,7 @@ public class ComputeControllerTests {
     @Test
     void shouldReturnNotFoundWhenWrongChainTaskId() {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
-                .thenThrow(new NoSuchElementException());
+                .thenThrow(NoSuchElementException.class);
         final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
                 AUTH_HEADER,
                 ComputeStage.PRE,

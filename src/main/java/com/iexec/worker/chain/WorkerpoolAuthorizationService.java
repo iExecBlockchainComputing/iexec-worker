@@ -90,7 +90,7 @@ public class WorkerpoolAuthorizationService implements Purgeable {
         return SignatureUtils.isSignatureValid(
                 BytesUtils.stringToBytes(challenge),
                 signature,
-                workerpoolAuthorization.getWorkerWallet()
+                workerpoolAuthorization.getEnclaveChallenge()
         );
     }
 
