@@ -65,7 +65,7 @@ public class ComputeControllerTests {
         );
     }
 
-    // region sendExitCauseForComputeComputeStage
+    // region sendExitCauseForGivenComputeStage
     @Test
     void sendExitCauseForComputeComputeStage() {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
@@ -181,7 +181,7 @@ public class ComputeControllerTests {
     @Test
     void shouldReturnNotFoundWhenWrongChainTaskIdForComputedFile() {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
-                .thenThrow(new NoSuchElementException());
+                .thenThrow(NoSuchElementException.class);
 
         computedFile.setTaskId(CHAIN_TASK_ID);
 

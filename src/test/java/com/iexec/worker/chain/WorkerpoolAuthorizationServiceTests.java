@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class WorkerpoolAuthorizationServiceTests {
-    private static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final String CHAIN_TASK_ID = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
     @Mock
     private SchedulerConfiguration schedulerConfiguration;

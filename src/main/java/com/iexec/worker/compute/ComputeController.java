@@ -36,9 +36,9 @@ public class ComputeController {
     private final ResultService resultService;
     private final WorkerpoolAuthorizationService workerpoolAuthorizationService;
 
-    public ComputeController(ComputeExitCauseService computeStageExitService,
-                             ResultService resultService,
-                             WorkerpoolAuthorizationService workerpoolAuthorizationService) {
+    public ComputeController(final ComputeExitCauseService computeStageExitService,
+                             final ResultService resultService,
+                             final WorkerpoolAuthorizationService workerpoolAuthorizationService) {
         this.computeStageExitService = computeStageExitService;
         this.resultService = resultService;
         this.workerpoolAuthorizationService = workerpoolAuthorizationService;
