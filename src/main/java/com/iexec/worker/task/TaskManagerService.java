@@ -16,7 +16,6 @@
 
 package com.iexec.worker.task;
 
-import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateStatus;
@@ -27,6 +26,7 @@ import com.iexec.commons.poco.chain.ChainReceipt;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotificationExtra;
+import com.iexec.worker.chain.Contribution;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -310,8 +310,7 @@ public class TaskManagerService {
         }
 
         if (!hasEnoughGas()) {
-            return getFailureResponseAndPrintError(OUT_OF_GAS,
-                    context, chainTaskId);
+            return getFailureResponseAndPrintError(OUT_OF_GAS, context, chainTaskId);
         }
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
@@ -371,13 +370,11 @@ public class TaskManagerService {
                                    TaskNotificationExtra extra) {
         String context = "reveal";
         if (extra == null || extra.getBlockNumber() == 0) {
-            return getFailureResponseAndPrintError(CONSENSUS_BLOCK_MISSING,
-                    context, chainTaskId);
+            return getFailureResponseAndPrintError(CONSENSUS_BLOCK_MISSING, context, chainTaskId);
         }
         long consensusBlock = extra.getBlockNumber();
 
-        ComputedFile computedFile =
-                resultService.getComputedFile(chainTaskId);
+        final ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
         String resultDigest = computedFile != null ?
                 computedFile.getResultDigest() : "";
 
@@ -386,17 +383,13 @@ public class TaskManagerService {
             return ReplicateActionResponse.failure(DETERMINISM_HASH_NOT_FOUND);
         }
 
-        if (!revealService.isConsensusBlockReached(chainTaskId,
-                consensusBlock)) {
-            return getFailureResponseAndPrintError(BLOCK_NOT_REACHED,
-                    context, chainTaskId
+        if (!revealService.isConsensusBlockReached(chainTaskId, consensusBlock)) {
+            return getFailureResponseAndPrintError(BLOCK_NOT_REACHED, context, chainTaskId
             );
         }
 
-        if (!revealService.repeatCanReveal(chainTaskId,
-                resultDigest)) {
-            return getFailureResponseAndPrintError(CANNOT_REVEAL,
-                    context, chainTaskId);
+        if (!revealService.repeatCanReveal(chainTaskId, resultDigest)) {
+            return getFailureResponseAndPrintError(CANNOT_REVEAL, context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {

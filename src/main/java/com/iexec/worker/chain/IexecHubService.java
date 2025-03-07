@@ -16,8 +16,6 @@
 
 package com.iexec.worker.chain;
 
-
-import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
@@ -41,7 +39,6 @@ import static com.iexec.commons.poco.chain.ChainContributionStatus.CONTRIBUTED;
 import static com.iexec.commons.poco.chain.ChainContributionStatus.REVEALED;
 import static com.iexec.commons.poco.utils.BytesUtils.bytesToString;
 import static com.iexec.commons.poco.utils.BytesUtils.stringToBytes;
-
 
 @Slf4j
 @Service
@@ -68,20 +65,20 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
 
     // region contribute
     IexecHubContract.TaskContributeEventResponse contribute(final Contribution contribution) {
-        log.info("contribute request [chainTaskId:{}, waitingTxCount:{}]", contribution.getChainTaskId(), getWaitingTransactionCount());
+        log.info("contribute request [chainTaskId:{}, waitingTxCount:{}]", contribution.chainTaskId(), getWaitingTransactionCount());
         return sendContributeTransaction(contribution);
     }
 
     private IexecHubContract.TaskContributeEventResponse sendContributeTransaction(final Contribution contribution) {
-        final String chainTaskId = contribution.getChainTaskId();
+        final String chainTaskId = contribution.chainTaskId();
 
         final RemoteCall<TransactionReceipt> contributeCall = iexecHubContract.contribute(
                 stringToBytes(chainTaskId),
-                stringToBytes(contribution.getResultHash()),
-                stringToBytes(contribution.getResultSeal()),
-                contribution.getEnclaveChallenge(),
-                stringToBytes(contribution.getEnclaveSignature()),
-                stringToBytes(contribution.getWorkerPoolSignature()));
+                stringToBytes(contribution.resultHash()),
+                stringToBytes(contribution.resultSeal()),
+                contribution.enclaveChallenge(),
+                stringToBytes(contribution.enclaveSignature()),
+                stringToBytes(contribution.workerPoolSignature()));
         log.info("Sent contribute [chainTaskId:{}, contribution:{}]", chainTaskId, contribution);
 
         final TransactionReceipt contributeReceipt = submit(chainTaskId, "contribute", contributeCall);
@@ -146,25 +143,25 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
     public Optional<ChainReceipt> contributeAndFinalize(final Contribution contribution, final String resultLink,
                                                         final String callbackData) {
         log.info("contributeAndFinalize request [chainTaskId:{}, waitingTxCount:{}]",
-                contribution.getChainTaskId(), getWaitingTransactionCount());
+                contribution.chainTaskId(), getWaitingTransactionCount());
         final IexecHubContract.TaskFinalizeEventResponse finalizeEvent = sendContributeAndFinalizeTransaction(contribution, resultLink, callbackData);
         return Optional.ofNullable(finalizeEvent)
-                .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.getChainTaskId(), getLatestBlockNumber()));
+                .map(event -> ChainUtils.buildChainReceipt(event.log, contribution.chainTaskId(), getLatestBlockNumber()));
     }
 
     private IexecHubContract.TaskFinalizeEventResponse sendContributeAndFinalizeTransaction(final Contribution contribution,
                                                                                             final String resultLink,
                                                                                             final String callbackData) {
-        final String chainTaskId = contribution.getChainTaskId();
+        final String chainTaskId = contribution.chainTaskId();
 
         final RemoteCall<TransactionReceipt> contributeAndFinalizeCall = iexecHubContract.contributeAndFinalize(
                 stringToBytes(chainTaskId),
-                stringToBytes(contribution.getResultDigest()),
+                stringToBytes(contribution.resultDigest()),
                 StringUtils.isNotEmpty(resultLink) ? resultLink.getBytes(StandardCharsets.UTF_8) : new byte[0],
                 StringUtils.isNotEmpty(callbackData) ? stringToBytes(callbackData) : new byte[0],
-                contribution.getEnclaveChallenge(),
-                stringToBytes(contribution.getEnclaveSignature()),
-                stringToBytes(contribution.getWorkerPoolSignature()));
+                contribution.enclaveChallenge(),
+                stringToBytes(contribution.enclaveSignature()),
+                stringToBytes(contribution.workerPoolSignature()));
         log.info("Sent contributeAndFinalize [chainTaskId:{}, contribution:{}, resultLink:{}, callbackData:{}]",
                 chainTaskId, contribution, resultLink, callbackData);
 
