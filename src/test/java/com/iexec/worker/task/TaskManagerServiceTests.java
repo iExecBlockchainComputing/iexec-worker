@@ -16,7 +16,6 @@
 
 package com.iexec.worker.task;
 
-import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -29,6 +28,7 @@ import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotificationExtra;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.worker.chain.Contribution;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;

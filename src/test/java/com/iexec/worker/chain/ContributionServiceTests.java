@@ -16,7 +16,6 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.contribution.Contribution;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -350,12 +349,12 @@ class ContributionServiceTests {
         Contribution contribution = contributionService.getContribution(computedFile);
 
         assertNotNull(contribution);
-        assertEquals(chainTaskId, contribution.getChainTaskId());
-        assertEquals(resultDigest, contribution.getResultDigest());
-        assertEquals(resultSeal, contribution.getResultSeal());
-        assertEquals(TestUtils.ENCLAVE_ADDRESS, contribution.getEnclaveChallenge());
-        assertEquals("0xenclaveSignature", contribution.getEnclaveSignature());
-        assertEquals(teeWorkerpoolAuth.getSignature().getValue(), contribution.getWorkerPoolSignature());
+        assertEquals(chainTaskId, contribution.chainTaskId());
+        assertEquals(resultDigest, contribution.resultDigest());
+        assertEquals(resultSeal, contribution.resultSeal());
+        assertEquals(TestUtils.ENCLAVE_ADDRESS, contribution.enclaveChallenge());
+        assertEquals("0xenclaveSignature", contribution.enclaveSignature());
+        assertEquals(teeWorkerpoolAuth.getSignature().getValue(), contribution.workerPoolSignature());
 
         Contribution expectedContribution = Contribution.builder()
                 .chainTaskId(chainTaskId)

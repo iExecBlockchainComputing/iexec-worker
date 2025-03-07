@@ -16,7 +16,6 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.contribution.Contribution;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
@@ -31,7 +30,6 @@ import java.math.BigInteger;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
-
 
 @Slf4j
 @Service
@@ -125,16 +123,16 @@ public class ContributionService {
     }
 
     // returns ChainReceipt of the contribution if successful, null otherwise
-    public Optional<ChainReceipt> contribute(Contribution contribution) {
+    public Optional<ChainReceipt> contribute(final Contribution contribution) {
 
         IexecHubContract.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribution);
 
         if (contributeResponse == null) {
-            log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribution.getChainTaskId());
+            log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribution.chainTaskId());
             return Optional.empty();
         }
 
-        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribution.getChainTaskId(),
+        final ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribution.chainTaskId(),
                 iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);

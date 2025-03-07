@@ -16,7 +16,6 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.contribution.Contribution;
 import com.iexec.commons.poco.chain.ChainContribution;
 import com.iexec.commons.poco.chain.ChainContributionStatus;
 import com.iexec.commons.poco.chain.ChainReceipt;
