@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,60 +17,215 @@
 package com.iexec.worker.compute;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.api.ExitMessage;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.result.ResultService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-class ComputeControllerTests {
+import java.util.NoSuchElementException;
+
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+public class ComputeControllerTests {
 
     public static final String CHAIN_TASK_ID = "0xtask";
     public static final ReplicateStatusCause CAUSE = ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED;
+    private static final String AUTH_HEADER = "Bearer validToken";
+    private final ComputedFile computedFile = new ComputedFile(
+            "/path",
+            "callback",
+            "task_123",
+            "digest_abc",
+            "signature",
+            null
+    );
     private ComputeExitCauseService computeStageExitService;
     @Mock
     private ResultService resultService;
+    @Mock
+    private WorkerpoolAuthorizationService workerpoolAuthorizationService;
     private ComputeController computeController;
 
     @BeforeEach
     void setUp() {
         computeStageExitService = new ComputeExitCauseService();
-        computeController = new ComputeController(computeStageExitService, resultService);
+        computeController = new ComputeController(
+                computeStageExitService,
+                resultService,
+                workerpoolAuthorizationService
+        );
     }
 
+    // region sendExitCauseForGivenComputeStage
     @Test
     void sendExitCauseForComputeComputeStage() {
-        ResponseEntity<?> response =
-                computeController.sendExitCauseForGivenComputeStage(ComputeStage.PRE,
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<?> response =
+                computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
+                        ComputeStage.PRE,
                         CHAIN_TASK_ID,
                         new ExitMessage(CAUSE));
         Assertions.assertTrue(response.getStatusCode().is2xxSuccessful());
-        Assertions.assertEquals(200, response.getStatusCode().value());
+        Assertions.assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
     }
 
     @Test
     void shouldNotSendExitCauseForComputeComputeStageSinceNoCause() {
-        ResponseEntity<?> response =
-                computeController.sendExitCauseForGivenComputeStage(ComputeStage.PRE,
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<?> response =
+                computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
+                        ComputeStage.PRE,
                         CHAIN_TASK_ID,
-                        new ExitMessage());
-        Assertions.assertTrue(response.getStatusCode().is4xxClientError());
-        Assertions.assertEquals(400, response.getStatusCode().value());
+                        new ExitMessage(null));
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatusCode().value());
     }
 
     @Test
     void shouldNotSendExitCauseForComputeComputeStageSinceAlreadySet() {
-        ComputeStage stage = ComputeStage.PRE;
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ComputeStage stage = ComputeStage.PRE;
         computeStageExitService.setExitCause(stage, CHAIN_TASK_ID, CAUSE);
-        //try to re set
-        ResponseEntity<?> response =
-                computeController.sendExitCauseForGivenComputeStage(stage,
-                        CHAIN_TASK_ID,
-                        new ExitMessage(CAUSE));
-        Assertions.assertTrue(response.getStatusCode().is2xxSuccessful());
-        Assertions.assertEquals(208, response.getStatusCode().value());
+
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
+                AUTH_HEADER,
+                stage,
+                CHAIN_TASK_ID,
+                new ExitMessage(CAUSE)
+        );
+
+        Assertions.assertEquals(HttpStatus.ALREADY_REPORTED.value(), response.getStatusCode().value());
     }
 
+    @Test
+    void shouldReturnUnauthorizedWhenAuthFails() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(false);
+
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
+                AUTH_HEADER,
+                ComputeStage.PRE,
+                CHAIN_TASK_ID,
+                new ExitMessage(CAUSE)
+        );
+
+        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenWrongChainTaskId() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenThrow(NoSuchElementException.class);
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
+                AUTH_HEADER,
+                ComputeStage.PRE,
+                CHAIN_TASK_ID,
+                new ExitMessage(CAUSE)
+        );
+        Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode().value());
+    }
+    // endregion
+
+    // region sendComputedFileForTee
+
+    @Test
+    void shouldSendComputedFileForTeeSuccessfully() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        when(resultService.writeComputedFile(computedFile)).thenReturn(true);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
+        Assertions.assertEquals(CHAIN_TASK_ID, response.getBody());
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenAuthFailsForComputedFile() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(false);
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenWrongChainTaskIdForComputedFile() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenThrow(NoSuchElementException.class);
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenTaskIdMismatch() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        computedFile.setTaskId("0x_differentTask");
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenWriteComputedFileFails() {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        computedFile.setTaskId(CHAIN_TASK_ID);
+
+        when(resultService.writeComputedFile(computedFile)).thenReturn(false);
+
+        final ResponseEntity<String> response = computeController.sendComputedFileForTee(
+                AUTH_HEADER,
+                CHAIN_TASK_ID,
+                computedFile
+        );
+
+        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatusCode().value());
+    }
+    // endregion
 }

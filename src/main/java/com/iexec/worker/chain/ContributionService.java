@@ -19,11 +19,11 @@ package com.iexec.worker.chain;
 import com.iexec.common.contribution.Contribution;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.worker.result.ResultUtils;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
+import com.iexec.commons.poco.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -153,8 +153,8 @@ public class ContributionService {
         }
 
         String resultDigest = computedFile.getResultDigest();
-        String resultHash = ResultUtils.computeResultHash(chainTaskId, resultDigest);
-        String resultSeal = ResultUtils.computeResultSeal(workerWalletAddress, chainTaskId, resultDigest);
+        String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
+        String resultSeal = HashUtils.concatenateAndHash(workerWalletAddress, chainTaskId, resultDigest);
         String workerpoolSignature = workerpoolAuthorization.getSignature().getValue();
         String enclaveChallenge = workerpoolAuthorization.getEnclaveChallenge();
         String enclaveSignature = computedFile.getEnclaveSignature();
