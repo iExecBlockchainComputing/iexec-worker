@@ -38,7 +38,7 @@ public class SchedulerConfiguration {
     public SchedulerConfiguration(@Value("${core.protocol}") String protocol,
                                   @Value("${core.host}") String host,
                                   @Value("${core.port}") String port,
-                                  @Value("${core.poolAddress}") String poolAddress) {
+                                  @Value("${core.pool-address}") String poolAddress) {
         this.protocol = protocol;
         this.host = host;
         this.port = port;

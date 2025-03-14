@@ -32,7 +32,7 @@ class SchedulerConfigurationTests {
 
     @Test
     void shouldCreateBeanInstance() {
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.poolAddress=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
+        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.pool-address=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> {
                     assertThat(context).hasSingleBean(SchedulerClient.class);
@@ -45,7 +45,7 @@ class SchedulerConfigurationTests {
     @ParameterizedTest
     @ValueSource(strings = {"", "0x0"})
     void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress) {
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.poolAddress=" + poolAddress)
+        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.pool-address=" + poolAddress)
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> {
                     assertThatThrownBy(() -> context.getBean(SchedulerConfiguration.class))
