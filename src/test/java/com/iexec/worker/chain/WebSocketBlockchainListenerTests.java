@@ -19,7 +19,6 @@ package com.iexec.worker.chain;
 import com.iexec.worker.TestApplication;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,27 +39,31 @@ import static com.iexec.worker.chain.WebSocketBlockchainListener.TX_COUNT_METRIC
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-@Slf4j
 @Testcontainers
 @SpringBootTest(classes = TestApplication.class)
 @ActiveProfiles("test")
 class WebSocketBlockchainListenerTests {
 
+    private static final String CHAIN_SVC_NAME = "chain";
+    private static final int CHAIN_SVC_PORT = 8545;
+    private static final String CORE_SVC_NAME = "core";
+    private static final int CORE_SVC_PORT = 8080;
+
     @Container
     static ComposeContainer environment = new ComposeContainer(new File("docker-compose.yml"))
-            .withExposedService("chain", 8545, Wait.forListeningPort())
-            .withExposedService("core-mock", 8080, Wait.forListeningPort())
+            .withExposedService(CHAIN_SVC_NAME, CHAIN_SVC_PORT, Wait.forListeningPort())
+            .withExposedService(CORE_SVC_NAME, CORE_SVC_PORT, Wait.forListeningPort())
             .withPull(true);
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("core.protocol", () -> "http");
-        registry.add("core.host", () -> environment.getServiceHost("core-mock", 8080));
-        registry.add("core.port", () -> environment.getServicePort("core-mock", 8080));
+        registry.add("core.host", () -> environment.getServiceHost(CORE_SVC_NAME, CORE_SVC_PORT));
+        registry.add("core.port", () -> environment.getServicePort(CORE_SVC_NAME, CORE_SVC_PORT));
         registry.add("core.pool-address", () -> "0x1");
         registry.add("worker.override-blockchain-node-address", () -> getServiceUrl(
-                environment.getServiceHost("chain", 8545),
-                environment.getServicePort("chain", 8545)));
+                environment.getServiceHost(CHAIN_SVC_NAME, CHAIN_SVC_PORT),
+                environment.getServicePort(CHAIN_SVC_NAME, CHAIN_SVC_PORT)));
     }
 
     @Autowired
@@ -70,7 +73,6 @@ class WebSocketBlockchainListenerTests {
     private Web3jService web3jService;
 
     private static String getServiceUrl(String serviceHost, int servicePort) {
-        log.info("service url http://{}:{}", serviceHost, servicePort);
         return "http://" + serviceHost + ":" + servicePort;
     }
 
