@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Use TEE framework version of dApp to retrieve pre/post-compute properties via SMS endpoint. (#630)
 - Validate authorization proof for pre/post-compute requests. (#635)
+- Add `WebSocketBlockchainListener` to fetch latest block without polling the blockchain network. (#639)
 
 ### Quality
 
