@@ -18,9 +18,11 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
+import com.iexec.commons.poco.utils.SignatureUtils;
 import com.iexec.commons.poco.utils.TestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.commons.poco.utils.TestUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -300,7 +303,7 @@ class ContributionServiceTests {
         String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
         String resultSeal = HashUtils.concatenateAndHash(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
-        WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
+        WorkerpoolAuthorization teeWorkerpoolAuth = getTeeWorkerpoolAuth();
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
         when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(false);
 
@@ -333,7 +336,7 @@ class ContributionServiceTests {
         String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
         String resultSeal = HashUtils.concatenateAndHash(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
-        WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
+        WorkerpoolAuthorization teeWorkerpoolAuth = getTeeWorkerpoolAuth();
         teeWorkerpoolAuth.setEnclaveChallenge(TestUtils.ENCLAVE_ADDRESS);
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
         when(enclaveAuthorizationService.
@@ -367,6 +370,17 @@ class ContributionServiceTests {
                 .build();
         assertEquals(contribution, expectedContribution);
 
+    }
+
+    WorkerpoolAuthorization getTeeWorkerpoolAuth() {
+        final String hash = HashUtils.concatenateAndHash(WORKER_ADDRESS, CHAIN_TASK_ID, ENCLAVE_ADDRESS);
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(hash, POOL_PRIVATE);
+        return WorkerpoolAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .workerWallet(WORKER_ADDRESS)
+                .enclaveChallenge(ENCLAVE_ADDRESS)
+                .signature(signature)
+                .build();
     }
 
 }
