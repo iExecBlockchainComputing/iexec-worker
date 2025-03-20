@@ -338,7 +338,7 @@ class ContributionServiceTests {
         final String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
         final String resultSeal = HashUtils.concatenateAndHash(Credentials.create(WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
-        WorkerpoolAuthorization teeWorkerpoolAuth = getTeeWorkerpoolAuth();
+        final WorkerpoolAuthorization teeWorkerpoolAuth = getTeeWorkerpoolAuth();
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
         when(enclaveAuthorizationService.
                 isVerifiedEnclaveSignature(anyString(), anyString(), anyString(), anyString(), anyString()))
