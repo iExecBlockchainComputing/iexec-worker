@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 - Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
 - Harmonize YML internal variables to proper case. (#638)
+- Stop using `TestUtils` in `ContributionServiceTests`. (#640)
 
 ### Breaking API changes
 

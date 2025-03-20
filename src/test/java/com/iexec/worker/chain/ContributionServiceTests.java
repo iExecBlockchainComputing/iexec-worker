@@ -18,10 +18,11 @@ package com.iexec.worker.chain;
 
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
+import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
-import com.iexec.commons.poco.utils.TestUtils;
+import com.iexec.commons.poco.utils.SignatureUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,10 @@ class ContributionServiceTests {
 
     private static final String CHAIN_DEAL_ID = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
     private static final String WORKER_WALLET_ADDRESS = "0x49713c374C0D5259A0c0c4fCCd1254CdFd631b80";
+    private static final String ENCLAVE_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    private static final String CHAIN_TASK_ID = "0x1111111111111111111111111111111111111111111111111111111111111111";
+    private static final String POOL_PRIVATE = "0xe2a973b083fae8043543f15313955aecee9de809a318656c1cfb22d3a6d52de1";
+    private static final String WORKER_PRIVATE = "0xd0db6df0ebcd1d41439d91d86c5fc5c1806ee9cd8e71e3d5544bb7294b435c26";
 
     @Mock
     private IexecHubService iexecHubService;
@@ -294,21 +299,21 @@ class ContributionServiceTests {
 
     @Test
     void getContribution() {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000002";
 
-        String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
-        String resultSeal = HashUtils.concatenateAndHash(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
+        final String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
+        final String resultSeal = HashUtils.concatenateAndHash(Credentials.create(WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
-        WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
+        final WorkerpoolAuthorization teeWorkerpoolAuth = getTeeWorkerpoolAuth();
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
         when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(false);
 
-        ComputedFile computedFile = ComputedFile.builder()
+        final ComputedFile computedFile = ComputedFile.builder()
                 .taskId(chainTaskId)
                 .resultDigest(resultDigest)
                 .build();
-        Contribution contribution = contributionService.getContribution(computedFile);
+        final Contribution contribution = contributionService.getContribution(computedFile);
 
         assertNotNull(contribution);
 
@@ -327,46 +332,56 @@ class ContributionServiceTests {
 
     @Test
     void getContributionWithTee() {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000002";
-        String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        final String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
-        String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
-        String resultSeal = HashUtils.concatenateAndHash(Credentials.create(TestUtils.WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
+        final String resultHash = HashUtils.concatenateAndHash(chainTaskId, resultDigest);
+        final String resultSeal = HashUtils.concatenateAndHash(Credentials.create(WORKER_PRIVATE).getAddress(), chainTaskId, resultDigest);
 
-        WorkerpoolAuthorization teeWorkerpoolAuth = TestUtils.getTeeWorkerpoolAuth();
-        teeWorkerpoolAuth.setEnclaveChallenge(TestUtils.ENCLAVE_ADDRESS);
+        final WorkerpoolAuthorization teeWorkerpoolAuth = getTeeWorkerpoolAuth();
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(teeWorkerpoolAuth);
         when(enclaveAuthorizationService.
                 isVerifiedEnclaveSignature(anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(true);
         when(iexecHubService.isTeeTask(chainTaskId)).thenReturn(true);
 
-        ComputedFile computedFile = ComputedFile.builder()
+        final ComputedFile computedFile = ComputedFile.builder()
                 .taskId(chainTaskId)
                 .resultDigest(resultDigest)
                 .enclaveSignature("0xenclaveSignature")
                 .build();
-        Contribution contribution = contributionService.getContribution(computedFile);
+        final Contribution contribution = contributionService.getContribution(computedFile);
 
         assertNotNull(contribution);
         assertEquals(chainTaskId, contribution.chainTaskId());
         assertEquals(resultDigest, contribution.resultDigest());
         assertEquals(resultSeal, contribution.resultSeal());
-        assertEquals(TestUtils.ENCLAVE_ADDRESS, contribution.enclaveChallenge());
+        assertEquals(ENCLAVE_ADDRESS, contribution.enclaveChallenge());
         assertEquals("0xenclaveSignature", contribution.enclaveSignature());
         assertEquals(teeWorkerpoolAuth.getSignature().getValue(), contribution.workerPoolSignature());
 
-        Contribution expectedContribution = Contribution.builder()
+        final Contribution expectedContribution = Contribution.builder()
                 .chainTaskId(chainTaskId)
                 .resultDigest(resultDigest)
                 .resultHash(resultHash)
                 .resultSeal(resultSeal)
-                .enclaveChallenge(TestUtils.ENCLAVE_ADDRESS)
+                .enclaveChallenge(ENCLAVE_ADDRESS)
                 .enclaveSignature("0xenclaveSignature")
                 .workerPoolSignature(teeWorkerpoolAuth.getSignature().getValue())
                 .build();
         assertEquals(contribution, expectedContribution);
 
+    }
+
+    private WorkerpoolAuthorization getTeeWorkerpoolAuth() {
+        final String hash = HashUtils.concatenateAndHash(WORKER_WALLET_ADDRESS, CHAIN_TASK_ID, ENCLAVE_ADDRESS);
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(hash, POOL_PRIVATE);
+        return WorkerpoolAuthorization.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .workerWallet(WORKER_WALLET_ADDRESS)
+                .enclaveChallenge(ENCLAVE_ADDRESS)
+                .signature(signature)
+                .build();
     }
 
 }
