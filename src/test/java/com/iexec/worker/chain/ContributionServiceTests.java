@@ -50,9 +50,9 @@ class ContributionServiceTests {
     private static final String CHAIN_DEAL_ID = "0x1566a9348a284d12f7d81fa017fbc440fd501ddef5746821860ffda7113eb847";
     private static final String WORKER_WALLET_ADDRESS = "0x49713c374C0D5259A0c0c4fCCd1254CdFd631b80";
     private static final String ENCLAVE_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-    public static final String CHAIN_TASK_ID = "0x1111111111111111111111111111111111111111111111111111111111111111";
-    public static final String POOL_PRIVATE = "0xe2a973b083fae8043543f15313955aecee9de809a318656c1cfb22d3a6d52de1";
-    public static final String WORKER_PRIVATE = "0xd0db6df0ebcd1d41439d91d86c5fc5c1806ee9cd8e71e3d5544bb7294b435c26";
+    private static final String CHAIN_TASK_ID = "0x1111111111111111111111111111111111111111111111111111111111111111";
+    private static final String POOL_PRIVATE = "0xe2a973b083fae8043543f15313955aecee9de809a318656c1cfb22d3a6d52de1";
+    private static final String WORKER_PRIVATE = "0xd0db6df0ebcd1d41439d91d86c5fc5c1806ee9cd8e71e3d5544bb7294b435c26";
 
     @Mock
     private IexecHubService iexecHubService;
