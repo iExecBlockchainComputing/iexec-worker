@@ -20,28 +20,28 @@ import com.iexec.core.api.SchedulerClient;
 import com.iexec.core.api.SchedulerClientBuilder;
 import feign.Logger;
 import jakarta.annotation.PostConstruct;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.validator.constraints.URL;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.validation.annotation.Validated;
 
+@Getter
 @Configuration
+@Validated
 public class SchedulerConfiguration {
 
-    private final String protocol;
-    private final String host;
-    private final String port;
-    @Getter
+    @URL(message = "URL must be a valid URL")
+    @NotEmpty(message = "URL must not be empty")
+    private final String url;
     private final String poolAddress;
 
-    public SchedulerConfiguration(@Value("${core.protocol}") String protocol,
-                                  @Value("${core.host}") String host,
-                                  @Value("${core.port}") String port,
+    public SchedulerConfiguration(@Value("${core.url}") String url,
                                   @Value("${core.pool-address}") String poolAddress) {
-        this.protocol = protocol;
-        this.host = host;
-        this.port = port;
+        this.url = url;
         this.poolAddress = poolAddress;
     }
 
@@ -51,10 +51,6 @@ public class SchedulerConfiguration {
             throw new MissingConfigurationException(
                     "The workerpool address must be filled in");
         }
-    }
-
-    public String getUrl() {
-        return String.format("%s://%s:%s", protocol, host, port);
     }
 
     @Bean

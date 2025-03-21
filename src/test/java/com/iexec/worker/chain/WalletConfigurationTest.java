@@ -52,7 +52,7 @@ class WalletConfigurationTest {
     void shouldCreateBeans() throws Exception {
         final String tempWalletName = WalletUtils.generateFullNewWalletFile("changeit", tempWalletDir);
         final String tempWalletPath = tempWalletDir.getAbsolutePath() + File.separator + tempWalletName;
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=" + wmServer.getMappedPort(WIREMOCK_PORT),
+        runner.withPropertyValues("core.url=http://localhost:" + wmServer.getMappedPort(WIREMOCK_PORT),
                         "worker.name=worker", "worker.worker-base-dir=/tmp", "worker.override-available-cpu-count=",
                         "worker.gpu-enabled=false", "worker.gas-price-multiplier=1.0", "worker.gas-price-cap=22000000000",
                         "worker.override-blockchain-node-address=", "worker.developer-logger-enabled=true",

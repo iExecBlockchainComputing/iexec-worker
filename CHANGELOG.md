@@ -9,13 +9,14 @@ All notable changes to this project will be documented in this file.
 - Use TEE framework version of dApp to retrieve pre/post-compute properties via SMS endpoint. (#630)
 - Validate authorization proof for pre/post-compute requests. (#635)
 - Add `WebSocketBlockchainListener` to fetch latest block without polling the blockchain network. (#639)
+- Merge split URL configuration properties (protocol, host, port) to a single URL field to offer URL validation at startup. (#641)
 
 ### Quality
 
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 - Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
-- Harmonize YML internal variables to proper case. (#638)
+- Harmonize YML internal variables to proper case. (#638 #641)
 - Stop using `TestUtils` in `ContributionServiceTests`. (#640)
 
 ### Breaking API changes
