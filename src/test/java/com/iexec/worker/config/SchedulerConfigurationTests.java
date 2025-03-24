@@ -76,12 +76,12 @@ class SchedulerConfigurationTests {
     @Test
     void shouldPassWithValidUrl() {
         runner.withPropertyValues(
-                        "core.url=http:localhost:8080",
+                        "core.url=http://localhost:8080",
                         "core.pool-address=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
                 .run(context -> {
                     SchedulerConfiguration config = context.getBean(SchedulerConfiguration.class);
-                    assertThat(config.getUrl()).isEqualTo("http:localhost:8080");
+                    assertThat(config.getUrl()).isEqualTo("http://localhost:8080");
                 });
     }
 }
