@@ -16,7 +16,6 @@ All notable changes to this project will be documented in this file.
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 - Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
 - Stop using `TestUtils` in `ContributionServiceTests`. (#640)
-- Merge split URL configuration properties (protocol, host, port) to a single URL field to offer URL validation at startup. (#641)
 
 ### Breaking API changes
 
