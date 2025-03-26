@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.boot.context.annotation.UserConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -32,10 +31,7 @@ class SchedulerConfigurationTests {
 
     @Test
     void shouldCreateBeanInstance() {
-        runner.withPropertyValues(
-                        "core.url=http://localhost:13000",
-                        "core.pool-address=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
-                .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
+        runner.withBean(SchedulerConfiguration.class, "http://localhost:13000", "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .run(context -> {
                     assertThat(context).hasSingleBean(SchedulerClient.class);
                     assertThat(context).getBean("schedulerConfiguration", SchedulerConfiguration.class)
@@ -47,10 +43,7 @@ class SchedulerConfigurationTests {
     @ParameterizedTest
     @ValueSource(strings = {"", "0x0"})
     void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress) {
-        runner.withPropertyValues(
-                        "core.url=http://localhost:13000",
-                        "core.pool-address=" + poolAddress)
-                .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
+        runner.withBean(SchedulerConfiguration.class, "http://localhost:13000", poolAddress)
                 .run(context -> {
                     assertThatThrownBy(() -> context.getBean(SchedulerConfiguration.class))
                             .isInstanceOf(IllegalStateException.class)
@@ -61,10 +54,7 @@ class SchedulerConfigurationTests {
 
     @Test
     void shouldFailWhenUrlIsEmpty() {
-        runner.withPropertyValues(
-                        "core.url=",
-                        "core.pool-address=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
-                .withUserConfiguration(SchedulerConfiguration.class)
+        runner.withBean(SchedulerConfiguration.class, "", "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
@@ -75,10 +65,7 @@ class SchedulerConfigurationTests {
 
     @Test
     void shouldPassWithValidUrl() {
-        runner.withPropertyValues(
-                        "core.url=http://localhost:8080",
-                        "core.pool-address=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
-                .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
+        runner.withBean(SchedulerConfiguration.class, "http://localhost:8080", "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .run(context -> {
                     SchedulerConfiguration config = context.getBean(SchedulerConfiguration.class);
                     assertThat(config.getUrl()).isEqualTo("http://localhost:8080");

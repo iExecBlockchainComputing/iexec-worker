@@ -21,29 +21,22 @@ import com.iexec.core.api.SchedulerClientBuilder;
 import feign.Logger;
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.constraints.NotEmpty;
-import lombok.Getter;
+import lombok.Value;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.URL;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
 
-@Getter
-@Configuration
+@Value
 @Validated
+@ConfigurationProperties(prefix = "core")
 public class SchedulerConfiguration {
 
     @URL(message = "URL must be a valid URL")
     @NotEmpty(message = "URL must not be empty")
-    private final String url;
-    private final String poolAddress;
-
-    public SchedulerConfiguration(@Value("${core.url}") String url,
-                                  @Value("${core.pool-address}") String poolAddress) {
-        this.url = url;
-        this.poolAddress = poolAddress;
-    }
+    String url;
+    String poolAddress;
 
     @PostConstruct
     private void postConstruct() {
@@ -55,6 +48,6 @@ public class SchedulerConfiguration {
 
     @Bean
     SchedulerClient schedulerClient() {
-        return SchedulerClientBuilder.getInstance(Logger.Level.FULL, getUrl());
+        return SchedulerClientBuilder.getInstance(Logger.Level.FULL, url);
     }
 }
