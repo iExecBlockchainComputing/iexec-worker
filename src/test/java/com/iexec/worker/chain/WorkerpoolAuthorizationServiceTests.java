@@ -88,7 +88,7 @@ class WorkerpoolAuthorizationServiceTests {
 
     @Test
     void shouldFailToPutWorkerpoolAuthorizationIfChainTaskIdIsNullInWorkerpoolAuthorization() {
-        final WorkerpoolAuthorization workerpoolAuthorization = WorkerpoolAuthorization.builder().build();
+        final WorkerpoolAuthorization workerpoolAuthorization = WorkerpoolAuthorization.builder().chainTaskId(null).build();
         assertFalse(workerpoolAuthorizationService.putWorkerpoolAuthorization(workerpoolAuthorization));
     }
 
