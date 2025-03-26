@@ -2,9 +2,7 @@ server:
   port: ${IEXEC_WORKER_PORT:13100}
 
 core:
-  protocol: ${IEXEC_CORE_PROTOCOL:http}
-  host: ${IEXEC_CORE_HOST:localhost}
-  port: ${IEXEC_CORE_PORT:13000}
+  url: ${IEXEC_CORE_URL:http://localhost:13000}
   pool-address: ${POOL_ADDRESS:0x0}
 
 worker:

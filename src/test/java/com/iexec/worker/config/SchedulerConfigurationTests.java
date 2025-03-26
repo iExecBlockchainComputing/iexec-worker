@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.boot.context.annotation.UserConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -32,8 +31,7 @@ class SchedulerConfigurationTests {
 
     @Test
     void shouldCreateBeanInstance() {
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.pool-address=0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
-                .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
+        runner.withBean(SchedulerConfiguration.class, "http://localhost:13000", "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .run(context -> {
                     assertThat(context).hasSingleBean(SchedulerClient.class);
                     assertThat(context).getBean("schedulerConfiguration", SchedulerConfiguration.class)
@@ -45,13 +43,32 @@ class SchedulerConfigurationTests {
     @ParameterizedTest
     @ValueSource(strings = {"", "0x0"})
     void shouldFailedAndRaisedExceptionWhenPoolAddressIsInvalid(String poolAddress) {
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=13000", "core.pool-address=" + poolAddress)
-                .withConfiguration(UserConfigurations.of(SchedulerConfiguration.class))
+        runner.withBean(SchedulerConfiguration.class, "http://localhost:13000", poolAddress)
                 .run(context -> {
                     assertThatThrownBy(() -> context.getBean(SchedulerConfiguration.class))
                             .isInstanceOf(IllegalStateException.class)
                             .hasCauseInstanceOf(BeanCreationException.class)
                             .hasRootCauseMessage("The workerpool address must be filled in");
+                });
+    }
+
+    @Test
+    void shouldFailWhenUrlIsEmpty() {
+        runner.withBean(SchedulerConfiguration.class, "", "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .isInstanceOf(BeanCreationException.class)
+                            .hasMessageContaining("Error creating bean with name 'schedulerClient'");
+                });
+    }
+
+    @Test
+    void shouldPassWithValidUrl() {
+        runner.withBean(SchedulerConfiguration.class, "http://localhost:8080", "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
+                .run(context -> {
+                    SchedulerConfiguration config = context.getBean(SchedulerConfiguration.class);
+                    assertThat(config.getUrl()).isEqualTo("http://localhost:8080");
                 });
     }
 }

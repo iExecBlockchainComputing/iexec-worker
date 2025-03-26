@@ -15,7 +15,6 @@ All notable changes to this project will be documented in this file.
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 - Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
-- Harmonize YML internal variables to proper case. (#638)
 - Stop using `TestUtils` in `ContributionServiceTests`. (#640)
 
 ### Breaking API changes
@@ -24,6 +23,8 @@ All notable changes to this project will be documented in this file.
 - Move `WorkerModel` from `iexec-common` to `iexec-core-library`. (#633)
 - Move `TaskAbortCause` from `iexec-commons-poco` to `iexec-core-library`. (#634)
 - Move `Contribution` from `iexec-common` to `iexec-worker`. (#636)
+- Harmonize YML internal variables to proper case. (#638 #641)
+- Merge split URL configuration properties (protocol, host, port) to a single URL field to offer URL validation at startup. (#641)
 
 ### Dependency Upgrades
 

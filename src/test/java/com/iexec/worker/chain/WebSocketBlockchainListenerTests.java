@@ -57,9 +57,10 @@ class WebSocketBlockchainListenerTests {
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("core.protocol", () -> "http");
-        registry.add("core.host", () -> environment.getServiceHost(CORE_SVC_NAME, CORE_SVC_PORT));
-        registry.add("core.port", () -> environment.getServicePort(CORE_SVC_NAME, CORE_SVC_PORT));
+        final String coreHost = environment.getServiceHost(CORE_SVC_NAME, CORE_SVC_PORT);
+        final int corePort = environment.getServicePort(CORE_SVC_NAME, CORE_SVC_PORT);
+
+        registry.add("core.url", () -> getServiceUrl(coreHost, corePort));
         registry.add("core.pool-address", () -> "0x1");
         registry.add("worker.override-blockchain-node-address", () -> getServiceUrl(
                 environment.getServiceHost(CHAIN_SVC_NAME, CHAIN_SVC_PORT),
