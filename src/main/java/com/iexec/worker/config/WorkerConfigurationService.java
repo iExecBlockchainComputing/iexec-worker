@@ -138,12 +138,12 @@ public class WorkerConfigurationService {
      * get max(numberOfJvmCpus -1, 1).
      */
     public int getCpuCount() {
-        int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
+        final int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
         return Objects.requireNonNullElse(overrideAvailableCpuCount, defaultAvailableCpuCount);
     }
 
     public int getMemorySize() {
-        com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
+        final com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
         return (int) os.getTotalMemorySize() / (1024 * 1024 * 1024); // conversion to GB
     }
 

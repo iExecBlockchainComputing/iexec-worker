@@ -142,14 +142,14 @@ class SmsServiceTests {
     // region createTeeSession
     @Test
     void shouldCreateTeeSession() throws TeeSessionGenerationException {
-        Signature signatureStub = new Signature(signature);
+        final Signature signatureStub = new Signature(signature);
         when(signerService.signMessageHash(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
 
-        TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
+        final TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
         assertThat(returnedSessionId).isEqualTo(SESSION);
         verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
     }
@@ -180,7 +180,7 @@ class SmsServiceTests {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
 
         // Purging the task
-        boolean purged = smsService.purgeTask(CHAIN_TASK_ID);
+        final boolean purged = smsService.purgeTask(CHAIN_TASK_ID);
         assertTrue(purged);
     }
 
