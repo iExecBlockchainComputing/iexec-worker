@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.io.File;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static com.iexec.commons.containers.client.DockerClientInstance.DEFAULT_DOCKER_REGISTRY;
@@ -422,8 +421,7 @@ class DockerServiceTests {
         dockerService.addToRunningContainersRecord("containerName1");
         dockerService.addToRunningContainersRecord("containerName2");
 
-        Predicate<String> containsChainTaskId = name -> name.contains(CHAIN_TASK_ID);
-        dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
+        dockerService.stopRunningContainersWithNameContaining(CHAIN_TASK_ID);
         // Verify we removed all containers matching the predicate
         verify(dockerService, times(3)).stopRunningContainer(anyString());
         // Verify we removed only containers matching the predicate

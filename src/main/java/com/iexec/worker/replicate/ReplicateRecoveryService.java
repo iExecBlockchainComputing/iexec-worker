@@ -96,7 +96,7 @@ public class ReplicateRecoveryService {
         }
 
         final ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
-        resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
+        resultService.saveResultInfo(taskDescription, computedFile);
         subscriptionService.subscribeToTopic(chainTaskId);
         applicationEventPublisher.publishEvent(missedTaskNotification);
 

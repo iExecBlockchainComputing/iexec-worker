@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
 - Validate authorization proof for pre/post-compute requests. (#635)
 - Add `WebSocketBlockchainListener` to fetch latest block without polling the blockchain network. (#639)
 
+### Bug Fixes
+
+- Add synchronized keyword on abort method to avoid concurrency issues on file system. (#643)
+
 ### Quality
 
 - Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
@@ -17,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
 - Stop using `TestUtils` in `ContributionServiceTests`. (#640)
 - Fix several issues raised by SonarQube Cloud. (#642)
+- Improve JavaDoc comments in `ComputeManagerService` and `DockerService`. (#643)
 
 ### Breaking API changes
 
