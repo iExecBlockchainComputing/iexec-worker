@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -119,6 +118,7 @@ class ComputeManagerServiceTests {
         when(dockerRegistryConfiguration.getMaxPullTimeout()).thenReturn(Duration.of(30, ChronoUnit.MINUTES));
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.of(7, ChronoUnit.MINUTES))).thenReturn(true);
+        when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(true);
         assertThat(computeManagerService.downloadApp(taskDescription)).isTrue();
     }
 
@@ -127,6 +127,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         when(dockerService.getClient(taskDescription.getAppUri())).thenReturn(dockerClient);
         when(dockerClient.pullImage(taskDescription.getAppUri(), Duration.ofMinutes(0))).thenReturn(false);
+        when(dockerClient.isImagePresent(taskDescription.getAppUri())).thenReturn(false);
         assertThat(computeManagerService.downloadApp(taskDescription)).isFalse();
     }
 
@@ -349,7 +350,7 @@ class ComputeManagerServiceTests {
         verify(postComputeService).runStandardPostCompute(taskDescription);
         verify(resultService).readComputedFile(CHAIN_TASK_ID);
         verify(resultService).computeResultDigest(computedFile);
-        verify(resultService).saveResultInfo(anyString(), any(), any());
+        verify(resultService).saveResultInfo(any(), any());
     }
 
     @ParameterizedTest
@@ -390,7 +391,7 @@ class ComputeManagerServiceTests {
         verify(postComputeService).runTeePostCompute(taskDescription, SECURE_SESSION);
         verify(resultService).readComputedFile(CHAIN_TASK_ID);
         verify(resultService).computeResultDigest(computedFile);
-        verify(resultService).saveResultInfo(anyString(), any(), any());
+        verify(resultService).saveResultInfo(any(), any());
     }
 
     @Test
@@ -458,13 +459,13 @@ class ComputeManagerServiceTests {
     // region abort
     @Test
     void shouldNotAbortWhenContainersAreStillRunning() {
-        when(dockerService.stopRunningContainersWithNamePredicate(any())).thenReturn(1L);
+        when(dockerService.stopRunningContainersWithNameContaining(any())).thenReturn(1L);
         assertThat(computeManagerService.abort(CHAIN_TASK_ID)).isFalse();
     }
 
     @Test
     void shouldAbortTask() {
-        when(dockerService.stopRunningContainersWithNamePredicate(any())).thenReturn(0L);
+        when(dockerService.stopRunningContainersWithNameContaining(any())).thenReturn(0L);
         assertThat(computeManagerService.abort(CHAIN_TASK_ID)).isTrue();
     }
     // endregion

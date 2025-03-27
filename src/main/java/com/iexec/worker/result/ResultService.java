@@ -116,7 +116,7 @@ public class ResultService implements Purgeable {
                 + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString.getBytes());
     }
 
-    public void saveResultInfo(final String chainTaskId, final TaskDescription taskDescription,
+    public void saveResultInfo(final TaskDescription taskDescription,
                                final ComputedFile computedFile) {
         final ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
@@ -125,7 +125,7 @@ public class ResultService implements Purgeable {
                 .datasetUri(taskDescription.getDatasetUri())
                 .build();
 
-        resultInfoMap.put(chainTaskId, resultInfo);
+        resultInfoMap.put(taskDescription.getChainTaskId(), resultInfo);
     }
 
     public ResultModel getResultModelWithZip(final String chainTaskId) {
@@ -409,12 +409,11 @@ public class ResultService implements Purgeable {
         final boolean deletedInMap = !resultInfoMap.containsKey(chainTaskId);
         final boolean deletedTaskFolder = !new File(taskBaseDir).exists();
 
-        boolean deleted = deletedInMap && deletedTaskFolder;
-        if (deletedTaskFolder) {
+        final boolean deleted = deletedInMap && deletedTaskFolder;
+        if (deleted) {
             log.info("The result of the chainTaskId has been deleted [chainTaskId:{}]", chainTaskId);
         } else {
-            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, " +
-                            "deletedTaskFolder:{}]",
+            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, deletedTaskFolder:{}]",
                     chainTaskId, deletedInMap, deletedTaskFolder);
         }
 

@@ -452,10 +452,10 @@ public class TaskManagerService {
      * @param chainTaskId Task ID
      * @return {@literal true} if all cleanup operations went well, {@literal false} otherwise
      */
-    boolean abort(String chainTaskId) {
+    synchronized boolean abort(final String chainTaskId) {
         log.info("Aborting task [chainTaskId:{}]", chainTaskId);
-        boolean allContainersStopped = computeManagerService.abort(chainTaskId);
-        boolean allServicesPurged = purgeService.purgeAllServices(chainTaskId);
+        final boolean allContainersStopped = computeManagerService.abort(chainTaskId);
+        final boolean allServicesPurged = purgeService.purgeAllServices(chainTaskId);
         final boolean isSuccess = allContainersStopped && allServicesPurged;
         if (!isSuccess) {
             log.error("Failed to abort task [chainTaskId:{}, containers:{}, services:{}]",

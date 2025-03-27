@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,18 +202,18 @@ public class DockerService {
     }
 
     /**
-     * Stop running containers with names that match the provided predicate and
+     * Stop running containers with names that contain the provided pattern and
      * remove them from the running containers record. This is typically used when
      * the worker aborts a task and needs to stop its pre-compute, compute, or
      * post-compute containers. The container itself is not removed here as it is
      * removed by its watcher thread.
      *
-     * @param containerNamePredicate predicate that contains a condition on the
-     *                               container name.
+     * @param pattern containers whose name contains this pattern will be removed.
      * @return The remaining count of containers matching the provided predicate.
      */
-    public long stopRunningContainersWithNamePredicate(Predicate<String> containerNamePredicate) {
-        log.info("Stopping containers with names matching the provided predicate");
+    public long stopRunningContainersWithNameContaining(final String pattern) {
+        log.info("Stopping containers with names containing the following pattern [pattern:{}]", pattern);
+        final Predicate<String> containerNamePredicate = name -> name.contains(pattern);
         List.copyOf(runningContainersRecord).stream()
                 .filter(containerNamePredicate)
                 .forEach(this::stopRunningContainer);

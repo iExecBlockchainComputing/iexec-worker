@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Predicate;
 
 @Slf4j
 @Service
@@ -77,6 +76,15 @@ public class ComputeManagerService {
         this.resultService = resultService;
     }
 
+    /**
+     * Download OCI image of the application to execute.
+     * <p>
+     * The download fails for a bad task description or if a timeout is reached.
+     * The timeout is computed by calling {@link #computeImagePullTimeout(TaskDescription)}.
+     *
+     * @param taskDescription Task description containing application type and download URI
+     * @return true if download succeeded, false otherwise
+     */
     public boolean downloadApp(TaskDescription taskDescription) {
         if (taskDescription == null || taskDescription.getAppType() == null) {
             return false;
@@ -88,8 +96,9 @@ public class ComputeManagerService {
         }
 
         final long pullTimeout = computeImagePullTimeout(taskDescription);
-        return dockerService.getClient(taskDescription.getAppUri())
+        dockerService.getClient(taskDescription.getAppUri())
                 .pullImage(taskDescription.getAppUri(), Duration.of(pullTimeout, ChronoUnit.MINUTES));
+        return dockerService.getClient(taskDescription.getAppUri()).isImagePresent(taskDescription.getAppUri());
     }
 
     /**
@@ -139,35 +148,45 @@ public class ComputeManagerService {
     }
 
     /**
-     * Standard tasks: download secrets && decrypt dataset (TODO: rewritte or remove)
-     * <p>
+     * Execute pre-compute stage for standard and TEE tasks.
+     * <ul>
+     * <li>Standard tasks: Nothing is executed, an empty result is returned
+     * <li>TEE tasks: Call {@link PreComputeService#runTeePreCompute(TaskDescription, WorkerpoolAuthorization)}
+     * </ul>
      * TEE tasks: download pre-compute and post-compute images,
      * create SCONE secure session, and run pre-compute container.
      *
-     * @param taskDescription
-     * @param workerpoolAuth
-     * @return
+     * @param taskDescription Description of the task
+     * @param workerpoolAuth  Authorization to contribute delivered by the scheduler for the given task
+     * @return {@code PreComputeResponse} instance
+     * @see PreComputeService#runTeePreCompute(TaskDescription, WorkerpoolAuthorization)
      */
-    public PreComputeResponse runPreCompute(TaskDescription taskDescription,
-                                            WorkerpoolAuthorization workerpoolAuth) {
+    public PreComputeResponse runPreCompute(final TaskDescription taskDescription,
+                                            final WorkerpoolAuthorization workerpoolAuth) {
         log.info("Running pre-compute [chainTaskId:{}, isTee:{}]",
-                taskDescription.getChainTaskId(),
-                taskDescription.isTeeTask());
+                taskDescription.getChainTaskId(), taskDescription.isTeeTask());
 
         if (taskDescription.isTeeTask()) {
-            return preComputeService.runTeePreCompute(taskDescription,
-                            workerpoolAuth);
+            return preComputeService.runTeePreCompute(taskDescription, workerpoolAuth);
         }
         return PreComputeResponse.builder().build();
     }
 
-    public AppComputeResponse runCompute(TaskDescription taskDescription,
-                                         TeeSessionGenerationResponse secureSession) {
-        String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Running compute [chainTaskId:{}, isTee:{}]", chainTaskId,
-                taskDescription.isTeeTask());
+    /**
+     * Execute application stage for standard and TEE tasks.
+     *
+     * @param taskDescription Description of the task
+     * @param secureSession   Session ID and session storage URL for TEE tasks
+     * @return {@code AppComputeResponse} instance
+     * @see AppComputeService#runCompute(TaskDescription, TeeSessionGenerationResponse)
+     */
+    public AppComputeResponse runCompute(final TaskDescription taskDescription,
+                                         final TeeSessionGenerationResponse secureSession) {
+        final String chainTaskId = taskDescription.getChainTaskId();
+        log.info("Running compute [chainTaskId:{}, isTee:{}]",
+                chainTaskId, taskDescription.isTeeTask());
 
-        AppComputeResponse appComputeResponse =
+        final AppComputeResponse appComputeResponse =
                 appComputeService.runCompute(taskDescription, secureSession);
 
         if (appComputeResponse.isSuccessful()) {
@@ -179,55 +198,58 @@ public class ComputeManagerService {
 
     private void writeLogs(String chainTaskId, String filename, String logs) {
         if (!logs.isEmpty()) {
-            String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + filename;
-            File file = FileHelper.createFileWithContent(filePath, logs);
-            log.info("Saved logs file [path:{}]",
-                    file.getAbsolutePath());
+            final String filePath = workerConfigService.getTaskIexecOutDir(chainTaskId) + File.separator + filename;
+            final File file = FileHelper.createFileWithContent(filePath, logs);
+            log.info("Saved logs file [path:{}]", file.getAbsolutePath());
             //TODO Make sure file is properly written
         }
     }
 
-    /*
-     * - Copy computed.json file produced by the compute stage to /output
-     * - Zip iexec_out folder
-     * For TEE tasks, worker-tee-post-compute will do those two steps since
-     * all files in are protected.
+    /**
+     * Execute post-compute stage for standard and TEE tasks.
+     * <p>
+     * This method calls methods from {@code PostComputeService} depending on the Task type.
      *
-     * - Save stdout file
+     * @param taskDescription Description of the task
+     * @param secureSession   Session ID and session storage URL for TEE tasks
+     * @return {@code PostComputeResponse} instance
+     * @see PostComputeService#runStandardPostCompute(TaskDescription)
+     * @see PostComputeService#runTeePostCompute(TaskDescription, TeeSessionGenerationResponse)
      */
-    public PostComputeResponse runPostCompute(TaskDescription taskDescription,
-                                              TeeSessionGenerationResponse secureSession) {
-        String chainTaskId = taskDescription.getChainTaskId();
+    public PostComputeResponse runPostCompute(final TaskDescription taskDescription,
+                                              final TeeSessionGenerationResponse secureSession) {
+        final String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
-        PostComputeResponse postComputeResponse = PostComputeResponse.builder()
-                .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
-                .build();
 
+        final PostComputeResponse postComputeResponse;
         if (!taskDescription.isTeeTask()) {
             postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
         } else if (secureSession != null) {
             postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSession);
+        } else {
+            postComputeResponse = PostComputeResponse.builder()
+                    .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
+                    .build();
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;
         }
-        ComputedFile computedFile = resultService.readComputedFile(chainTaskId);
+        final ComputedFile computedFile = resultService.readComputedFile(chainTaskId);
         if (computedFile == null) {
             postComputeResponse.setExitCause(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
             return postComputeResponse;
         }
-        String resultDigest = resultService.computeResultDigest(computedFile);
+        final String resultDigest = resultService.computeResultDigest(computedFile);
         if (resultDigest.isEmpty()) {
             postComputeResponse.setExitCause(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
         }
-        resultService.saveResultInfo(chainTaskId, taskDescription, computedFile);
+        resultService.saveResultInfo(taskDescription, computedFile);
         return postComputeResponse;
     }
 
-    public boolean abort(String chainTaskId) {
-        Predicate<String> containsChainTaskId = name -> name.contains(chainTaskId);
-        long remaining = dockerService.stopRunningContainersWithNamePredicate(containsChainTaskId);
+    public boolean abort(final String chainTaskId) {
+        final long remaining = dockerService.stopRunningContainersWithNameContaining(chainTaskId);
         log.info("Stopped task containers [chainTaskId:{}, remaining:{}]", chainTaskId, remaining);
         return remaining == 0L;
     }
