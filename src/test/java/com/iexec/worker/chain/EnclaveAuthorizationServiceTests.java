@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.commons.poco.security.Signature;
-import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
+import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,7 +45,7 @@ class EnclaveAuthorizationServiceTests {
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
+        String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
         Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
         String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
@@ -61,7 +61,7 @@ class EnclaveAuthorizationServiceTests {
         String resultHash = "0x1";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
+        String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
         Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
         String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
@@ -77,7 +77,7 @@ class EnclaveAuthorizationServiceTests {
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x3";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
+        String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
         Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
         String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
@@ -93,7 +93,7 @@ class EnclaveAuthorizationServiceTests {
         String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
         String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
+        String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
         Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
         String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());

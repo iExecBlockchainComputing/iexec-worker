@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,14 @@
 package com.iexec.worker.chain;
 
 import com.iexec.commons.poco.security.Signature;
-import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.EthAddress;
+import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import static com.iexec.commons.poco.utils.SignatureUtils.isExpectedSignerOnSignedMessageHash;
-
 
 @Slf4j
 @Service
@@ -59,9 +58,7 @@ public class EnclaveAuthorizationService {
             return false;
         }
 
-        String messageHash =
-                TeeEnclaveChallengeSignature.getMessageHash(resultHash,
-                        resultSeal);
+        final String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
 
         return isExpectedSignerOnSignedMessageHash(messageHash,
                 new Signature(enclaveSignature), enclaveChallenge);

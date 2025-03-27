@@ -347,7 +347,6 @@ public class ResultService implements Purgeable {
                     chainTaskId, computedFile);
             return false;
         }
-        // TODO replace with fast getChainDeal access, only 1 on-chain read instead of 4
         final ChainDeal chainDeal = iexecHubService.getChainDeal(chainTask.getDealid()).orElse(null);
         if (chainDeal == null || !TeeUtils.isTeeTag(chainDeal.getTag())) {
             log.error("Cannot write computed file if task is not of TEE type [chainTaskId:{}, computedFile:{}]",
