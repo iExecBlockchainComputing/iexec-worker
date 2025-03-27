@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package com.iexec.worker.chain;
 
 import com.iexec.commons.poco.security.Signature;
-import com.iexec.commons.poco.tee.TeeEnclaveChallengeSignature;
+import com.iexec.commons.poco.utils.HashUtils;
 import com.iexec.commons.poco.utils.SignatureUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,77 +41,77 @@ class EnclaveAuthorizationServiceTests {
 
     @Test
     void isVerifiedEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
-        String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        final String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
-        Credentials credentials = Credentials.create(Keys.createEcKeyPair());
+        final String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
+        final Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
-        String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
-        Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
+        final String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
-        boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
+        final boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
         assertThat(isVerifiedEnclaveSignature).isTrue();
     }
 
     @Test
     void isNotVerifiedEnclaveSignatureSinceWrongResultHash() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        String resultHash = "0x1";
-        String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String resultHash = "0x1";
+        final String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
-        Credentials credentials = Credentials.create(Keys.createEcKeyPair());
+        final String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
+        final Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
-        String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
-        Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
+        final String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
-        boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
+        final boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
         assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 
     @Test
     void isNotVerifiedEnclaveSignatureSinceWrongResultSeal() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
-        String resultSeal = "0x3";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        final String resultSeal = "0x3";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
-        Credentials credentials = Credentials.create(Keys.createEcKeyPair());
+        final String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
+        final Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
-        String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
-        Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
+        final String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
-        boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
+        final boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), credentials.getAddress());
         assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 
     @Test
     void isNotVerifiedEnclaveSignatureSinceWrongEnclaveChallenge() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
-        String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        final String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        String messageHash = TeeEnclaveChallengeSignature.getMessageHash(resultHash, resultSeal);
-        Credentials credentials = Credentials.create(Keys.createEcKeyPair());
+        final String messageHash = HashUtils.concatenateAndHash(resultHash, resultSeal);
+        final Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
-        String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
-        Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
+        final String hexPrivateKey = Numeric.toHexStringWithPrefix(credentials.getEcKeyPair().getPrivateKey());
+        final Signature signature = SignatureUtils.signMessageHashAndGetSignature(messageHash, hexPrivateKey);
 
-        boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), "0x1");
+        final boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, signature.getValue(), "0x1");
         assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 
     @Test
     void isNotVerifiedEnclaveSignatureSinceWrongEnclaveSignature() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
-        String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
+        final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        final String resultHash = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        final String resultSeal = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
-        Credentials credentials = Credentials.create(Keys.createEcKeyPair());
+        final Credentials credentials = Credentials.create(Keys.createEcKeyPair());
 
-        boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, "0x1", credentials.getAddress());
+        final boolean isVerifiedEnclaveSignature = enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId, resultHash, resultSeal, "0x1", credentials.getAddress());
         assertThat(isVerifiedEnclaveSignature).isFalse();
     }
 }

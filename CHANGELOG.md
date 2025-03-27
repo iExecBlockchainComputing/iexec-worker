@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
 - Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
 - Stop using `TestUtils` in `ContributionServiceTests`. (#640)
+- Fix several issues raised by SonarQube Cloud. (#642)
 
 ### Breaking API changes
 
