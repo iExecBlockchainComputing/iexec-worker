@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,13 @@
 package com.iexec.worker.config;
 
 import com.iexec.common.utils.IexecFileHelper;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
+import java.util.Objects;
 
 import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
 
@@ -137,16 +138,13 @@ public class WorkerConfigurationService {
      * get max(numberOfJvmCpus -1, 1).
      */
     public int getCpuCount() {
-        int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
-        if (overrideAvailableCpuCount == null) {
-            return defaultAvailableCpuCount;
-        }
-        return overrideAvailableCpuCount;
+        final int defaultAvailableCpuCount = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
+        return Objects.requireNonNullElse(overrideAvailableCpuCount, defaultAvailableCpuCount);
     }
 
     public int getMemorySize() {
-        com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
-        return Long.valueOf(os.getTotalPhysicalMemorySize() / (1024 * 1024 * 1024)).intValue();//in GB
+        final com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) getOperatingSystemMXBean();
+        return (int) os.getTotalMemorySize() / (1024 * 1024 * 1024); // conversion to GB
     }
 
     public String getHttpProxyHost() {

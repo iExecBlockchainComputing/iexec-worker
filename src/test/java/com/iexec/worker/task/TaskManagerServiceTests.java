@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.iexec.worker.task;
 
-import com.iexec.common.contribution.Contribution;
 import com.iexec.common.lifecycle.purge.PurgeService;
 import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -29,6 +28,7 @@ import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotificationExtra;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.worker.chain.Contribution;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.chain.RevealService;
@@ -107,7 +107,6 @@ class TaskManagerServiceTests {
                 .appType(DappType.DOCKER)
                 .appUri("appUri")
                 .datasetAddress("datasetAddress")
-                .datasetName("datasetName")
                 .datasetChecksum("datasetChecksum")
                 .datasetUri("datasetUri")
                 .isTeeTask(isTeeTask)
@@ -376,12 +375,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(true).build();
-        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(Optional.empty());
-
-        ReplicateActionResponse actionResponse =
+        final ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
-
         assertThat(actionResponse.isSuccess()).isTrue();
         verifyNoInteractions(dataService);
     }

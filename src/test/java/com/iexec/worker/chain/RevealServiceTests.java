@@ -19,6 +19,7 @@ package com.iexec.worker.chain;
 import com.iexec.commons.poco.chain.ChainContribution;
 import com.iexec.commons.poco.chain.ChainContributionStatus;
 import com.iexec.commons.poco.chain.ChainTask;
+import com.iexec.commons.poco.chain.ChainTaskStatus;
 import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.commons.poco.utils.HashUtils;
 import org.apache.commons.lang3.time.DateUtils;
@@ -31,6 +32,8 @@ import org.web3j.crypto.Credentials;
 import org.web3j.crypto.Hash;
 import org.web3j.protocol.core.methods.response.Log;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Optional;
@@ -66,7 +69,8 @@ class RevealServiceTests {
 
         Optional<ChainTask> optionalChainTask = Optional.of(
                 ChainTask.builder()
-                        .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
+                        .status(ChainTaskStatus.REVEALING)
+                        .revealDeadline(Instant.now().plus(1, ChronoUnit.DAYS).toEpochMilli())
                         .consensusValue(contributionValue)
                         .build());
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
@@ -78,7 +82,6 @@ class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isTrue();
     }
@@ -107,7 +110,6 @@ class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(false);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
@@ -133,7 +135,6 @@ class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
@@ -159,7 +160,6 @@ class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
@@ -185,7 +185,6 @@ class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
@@ -211,7 +210,6 @@ class RevealServiceTests {
                         .resultSeal(contributionSeal)
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
@@ -236,7 +234,6 @@ class RevealServiceTests {
                         .resultSeal(Hash.sha3("Dummy contribution seal"))
                         .build());
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
@@ -263,35 +260,13 @@ class RevealServiceTests {
                         .build());
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
         when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(Optional.empty());
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
-
 
         assertThat(revealService.canReveal(chainTaskId, determinismHash)).isFalse();
     }
 
     @Test
     void cannotRevealSinceDeterministHashIsEmpty() {
-        String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
-        String contributionValue = HashUtils.concatenateAndHash(chainTaskId, deterministHash);
-        String contributionSeal = HashUtils.concatenateAndHash(WORKER_WALLET_ADDRESS, chainTaskId, deterministHash);
-
-        Optional<ChainTask> optionalChainTask = Optional.of(
-                ChainTask.builder()
-                        .revealDeadline(DateUtils.addDays(new Date(), 1).getTime())
-                        .consensusValue(contributionValue)
-                        .build());
-        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(optionalChainTask);
-
-        Optional<ChainContribution> optionalChainContribution = Optional.of(
-                ChainContribution.builder()
-                        .status(ChainContributionStatus.CONTRIBUTED)
-                        .resultHash(contributionValue)
-                        .resultSeal(contributionSeal)
-                        .build());
-        when(iexecHubService.getChainContribution(chainTaskId)).thenReturn(optionalChainContribution);
-        when(iexecHubService.isChainTaskRevealing(chainTaskId)).thenReturn(true);
-
         assertThat(revealService.canReveal(chainTaskId, "")).isFalse();
     }
 

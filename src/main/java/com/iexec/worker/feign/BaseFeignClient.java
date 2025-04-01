@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,8 @@ package com.iexec.worker.feign;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 import java.util.function.Function;
-
 
 @Slf4j
 public abstract class BaseFeignClient {
@@ -91,15 +89,6 @@ public abstract class BaseFeignClient {
         }
 
         return HttpStatus.valueOf(status).toString();
-    }
-
-    boolean is2xxSuccess(ResponseEntity<?> response) {
-        int status = response.getStatusCodeValue();
-        return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
-    }
-
-    boolean is2xxSuccess(int status) {
-        return status > 0 && HttpStatus.valueOf(status).is2xxSuccessful();
     }
 
     private void sleep(int millis) {

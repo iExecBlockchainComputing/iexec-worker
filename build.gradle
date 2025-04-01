@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '8.10.2'
-    id 'org.springframework.boot' version '2.7.18'
+    id 'org.springframework.boot' version '3.3.8'
     id 'io.spring.dependency-management' version '1.1.6'
     id 'jacoco'
     id 'org.sonarqube' version '5.1.0.4882'
@@ -11,7 +11,7 @@ plugins {
 group = 'com.iexec.worker'
 
 ext {
-    springCloudVersion = '2021.0.8'
+    springCloudVersion = '2023.0.5'
     commonsMathsVersion = '3.6.1'
     testContainersVersion = '1.20.4'
 }
@@ -61,8 +61,10 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.boot:spring-boot-starter-websocket"
     implementation "org.springframework.cloud:spring-cloud-starter"
-    implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation "org.springframework.retry:spring-retry"
+
+    // required for spring-retry
+    runtimeOnly 'org.aspectj:aspectjweaver'
 
     // apache commons-lang3
     implementation 'org.apache.commons:commons-lang3'
@@ -71,11 +73,7 @@ dependencies {
     implementation "org.apache.commons:commons-math3:${commonsMathsVersion}"
 
     // Required for com.iexec.worker.feign.config.RestTemplateConfig
-    implementation 'org.apache.httpcomponents:httpclient'
-
-    implementation 'org.glassfish.jersey.inject:jersey-hk2'
-    implementation 'org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1'
-    implementation 'javax.activation:activation:1.1.1'
+    implementation 'org.apache.httpcomponents.client5:httpclient5'
 
     // Removes 'warning: unknown enum constant When.MAYBE'
     implementation 'com.google.code.findbugs:annotations:3.0.1'
@@ -91,8 +89,12 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
     }
-    sourceCompatibility = "11"
-    targetCompatibility = "11"
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')
 }
 
 springBoot {
@@ -111,11 +113,10 @@ testing {
         test {
             useJUnitJupiter()
             dependencies {
-                implementation "org.springframework.boot:spring-boot-starter-test"
-                implementation "org.mockito:mockito-inline" // activates mocking final classes/methods
-
                 // awaitility
                 implementation "org.awaitility:awaitility"
+
+                implementation "org.springframework.boot:spring-boot-starter-test"
 
                 // testcontainers
                 implementation "org.testcontainers:junit-jupiter:$testContainersVersion"

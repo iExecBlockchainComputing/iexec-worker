@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,11 +34,11 @@ import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -116,7 +116,7 @@ public class ResultService implements Purgeable {
                 + IexecFileHelper.COMPUTED_JSON, computedFileJsonAsString.getBytes());
     }
 
-    public void saveResultInfo(final String chainTaskId, final TaskDescription taskDescription,
+    public void saveResultInfo(final TaskDescription taskDescription,
                                final ComputedFile computedFile) {
         final ResultInfo resultInfo = ResultInfo.builder()
                 .image(taskDescription.getAppUri())
@@ -125,7 +125,7 @@ public class ResultService implements Purgeable {
                 .datasetUri(taskDescription.getDatasetUri())
                 .build();
 
-        resultInfoMap.put(chainTaskId, resultInfo);
+        resultInfoMap.put(taskDescription.getChainTaskId(), resultInfo);
     }
 
     public ResultModel getResultModelWithZip(final String chainTaskId) {
@@ -347,7 +347,6 @@ public class ResultService implements Purgeable {
                     chainTaskId, computedFile);
             return false;
         }
-        // TODO replace with fast getChainDeal access, only 1 on-chain read instead of 4
         final ChainDeal chainDeal = iexecHubService.getChainDeal(chainTask.getDealid()).orElse(null);
         if (chainDeal == null || !TeeUtils.isTeeTag(chainDeal.getTag())) {
             log.error("Cannot write computed file if task is not of TEE type [chainTaskId:{}, computedFile:{}]",
@@ -410,12 +409,11 @@ public class ResultService implements Purgeable {
         final boolean deletedInMap = !resultInfoMap.containsKey(chainTaskId);
         final boolean deletedTaskFolder = !new File(taskBaseDir).exists();
 
-        boolean deleted = deletedInMap && deletedTaskFolder;
-        if (deletedTaskFolder) {
+        final boolean deleted = deletedInMap && deletedTaskFolder;
+        if (deleted) {
             log.info("The result of the chainTaskId has been deleted [chainTaskId:{}]", chainTaskId);
         } else {
-            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, " +
-                            "deletedTaskFolder:{}]",
+            log.warn("The result of the chainTaskId couldn't be deleted [chainTaskId:{}, deletedInMap:{}, deletedTaskFolder:{}]",
                     chainTaskId, deletedInMap, deletedTaskFolder);
         }
 

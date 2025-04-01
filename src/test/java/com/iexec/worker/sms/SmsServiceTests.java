@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,8 +54,8 @@ class SmsServiceTests {
 
     private static final TeeSessionGenerationResponse SESSION = mock(TeeSessionGenerationResponse.class);
 
-    private static final String SIGNATURE = "random-signature";
-    private static final String smsUrl = "smsUrl";
+    private final String signature = "random-signature";
+    private final String smsUrl = "smsUrl";
 
     @Mock
     private SignerService signerService;
@@ -93,14 +93,14 @@ class SmsServiceTests {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         // send 404 NOT_FOUND on first call then 204 NO_CONTENT
         doThrow(FeignException.NotFound.class).doNothing().when(smsClient).isWeb2SecretSet(anyString(), anyString());
-        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(SIGNATURE));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(signature));
         assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isTrue();
     }
 
     @Test
     void shouldUpdateToken() {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(SIGNATURE));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(signature));
         assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isTrue();
     }
 
@@ -114,9 +114,9 @@ class SmsServiceTests {
     @Test
     void shouldNotPushTokenOnFeignException() {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(SIGNATURE));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(signature));
         doThrow(FeignException.NotFound.class).when(smsClient).isWeb2SecretSet(anyString(), anyString());
-        when(smsClient.setWeb2Secret(SIGNATURE, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
+        when(smsClient.setWeb2Secret(signature, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
                 IEXEC_RESULT_IEXEC_IPFS_TOKEN, TOKEN)).thenThrow(FeignException.InternalServerError.class);
         assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
     }
@@ -124,8 +124,8 @@ class SmsServiceTests {
     @Test
     void shouldNotUpdateTokenOnFeignException() {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(SIGNATURE));
-        when(smsClient.updateWeb2Secret(SIGNATURE, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(signature));
+        when(smsClient.updateWeb2Secret(signature, WORKERPOOL_AUTHORIZATION.getWorkerWallet(),
                 IEXEC_RESULT_IEXEC_IPFS_TOKEN, TOKEN)).thenThrow(FeignException.InternalServerError.class);
         assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
     }
@@ -133,7 +133,7 @@ class SmsServiceTests {
     @Test
     void shouldNotFindTokenOnFeignException() {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
-        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(SIGNATURE));
+        when(signerService.signMessageHash(anyString())).thenReturn(new Signature(signature));
         doThrow(FeignException.class).when(smsClient).isWeb2SecretSet(anyString(), anyString());
         assertThat(smsService.pushToken(WORKERPOOL_AUTHORIZATION, TOKEN)).isFalse();
     }
@@ -142,14 +142,14 @@ class SmsServiceTests {
     // region createTeeSession
     @Test
     void shouldCreateTeeSession() throws TeeSessionGenerationException {
-        Signature signatureStub = new Signature(SIGNATURE);
+        final Signature signatureStub = new Signature(signature);
         when(signerService.signMessageHash(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
                 .thenReturn(ApiResponseBody.<TeeSessionGenerationResponse, TeeSessionGenerationError>builder().data(SESSION).build());
 
-        TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
+        final TeeSessionGenerationResponse returnedSessionId = smsService.createTeeSession(WORKERPOOL_AUTHORIZATION);
         assertThat(returnedSessionId).isEqualTo(SESSION);
         verify(smsClient).generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION);
     }
@@ -160,13 +160,12 @@ class SmsServiceTests {
         final byte[] responseBody = mapper.writeValueAsBytes(ApiResponseBody.<Void, TeeSessionGenerationError>builder().error(TeeSessionGenerationError.NO_SESSION_REQUEST).build());
         final Request request = Request.create(Request.HttpMethod.GET, "url",
                 new HashMap<>(), null, new RequestTemplate());
-
-        Signature signatureStub = new Signature(SIGNATURE);
+        final Signature signatureStub = new Signature(signature);
         when(signerService.signMessageHash(WORKERPOOL_AUTHORIZATION.getHash()))
                 .thenReturn(signatureStub);
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
         when(smsClient.generateTeeSession(signatureStub.getValue(), WORKERPOOL_AUTHORIZATION))
-                .thenThrow(new FeignException.InternalServerError("", request, responseBody, null));   //FIXME
+                .thenThrow(new FeignException.InternalServerError("", request, responseBody, null));
 
         final TeeSessionGenerationException exception = Assertions.catchThrowableOfType(() -> smsService.createTeeSession(WORKERPOOL_AUTHORIZATION), TeeSessionGenerationException.class);
         assertThat(exception.getTeeSessionGenerationError()).isEqualTo(TeeSessionGenerationError.NO_SESSION_REQUEST);
@@ -181,7 +180,7 @@ class SmsServiceTests {
         smsService.attachSmsUrlToTask(CHAIN_TASK_ID, smsUrl);
 
         // Purging the task
-        boolean purged = smsService.purgeTask(CHAIN_TASK_ID);
+        final boolean purged = smsService.purgeTask(CHAIN_TASK_ID);
         assertTrue(purged);
     }
 

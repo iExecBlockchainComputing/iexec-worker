@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2024-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,8 +52,7 @@ class WalletConfigurationTest {
     void shouldCreateBeans() throws Exception {
         final String tempWalletName = WalletUtils.generateFullNewWalletFile("changeit", tempWalletDir);
         final String tempWalletPath = tempWalletDir.getAbsolutePath() + File.separator + tempWalletName;
-        runner.withPropertyValues("core.protocol=http", "core.host=localhost", "core.port=" + wmServer.getMappedPort(WIREMOCK_PORT),
-                        "worker.name=worker", "worker.worker-base-dir=/tmp", "worker.override-available-cpu-count=",
+        runner.withPropertyValues("worker.name=worker", "worker.worker-base-dir=/tmp", "worker.override-available-cpu-count=",
                         "worker.gpu-enabled=false", "worker.gas-price-multiplier=1.0", "worker.gas-price-cap=22000000000",
                         "worker.override-blockchain-node-address=", "worker.developer-logger-enabled=true",
                         "worker.tee-compute-max-heap-size-gb=8", "worker.docker-network-name=iexec-worker-net")
@@ -63,7 +62,7 @@ class WalletConfigurationTest {
                 .withBean(WalletConfiguration.class, tempWalletPath, "changeit")
                 .withBean(Web3jService.class)
                 .withBean(WorkerConfigurationService.class)
-                .withUserConfiguration(SchedulerConfiguration.class)
+                .withBean(SchedulerConfiguration.class, "http://localhost:" + wmServer.getMappedPort(WIREMOCK_PORT), "0x365E7BABAa85eC61Dffe5b520763062e6C29dA27")
                 .run(context -> assertThat(context)
                         .hasSingleBean(ConfigServerClient.class)
                         .hasSingleBean(ConfigServerConfigurationService.class)

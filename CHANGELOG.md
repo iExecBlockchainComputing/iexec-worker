@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[9.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v9.0.0) 2025-04-01
+
+### New Features
+
+- Use TEE framework version of dApp to retrieve pre/post-compute properties via SMS endpoint. (#630)
+- Validate authorization proof for pre/post-compute requests. (#635)
+- Add `WebSocketBlockchainListener` to fetch latest block without polling the blockchain network. (#639)
+
+### Bug Fixes
+
+- Add synchronized keyword on abort method to avoid concurrency issues on file system. (#643)
+
+### Quality
+
+- Refactor `RestTemplateConfig` to use `HttpClient 5` and improve proxy handling. (#626)
+- Replace deprecated `connect` with `connectAsync` in `StompClientService`. (#627)
+- Remove redundant blockchain calls to diminish pressure on Ethereum JSON-RPC API. (#632)
+- Stop using `TestUtils` in `ContributionServiceTests`. (#640)
+- Fix several issues raised by SonarQube Cloud. (#642)
+- Improve JavaDoc comments in `ComputeManagerService` and `DockerService`. (#643)
+
+### Breaking API changes
+
+- Do not fall back to blockchain adapter URL when fetching public configuration. (#628 #629)
+- Move `WorkerModel` from `iexec-common` to `iexec-core-library`. (#633)
+- Move `TaskAbortCause` from `iexec-commons-poco` to `iexec-core-library`. (#634)
+- Move `Contribution` from `iexec-common` to `iexec-worker`. (#636)
+- Harmonize YML internal variables to proper case. (#638 #641)
+- Merge split URL configuration properties (protocol, host, port) to a single URL field to offer URL validation at startup. (#641)
+
+### Dependency Upgrades
+
+- Upgrade to `eclipse-temurin:17.0.13_11-jre-focal`. (#626)
+- Upgrade to Sring Cloud 2022.0.5. (#626)
+- Upgrade to Spring Boot 3.3.8. (#631)
+- Upgrade to `iexec-commons-poco` 5.0.0. (#644)
+- Upgrade to `iexec-common` 9.0.0. (#644)
+- Upgrade to `iexec-commons-containers` 2.0.0. (#644)
+- Upgrade to `iexec-result-proxy-library` 9.0.0. (#644)
+- Upgrade to `iexec-sms-library` 9.0.0. (#644)
+- Upgrade to `iexec-core-library` 9.0.0. (#644)
+
 ## [[8.6.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v8.6.0) 2024-12-23
 
 ### New Features

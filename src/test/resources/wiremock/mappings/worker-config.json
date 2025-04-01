@@ -5,7 +5,7 @@
   },
   "response": {
     "status": 200,
-    "body": "{\"workerPoolAddress\":\"0x1\",\"schedulerPublicAddress\":\"0x2\",\"blockchainAdapterUrl\":\"http://localhost:{{request.port}}\",\"configServerUrl\":\"http://localhost:{{request.port}}\",\"resultRepositoryURL\":\"http://localhost:{{request.port}}\",\"askForReplicatePeriod\":\"5\",\"requiredWorkerVersion\":\"x.y.z\"}",
+    "body": "{\"workerPoolAddress\":\"0x1\",\"schedulerPublicAddress\":\"0x2\",\"configServerUrl\":\"http://localhost:{{request.port}}\",\"resultRepositoryURL\":\"http://localhost:{{request.port}}\",\"askForReplicatePeriod\":\"5000\",\"requiredWorkerVersion\":\"x.y.z\"}",
     "headers": {
       "Content-Type": "application/json"
     },

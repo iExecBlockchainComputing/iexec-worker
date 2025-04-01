@@ -1,0 +1,13 @@
+services:
+
+  chain:
+    image: docker-regis.iex.ec/poco-chain:1.0.0-poco-v5.5.0-voucher-v1.0.0-nethermind
+    expose:
+      - "8545"
+
+  core:
+    image: wiremock/wiremock:3.3.1
+    expose:
+      - "8080"
+    volumes:
+      - "./src/test/resources/wiremock/mappings:/home/wiremock/mappings"
