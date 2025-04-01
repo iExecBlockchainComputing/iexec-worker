@@ -17,10 +17,10 @@
 package com.iexec.worker.chain;
 
 import com.iexec.commons.poco.chain.*;
-import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.commons.poco.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.protocol.core.methods.response.Log;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -116,13 +116,13 @@ public class RevealService {
             return Optional.empty();
         }
 
-        IexecHubContract.TaskRevealEventResponse revealResponse = iexecHubService.reveal(chainTaskId, resultDigest);
+        final Log revealResponse = iexecHubService.reveal(chainTaskId, resultDigest);
         if (revealResponse == null) {
             log.error("RevealTransactionReceipt received but was null [chainTaskId:{}]", chainTaskId);
             return Optional.empty();
         }
 
-        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(revealResponse.log,
+        ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(revealResponse,
                 chainTaskId, iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);
