@@ -34,15 +34,15 @@ import java.io.File;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static com.iexec.worker.chain.WebSocketBlockchainListener.LATEST_BLOCK_METRIC_NAME;
-import static com.iexec.worker.chain.WebSocketBlockchainListener.TX_COUNT_METRIC_NAME;
+import static com.iexec.worker.chain.BlockchainListener.LATEST_BLOCK_METRIC_NAME;
+import static com.iexec.worker.chain.BlockchainListener.TX_COUNT_METRIC_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @Testcontainers
 @SpringBootTest(classes = TestApplication.class)
 @ActiveProfiles("test")
-class WebSocketBlockchainListenerTests {
+class BlockchainListenerTests {
 
     private static final String CHAIN_SVC_NAME = "chain";
     private static final int CHAIN_SVC_PORT = 8545;
