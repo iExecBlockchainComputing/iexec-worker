@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.1](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.0.0...v9.0.1) (2025-08-19)
+
+
+### Bug Fixes
+
+* use less RPC calls to listen on the blockchain ([#647](https://github.com/iExecBlockchainComputing/iexec-worker/issues/647)) ([97fcca6](https://github.com/iExecBlockchainComputing/iexec-worker/commit/97fcca64b69cc8a3763557aaf46597bbfa55808d))
+
 ## [[9.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v9.0.0) 2025-04-01
 
 ### New Features
