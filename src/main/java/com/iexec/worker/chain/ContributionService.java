@@ -19,12 +19,12 @@ package com.iexec.worker.chain;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
-import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.web3j.protocol.core.methods.response.Log;
 
 import java.math.BigInteger;
 import java.util.Optional;
@@ -125,14 +125,14 @@ public class ContributionService {
     // returns ChainReceipt of the contribution if successful, null otherwise
     public Optional<ChainReceipt> contribute(final Contribution contribution) {
 
-        IexecHubContract.TaskContributeEventResponse contributeResponse = iexecHubService.contribute(contribution);
+        final Log contributeResponse = iexecHubService.contribute(contribution);
 
         if (contributeResponse == null) {
             log.error("ContributeTransactionReceipt received but was null [chainTaskId:{}]", contribution.chainTaskId());
             return Optional.empty();
         }
 
-        final ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse.log, contribution.chainTaskId(),
+        final ChainReceipt chainReceipt = ChainUtils.buildChainReceipt(contributeResponse, contribution.chainTaskId(),
                 iexecHubService.getLatestBlockNumber());
 
         return Optional.of(chainReceipt);
