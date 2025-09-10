@@ -284,10 +284,10 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         final TransactionReceipt receipt = txReceiptProcessor.waitForTransactionReceipt(txHash);
         log.info("Transaction receipt [hash:{}, status:{}, revert-reason:{}]",
                 txHash, receipt.getStatus(), receipt.getRevertReason());
-        if (!receipt.isStatusOK()) {
-            failureCounter.increment();
-        } else {
+        if (receipt.isStatusOK()) {
             successCounter.increment();
+        } else {
+            failureCounter.increment();
         }
         return receipt;
     }
