@@ -60,6 +60,7 @@ class IexecHubServiceTests {
     private static final String RESULT_DIGEST = "0x456";
     private static final String RESULT_HASH = "0x789";
     private static final String RESULT_SEAL = "0xabc";
+    private static final String CALLBACK_GAS_IN_HEX = "0x30D40"; // hexadecimal value for 200_000
 
     @Mock
     private ConfigServerConfigurationService configServerConfigurationService;
@@ -173,7 +174,7 @@ class IexecHubServiceTests {
         web3Log.setTopics(List.of(LogTopic.TASK_FINALIZE_EVENT, CHAIN_TASK_ID));
         final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
         when(signerService.estimateGas(any(), any())).thenReturn(BigInteger.valueOf(100_000L));
-        when(txManager.sendCall(any(), any(), any())).thenReturn("0x30D40"); // hexadecimal value for 200_000
+        when(txManager.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
         mockTransaction(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
@@ -195,7 +196,7 @@ class IexecHubServiceTests {
         web3Log.setTopics(List.of(LogTopic.TASK_FINALIZE_EVENT, CHAIN_TASK_ID));
         final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
         when(signerService.estimateGas(any(), any())).thenReturn(BigInteger.valueOf(100_000L));
-        when(txManager.sendCall(any(), any(), any())).thenReturn("0x30D40"); // hexadecimal value for 200_000
+        when(txManager.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
         mockTransaction(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
@@ -220,7 +221,7 @@ class IexecHubServiceTests {
                 .workerPoolSignature("workerPoolSignature")
                 .build();
         when(signerService.estimateGas(any(), any())).thenReturn(BigInteger.valueOf(100_000L));
-        when(txManager.sendCall(any(), any(), any())).thenReturn("0x30D40"); // hexadecimal value for 200_000
+        when(txManager.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
         doThrow(IOException.class).when(signerService).signAndSendTransaction(any(), any(), any(), any(), any());
         final Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "");
         assertThat(chainReceipt).isEmpty();
