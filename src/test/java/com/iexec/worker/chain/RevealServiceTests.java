@@ -20,7 +20,6 @@ import com.iexec.commons.poco.chain.ChainContribution;
 import com.iexec.commons.poco.chain.ChainContributionStatus;
 import com.iexec.commons.poco.chain.ChainTask;
 import com.iexec.commons.poco.chain.ChainTaskStatus;
-import com.iexec.commons.poco.contract.generated.IexecHubContract;
 import com.iexec.commons.poco.utils.HashUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -290,10 +289,8 @@ class RevealServiceTests {
         String deterministHash = Hash.sha3("Hello");
         String chainTaskId = "0xd94b63fc2d3ec4b96daf84b403bbafdc8c8517e8e2addd51fec0fa4e67801be8";
 
-        IexecHubContract.TaskRevealEventResponse response = new IexecHubContract.TaskRevealEventResponse();
-
         // 0x200 in hexa = 512 in decimal
-        response.log =
+        Log response =
                 new Log(false, "logIndex", "transactionIndex", "transactionHash",
                         "blockHash", "0x200", "address", "data", "type", new ArrayList<>());
 
