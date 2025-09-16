@@ -59,12 +59,16 @@ public class ContributionService {
             return Optional.of(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
         }
 
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
             return Optional.of(CHAIN_UNREACHABLE);
         }
 
-        if (!hasEnoughStakeToContribute(chainTask)) {
+        // No staking in contributeAndFinalize
+        if (taskDescription != null && !taskDescription.isEligibleToContributeAndFinalize()
+                && !hasEnoughStakeToContribute(chainTask)) {
             return Optional.of(STAKE_TOO_LOW);
         }
 

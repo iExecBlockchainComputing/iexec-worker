@@ -41,8 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ContributionServiceTests {
@@ -116,6 +115,7 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
@@ -130,6 +130,7 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(0).build()));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
@@ -153,6 +154,7 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(inactiveTask));
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
@@ -177,6 +179,7 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(timedOutChainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
@@ -204,6 +207,7 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(alreadyContributedChainTask));
         when(iexecHubService.getChainAccount())
                 .thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
@@ -224,6 +228,7 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId))
                 .thenReturn(Optional.of(chainTask));
         when(iexecHubService.getChainAccount())
@@ -237,6 +242,26 @@ class ContributionServiceTests {
         verify(iexecHubService).getChainAccount();
         verify(iexecHubService).getChainDeal(CHAIN_DEAL_ID);
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
+    }
+
+    @Test
+    void getCannotContributeStatusShouldReturnEmptyForContributeAndFinalizeFlow() {
+        final String chainTaskId = chainTask.getChainTaskId();
+        final TaskDescription contributeAndFinalizeTaskDescription = TaskDescription.builder()
+                .trust(BigInteger.ONE)
+                .isTeeTask(true)
+                .build();
+
+        when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
+                .thenReturn(getTeeWorkerpoolAuth());
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(contributeAndFinalizeTaskDescription);
+        when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
+
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId)).isEmpty();
+
+        verify(iexecHubService).getChainTask(chainTaskId);
+        verify(iexecHubService, never()).getChainAccount();
+        verify(iexecHubService, never()).getChainDeal(CHAIN_DEAL_ID);
     }
     //endregion
 
