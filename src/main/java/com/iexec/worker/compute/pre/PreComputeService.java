@@ -39,6 +39,7 @@ import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
@@ -138,7 +139,8 @@ public class PreComputeService {
         }
 
         // run TEE pre-compute container if needed
-        if (taskDescription.containsDataset() || taskDescription.containsInputFiles()) {
+        if (taskDescription.containsDataset() || taskDescription.containsInputFiles()
+                || !StringUtils.isEmpty(taskDescription.getDealParams().getBulkCid())) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
             final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
