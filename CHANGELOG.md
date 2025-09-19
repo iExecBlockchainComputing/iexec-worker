@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.1](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.0.0...v9.0.1) (2025-09-16)
+
+
+### Bug Fixes
+
+* do not check worker deposit against required worker stake for contributeAndFinalize workflow ([#652](https://github.com/iExecBlockchainComputing/iexec-worker/issues/652)) ([bb16b7a](https://github.com/iExecBlockchainComputing/iexec-worker/commit/bb16b7aca82693051d024f597dda45dd76982388))
+* estimate gas before sending transactions to avoid intrinsic gas too low errors ([#651](https://github.com/iExecBlockchainComputing/iexec-worker/issues/651)) ([47098bb](https://github.com/iExecBlockchainComputing/iexec-worker/commit/47098bbf53f06dd5a048423abb013ca3c0ec27ad))
+* use less RPC calls to listen on the blockchain ([#647](https://github.com/iExecBlockchainComputing/iexec-worker/issues/647)) ([97fcca6](https://github.com/iExecBlockchainComputing/iexec-worker/commit/97fcca64b69cc8a3763557aaf46597bbfa55808d))
+
 ## [[9.0.0]](https://github.com/iExecBlockchainComputing/iexec-worker/releases/tag/v9.0.0) 2025-04-01
 
 ### New Features
