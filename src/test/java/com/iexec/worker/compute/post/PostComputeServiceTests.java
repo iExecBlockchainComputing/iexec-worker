@@ -325,8 +325,8 @@ class PostComputeServiceTests {
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID))
-                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
+        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID))
+                .thenReturn(Collections.emptyList());
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
@@ -339,7 +339,7 @@ class PostComputeServiceTests {
 
     private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
         return Map.of(
-                1, ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND,
+                1, ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE,
                 2, ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED,
                 3, ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING
         ).entrySet().stream();

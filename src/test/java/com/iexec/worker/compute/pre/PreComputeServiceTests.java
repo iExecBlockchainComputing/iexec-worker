@@ -386,8 +386,8 @@ class PreComputeServiceTests {
                 .finalStatus(DockerRunFinalStatus.FAILED)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId))
-                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
+        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId))
+                .thenReturn(Collections.emptyList());
 
         PreComputeResponse preComputeResponse =
                 preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
@@ -402,7 +402,7 @@ class PreComputeServiceTests {
 
     private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldFailToRunTeePreComputeSinceDockerRunFailedArgs() {
         return Map.of(
-                1, ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
+                1, ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE,
                 2, ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED,
                 3, ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING
         ).entrySet().stream();
