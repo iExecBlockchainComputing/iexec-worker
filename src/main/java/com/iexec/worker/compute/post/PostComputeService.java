@@ -244,13 +244,8 @@ public class PostComputeService {
         if (exitCode != null && exitCode != 0) {
             switch (exitCode) {
                 case 1:
-                    // Check for bulk exit causes first, use default if none found
-                    List<ReplicateStatusCause> bulkCauses = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, chainTaskId);
-                    if (bulkCauses != null && !bulkCauses.isEmpty()) {
-                        cause = bulkCauses.get(0); // Use first cause from bulk processing
-                    } else {
-                        cause = ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE; // Default cause
-                    }
+                    // Use first cause from bulk processing for now
+                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, chainTaskId).get(0);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;
