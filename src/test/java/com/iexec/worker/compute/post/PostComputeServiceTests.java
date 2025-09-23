@@ -325,7 +325,7 @@ class PostComputeServiceTests {
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID))
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID))
                 .thenReturn(Collections.emptyList());
 
         PostComputeResponse postComputeResponse =
@@ -414,7 +414,7 @@ class PostComputeServiceTests {
                 ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND,
                 ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED
         );
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.POST, CHAIN_TASK_ID))
                 .thenReturn(bulkCauses);
 
@@ -425,7 +425,7 @@ class PostComputeServiceTests {
         assertThat(postComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
         verify(dockerService).run(any());
-        verify(computeExitCauseService).getBulkExitCausesAndPruneForGivenComputeStage(
+        verify(computeExitCauseService).getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.POST, CHAIN_TASK_ID);
     }
 
@@ -459,7 +459,7 @@ class PostComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         // Configure empty bulk exit causes to test default cause usage
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.POST, CHAIN_TASK_ID))
                 .thenReturn(Collections.emptyList());
 
@@ -470,7 +470,7 @@ class PostComputeServiceTests {
         assertThat(postComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE); // Now expects default cause
         verify(dockerService).run(any());
-        verify(computeExitCauseService).getBulkExitCausesAndPruneForGivenComputeStage(
+        verify(computeExitCauseService).getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.POST, CHAIN_TASK_ID);
     }
 
@@ -504,7 +504,7 @@ class PostComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         // Configure null bulk exit causes to test default cause usage
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.POST, CHAIN_TASK_ID))
                 .thenReturn(null);
 
@@ -515,7 +515,7 @@ class PostComputeServiceTests {
         assertThat(postComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE); // Now expects default cause
         verify(dockerService).run(any());
-        verify(computeExitCauseService).getBulkExitCausesAndPruneForGivenComputeStage(
+        verify(computeExitCauseService).getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.POST, CHAIN_TASK_ID);
     }
     //endregion

@@ -42,21 +42,21 @@ class ComputeExitCauseServiceTests {
     void setAndGetPreComputeExitCauseAndPrune() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
-        Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.PRE,
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE,
                 CHAIN_TASK_ID,
-                cause)).isTrue();
-        Assertions.assertThat(computeExitCauseService.getPreComputeExitCauseAndPrune(CHAIN_TASK_ID))
-                .isEqualTo(cause);
-        Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.PRE,
-                CHAIN_TASK_ID)).isNull();
+                List.of(cause))).isTrue();
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
+                .isEqualTo(List.of(cause));
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE,
+                CHAIN_TASK_ID)).isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
 
     @Test
     void shouldReturnUnknownIssueWhenPreComputeExitCauseNotSet() {
-        ReplicateStatusCause cause = computeExitCauseService.getPreComputeExitCauseAndPrune(CHAIN_TASK_ID);
+        List<ReplicateStatusCause> cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
         Assertions.assertThat(cause)
                 .isNotNull()
-                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
     //endregion
 
@@ -65,34 +65,39 @@ class ComputeExitCauseServiceTests {
     void setAndGetPostComputeExitCauseAndPrune() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND;
-        Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.POST,
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST,
                 CHAIN_TASK_ID,
-                cause)).isTrue();
-        Assertions.assertThat(computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID))
-                .isEqualTo(cause);
-        Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.POST,
-                CHAIN_TASK_ID)).isNull();
+                List.of(cause))).isTrue();
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID))
+                .isEqualTo(List.of(cause));
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST,
+                CHAIN_TASK_ID)).isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
 
     @Test
     void shouldReturnUnknownIssueWhenPostComputeExitCauseNotSet() {
-        ReplicateStatusCause cause = computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID);
+        List<ReplicateStatusCause> cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID);
         Assertions.assertThat(cause)
                 .isNotNull()
-                .isEqualTo(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+                .isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
     //endregion
 
     @Test
-    void shouldNotSetComputeExitCauseSinceAlreadySet() {
+    void shouldAccumulateExitCausesWhenCalledMultipleTimes() {
         ReplicateStatusCause cause =
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
-        computeExitCauseService.setExitCause(ComputeStage.POST,
+        computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST,
                 CHAIN_TASK_ID,
-                cause);
-        Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.POST,
+                List.of(cause));
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST,
                 CHAIN_TASK_ID,
-                cause)).isFalse();
+                List.of(cause))).isTrue();
+
+        List<ReplicateStatusCause> retrieved = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID);
+        Assertions.assertThat(retrieved)
+                .hasSize(2)
+                .containsExactly(cause, cause);
     }
 
     //region bulk exit causes tests
@@ -103,10 +108,10 @@ class ComputeExitCauseServiceTests {
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
         );
 
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, causes))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, causes))
                 .isTrue();
 
-        List<ReplicateStatusCause> retrieved = computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
+        List<ReplicateStatusCause> retrieved = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
         Assertions.assertThat(retrieved)
                 .isNotNull()
                 .hasSize(2)
@@ -120,10 +125,10 @@ class ComputeExitCauseServiceTests {
                 ReplicateStatusCause.POST_COMPUTE_TIMEOUT
         );
 
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID, causes))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID, causes))
                 .isTrue();
 
-        List<ReplicateStatusCause> retrieved = computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID);
+        List<ReplicateStatusCause> retrieved = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID);
         Assertions.assertThat(retrieved)
                 .isNotNull()
                 .hasSize(2)
@@ -138,15 +143,15 @@ class ComputeExitCauseServiceTests {
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM);
 
         // First call should succeed
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, firstBatch))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, firstBatch))
                 .isTrue();
 
         // Second call should also succeed and accumulate causes
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, secondBatch))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, secondBatch))
                 .isTrue();
 
         // Retrieved causes should contain both batches
-        List<ReplicateStatusCause> retrieved = computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
+        List<ReplicateStatusCause> retrieved = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
         Assertions.assertThat(retrieved)
                 .isNotNull()
                 .hasSize(2)
@@ -162,13 +167,13 @@ class ComputeExitCauseServiceTests {
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING); // Same error for different dataset
 
         // Both calls should succeed
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, firstBatch))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, firstBatch))
                 .isTrue();
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, secondBatch))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, secondBatch))
                 .isTrue();
 
         // Retrieved causes should contain both instances of the same error
-        List<ReplicateStatusCause> retrieved = computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
+        List<ReplicateStatusCause> retrieved = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID);
         Assertions.assertThat(retrieved)
                 .isNotNull()
                 .hasSize(2)
@@ -177,22 +182,22 @@ class ComputeExitCauseServiceTests {
 
     @Test
     void shouldNotSetBulkExitCausesWhenNull() {
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, null))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, null))
                 .isFalse();
     }
 
     @Test
     void shouldNotSetBulkExitCausesWhenEmpty() {
-        Assertions.assertThat(computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, Collections.emptyList()))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, Collections.emptyList()))
                 .isFalse();
     }
 
     @Test
-    void shouldReturnNullWhenBulkExitCausesNotSet() {
-        Assertions.assertThat(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
-                .isNull();
-        Assertions.assertThat(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID))
-                .isNull();
+    void shouldReturnDefaultUnknownIssueWhenBulkExitCausesNotSet() {
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
+                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID))
+                .isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
 
     @Test
@@ -200,16 +205,16 @@ class ComputeExitCauseServiceTests {
         List<ReplicateStatusCause> causes = Collections.singletonList(
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
 
-        computeExitCauseService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, causes);
+        computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, causes);
 
         // First retrieval should return causes
-        Assertions.assertThat(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
                 .isNotNull()
                 .containsExactlyElementsOf(causes);
 
-        // Second retrieval should return null (pruned)
-        Assertions.assertThat(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
-                .isNull();
+        // Second retrieval should return default unknown issue (pruned, so no specific causes set)
+        Assertions.assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID))
+                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
     //endregion
 

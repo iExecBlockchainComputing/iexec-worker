@@ -181,7 +181,7 @@ public class PreComputeService {
             switch (exitCode) {
                 case 1:
                     // Check for bulk exit causes first, use default if none found
-                    List<ReplicateStatusCause> bulkCauses = computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId);
+                    List<ReplicateStatusCause> bulkCauses = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId);
                     if (bulkCauses != null && !bulkCauses.isEmpty()) {
                         cause = bulkCauses.get(0); // Use first cause from bulk processing
                     } else {

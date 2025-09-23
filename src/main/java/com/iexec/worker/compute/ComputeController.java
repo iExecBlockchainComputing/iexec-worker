@@ -69,6 +69,19 @@ public class ComputeController {
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
+        if (exitMessage.cause() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, List.of(exitMessage.cause()));
+    }
+
+    @PostMapping("/compute/{stage}/{chainTaskId}/exit-causes")
+    public ResponseEntity<Void> sendExitCausesForGivenComputeStage(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable ComputeStage stage,
+            @PathVariable String chainTaskId,
+            @RequestBody List<ReplicateStatusCause> causes) {
+
         try {
             if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
                 return ResponseEntity
@@ -81,14 +94,15 @@ public class ComputeController {
                     .build();
         }
 
-        if (exitMessage.cause() == null) {
+        if (causes == null || causes.isEmpty()) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
         }
-        if (!computeStageExitService.setExitCause(stage,
-                chainTaskId,
-                exitMessage.cause())) {
+
+        final boolean stored = computeStageExitService.setExitCausesForGivenComputeStage(stage, chainTaskId, causes);
+
+        if (!stored) {
             return ResponseEntity
                     .status(HttpStatus.ALREADY_REPORTED.value())
                     .build();
@@ -122,40 +136,4 @@ public class ComputeController {
         }
         return ok(chainTaskId);
     }
-
-    @PostMapping("/compute/{stage}/{chainTaskId}/exit-causes")
-    public ResponseEntity<Void> sendExitCausesForGivenComputeStage(
-            @RequestHeader("Authorization") String authorization,
-            @PathVariable ComputeStage stage,
-            @PathVariable String chainTaskId,
-            @RequestBody List<ReplicateStatusCause> causes) {
-
-        try {
-            if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED.value())
-                        .build();
-            }
-        } catch (NoSuchElementException e) {
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND.value())
-                    .build();
-        }
-
-        if (causes == null || causes.isEmpty()) {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .build();
-        }
-
-        final boolean stored = computeStageExitService.setBulkExitCausesForGivenComputeStage(stage, chainTaskId, causes);
-
-        if (!stored) {
-            return ResponseEntity
-                    .status(HttpStatus.ALREADY_REPORTED.value())
-                    .build();
-        }
-        return ok().build();
-    }
-
 }

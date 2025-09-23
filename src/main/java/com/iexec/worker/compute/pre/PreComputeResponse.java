@@ -19,7 +19,12 @@ package com.iexec.worker.compute.pre;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeResponse;
-import lombok.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
@@ -43,7 +48,7 @@ public class PreComputeResponse implements ComputeResponse {
         return ComputeResponse.super.isSuccessful();
     }
 
-    public void setExitCause(ReplicateStatusCause exitCause) {
+    public void setExitCausesForGivenComputeStage(ReplicateStatusCause exitCause) {
         this.exitCause = exitCause;
     }
 }

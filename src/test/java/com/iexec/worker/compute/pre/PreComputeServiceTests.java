@@ -386,7 +386,7 @@ class PreComputeServiceTests {
                 .finalStatus(DockerRunFinalStatus.FAILED)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId))
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId))
                 .thenReturn(Collections.emptyList());
 
         PreComputeResponse preComputeResponse =
@@ -458,7 +458,7 @@ class PreComputeServiceTests {
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
         );
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.PRE, chainTaskId))
                 .thenReturn(bulkCauses);
 
@@ -469,7 +469,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
         verify(dockerService).run(any());
-        verify(computeExitCauseService).getBulkExitCausesAndPruneForGivenComputeStage(
+        verify(computeExitCauseService).getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.PRE, chainTaskId);
     }
 
@@ -492,7 +492,7 @@ class PreComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         // Configure empty bulk exit causes to test default cause usage
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.PRE, chainTaskId))
                 .thenReturn(Collections.emptyList());
 
@@ -503,7 +503,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE); // Now expects default cause
         verify(dockerService).run(any());
-        verify(computeExitCauseService).getBulkExitCausesAndPruneForGivenComputeStage(
+        verify(computeExitCauseService).getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.PRE, chainTaskId);
     }
 
@@ -526,7 +526,7 @@ class PreComputeServiceTests {
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
 
         // Configure null bulk exit causes to test default cause usage
-        when(computeExitCauseService.getBulkExitCausesAndPruneForGivenComputeStage(
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.PRE, chainTaskId))
                 .thenReturn(null);
 
@@ -537,7 +537,7 @@ class PreComputeServiceTests {
         Assertions.assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE); // Now expects default cause
         verify(dockerService).run(any());
-        verify(computeExitCauseService).getBulkExitCausesAndPruneForGivenComputeStage(
+        verify(computeExitCauseService).getExitCausesAndPruneForGivenComputeStage(
                 ComputeStage.PRE, chainTaskId);
     }
     //endregion

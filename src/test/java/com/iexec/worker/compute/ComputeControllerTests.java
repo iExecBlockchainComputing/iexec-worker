@@ -86,9 +86,6 @@ public class ComputeControllerTests {
 
     @Test
     void shouldNotSendExitCauseForComputeComputeStageSinceNoCause() {
-        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
-                .thenReturn(true);
-
         final ResponseEntity<?> response =
                 computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
                         ComputeStage.PRE,
@@ -98,12 +95,12 @@ public class ComputeControllerTests {
     }
 
     @Test
-    void shouldNotSendExitCauseForComputeComputeStageSinceAlreadySet() {
+    void shouldAccumulateExitCauseWhenCalledMultipleTimes() {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
         final ComputeStage stage = ComputeStage.PRE;
-        computeStageExitService.setExitCause(stage, CHAIN_TASK_ID, CAUSE);
+        computeStageExitService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, List.of(CAUSE));
 
         final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
                 AUTH_HEADER,
@@ -112,7 +109,7 @@ public class ComputeControllerTests {
                 new ExitMessage(CAUSE)
         );
 
-        Assertions.assertEquals(HttpStatus.ALREADY_REPORTED.value(), response.getStatusCode().value());
+        Assertions.assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
     }
 
     @Test
@@ -349,7 +346,7 @@ public class ComputeControllerTests {
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM);
 
         // First call should succeed
-        computeStageExitService.setBulkExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, firstCauses);
+        computeStageExitService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, firstCauses);
 
         // Second call should also succeed and accumulate causes
         final ResponseEntity<Void> response = computeController.sendExitCausesForGivenComputeStage(
