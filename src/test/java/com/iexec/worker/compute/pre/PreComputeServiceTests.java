@@ -16,6 +16,80 @@
 
 package com.iexec.worker.compute.pre;
 
+import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION;
+import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_APP_COMPUTE_INVALID_ENCLAVE_CONFIG;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_APP_COMPUTE_NO_ENCLAVE_CONFIG;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_EXECUTION_NOT_AUTHORIZED_EMPTY_PARAMS_UNAUTHORIZED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_EXECUTION_NOT_AUTHORIZED_GET_CHAIN_DEAL_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_EXECUTION_NOT_AUTHORIZED_GET_CHAIN_TASK_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_EXECUTION_NOT_AUTHORIZED_INVALID_SIGNATURE;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_EXECUTION_NOT_AUTHORIZED_NO_MATCH_ONCHAIN_TYPE;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_EXECUTION_NOT_AUTHORIZED_TASK_NOT_ACTIVE;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_GET_SIGNATURE_TOKENS_FAILED_EMPTY_PUBLIC_ENCLAVE_CHALLENGE;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_GET_SIGNATURE_TOKENS_FAILED_EMPTY_TEE_CHALLENGE;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_GET_SIGNATURE_TOKENS_FAILED_EMPTY_TEE_CREDENTIALS;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_GET_SIGNATURE_TOKENS_FAILED_EMPTY_WORKER_ADDRESS;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_GET_TASK_DESCRIPTION_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_INVALID_AUTHORIZATION;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_NO_SESSION_REQUEST;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_NO_TASK_DESCRIPTION;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_POST_COMPUTE_GET_ENCRYPTION_TOKENS_FAILED_EMPTY_BENEFICIARY_KEY;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_POST_COMPUTE_GET_STORAGE_TOKENS_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_PRE_COMPUTE_GET_DATASET_SECRET_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_SECURE_SESSION_GENERATION_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_SECURE_SESSION_NO_TEE_FRAMEWORK;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_SECURE_SESSION_STORAGE_CALL_FAILED;
+import static com.iexec.common.replicate.ReplicateStatusCause.TEE_SESSION_GENERATION_UNKNOWN_ISSUE;
+import static com.iexec.sms.api.TeeSessionGenerationError.APP_COMPUTE_INVALID_ENCLAVE_CONFIG;
+import static com.iexec.sms.api.TeeSessionGenerationError.APP_COMPUTE_NO_ENCLAVE_CONFIG;
+import static com.iexec.sms.api.TeeSessionGenerationError.EXECUTION_NOT_AUTHORIZED_EMPTY_PARAMS_UNAUTHORIZED;
+import static com.iexec.sms.api.TeeSessionGenerationError.EXECUTION_NOT_AUTHORIZED_GET_CHAIN_DEAL_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.EXECUTION_NOT_AUTHORIZED_GET_CHAIN_TASK_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.EXECUTION_NOT_AUTHORIZED_INVALID_SIGNATURE;
+import static com.iexec.sms.api.TeeSessionGenerationError.EXECUTION_NOT_AUTHORIZED_NO_MATCH_ONCHAIN_TYPE;
+import static com.iexec.sms.api.TeeSessionGenerationError.EXECUTION_NOT_AUTHORIZED_TASK_NOT_ACTIVE;
+import static com.iexec.sms.api.TeeSessionGenerationError.GET_SIGNATURE_TOKENS_FAILED_EMPTY_PUBLIC_ENCLAVE_CHALLENGE;
+import static com.iexec.sms.api.TeeSessionGenerationError.GET_SIGNATURE_TOKENS_FAILED_EMPTY_TEE_CHALLENGE;
+import static com.iexec.sms.api.TeeSessionGenerationError.GET_SIGNATURE_TOKENS_FAILED_EMPTY_TEE_CREDENTIALS;
+import static com.iexec.sms.api.TeeSessionGenerationError.GET_SIGNATURE_TOKENS_FAILED_EMPTY_WORKER_ADDRESS;
+import static com.iexec.sms.api.TeeSessionGenerationError.GET_TASK_DESCRIPTION_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.INVALID_AUTHORIZATION;
+import static com.iexec.sms.api.TeeSessionGenerationError.NO_SESSION_REQUEST;
+import static com.iexec.sms.api.TeeSessionGenerationError.NO_TASK_DESCRIPTION;
+import static com.iexec.sms.api.TeeSessionGenerationError.POST_COMPUTE_GET_ENCRYPTION_TOKENS_FAILED_EMPTY_BENEFICIARY_KEY;
+import static com.iexec.sms.api.TeeSessionGenerationError.POST_COMPUTE_GET_STORAGE_TOKENS_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.PRE_COMPUTE_GET_DATASET_SECRET_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.SECURE_SESSION_GENERATION_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.SECURE_SESSION_NO_TEE_FRAMEWORK;
+import static com.iexec.sms.api.TeeSessionGenerationError.SECURE_SESSION_STORAGE_CALL_FAILED;
+import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.util.unit.DataSize;
+
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
@@ -32,6 +106,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
+import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -41,25 +116,6 @@ import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.*;
-import org.springframework.util.unit.DataSize;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
-
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
-import static com.iexec.sms.api.TeeSessionGenerationError.*;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 class PreComputeServiceTests {
 
@@ -329,8 +385,8 @@ class PreComputeServiceTests {
                 .finalStatus(DockerRunFinalStatus.FAILED)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId))
-                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId))
+                .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
 
         PreComputeResponse preComputeResponse =
                 preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
