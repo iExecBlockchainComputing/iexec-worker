@@ -62,7 +62,7 @@ public class ComputeController {
      * @deprecated Use {@link #sendExitCausesForGivenComputeStage(String, ComputeStage, String, List)}
      *             for bulk exit cause reporting instead
      */
-    @Deprecated(since = "v9.0.1", forRemoval = true)
+    @Deprecated(forRemoval = true) // TODO: Add version when releasing next one
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
     public ResponseEntity<Void> sendExitCauseForGivenComputeStage(
             @RequestHeader("Authorization") String authorization,
