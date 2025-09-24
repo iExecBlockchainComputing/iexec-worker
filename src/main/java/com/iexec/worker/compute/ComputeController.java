@@ -52,13 +52,6 @@ public class ComputeController {
     }
 
     /**
-     * Send a single exit cause for a given compute stage.
-     *
-     * @param authorization authorization header
-     * @param stage         compute stage (PRE or POST)
-     * @param chainTaskId   task ID
-     * @param exitMessage   exit message containing the cause
-     * @return response entity
      * @deprecated Use {@link #sendExitCausesForGivenComputeStage(String, ComputeStage, String, List)}
      *             for bulk exit cause reporting instead
      */
