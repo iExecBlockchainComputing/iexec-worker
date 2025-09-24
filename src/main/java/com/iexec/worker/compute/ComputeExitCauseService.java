@@ -56,8 +56,9 @@ public class ComputeExitCauseService {
             } else {
                 log.info("Appended exit causes to existing list [computeStage:{}, chainTaskId:{}, newCauseCount:{}, totalCauseCount:{}]",
                         computeStage, chainTaskId, causes.size(), existingCauses.size() + causes.size());
-                existingCauses.addAll(causes);
-                return List.copyOf(existingCauses);
+                List<ReplicateStatusCause> combinedCauses = new java.util.ArrayList<>(List.copyOf(existingCauses));
+                combinedCauses.addAll(causes);
+                return List.copyOf(combinedCauses);
             }
         });
         return true;
