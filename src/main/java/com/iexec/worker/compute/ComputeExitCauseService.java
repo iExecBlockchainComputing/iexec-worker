@@ -38,9 +38,9 @@ public class ComputeExitCauseService {
      * @param causes       list of root causes of the failure
      * @return true if exit causes are reported
      */
-    boolean setExitCausesForGivenComputeStage(ComputeStage computeStage,
-                                              String chainTaskId,
-                                              List<ReplicateStatusCause> causes) {
+    boolean setExitCausesForGivenComputeStage(final ComputeStage computeStage,
+                                              final String chainTaskId,
+                                              final List<ReplicateStatusCause> causes) {
         if (causes == null || causes.isEmpty()) {
             log.error("Cannot set exit causes with null or empty list [computeStage:{}, chainTaskId:{}]",
                     computeStage, chainTaskId);
@@ -72,7 +72,7 @@ public class ComputeExitCauseService {
      * @param chainTaskId  task ID
      * @return list of exit causes, or default unknown issue if not found
      */
-    public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(ComputeStage computeStage, String chainTaskId) {
+    public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(final ComputeStage computeStage, final String chainTaskId) {
         final String key = buildKey(computeStage, chainTaskId);
         final List<ReplicateStatusCause> causes = exitCauseMap.remove(key);
         if (causes != null) {
