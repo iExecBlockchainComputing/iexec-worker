@@ -16,13 +16,11 @@
 
 package com.iexec.worker.compute;
 
-import static org.mockito.Mockito.when;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.NoSuchElementException;
-
+import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.common.result.ComputedFile;
+import com.iexec.common.worker.api.ExitMessage;
+import com.iexec.worker.chain.WorkerpoolAuthorizationService;
+import com.iexec.worker.result.ResultService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,11 +30,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
-import com.iexec.common.result.ComputedFile;
-import com.iexec.common.worker.api.ExitMessage;
-import com.iexec.worker.chain.WorkerpoolAuthorizationService;
-import com.iexec.worker.result.ResultService;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.NoSuchElementException;
+
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ComputeControllerTests {

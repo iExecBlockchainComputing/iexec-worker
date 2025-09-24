@@ -16,15 +16,14 @@
 
 package com.iexec.worker.compute;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
+import com.iexec.common.replicate.ReplicateStatusCause;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 class ComputeExitCauseServiceTests {
 

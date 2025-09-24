@@ -16,21 +16,6 @@
 
 package com.iexec.worker.compute.pre;
 
-import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING;
-import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION;
-import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION;
-import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION;
-import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_TIMEOUT;
-import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
-
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
-
-import org.springframework.stereotype.Service;
-import org.springframework.util.unit.DataSize;
-
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.HostConfig;
 import com.iexec.common.replicate.ReplicateStatusCause;
@@ -54,8 +39,17 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+
+import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
 
 @Slf4j
 @Service

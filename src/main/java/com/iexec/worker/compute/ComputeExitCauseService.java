@@ -16,15 +16,13 @@
 
 package com.iexec.worker.compute;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import org.springframework.stereotype.Service;
-
-import com.iexec.common.replicate.ReplicateStatusCause;
-
-import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
@@ -38,12 +36,12 @@ public class ComputeExitCauseService {
      *
      * @param computeStage pre-compute or post-compute-stage label
      * @param chainTaskId  task ID
-     * @param causes    list of root causes of the failure
+     * @param causes       list of root causes of the failure
      * @return true if exit causes are reported
      */
     boolean setExitCausesForGivenComputeStage(ComputeStage computeStage,
-                         String chainTaskId,
-                         List<ReplicateStatusCause> causes) {
+                                              String chainTaskId,
+                                              List<ReplicateStatusCause> causes) {
         if (causes == null || causes.isEmpty()) {
             log.error("Cannot set bulk exit causes with null or empty list [computeStage:{}, chainTaskId:{}]",
                     computeStage, chainTaskId);
@@ -85,8 +83,8 @@ public class ComputeExitCauseService {
         } else {
             // Return default unknown issue cause when no specific causes are set
             final ReplicateStatusCause defaultCause = computeStage == ComputeStage.PRE
-                ? ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE
-                : ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
+                    ? ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE
+                    : ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
             log.debug("No exit causes found, returning default unknown issue [computeStage:{}, chainTaskId:{}]",
                     computeStage, chainTaskId);
             return List.of(defaultCause);

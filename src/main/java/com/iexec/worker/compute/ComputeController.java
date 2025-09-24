@@ -17,24 +17,19 @@
 package com.iexec.worker.compute;
 
 
-import static org.springframework.http.ResponseEntity.ok;
-
-import java.util.List;
-import java.util.NoSuchElementException;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.result.ResultService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+
+import static org.springframework.http.ResponseEntity.ok;
 
 @RestController
 public class ComputeController {
@@ -53,7 +48,7 @@ public class ComputeController {
 
     /**
      * @deprecated Use {@link #sendExitCausesForGivenComputeStage(String, ComputeStage, String, List)}
-     *             for bulk exit cause reporting instead
+     * for bulk exit cause reporting instead
      */
     @Deprecated(forRemoval = true) // TODO: Add version when releasing next one
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
