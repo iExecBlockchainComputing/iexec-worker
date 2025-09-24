@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -68,81 +70,114 @@ public class ComputeControllerTests {
     }
 
     // region sendExitCauseForGivenComputeStage
-    @Test
-    void sendExitCauseForComputeComputeStage() {
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnOkWhenSendingExitCause(ComputeStage stage) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        // Test single cause via deprecated endpoint
-        final ResponseEntity<?> singleResponse =
-                computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
-                        ComputeStage.PRE,
-                        CHAIN_TASK_ID,
-                        new ExitMessage(CAUSE));
-        assertThat(singleResponse.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(HttpStatus.OK.value()).isEqualTo(singleResponse.getStatusCode().value());
-
-        // Test single cause via new bulk endpoint
-        final ResponseEntity<Void> bulkSingleResponse = computeController.sendExitCausesForGivenComputeStage(
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
                 AUTH_HEADER,
-                ComputeStage.POST,
+                stage,
+                CHAIN_TASK_ID,
+                new ExitMessage(CAUSE)
+        );
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
+    }
+
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnOkForSingleCause(ComputeStage stage) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<Void> response = computeController.sendExitCausesForGivenComputeStage(
+                AUTH_HEADER,
+                stage,
                 CHAIN_TASK_ID,
                 List.of(CAUSE)
         );
-        assertThat(HttpStatus.OK.value()).isEqualTo(bulkSingleResponse.getStatusCode().value());
 
-        // Test multiple causes via new bulk endpoint
+        assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
+    }
+
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnOkForMultipleCauses(ComputeStage stage) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
         List<ReplicateStatusCause> multipleCauses = List.of(
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
         );
-        final ResponseEntity<Void> bulkMultipleResponse = computeController.sendExitCausesForGivenComputeStage(
+
+        final ResponseEntity<Void> response = computeController.sendExitCausesForGivenComputeStage(
                 AUTH_HEADER,
-                ComputeStage.PRE,
+                stage,
                 CHAIN_TASK_ID,
                 multipleCauses
         );
-        assertThat(HttpStatus.OK.value()).isEqualTo(bulkMultipleResponse.getStatusCode().value());
+
+        assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
     }
 
-    @Test
-    void shouldReturnBadRequestForInvalidExitCauses() {
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnBadRequestForNullCause(ComputeStage stage) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        // Test null cause via deprecated endpoint
-        final ResponseEntity<?> nullCauseResponse =
-                computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
-                        ComputeStage.PRE,
-                        CHAIN_TASK_ID,
-                        new ExitMessage(null));
-        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(nullCauseResponse.getStatusCode().value());
-
-        // Test null causes list via new bulk endpoint
-        final ResponseEntity<Void> nullListResponse = computeController.sendExitCausesForGivenComputeStage(
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
                 AUTH_HEADER,
-                ComputeStage.PRE,
+                stage,
+                CHAIN_TASK_ID,
+                new ExitMessage(null)
+        );
+
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(response.getStatusCode().value());
+    }
+
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnBadRequestForNullCausesList(ComputeStage stage) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<Void> response = computeController.sendExitCausesForGivenComputeStage(
+                AUTH_HEADER,
+                stage,
                 CHAIN_TASK_ID,
                 null
         );
-        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(nullListResponse.getStatusCode().value());
 
-        // Test empty causes list via new bulk endpoint
-        final ResponseEntity<Void> emptyListResponse = computeController.sendExitCausesForGivenComputeStage(
-                AUTH_HEADER,
-                ComputeStage.PRE,
-                CHAIN_TASK_ID,
-                List.of()
-        );
-        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(emptyListResponse.getStatusCode().value());
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(response.getStatusCode().value());
     }
 
-    @Test
-    void shouldAccumulateExitCauseWhenCalledMultipleTimes() {
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnBadRequestForEmptyCausesList(ComputeStage stage) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        final ComputeStage stage = ComputeStage.PRE;
+        final ResponseEntity<Void> response = computeController.sendExitCausesForGivenComputeStage(
+                AUTH_HEADER,
+                stage,
+                CHAIN_TASK_ID,
+                List.of()
+        );
+
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(response.getStatusCode().value());
+    }
+
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldAccumulateExitCauseWhenCalledMultipleTimes(ComputeStage stage) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
         computeStageExitService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, List.of(CAUSE));
 
         final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
@@ -155,52 +190,36 @@ public class ComputeControllerTests {
         assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
     }
 
-    @Test
-    void shouldReturnUnauthorizedWhenAuthFails() {
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnUnauthorizedWhenAuthFails(ComputeStage stage) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(false);
 
-        // Test via deprecated endpoint
-        final ResponseEntity<Void> singleResponse = computeController.sendExitCauseForGivenComputeStage(
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
                 AUTH_HEADER,
-                ComputeStage.PRE,
+                stage,
                 CHAIN_TASK_ID,
                 new ExitMessage(CAUSE)
         );
-        assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(singleResponse.getStatusCode().value());
 
-        // Test via new bulk endpoint
-        final ResponseEntity<Void> bulkResponse = computeController.sendExitCausesForGivenComputeStage(
-                AUTH_HEADER,
-                ComputeStage.PRE,
-                CHAIN_TASK_ID,
-                List.of(CAUSE)
-        );
-        assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(bulkResponse.getStatusCode().value());
+        assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(response.getStatusCode().value());
     }
 
-    @Test
-    void shouldReturnNotFoundWhenWrongChainTaskId() {
+    @ParameterizedTest
+    @EnumSource(ComputeStage.class)
+    void shouldReturnNotFoundWhenWrongChainTaskId(ComputeStage stage) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenThrow(NoSuchElementException.class);
 
-        // Test via deprecated endpoint
-        final ResponseEntity<Void> singleResponse = computeController.sendExitCauseForGivenComputeStage(
+        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
                 AUTH_HEADER,
-                ComputeStage.PRE,
+                stage,
                 CHAIN_TASK_ID,
                 new ExitMessage(CAUSE)
         );
-        assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(singleResponse.getStatusCode().value());
 
-        // Test via new bulk endpoint
-        final ResponseEntity<Void> bulkResponse = computeController.sendExitCausesForGivenComputeStage(
-                AUTH_HEADER,
-                ComputeStage.PRE,
-                CHAIN_TASK_ID,
-                List.of(CAUSE)
-        );
-        assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(bulkResponse.getStatusCode().value());
+        assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(response.getStatusCode().value());
     }
     // endregion
 
