@@ -21,8 +21,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 class ComputeExitCauseServiceTests {
@@ -47,7 +45,7 @@ class ComputeExitCauseServiceTests {
                 .isEqualTo(List.of(singleCause));
 
         // Test multiple causes in single call
-        List<ReplicateStatusCause> multipleCauses = Arrays.asList(
+        List<ReplicateStatusCause> multipleCauses = List.of(
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
         );
@@ -73,7 +71,7 @@ class ComputeExitCauseServiceTests {
                 .isEqualTo(List.of(singleCause));
 
         // Test multiple causes in single call
-        List<ReplicateStatusCause> multipleCauses = Arrays.asList(
+        List<ReplicateStatusCause> multipleCauses = List.of(
                 ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND,
                 ReplicateStatusCause.POST_COMPUTE_TIMEOUT
         );
@@ -103,9 +101,9 @@ class ComputeExitCauseServiceTests {
                 .containsExactly(duplicateCause, duplicateCause);
 
         // Test accumulation with different causes
-        List<ReplicateStatusCause> firstBatch = Collections.singletonList(
+        List<ReplicateStatusCause> firstBatch = List.of(
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
-        List<ReplicateStatusCause> secondBatch = Collections.singletonList(
+        List<ReplicateStatusCause> secondBatch = List.of(
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM);
 
         Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID, firstBatch))
@@ -125,7 +123,7 @@ class ComputeExitCauseServiceTests {
         Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, null))
                 .isFalse();
 
-        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, Collections.emptyList()))
+        Assertions.assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, List.of()))
                 .isFalse();
     }
     //endregion

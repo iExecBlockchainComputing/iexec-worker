@@ -31,7 +31,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -88,7 +87,7 @@ public class ComputeControllerTests {
                 AUTH_HEADER,
                 ComputeStage.POST,
                 CHAIN_TASK_ID,
-                Collections.singletonList(CAUSE)
+                List.of(CAUSE)
         );
         Assertions.assertEquals(HttpStatus.OK.value(), bulkSingleResponse.getStatusCode().value());
 
@@ -133,7 +132,7 @@ public class ComputeControllerTests {
                 AUTH_HEADER,
                 ComputeStage.PRE,
                 CHAIN_TASK_ID,
-                Collections.emptyList()
+                List.of()
         );
         Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), emptyListResponse.getStatusCode().value());
     }
@@ -175,7 +174,7 @@ public class ComputeControllerTests {
                 AUTH_HEADER,
                 ComputeStage.PRE,
                 CHAIN_TASK_ID,
-                Collections.singletonList(CAUSE)
+                List.of(CAUSE)
         );
         Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), bulkResponse.getStatusCode().value());
     }
@@ -199,7 +198,7 @@ public class ComputeControllerTests {
                 AUTH_HEADER,
                 ComputeStage.PRE,
                 CHAIN_TASK_ID,
-                Collections.singletonList(CAUSE)
+                List.of(CAUSE)
         );
         Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), bulkResponse.getStatusCode().value());
     }
