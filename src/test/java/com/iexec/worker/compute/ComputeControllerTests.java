@@ -99,7 +99,7 @@ public class ComputeControllerTests {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        ResponseEntity<Void> response = getResponse(stage, causes);
+        final ResponseEntity<Void> response = getResponse(stage, causes);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
     }
@@ -110,13 +110,13 @@ public class ComputeControllerTests {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        ResponseEntity<Void> firstResponse = getResponse(stage, causes);
+        final ResponseEntity<Void> firstResponse = getResponse(stage, causes);
         assertThat(firstResponse.getStatusCode().value()).isEqualTo(HttpStatus.OK.value());
 
-        ResponseEntity<Void> secondResponse = getResponse(stage, causes);
+        final ResponseEntity<Void> secondResponse = getResponse(stage, causes);
         assertThat(secondResponse.getStatusCode().value()).isEqualTo(HttpStatus.ALREADY_REPORTED.value());
 
-        List<ReplicateStatusCause> retrievedCauses = computeStageExitService
+        final List<ReplicateStatusCause> retrievedCauses = computeStageExitService
                 .getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID);
         assertThat(retrievedCauses)
                 .hasSize(causes.size())
@@ -129,7 +129,7 @@ public class ComputeControllerTests {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(false);
 
-        ResponseEntity<Void> response = getResponse(stage, causes);
+        final ResponseEntity<Void> response = getResponse(stage, causes);
         assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(response.getStatusCode().value());
     }
 
@@ -139,7 +139,7 @@ public class ComputeControllerTests {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenThrow(NoSuchElementException.class);
 
-        ResponseEntity<Void> response = getResponse(stage, causes);
+        final ResponseEntity<Void> response = getResponse(stage, causes);
         assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(response.getStatusCode().value());
     }
 
@@ -158,7 +158,7 @@ public class ComputeControllerTests {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        ResponseEntity<Void> response = getResponse(stage, causes);
+        final ResponseEntity<Void> response = getResponse(stage, causes);
         assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(response.getStatusCode().value());
     }
     // endregion
