@@ -57,10 +57,8 @@ public class ComputeController {
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
-        if (exitMessage.cause() == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-        return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, List.of(exitMessage.cause()));
+        List<ReplicateStatusCause> causes = exitMessage != null && exitMessage.cause() != null ? List.of(exitMessage.cause()) : List.of();
+        return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, causes);
     }
 
     @PostMapping("/compute/{stage}/{chainTaskId}/exit-causes")
