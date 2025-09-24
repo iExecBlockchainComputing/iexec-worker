@@ -43,7 +43,7 @@ public class ComputeExitCauseService {
                                               String chainTaskId,
                                               List<ReplicateStatusCause> causes) {
         if (causes == null || causes.isEmpty()) {
-            log.error("Cannot set bulk exit causes with null or empty list [computeStage:{}, chainTaskId:{}]",
+            log.error("Cannot set exit causes with null or empty list [computeStage:{}, chainTaskId:{}]",
                     computeStage, chainTaskId);
             return false;
         }
@@ -51,11 +51,11 @@ public class ComputeExitCauseService {
         final String key = buildKey(computeStage, chainTaskId);
         exitCauseMap.compute(key, (k, existingCauses) -> {
             if (existingCauses == null) {
-                log.info("Added bulk exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
+                log.info("Added exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
                         computeStage, chainTaskId, causes.size());
                 return List.copyOf(causes);
             } else {
-                log.info("Appended bulk exit causes to existing list [computeStage:{}, chainTaskId:{}, newCauseCount:{}, totalCauseCount:{}]",
+                log.info("Appended exit causes to existing list [computeStage:{}, chainTaskId:{}, newCauseCount:{}, totalCauseCount:{}]",
                         computeStage, chainTaskId, causes.size(), existingCauses.size() + causes.size());
                 final List<ReplicateStatusCause> combinedCauses = new ArrayList<>(existingCauses);
                 combinedCauses.addAll(causes);
@@ -77,7 +77,7 @@ public class ComputeExitCauseService {
         final String key = buildKey(computeStage, chainTaskId);
         final List<ReplicateStatusCause> causes = exitCauseMap.remove(key);
         if (causes != null) {
-            log.debug("Retrieved and pruned bulk exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
+            log.debug("Retrieved and pruned exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
                     computeStage, chainTaskId, causes.size());
             return causes;
         } else {
