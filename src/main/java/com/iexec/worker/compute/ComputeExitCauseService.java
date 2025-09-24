@@ -20,7 +20,6 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -57,9 +56,8 @@ public class ComputeExitCauseService {
             } else {
                 log.info("Appended exit causes to existing list [computeStage:{}, chainTaskId:{}, newCauseCount:{}, totalCauseCount:{}]",
                         computeStage, chainTaskId, causes.size(), existingCauses.size() + causes.size());
-                final List<ReplicateStatusCause> combinedCauses = new ArrayList<>(existingCauses);
-                combinedCauses.addAll(causes);
-                return combinedCauses;
+                existingCauses.addAll(causes);
+                return List.copyOf(existingCauses);
             }
         });
         return true;

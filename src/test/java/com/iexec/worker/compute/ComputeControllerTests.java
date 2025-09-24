@@ -30,10 +30,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -79,8 +79,8 @@ public class ComputeControllerTests {
                         ComputeStage.PRE,
                         CHAIN_TASK_ID,
                         new ExitMessage(CAUSE));
-        Assertions.assertTrue(singleResponse.getStatusCode().is2xxSuccessful());
-        Assertions.assertEquals(HttpStatus.OK.value(), singleResponse.getStatusCode().value());
+        assertThat(singleResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(HttpStatus.OK.value()).isEqualTo(singleResponse.getStatusCode().value());
 
         // Test single cause via new bulk endpoint
         final ResponseEntity<Void> bulkSingleResponse = computeController.sendExitCausesForGivenComputeStage(
@@ -89,10 +89,10 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 List.of(CAUSE)
         );
-        Assertions.assertEquals(HttpStatus.OK.value(), bulkSingleResponse.getStatusCode().value());
+        assertThat(HttpStatus.OK.value()).isEqualTo(bulkSingleResponse.getStatusCode().value());
 
         // Test multiple causes via new bulk endpoint
-        List<ReplicateStatusCause> multipleCauses = Arrays.asList(
+        List<ReplicateStatusCause> multipleCauses = List.of(
                 ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
                 ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
         );
@@ -102,7 +102,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 multipleCauses
         );
-        Assertions.assertEquals(HttpStatus.OK.value(), bulkMultipleResponse.getStatusCode().value());
+        assertThat(HttpStatus.OK.value()).isEqualTo(bulkMultipleResponse.getStatusCode().value());
     }
 
     @Test
@@ -116,7 +116,7 @@ public class ComputeControllerTests {
                         ComputeStage.PRE,
                         CHAIN_TASK_ID,
                         new ExitMessage(null));
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), nullCauseResponse.getStatusCode().value());
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(nullCauseResponse.getStatusCode().value());
 
         // Test null causes list via new bulk endpoint
         final ResponseEntity<Void> nullListResponse = computeController.sendExitCausesForGivenComputeStage(
@@ -125,7 +125,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 null
         );
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), nullListResponse.getStatusCode().value());
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(nullListResponse.getStatusCode().value());
 
         // Test empty causes list via new bulk endpoint
         final ResponseEntity<Void> emptyListResponse = computeController.sendExitCausesForGivenComputeStage(
@@ -134,7 +134,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 List.of()
         );
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), emptyListResponse.getStatusCode().value());
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(emptyListResponse.getStatusCode().value());
     }
 
     @Test
@@ -152,7 +152,7 @@ public class ComputeControllerTests {
                 new ExitMessage(CAUSE)
         );
 
-        Assertions.assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
+        assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
     }
 
     @Test
@@ -167,7 +167,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 new ExitMessage(CAUSE)
         );
-        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), singleResponse.getStatusCode().value());
+        assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(singleResponse.getStatusCode().value());
 
         // Test via new bulk endpoint
         final ResponseEntity<Void> bulkResponse = computeController.sendExitCausesForGivenComputeStage(
@@ -176,7 +176,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 List.of(CAUSE)
         );
-        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), bulkResponse.getStatusCode().value());
+        assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(bulkResponse.getStatusCode().value());
     }
 
     @Test
@@ -191,7 +191,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 new ExitMessage(CAUSE)
         );
-        Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), singleResponse.getStatusCode().value());
+        assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(singleResponse.getStatusCode().value());
 
         // Test via new bulk endpoint
         final ResponseEntity<Void> bulkResponse = computeController.sendExitCausesForGivenComputeStage(
@@ -200,7 +200,7 @@ public class ComputeControllerTests {
                 CHAIN_TASK_ID,
                 List.of(CAUSE)
         );
-        Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), bulkResponse.getStatusCode().value());
+        assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(bulkResponse.getStatusCode().value());
     }
     // endregion
 
