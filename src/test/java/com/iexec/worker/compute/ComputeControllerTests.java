@@ -106,21 +106,20 @@ public class ComputeControllerTests {
 
     @ParameterizedTest
     @MethodSource("simpleAndListExitCauses")
-    void shouldAccumulateExitCauseWhenCalledMultipleTimes(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+    void shouldReturnAlreadyReportedWhenCalledMultipleTimes(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        ReplicateStatusCause initialCause = ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
-        computeStageExitService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, List.of(initialCause));
+        ResponseEntity<Void> firstResponse = getResponse(stage, causes);
+        assertThat(firstResponse.getStatusCode().value()).isEqualTo(HttpStatus.OK.value());
 
-        ResponseEntity<Void> response = getResponse(stage, causes);
-        assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
+        ResponseEntity<Void> secondResponse = getResponse(stage, causes);
+        assertThat(secondResponse.getStatusCode().value()).isEqualTo(HttpStatus.ALREADY_REPORTED.value());
 
-        List<ReplicateStatusCause> allAccumulatedCauses = computeStageExitService
+        List<ReplicateStatusCause> retrievedCauses = computeStageExitService
                 .getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID);
-        assertThat(allAccumulatedCauses)
-                .hasSize(1 + causes.size())
-                .contains(initialCause)
+        assertThat(retrievedCauses)
+                .hasSize(causes.size())
                 .containsAll(causes);
     }
 

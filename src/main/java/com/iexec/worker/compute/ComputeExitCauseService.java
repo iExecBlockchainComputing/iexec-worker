@@ -32,11 +32,12 @@ public class ComputeExitCauseService {
 
     /**
      * Report failure exit causes from pre-compute or post-compute enclave.
+     * Guarantees that exit causes can only be reported once per compute stage and task.
      *
      * @param computeStage pre-compute or post-compute-stage label
      * @param chainTaskId  task ID
      * @param causes       list of root causes of the failure
-     * @return true if exit causes are reported
+     * @return true if exit causes are reported, false if already reported
      */
     boolean setExitCausesForGivenComputeStage(final ComputeStage computeStage,
                                               final String chainTaskId,
@@ -48,19 +49,16 @@ public class ComputeExitCauseService {
         }
 
         final String key = buildKey(computeStage, chainTaskId);
-        exitCauseMap.compute(key, (k, existingCauses) -> {
-            if (existingCauses == null) {
-                log.info("Added exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
-                        computeStage, chainTaskId, causes.size());
-                return List.copyOf(causes);
-            } else {
-                log.info("Appended exit causes to existing list [computeStage:{}, chainTaskId:{}, newCauseCount:{}, totalCauseCount:{}]",
-                        computeStage, chainTaskId, causes.size(), existingCauses.size() + causes.size());
-                List<ReplicateStatusCause> combinedCauses = new java.util.ArrayList<>(List.copyOf(existingCauses));
-                combinedCauses.addAll(causes);
-                return List.copyOf(combinedCauses);
-            }
-        });
+
+        if (exitCauseMap.containsKey(key)) {
+            log.warn("Exit causes already reported for compute stage [computeStage:{}, chainTaskId:{}]",
+                    computeStage, chainTaskId);
+            return false;
+        }
+
+        exitCauseMap.put(key, List.copyOf(causes));
+        log.info("Added exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
+                computeStage, chainTaskId, causes.size());
         return true;
     }
 
