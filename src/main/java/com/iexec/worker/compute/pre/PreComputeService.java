@@ -139,7 +139,7 @@ public class PreComputeService {
         }
 
         // run TEE pre-compute container if needed
-        if (taskDescription.containsDataset() || taskDescription.containsInputFiles()) {
+        if (taskDescription.requiresPreCompute()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
             final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
