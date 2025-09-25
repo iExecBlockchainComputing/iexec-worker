@@ -30,6 +30,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
+import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -237,7 +238,8 @@ public class PostComputeService {
         if (exitCode != null && exitCode != 0) {
             switch (exitCode) {
                 case 1:
-                    cause = computeExitCauseService.getPostComputeExitCauseAndPrune(chainTaskId);
+                    // Use first cause from bulk processing for now
+                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, chainTaskId, POST_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;

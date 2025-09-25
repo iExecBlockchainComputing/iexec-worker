@@ -32,6 +32,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
+import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -329,8 +330,8 @@ class PreComputeServiceTests {
                 .finalStatus(DockerRunFinalStatus.FAILED)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId))
-                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE))
+                .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
 
         PreComputeResponse preComputeResponse =
                 preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
