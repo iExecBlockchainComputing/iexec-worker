@@ -27,6 +27,7 @@ import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.commons.poco.tee.TeeFramework;
+import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
@@ -360,6 +361,22 @@ class PreComputeServiceTests {
         assertThat(preComputeResponse.getExitCause())
                 .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
+    }
+
+    @Test
+    void shouldNotRunPreComputeWhenNotRequired() throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder
+                .datasetAddress(BytesUtils.EMPTY_ADDRESS)
+                .dealParams(DealParams.builder().build())
+                .build();
+
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
+
+        assertThat(taskDescription.containsDataset()).isFalse();
+        assertThat(taskDescription.containsInputFiles()).isFalse();
+        assertThat(taskDescription.isBulkRequest()).isFalse();
+        assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
     }
     //endregion
 
