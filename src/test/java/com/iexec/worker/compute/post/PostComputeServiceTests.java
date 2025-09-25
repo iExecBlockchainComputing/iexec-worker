@@ -318,7 +318,7 @@ class PostComputeServiceTests {
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID, POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
                 .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
 
         PostComputeResponse postComputeResponse =

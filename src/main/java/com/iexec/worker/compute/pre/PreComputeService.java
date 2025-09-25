@@ -139,7 +139,7 @@ public class PreComputeService {
         }
 
         // run TEE pre-compute container if needed
-        if (taskDescription.containsDataset() || taskDescription.containsInputFiles()) {
+        if (taskDescription.requiresPreCompute()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
             final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
@@ -175,7 +175,7 @@ public class PreComputeService {
             switch (exitCode) {
                 case 1:
                     // Use first cause from bulk processing for now
-                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
+                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;

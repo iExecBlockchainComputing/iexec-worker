@@ -39,20 +39,20 @@ public class ComputeExitCauseService {
      * @param causes       list of root causes of the failure
      * @return true if exit causes are reported, false if already reported
      */
-    boolean setExitCausesForGivenComputeStage(final ComputeStage computeStage,
-                                              final String chainTaskId,
+    boolean setExitCausesForGivenComputeStage(final String chainTaskId,
+                                              final ComputeStage computeStage,
                                               final List<ReplicateStatusCause> causes) {
         final String key = buildKey(computeStage, chainTaskId);
 
         if (exitCauseMap.containsKey(key)) {
-            log.warn("Exit causes already reported for compute stage [computeStage:{}, chainTaskId:{}]",
-                    computeStage, chainTaskId);
+            log.warn("Exit causes already reported for compute stage [chainTaskId:{}, computeStage:{}]",
+                    chainTaskId, computeStage);
             return false;
         }
 
         exitCauseMap.put(key, List.copyOf(causes));
-        log.info("Added exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
-                computeStage, chainTaskId, causes.size());
+        log.info("Added exit causes [chainTaskId:{}, computeStage:{}, causeCount:{}]",
+                chainTaskId, computeStage, causes.size());
         return true;
     }
 
@@ -66,18 +66,18 @@ public class ComputeExitCauseService {
      * @return list of exit causes, or default unknown issue if not found
      */
     public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(
-            final ComputeStage computeStage,
             final String chainTaskId,
+            final ComputeStage computeStage,
             final ReplicateStatusCause fallbackCause) {
         final String key = buildKey(computeStage, chainTaskId);
         final List<ReplicateStatusCause> causes = exitCauseMap.remove(key);
         if (causes != null) {
-            log.info("Retrieved and pruned exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
-                    computeStage, chainTaskId, causes.size());
+            log.info("Retrieved and pruned exit causes [chainTaskId:{} computeStage:{}, causeCount:{}]",
+                    chainTaskId, computeStage, causes.size());
             return causes;
         } else {
-            log.info("No exit causes found, returning fallback cause [computeStage:{}, chainTaskId:{}]",
-                    computeStage, chainTaskId);
+            log.info("No exit causes found, returning fallback cause [chainTaskId:{}, computeStage:{}]",
+                    chainTaskId, computeStage);
             return List.of(fallbackCause);
         }
     }
@@ -89,7 +89,7 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause storage key
      */
-    private String buildKey(ComputeStage prefix, String chainTaskId) {
+    private String buildKey(final ComputeStage prefix, final String chainTaskId) {
         return prefix + "_" + chainTaskId;
     }
 }

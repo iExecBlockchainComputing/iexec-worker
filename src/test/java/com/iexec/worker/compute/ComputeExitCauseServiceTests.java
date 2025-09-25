@@ -80,22 +80,22 @@ class ComputeExitCauseServiceTests {
     @ParameterizedTest
     @MethodSource("computeStageAndCausesArguments")
     void shouldSetExitCausesSuccessfully(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes)).isTrue();
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes)).isTrue();
     }
 
     @ParameterizedTest
     @MethodSource("computeStageAndCausesArguments")
     void shouldGetExitCausesAfterSetting(final ComputeStage stage, final List<ReplicateStatusCause> causes, final ReplicateStatusCause defaultCause) {
-        computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes);
-        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID, defaultCause)).containsExactlyElementsOf(causes);
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause)).containsExactlyElementsOf(causes);
     }
 
     @ParameterizedTest
     @MethodSource("computeStageAndCausesArguments")
     void shouldReturnDefaultCauseAfterPruning(final ComputeStage stage, final List<ReplicateStatusCause> causes, final ReplicateStatusCause defaultCause) {
-        computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes);
-        computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID, defaultCause);
-        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID, defaultCause)).isEqualTo(List.of(defaultCause));
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause);
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause)).isEqualTo(List.of(defaultCause));
     }
     //endregion
 
@@ -112,43 +112,43 @@ class ComputeExitCauseServiceTests {
     @ParameterizedTest
     @MethodSource("validExitCauseProvider")
     void shouldReturnTrueWhenReportingForFirstTime(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes))
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes))
                 .isTrue();
     }
 
     @ParameterizedTest
     @MethodSource("validExitCauseProvider")
     void shouldReturnFalseWhenReportingTwiceWithSameCauses(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
-        computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes);
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes)).isFalse();
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes)).isFalse();
     }
 
     @ParameterizedTest
     @MethodSource("validExitCauseProvider")
     void shouldReturnFalseWhenReportingTwiceWithDifferentCauses(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
-        computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes);
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
         List<ReplicateStatusCause> differentCauses = stage == ComputeStage.PRE
                 ? List.of(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM)
                 : List.of(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, differentCauses)).isFalse();
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, differentCauses)).isFalse();
     }
 
     @ParameterizedTest
     @MethodSource("validExitCauseProvider")
     void shouldReturnOriginalCausesAfterSuccessfulReport(final ComputeStage stage, final List<ReplicateStatusCause> causes, final ReplicateStatusCause defaultCause) {
-        computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes);
-        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID, defaultCause)).isEqualTo(causes);
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause)).isEqualTo(causes);
     }
 
     @Test
     void shouldAllowReportingPostStageAfterPreStageForSameTask() {
-        computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, SINGLE_PRE_CAUSES);
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID, SINGLE_POST_CAUSES)).isTrue();
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.PRE, SINGLE_PRE_CAUSES);
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, SINGLE_POST_CAUSES)).isTrue();
     }
 
     @Test
     void shouldReturnDefaultCauseWhenNoCausesWereSet() {
-        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, DEFAULT_PRE_CAUSE))
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.PRE, DEFAULT_PRE_CAUSE))
                 .isEqualTo(List.of(DEFAULT_PRE_CAUSE));
     }
     //endregion
