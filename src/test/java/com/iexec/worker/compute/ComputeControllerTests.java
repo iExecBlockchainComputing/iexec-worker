@@ -117,7 +117,7 @@ public class ComputeControllerTests {
         assertThat(secondResponse.getStatusCode().value()).isEqualTo(HttpStatus.ALREADY_REPORTED.value());
 
         final List<ReplicateStatusCause> retrievedCauses = computeStageExitService
-                .getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID, fallbackCause);
+                .getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, fallbackCause);
         assertThat(retrievedCauses)
                 .hasSize(causes.size())
                 .containsAll(causes);

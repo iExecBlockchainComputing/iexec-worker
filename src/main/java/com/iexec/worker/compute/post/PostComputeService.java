@@ -239,7 +239,7 @@ public class PostComputeService {
             switch (exitCode) {
                 case 1:
                     // Use first cause from bulk processing for now
-                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.POST, chainTaskId, POST_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
+                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;

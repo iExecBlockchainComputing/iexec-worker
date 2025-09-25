@@ -85,7 +85,7 @@ public class ComputeController {
                     .build();
         }
 
-        final boolean stored = computeStageExitService.setExitCausesForGivenComputeStage(stage, chainTaskId, causes);
+        final boolean stored = computeStageExitService.setExitCausesForGivenComputeStage(chainTaskId, stage, causes);
 
         if (!stored) {
             return ResponseEntity
