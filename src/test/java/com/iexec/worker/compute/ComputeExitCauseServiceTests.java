@@ -102,10 +102,10 @@ class ComputeExitCauseServiceTests {
     //region Report Once Behavior
     static Stream<Arguments> validExitCauseProvider() {
         return Stream.of(
-                Arguments.of(ComputeStage.PRE, SINGLE_PRE_CAUSES),
-                Arguments.of(ComputeStage.PRE, MULTIPLE_PRE_CAUSES),
-                Arguments.of(ComputeStage.POST, SINGLE_POST_CAUSES),
-                Arguments.of(ComputeStage.POST, MULTIPLE_POST_CAUSES)
+                Arguments.of(ComputeStage.PRE, SINGLE_PRE_CAUSES, DEFAULT_PRE_CAUSE),
+                Arguments.of(ComputeStage.PRE, MULTIPLE_PRE_CAUSES, DEFAULT_PRE_CAUSE),
+                Arguments.of(ComputeStage.POST, SINGLE_POST_CAUSES, DEFAULT_POST_CAUSE),
+                Arguments.of(ComputeStage.POST, MULTIPLE_POST_CAUSES, DEFAULT_POST_CAUSE)
         );
     }
 
@@ -144,22 +144,6 @@ class ComputeExitCauseServiceTests {
     void shouldAllowReportingPostStageAfterPreStageForSameTask() {
         computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.PRE, CHAIN_TASK_ID, SINGLE_PRE_CAUSES);
         assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(ComputeStage.POST, CHAIN_TASK_ID, SINGLE_POST_CAUSES)).isTrue();
-    }
-
-    static Stream<Arguments> invalidInputArguments() {
-        return Stream.of(
-                Arguments.of(ComputeStage.PRE, null),
-                Arguments.of(ComputeStage.PRE, List.of()),
-                Arguments.of(ComputeStage.POST, null),
-                Arguments.of(ComputeStage.POST, List.of())
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("invalidInputArguments")
-    void shouldReturnFalseForNullOrEmptyCauses(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(stage, CHAIN_TASK_ID, causes))
-                .isFalse();
     }
 
     @Test
