@@ -86,10 +86,10 @@ public class ComputeControllerTests {
 
     static Stream<Arguments> simpleAndListExitCauses() {
         return Stream.of(
-                Arguments.of(ComputeStage.PRE, List.of(CAUSE)),
-                Arguments.of(ComputeStage.POST, List.of(CAUSE)),
-                Arguments.of(ComputeStage.PRE, MULTIPLE_CAUSES),
-                Arguments.of(ComputeStage.POST, MULTIPLE_CAUSES)
+                Arguments.of(ComputeStage.PRE, List.of(CAUSE), ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE),
+                Arguments.of(ComputeStage.POST, List.of(CAUSE), ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE),
+                Arguments.of(ComputeStage.PRE, MULTIPLE_CAUSES, ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE),
+                Arguments.of(ComputeStage.POST, MULTIPLE_CAUSES, ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
         );
     }
 
@@ -106,7 +106,7 @@ public class ComputeControllerTests {
 
     @ParameterizedTest
     @MethodSource("simpleAndListExitCauses")
-    void shouldReturnAlreadyReportedWhenCalledMultipleTimes(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+    void shouldReturnAlreadyReportedWhenCalledMultipleTimes(final ComputeStage stage, final List<ReplicateStatusCause> causes, ReplicateStatusCause fallbackCause) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
@@ -117,7 +117,7 @@ public class ComputeControllerTests {
         assertThat(secondResponse.getStatusCode().value()).isEqualTo(HttpStatus.ALREADY_REPORTED.value());
 
         final List<ReplicateStatusCause> retrievedCauses = computeStageExitService
-                .getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID);
+                .getExitCausesAndPruneForGivenComputeStage(stage, CHAIN_TASK_ID, fallbackCause);
         assertThat(retrievedCauses)
                 .hasSize(causes.size())
                 .containsAll(causes);

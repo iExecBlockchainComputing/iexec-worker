@@ -330,7 +330,7 @@ class PreComputeServiceTests {
                 .finalStatus(DockerRunFinalStatus.FAILED)
                 .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId))
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(ComputeStage.PRE, chainTaskId, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE))
                 .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
 
         PreComputeResponse preComputeResponse =

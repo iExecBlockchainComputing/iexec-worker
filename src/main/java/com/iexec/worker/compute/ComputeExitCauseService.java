@@ -42,12 +42,6 @@ public class ComputeExitCauseService {
     boolean setExitCausesForGivenComputeStage(final ComputeStage computeStage,
                                               final String chainTaskId,
                                               final List<ReplicateStatusCause> causes) {
-        if (causes == null || causes.isEmpty()) {
-            log.error("Cannot set exit causes with null or empty list [computeStage:{}, chainTaskId:{}]",
-                    computeStage, chainTaskId);
-            return false;
-        }
-
         final String key = buildKey(computeStage, chainTaskId);
 
         if (exitCauseMap.containsKey(key)) {
@@ -66,25 +60,25 @@ public class ComputeExitCauseService {
      * Get exit causes for a specific compute stage and prune them.
      * Returns default unknown issue cause when no specific causes are set.
      *
-     * @param computeStage compute stage
-     * @param chainTaskId  task ID
+     * @param computeStage  compute stage
+     * @param chainTaskId   task ID
+     * @param fallbackCause default cause to return if no specific causes are found
      * @return list of exit causes, or default unknown issue if not found
      */
-    public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(final ComputeStage computeStage, final String chainTaskId) {
+    public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(
+            final ComputeStage computeStage,
+            final String chainTaskId,
+            final ReplicateStatusCause fallbackCause) {
         final String key = buildKey(computeStage, chainTaskId);
         final List<ReplicateStatusCause> causes = exitCauseMap.remove(key);
         if (causes != null) {
-            log.debug("Retrieved and pruned exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
+            log.info("Retrieved and pruned exit causes [computeStage:{}, chainTaskId:{}, causeCount:{}]",
                     computeStage, chainTaskId, causes.size());
             return causes;
         } else {
-            // Return default unknown issue cause when no specific causes are set
-            final ReplicateStatusCause defaultCause = computeStage == ComputeStage.PRE
-                    ? ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE
-                    : ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
-            log.debug("No exit causes found, returning default unknown issue [computeStage:{}, chainTaskId:{}]",
+            log.info("No exit causes found, returning fallback cause [computeStage:{}, chainTaskId:{}]",
                     computeStage, chainTaskId);
-            return List.of(defaultCause);
+            return List.of(fallbackCause);
         }
     }
 

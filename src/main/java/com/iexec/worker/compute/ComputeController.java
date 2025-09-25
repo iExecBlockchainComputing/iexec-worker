@@ -67,7 +67,6 @@ public class ComputeController {
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody List<ReplicateStatusCause> causes) {
-
         try {
             if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
                 return ResponseEntity
