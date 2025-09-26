@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
+import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -138,7 +139,7 @@ public class PreComputeService {
         }
 
         // run TEE pre-compute container if needed
-        if (taskDescription.containsDataset() || taskDescription.containsInputFiles()) {
+        if (taskDescription.requiresPreCompute()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
             final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
@@ -173,7 +174,8 @@ public class PreComputeService {
         } else {
             switch (exitCode) {
                 case 1:
-                    cause = computeExitCauseService.getPreComputeExitCauseAndPrune(chainTaskId);
+                    // Use first cause from bulk processing for now
+                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
                     break;
                 case 2:
                     cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;

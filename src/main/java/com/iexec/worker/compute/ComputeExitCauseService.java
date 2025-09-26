@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,73 +21,65 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 
 
 @Slf4j
 @Service
 public class ComputeExitCauseService {
 
-    private final HashMap<String, ReplicateStatusCause> exitCauseMap = new HashMap<>();
+    private final HashMap<String, List<ReplicateStatusCause>> exitCauseMap = new HashMap<>();
 
     /**
-     * Report failure exit cause from pre-compute or post-compute enclave.
+     * Report failure exit causes from pre-compute or post-compute enclave.
+     * Guarantees that exit causes can only be reported once per compute stage and task.
      *
      * @param computeStage pre-compute or post-compute-stage label
      * @param chainTaskId  task ID
-     * @param exitCause    root cause of the failure
-     * @return true if exit cause is reported
+     * @param causes       list of root causes of the failure
+     * @return true if exit causes are reported, false if already reported
      */
-    boolean setExitCause(ComputeStage computeStage,
-                         String chainTaskId,
-                         ReplicateStatusCause exitCause) {
-        String key = buildKey(computeStage, chainTaskId);
+    boolean setExitCausesForGivenComputeStage(final String chainTaskId,
+                                              final ComputeStage computeStage,
+                                              final List<ReplicateStatusCause> causes) {
+        final String key = buildKey(computeStage, chainTaskId);
+
         if (exitCauseMap.containsKey(key)) {
-            log.info("Cannot set exit cause since already set " +
-                            "[computeStage:{}, chainTaskId:{}, exitCause:{}]",
-                    computeStage, chainTaskId, exitCause);
+            log.warn("Exit causes already reported for compute stage [chainTaskId:{}, computeStage:{}]",
+                    chainTaskId, computeStage);
             return false;
         }
-        exitCauseMap.put(key, exitCause);
-        log.info("Added exit cause [computeStage:{}, chainTaskId:{}, exitCause:{}]",
-                computeStage, chainTaskId, exitCause);
+
+        exitCauseMap.put(key, List.copyOf(causes));
+        log.info("Added exit causes [chainTaskId:{}, computeStage:{}, causeCount:{}]",
+                chainTaskId, computeStage, causes.size());
         return true;
     }
 
     /**
-     * Get exit cause for pre-compute or post-compute enclave.
+     * Get exit causes for a specific compute stage and prune them.
+     * Returns default unknown issue cause when no specific causes are set.
      *
-     * @param chainTaskId task ID
-     * @return exit cause
+     * @param computeStage  compute stage
+     * @param chainTaskId   task ID
+     * @param fallbackCause default cause to return if no specific causes are found
+     * @return list of exit causes, or default unknown issue if not found
      */
-    ReplicateStatusCause getReplicateStatusCause(ComputeStage computeStage,
-                                                         String chainTaskId) {
-        return exitCauseMap.get(buildKey(computeStage, chainTaskId));
-    }
-
-    /**
-     * Get pre-compute exit cause.
-     *
-     * @param chainTaskId task ID
-     * @return exit cause
-     */
-    public ReplicateStatusCause getPreComputeExitCauseAndPrune(String chainTaskId) {
-        ComputeStage stage = ComputeStage.PRE;
-        ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
-        pruneExitCause(stage, chainTaskId);
-        return cause != null ? cause : ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE;
-    }
-
-    /**
-     * Get post-compute exit cause.
-     *
-     * @param chainTaskId task ID
-     * @return exit cause
-     */
-    public ReplicateStatusCause getPostComputeExitCauseAndPrune(String chainTaskId) {
-        ComputeStage stage = ComputeStage.POST;
-        ReplicateStatusCause cause = getReplicateStatusCause(stage, chainTaskId);
-        pruneExitCause(stage, chainTaskId);
-        return cause != null ? cause : ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
+    public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(
+            final String chainTaskId,
+            final ComputeStage computeStage,
+            final ReplicateStatusCause fallbackCause) {
+        final String key = buildKey(computeStage, chainTaskId);
+        final List<ReplicateStatusCause> causes = exitCauseMap.remove(key);
+        if (causes != null) {
+            log.info("Retrieved and pruned exit causes [chainTaskId:{} computeStage:{}, causeCount:{}]",
+                    chainTaskId, computeStage, causes.size());
+            return causes;
+        } else {
+            log.info("No exit causes found, returning fallback cause [chainTaskId:{}, computeStage:{}]",
+                    chainTaskId, computeStage);
+            return List.of(fallbackCause);
+        }
     }
 
     /**
@@ -97,18 +89,7 @@ public class ComputeExitCauseService {
      * @param chainTaskId task ID
      * @return exit cause storage key
      */
-    private String buildKey(ComputeStage prefix, String chainTaskId) {
+    private String buildKey(final ComputeStage prefix, final String chainTaskId) {
         return prefix + "_" + chainTaskId;
     }
-
-    /**
-     * Prune exit cause.
-     *
-     * @param computeStage compute stage
-     * @param chainTaskId  task ID
-     */
-    private void pruneExitCause(ComputeStage computeStage, String chainTaskId) {
-        exitCauseMap.remove(buildKey(computeStage, chainTaskId));
-    }
-
 }

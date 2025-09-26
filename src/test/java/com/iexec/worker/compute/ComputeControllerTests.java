@@ -18,20 +18,25 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
-import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.result.ResultService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +45,10 @@ public class ComputeControllerTests {
     public static final String CHAIN_TASK_ID = "0xtask";
     public static final ReplicateStatusCause CAUSE = ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED;
     private static final String AUTH_HEADER = "Bearer validToken";
+    private static final List<ReplicateStatusCause> MULTIPLE_CAUSES = List.of(
+            ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
+            ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
+    );
     private final ComputedFile computedFile = new ComputedFile(
             "/path",
             "callback",
@@ -66,82 +75,95 @@ public class ComputeControllerTests {
     }
 
     // region sendExitCauseForGivenComputeStage
-    @Test
-    void sendExitCauseForComputeComputeStage() {
-        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
-                .thenReturn(true);
-
-        final ResponseEntity<?> response =
-                computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
-                        ComputeStage.PRE,
-                        CHAIN_TASK_ID,
-                        new ExitMessage(CAUSE));
-        Assertions.assertTrue(response.getStatusCode().is2xxSuccessful());
-        Assertions.assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
-    }
-
-    @Test
-    void shouldNotSendExitCauseForComputeComputeStageSinceNoCause() {
-        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
-                .thenReturn(true);
-
-        final ResponseEntity<?> response =
-                computeController.sendExitCauseForGivenComputeStage(AUTH_HEADER,
-                        ComputeStage.PRE,
-                        CHAIN_TASK_ID,
-                        new ExitMessage(null));
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatusCode().value());
-    }
-
-    @Test
-    void shouldNotSendExitCauseForComputeComputeStageSinceAlreadySet() {
-        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
-                .thenReturn(true);
-
-        final ComputeStage stage = ComputeStage.PRE;
-        computeStageExitService.setExitCause(stage, CHAIN_TASK_ID, CAUSE);
-
-        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
+    private ResponseEntity<Void> getResponse(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        return computeController.sendExitCausesForGivenComputeStage(
                 AUTH_HEADER,
                 stage,
                 CHAIN_TASK_ID,
-                new ExitMessage(CAUSE)
+                causes
         );
-
-        Assertions.assertEquals(HttpStatus.ALREADY_REPORTED.value(), response.getStatusCode().value());
     }
 
-    @Test
-    void shouldReturnUnauthorizedWhenAuthFails() {
+    static Stream<Arguments> simpleAndListExitCauses() {
+        return Stream.of(
+                Arguments.of(ComputeStage.PRE, List.of(CAUSE), ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE),
+                Arguments.of(ComputeStage.POST, List.of(CAUSE), ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE),
+                Arguments.of(ComputeStage.PRE, MULTIPLE_CAUSES, ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE),
+                Arguments.of(ComputeStage.POST, MULTIPLE_CAUSES, ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("simpleAndListExitCauses")
+    void shouldReturnOkWhenSendingExitCause(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<Void> response = getResponse(stage, causes);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
+    }
+
+    @ParameterizedTest
+    @MethodSource("simpleAndListExitCauses")
+    void shouldReturnAlreadyReportedWhenCalledMultipleTimes(final ComputeStage stage, final List<ReplicateStatusCause> causes, ReplicateStatusCause fallbackCause) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<Void> firstResponse = getResponse(stage, causes);
+        assertThat(firstResponse.getStatusCode().value()).isEqualTo(HttpStatus.OK.value());
+
+        final ResponseEntity<Void> secondResponse = getResponse(stage, causes);
+        assertThat(secondResponse.getStatusCode().value()).isEqualTo(HttpStatus.ALREADY_REPORTED.value());
+
+        final List<ReplicateStatusCause> retrievedCauses = computeStageExitService
+                .getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, fallbackCause);
+        assertThat(retrievedCauses)
+                .hasSize(causes.size())
+                .containsAll(causes);
+    }
+
+    @ParameterizedTest
+    @MethodSource("simpleAndListExitCauses")
+    void shouldReturnUnauthorizedWhenAuthFails(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(false);
 
-        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
-                AUTH_HEADER,
-                ComputeStage.PRE,
-                CHAIN_TASK_ID,
-                new ExitMessage(CAUSE)
-        );
-
-        Assertions.assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatusCode().value());
+        final ResponseEntity<Void> response = getResponse(stage, causes);
+        assertThat(HttpStatus.UNAUTHORIZED.value()).isEqualTo(response.getStatusCode().value());
     }
 
-    @Test
-    void shouldReturnNotFoundWhenWrongChainTaskId() {
+    @ParameterizedTest
+    @MethodSource("simpleAndListExitCauses")
+    void shouldReturnNotFoundWhenWrongChainTaskId(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenThrow(NoSuchElementException.class);
-        final ResponseEntity<Void> response = computeController.sendExitCauseForGivenComputeStage(
-                AUTH_HEADER,
-                ComputeStage.PRE,
-                CHAIN_TASK_ID,
-                new ExitMessage(CAUSE)
+
+        final ResponseEntity<Void> response = getResponse(stage, causes);
+        assertThat(HttpStatus.NOT_FOUND.value()).isEqualTo(response.getStatusCode().value());
+    }
+
+    static Stream<Arguments> badRequestScenariosArguments() {
+        return Stream.of(
+                Arguments.of(ComputeStage.PRE, null),
+                Arguments.of(ComputeStage.POST, null),
+                Arguments.of(ComputeStage.PRE, List.of()),
+                Arguments.of(ComputeStage.POST, List.of())
         );
-        Assertions.assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode().value());
+    }
+
+    @ParameterizedTest
+    @MethodSource("badRequestScenariosArguments")
+    void shouldReturnBadRequestForInvalidInputs(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
+                .thenReturn(true);
+
+        final ResponseEntity<Void> response = getResponse(stage, causes);
+        assertThat(HttpStatus.BAD_REQUEST.value()).isEqualTo(response.getStatusCode().value());
     }
     // endregion
 
     // region sendComputedFileForTee
-
     @Test
     void shouldSendComputedFileForTeeSuccessfully() {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))

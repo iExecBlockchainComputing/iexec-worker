@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
+import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -317,8 +318,8 @@ class PostComputeServiceTests {
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID))
-                .thenReturn(exitCodeKeyToExpectedCauseValue.getValue());
+        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
+                .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);

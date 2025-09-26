@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,26 @@
 package com.iexec.worker.compute;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class ComputeExitCauseServiceTests {
 
     public static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final ReplicateStatusCause DEFAULT_PRE_CAUSE = ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE;
+    private static final ReplicateStatusCause DEFAULT_POST_CAUSE = ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
+    private static final List<ReplicateStatusCause> SINGLE_PRE_CAUSES = List.of(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
+    private static final List<ReplicateStatusCause> MULTIPLE_PRE_CAUSES = List.of(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING, ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM);
+    private static final List<ReplicateStatusCause> SINGLE_POST_CAUSES = List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
+    private static final List<ReplicateStatusCause> MULTIPLE_POST_CAUSES = List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND, ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
 
     private ComputeExitCauseService computeExitCauseService;
 
@@ -32,62 +45,111 @@ class ComputeExitCauseServiceTests {
         computeExitCauseService = new ComputeExitCauseService();
     }
 
-    //region getPreComputeExitCauseAndPrune
-    @Test
-    void setAndGetPreComputeExitCauseAndPrune() {
-        ReplicateStatusCause cause =
-                ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
-        Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.PRE,
-                CHAIN_TASK_ID,
-                cause)).isTrue();
-        Assertions.assertThat(computeExitCauseService.getPreComputeExitCauseAndPrune(CHAIN_TASK_ID))
-                .isEqualTo(cause);
-        Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.PRE,
-                CHAIN_TASK_ID)).isNull();
+    //region setAndGetExitCausesParameterizedTests
+    static Stream<Arguments> computeStageAndCausesArguments() {
+        return Stream.of(
+                Arguments.of(
+                        ComputeStage.PRE,
+                        SINGLE_PRE_CAUSES,
+                        DEFAULT_PRE_CAUSE
+                ),
+                Arguments.of(
+                        ComputeStage.PRE,
+                        List.of(
+                                ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
+                                ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM
+                        ),
+                        DEFAULT_PRE_CAUSE
+                ),
+                Arguments.of(
+                        ComputeStage.POST,
+                        SINGLE_POST_CAUSES,
+                        DEFAULT_POST_CAUSE
+                ),
+                Arguments.of(
+                        ComputeStage.POST,
+                        List.of(
+                                ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND,
+                                ReplicateStatusCause.POST_COMPUTE_TIMEOUT
+                        ),
+                        DEFAULT_POST_CAUSE
+                )
+        );
     }
 
-    @Test
-    void shouldReturnUnknownIssueWhenPreComputeExitCauseNotSet() {
-        ReplicateStatusCause cause = computeExitCauseService.getPreComputeExitCauseAndPrune(CHAIN_TASK_ID);
-        Assertions.assertThat(cause)
-                .isNotNull()
-                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    @ParameterizedTest
+    @MethodSource("computeStageAndCausesArguments")
+    void shouldSetExitCausesSuccessfully(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes)).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("computeStageAndCausesArguments")
+    void shouldGetExitCausesAfterSetting(final ComputeStage stage, final List<ReplicateStatusCause> causes, final ReplicateStatusCause defaultCause) {
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause)).containsExactlyElementsOf(causes);
+    }
+
+    @ParameterizedTest
+    @MethodSource("computeStageAndCausesArguments")
+    void shouldReturnDefaultCauseAfterPruning(final ComputeStage stage, final List<ReplicateStatusCause> causes, final ReplicateStatusCause defaultCause) {
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause);
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause)).isEqualTo(List.of(defaultCause));
     }
     //endregion
 
-    //region getPostComputeExitCauseAndPrune
-    @Test
-    void setAndGetPostComputeExitCauseAndPrune() {
-        ReplicateStatusCause cause =
-                ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND;
-        Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.POST,
-                CHAIN_TASK_ID,
-                cause)).isTrue();
-        Assertions.assertThat(computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID))
-                .isEqualTo(cause);
-        Assertions.assertThat(computeExitCauseService.getReplicateStatusCause(ComputeStage.POST,
-                CHAIN_TASK_ID)).isNull();
+    //region Report Once Behavior
+    static Stream<Arguments> validExitCauseProvider() {
+        return Stream.of(
+                Arguments.of(ComputeStage.PRE, SINGLE_PRE_CAUSES, DEFAULT_PRE_CAUSE),
+                Arguments.of(ComputeStage.PRE, MULTIPLE_PRE_CAUSES, DEFAULT_PRE_CAUSE),
+                Arguments.of(ComputeStage.POST, SINGLE_POST_CAUSES, DEFAULT_POST_CAUSE),
+                Arguments.of(ComputeStage.POST, MULTIPLE_POST_CAUSES, DEFAULT_POST_CAUSE)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("validExitCauseProvider")
+    void shouldReturnTrueWhenReportingForFirstTime(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes))
+                .isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("validExitCauseProvider")
+    void shouldReturnFalseWhenReportingTwiceWithSameCauses(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes)).isFalse();
+    }
+
+    @ParameterizedTest
+    @MethodSource("validExitCauseProvider")
+    void shouldReturnFalseWhenReportingTwiceWithDifferentCauses(final ComputeStage stage, final List<ReplicateStatusCause> causes) {
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        List<ReplicateStatusCause> differentCauses = stage == ComputeStage.PRE
+                ? List.of(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM)
+                : List.of(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, differentCauses)).isFalse();
+    }
+
+    @ParameterizedTest
+    @MethodSource("validExitCauseProvider")
+    void shouldReturnOriginalCausesAfterSuccessfulReport(final ComputeStage stage, final List<ReplicateStatusCause> causes, final ReplicateStatusCause defaultCause) {
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, causes);
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultCause)).isEqualTo(causes);
     }
 
     @Test
-    void shouldReturnUnknownIssueWhenPostComputeExitCauseNotSet() {
-        ReplicateStatusCause cause = computeExitCauseService.getPostComputeExitCauseAndPrune(CHAIN_TASK_ID);
-        Assertions.assertThat(cause)
-                .isNotNull()
-                .isEqualTo(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    void shouldAllowReportingPostStageAfterPreStageForSameTask() {
+        computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.PRE, SINGLE_PRE_CAUSES);
+        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, SINGLE_POST_CAUSES)).isTrue();
+    }
+
+    @Test
+    void shouldReturnDefaultCauseWhenNoCausesWereSet() {
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.PRE, DEFAULT_PRE_CAUSE))
+                .isEqualTo(List.of(DEFAULT_PRE_CAUSE));
     }
     //endregion
-
-    @Test
-    void shouldNotSetComputeExitCauseSinceAlreadySet() {
-        ReplicateStatusCause cause =
-                ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING;
-        computeExitCauseService.setExitCause(ComputeStage.POST,
-                CHAIN_TASK_ID,
-                cause);
-        Assertions.assertThat(computeExitCauseService.setExitCause(ComputeStage.POST,
-                CHAIN_TASK_ID,
-                cause)).isFalse();
-    }
-
 }

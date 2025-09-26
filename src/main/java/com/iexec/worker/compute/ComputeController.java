@@ -17,6 +17,7 @@
 package com.iexec.worker.compute;
 
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
@@ -25,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import static org.springframework.http.ResponseEntity.ok;
@@ -44,12 +46,27 @@ public class ComputeController {
         this.workerpoolAuthorizationService = workerpoolAuthorizationService;
     }
 
+    /**
+     * @deprecated Use {@link #sendExitCausesForGivenComputeStage(String, ComputeStage, String, List)}
+     * for bulk exit cause reporting instead
+     */
+    @Deprecated(forRemoval = true) // TODO: Add version when releasing next one
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
     public ResponseEntity<Void> sendExitCauseForGivenComputeStage(
             @RequestHeader("Authorization") String authorization,
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
+        List<ReplicateStatusCause> causes = exitMessage != null && exitMessage.cause() != null ? List.of(exitMessage.cause()) : List.of();
+        return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, causes);
+    }
+
+    @PostMapping("/compute/{stage}/{chainTaskId}/exit-causes")
+    public ResponseEntity<Void> sendExitCausesForGivenComputeStage(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable ComputeStage stage,
+            @PathVariable String chainTaskId,
+            @RequestBody List<ReplicateStatusCause> causes) {
         try {
             if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
                 return ResponseEntity
@@ -62,14 +79,15 @@ public class ComputeController {
                     .build();
         }
 
-        if (exitMessage.cause() == null) {
+        if (causes == null || causes.isEmpty()) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
         }
-        if (!computeStageExitService.setExitCause(stage,
-                chainTaskId,
-                exitMessage.cause())) {
+
+        final boolean stored = computeStageExitService.setExitCausesForGivenComputeStage(chainTaskId, stage, causes);
+
+        if (!stored) {
             return ResponseEntity
                     .status(HttpStatus.ALREADY_REPORTED.value())
                     .build();
@@ -103,5 +121,4 @@ public class ComputeController {
         }
         return ok(chainTaskId);
     }
-
 }
