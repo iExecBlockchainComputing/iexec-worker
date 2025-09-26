@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
+import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -44,9 +45,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -55,8 +53,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AppComputeServiceTests {
 
+    private static final String CHAIN_DEAL_ID = "CHAIN_DEAL_ID";
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
-    private static final String DATASET_URI = "DATASET_URI";
     private static final String APP_URI = "APP_URI";
     private static final String WORKER_NAME = "WORKER_NAME";
     private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
@@ -66,13 +64,17 @@ class AppComputeServiceTests {
     public static final long HEAP_SIZE = 1024;
 
     private final DealParams dealParams = DealParams.builder()
-            .iexecInputFiles(Arrays.asList("file0", "file1"))
+            .iexecInputFiles(List.of("file0", "file1"))
             .build();
 
     private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
+            .chainDealId(CHAIN_DEAL_ID)
             .chainTaskId(CHAIN_TASK_ID)
+            .botIndex(0)
+            .botSize(1)
+            .botFirstIndex(0)
             .appUri(APP_URI)
-            .datasetUri(DATASET_URI)
+            .datasetAddress(BytesUtils.EMPTY_ADDRESS)
             .maxExecutionTime(MAX_EXECUTION_TIME)
             .dealParams(dealParams)
             .isTeeTask(true);
@@ -103,16 +105,14 @@ class AppComputeServiceTests {
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
-        DockerRunResponse expectedDockerRunResponse = DockerRunResponse
-                .builder()
+        DockerRunResponse expectedDockerRunResponse = DockerRunResponse.builder()
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .executionDuration(Duration.ofSeconds(10))
                 .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription,
-                        SECURE_SESSION);
+        final AppComputeResponse appComputeResponse =
+                appComputeService.runCompute(taskDescription, SECURE_SESSION);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService).run(any());
@@ -123,7 +123,7 @@ class AppComputeServiceTests {
                 argumentCaptor.getAllValues().get(0);
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind))
-                .withDevices(new ArrayList<>());
+                .withDevices(List.of());
         Assertions.assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
                         .hostConfig(hostConfig)
@@ -145,10 +145,8 @@ class AppComputeServiceTests {
                 .build();
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
-                .thenReturn(Arrays.asList("var0", "var1"));
-        List<String> env = new ArrayList<>(Arrays.asList("var0", "var1"));
-        env.addAll(IexecEnvUtils.getComputeStageEnvList(taskDescription));
-        Collections.sort(env);
+                .thenReturn(List.of("var0", "var1"));
+        final List<String> env = List.of("var0", "var1");
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -176,7 +174,6 @@ class AppComputeServiceTests {
         verify(dockerService).run(argumentCaptor.capture());
         DockerRunRequest dockerRunRequest =
                 argumentCaptor.getAllValues().get(0);
-        Collections.sort(dockerRunRequest.getEnv());
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind))
                 .withDevices(devices)
