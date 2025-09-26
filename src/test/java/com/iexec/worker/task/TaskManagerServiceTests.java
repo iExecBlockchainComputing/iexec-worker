@@ -221,7 +221,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(taskDescription);
@@ -259,7 +259,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(taskDescription);
@@ -394,7 +394,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -435,7 +435,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -474,7 +474,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -519,7 +519,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -566,7 +566,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -591,11 +591,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().build());
+                .thenReturn(PreComputeResponse.builder().exitCauses(List.of()).build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
+                .thenReturn(AppComputeResponse.builder().exitCauses(List.of()).stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -629,11 +629,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().build());
+                .thenReturn(PreComputeResponse.builder().exitCauses(List.of()).build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
+                .thenReturn(AppComputeResponse.builder().exitCauses(List.of()).stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -699,7 +699,7 @@ class TaskManagerServiceTests {
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
-                        .exitCause(PRE_COMPUTE_DATASET_URL_MISSING)
+                        .exitCauses(List.of(PRE_COMPUTE_DATASET_URL_MISSING))
                         .build());
 
         ReplicateActionResponse replicateActionResponse =
@@ -745,11 +745,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder()
+                .thenReturn(PreComputeResponse.builder().exitCauses(List.of())
                         .build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder()
-                        .exitCause(APP_COMPUTE_FAILED)
+                        .exitCauses(List.of(APP_COMPUTE_FAILED))
                         .exitCode(5)
                         .stdout("stdout")
                         .build());
@@ -781,12 +781,12 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().build());
+                .thenReturn(PreComputeResponse.builder().exitCauses(List.of()).build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder().exitCauses(List.of()).stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder()
-                        .exitCause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
+                        .exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
                         .build());
 
 
