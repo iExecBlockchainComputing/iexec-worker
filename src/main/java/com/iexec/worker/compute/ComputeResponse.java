@@ -18,13 +18,18 @@ package com.iexec.worker.compute;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
 
+import java.util.List;
+
 public interface ComputeResponse {
 
-    ReplicateStatusCause getExitCause();
+    List<ReplicateStatusCause> getExitCauses();
+
     String getStdout();
+
     String getStderr();
+
     default boolean isSuccessful() {
-        return getExitCause() == null;
+        return getExitCauses().isEmpty();
     }
 
 }

@@ -18,17 +18,18 @@ package com.iexec.worker.compute.app;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
-import lombok.*;
+import lombok.Builder;
+import lombok.Value;
 
-@Data
+import java.util.ArrayList;
+import java.util.List;
+
+@Value
 @Builder
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
 public class AppComputeResponse implements ComputeResponse {
-
-    private ReplicateStatusCause exitCause;
-    private String stdout;
-    private String stderr;
-    private int exitCode;
+    @Builder.Default
+    List<ReplicateStatusCause> exitCauses = new ArrayList<>();
+    String stdout;
+    String stderr;
+    int exitCode;
 }

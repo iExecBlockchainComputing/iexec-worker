@@ -103,14 +103,14 @@ public class PreComputeService {
         if (enclaveConfig == null) {
             log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
             return preComputeResponseBuilder
-                    .exitCause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION)
+                    .exitCauses(List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION))
                     .build();
         }
         if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
             return preComputeResponseBuilder
-                    .exitCause(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION)
+                    .exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION))
                     .build();
         }
         long teeComputeMaxHeapSize = DataSize
@@ -120,7 +120,7 @@ public class PreComputeService {
             log.error("Enclave configuration should define a proper heap " +
                             "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
-            preComputeResponseBuilder.exitCause(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION);
+            preComputeResponseBuilder.exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION));
             return preComputeResponseBuilder.build();
         }
         // create secure session
@@ -134,60 +134,51 @@ public class PreComputeService {
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
             return preComputeResponseBuilder
-                    .exitCause(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError()))
+                    .exitCauses(List.of(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError())))
                     .build();
         }
 
         // run TEE pre-compute container if needed
         if (taskDescription.requiresPreCompute()) {
-            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
-                    chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
-            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
-            preComputeResponseBuilder.exitCause(exitCause);
+            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}, isBulkRequest:{}]",
+                    chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles(), taskDescription.isBulkRequest());
+            final List<ReplicateStatusCause> exitCauses = downloadDatasetAndFiles(taskDescription, secureSession);
+            preComputeResponseBuilder.exitCauses(exitCauses);
         }
 
         return preComputeResponseBuilder.build();
     }
 
-    private ReplicateStatusCause downloadDatasetAndFiles(
+    private List<ReplicateStatusCause> downloadDatasetAndFiles(
             TaskDescription taskDescription,
             TeeSessionGenerationResponse secureSession) {
         try {
-            Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
+            final Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
-                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+                final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
                 log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCause:{}]",
-                        chainTaskId, exitCode, exitCause);
-                return exitCause;
+                        chainTaskId, exitCode, exitCauses);
+                return exitCauses;
             }
         } catch (TimeoutException e) {
-            return PRE_COMPUTE_TIMEOUT;
+            return List.of(PRE_COMPUTE_TIMEOUT);
         }
-        return null;
+        return List.of();
     }
 
-    private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
-        ReplicateStatusCause cause = null;
+    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final Integer exitCode) {
         if (exitCode == null) {
-            cause = PRE_COMPUTE_IMAGE_MISSING;
-        } else {
-            switch (exitCode) {
-                case 1:
-                    // Use first cause from bulk processing for now
-                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
-                    break;
-                case 2:
-                    cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;
-                    break;
-                case 3:
-                    cause = ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING;
-                    break;
-                default:
-                    break;
-            }
+            return List.of(PRE_COMPUTE_IMAGE_MISSING);
         }
-        return cause;
+        return switch (exitCode) {
+            case 0 -> List.of();
+            case 1 ->
+                    computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            case 2 -> List.of(ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED);
+            case 3 -> List.of(ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING);
+            default -> List.of(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        };
     }
 
 

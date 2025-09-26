@@ -18,16 +18,21 @@ package com.iexec.worker.compute.post;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
-import lombok.*;
+import lombok.Builder;
+import lombok.Value;
 
-@Data
+import java.util.ArrayList;
+import java.util.List;
+
+@Value
 @Builder
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
 public class PostComputeResponse implements ComputeResponse {
+    @Builder.Default
+    List<ReplicateStatusCause> exitCauses = new ArrayList<>();
+    String stdout;
+    String stderr;
 
-    private ReplicateStatusCause exitCause;
-    private String stdout;
-    private String stderr;
+    public void addExitCause(final ReplicateStatusCause cause) {
+        exitCauses.add(cause);
+    }
 }
