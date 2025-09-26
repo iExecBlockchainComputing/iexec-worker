@@ -250,7 +250,7 @@ public class TaskManagerService {
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
             return getFailureResponseAndPrintError(
-                    preResponse.getExitCause(),
+                    preResponse.getExitCauses().get(0), //TODO: Handle list of causes
                     context,
                     chainTaskId
             );
@@ -260,7 +260,7 @@ public class TaskManagerService {
                 computeManagerService.runCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!appResponse.isSuccessful()) {
-            final ReplicateStatusCause cause = appResponse.getExitCause();
+            final ReplicateStatusCause cause = appResponse.getExitCauses().get(0); //TODO: Handle list of causes
             logError(cause, context, chainTaskId);
             return ReplicateActionResponse.failureWithDetails(
                     ReplicateStatusDetails.builder()
@@ -279,9 +279,9 @@ public class TaskManagerService {
                 computeManagerService.runPostCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!postResponse.isSuccessful()) {
-            ReplicateStatusCause cause = postResponse.getExitCause();
-            logError(cause, context, chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(cause,
+            ReplicateStatusCause causes = postResponse.getExitCauses().get(0); //TODO: Handle list of causes
+            logError(causes, context, chainTaskId);
+            return ReplicateActionResponse.failureWithStdout(causes,
                     postResponse.getStdout());
         }
         return ReplicateActionResponse.successWithLogs(

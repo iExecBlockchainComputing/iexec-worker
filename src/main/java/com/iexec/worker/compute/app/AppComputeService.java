@@ -110,7 +110,7 @@ public class AppComputeService {
         }
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         return AppComputeResponse.builder()
-                .exitCause(getExitCauseFromFinalStatus(finalStatus))
+                .exitCauses(getExitCauseFromFinalStatus(finalStatus))
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .exitCode(dockerResponse.getContainerExitCode())
@@ -125,12 +125,12 @@ public class AppComputeService {
         return workerConfigService.getWorkerName() + "-" + chainTaskId;
     }
 
-    private ReplicateStatusCause getExitCauseFromFinalStatus(DockerRunFinalStatus finalStatus) {
+    private List<ReplicateStatusCause> getExitCauseFromFinalStatus(DockerRunFinalStatus finalStatus) {
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
-            return ReplicateStatusCause.APP_COMPUTE_TIMEOUT;
+            return List.of(ReplicateStatusCause.APP_COMPUTE_TIMEOUT);
         } else if (finalStatus == DockerRunFinalStatus.FAILED) {
-            return ReplicateStatusCause.APP_COMPUTE_FAILED;
+            return List.of(ReplicateStatusCause.APP_COMPUTE_FAILED);
         }
-        return null;
+        return List.of();
     }
 }

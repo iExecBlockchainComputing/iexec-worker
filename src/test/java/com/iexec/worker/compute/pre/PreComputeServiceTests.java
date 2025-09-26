@@ -173,7 +173,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isTrue();
         assertThat(taskDescription.isBulkRequest()).isFalse();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -187,7 +187,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isFalse();
         assertThat(taskDescription.isBulkRequest()).isFalse();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -208,7 +208,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isTrue();
         assertThat(taskDescription.isBulkRequest()).isFalse();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -228,7 +228,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isFalse();
         assertThat(taskDescription.isBulkRequest()).isTrue();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -238,7 +238,7 @@ class PreComputeServiceTests {
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCause()).isEqualTo(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
+        assertThat(response.getExitCauses()).isEqualTo(List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
         verifyNoInteractions(smsService);
     }
 
@@ -250,7 +250,7 @@ class PreComputeServiceTests {
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCause()).isEqualTo(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
+        assertThat(response.getExitCauses()).isEqualTo(List.of(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION));
         verifyNoInteractions(smsService);
     }
 
@@ -292,7 +292,7 @@ class PreComputeServiceTests {
 
         final PreComputeResponse preComputeResponse = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(preComputeResponse.isSuccessful()).isFalse();
-        assertThat(preComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING);
+        assertThat(preComputeResponse.getExitCauses()).isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING));
         verify(dockerService, never()).run(any());
     }
 
@@ -322,8 +322,8 @@ class PreComputeServiceTests {
 
         assertThat(preComputeResponse.isSuccessful())
                 .isFalse();
-        assertThat(preComputeResponse.getExitCause())
-                .isEqualTo(exitCodeKeyToExpectedCauseValue.getValue());
+        assertThat(preComputeResponse.getExitCauses())
+                .isEqualTo(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
         verify(dockerService).run(any());
     }
 
@@ -358,8 +358,8 @@ class PreComputeServiceTests {
 
         assertThat(preComputeResponse.isSuccessful())
                 .isFalse();
-        assertThat(preComputeResponse.getExitCause())
-                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
+        assertThat(preComputeResponse.getExitCauses())
+                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT));
         verify(dockerService).run(any());
     }
 

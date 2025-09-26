@@ -103,14 +103,14 @@ public class PreComputeService {
         if (enclaveConfig == null) {
             log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
             return preComputeResponseBuilder
-                    .exitCause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION)
+                    .exitCauses(List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION))
                     .build();
         }
         if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
             return preComputeResponseBuilder
-                    .exitCause(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION)
+                    .exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION))
                     .build();
         }
         long teeComputeMaxHeapSize = DataSize
@@ -120,7 +120,7 @@ public class PreComputeService {
             log.error("Enclave configuration should define a proper heap " +
                             "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
-            preComputeResponseBuilder.exitCause(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION);
+            preComputeResponseBuilder.exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION));
             return preComputeResponseBuilder.build();
         }
         // create secure session
@@ -134,7 +134,7 @@ public class PreComputeService {
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
             return preComputeResponseBuilder
-                    .exitCause(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError()))
+                    .exitCauses(List.of(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError())))
                     .build();
         }
 
@@ -142,29 +142,29 @@ public class PreComputeService {
         if (taskDescription.requiresPreCompute()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
-            final ReplicateStatusCause exitCause = downloadDatasetAndFiles(taskDescription, secureSession);
-            preComputeResponseBuilder.exitCause(exitCause);
+            final List<ReplicateStatusCause> exitCauses = downloadDatasetAndFiles(taskDescription, secureSession);
+            preComputeResponseBuilder.exitCauses(exitCauses);
         }
 
         return preComputeResponseBuilder.build();
     }
 
-    private ReplicateStatusCause downloadDatasetAndFiles(
+    private List<ReplicateStatusCause> downloadDatasetAndFiles(
             TaskDescription taskDescription,
             TeeSessionGenerationResponse secureSession) {
         try {
             Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
-                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
-                log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCause:{}]",
+                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode); // TODO: Handle list of exit causes
+                log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
                         chainTaskId, exitCode, exitCause);
-                return exitCause;
+                return List.of(exitCause);
             }
         } catch (TimeoutException e) {
-            return PRE_COMPUTE_TIMEOUT;
+            return List.of(PRE_COMPUTE_TIMEOUT);
         }
-        return null;
+        return List.of();
     }
 
     private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {

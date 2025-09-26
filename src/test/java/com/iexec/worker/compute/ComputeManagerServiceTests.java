@@ -202,7 +202,7 @@ class ComputeManagerServiceTests {
         when(preComputeService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(PreComputeResponse.builder()
                 .secureSession(null)
-                .exitCause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING)
+                .exitCauses(List.of(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING))
                 .build());
 
         PreComputeResponse preComputeResponse =
@@ -210,8 +210,8 @@ class ComputeManagerServiceTests {
                         workerpoolAuthorization);
         assertThat(preComputeResponse.getSecureSession()).isNull();
         assertThat(preComputeResponse.isSuccessful()).isFalse();
-        assertThat(preComputeResponse.getExitCause())
-                .isEqualTo(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
+        assertThat(preComputeResponse.getExitCauses())
+                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING));
     }
     //endregion
 
@@ -221,6 +221,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
+                        .exitCauses(List.of())
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -245,7 +246,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
+                        .exitCauses(List.of(ReplicateStatusCause.APP_COMPUTE_FAILED))
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -266,6 +267,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
+                        .exitCauses(List.of())
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -292,7 +294,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
+                        .exitCauses(List.of(ReplicateStatusCause.APP_COMPUTE_FAILED))
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -315,31 +317,31 @@ class ComputeManagerServiceTests {
     void shouldNotBeSuccessfulWhenComputedFileNotFound() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
+        assertThat(postComputeResponse.getExitCauses()).isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND));
     }
 
     @Test
     void shouldNotBeSuccessfulWhenResultDigestComputationFails() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
         ComputedFile computedFile = ComputedFile.builder().build();
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(resultService.computeResultDigest(computedFile)).thenReturn("");
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
+        assertThat(postComputeResponse.getExitCauses()).isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED));
     }
 
     @Test
     void shouldRunStandardPostCompute() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(PostComputeResponse.builder().build());
+                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
         ComputedFile computedFile = mock(ComputedFile.class);
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(resultService.computeResultDigest(computedFile)).thenReturn(DIGEST);
@@ -357,12 +359,12 @@ class ComputeManagerServiceTests {
     @EnumSource(value = ReplicateStatusCause.class, names = "POST_COMPUTE_.*", mode = EnumSource.Mode.MATCH_ALL)
     void shouldRunStandardPostComputeWithFailureResponse(ReplicateStatusCause statusCause) {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
-        PostComputeResponse postComputeResponse = PostComputeResponse.builder().exitCause(statusCause).build();
+        PostComputeResponse postComputeResponse = PostComputeResponse.builder().exitCauses(List.of(statusCause)).build();
         when(postComputeService.runStandardPostCompute(taskDescription)).thenReturn(postComputeResponse);
 
         postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCause()).isEqualTo(statusCause);
+        assertThat(postComputeResponse.getExitCauses()).isEqualTo(List.of(statusCause));
     }
 
     @Test
@@ -370,6 +372,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
+                        .exitCauses(List.of())
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -399,7 +402,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
-                        .exitCause(ReplicateStatusCause.APP_COMPUTE_FAILED)
+                        .exitCauses(List.of(ReplicateStatusCause.APP_COMPUTE_FAILED))
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();

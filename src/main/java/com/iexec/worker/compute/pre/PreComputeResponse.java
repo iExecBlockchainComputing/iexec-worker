@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeResponse;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @Builder
 @Getter
@@ -28,7 +30,8 @@ import lombok.*;
 @AllArgsConstructor
 public class PreComputeResponse implements ComputeResponse {
 
-    private ReplicateStatusCause exitCause;
+    @Setter
+    private List<ReplicateStatusCause> exitCauses;
     private boolean isTeeTask;
     private TeeSessionGenerationResponse secureSession;
     private String stdout;
@@ -41,9 +44,5 @@ public class PreComputeResponse implements ComputeResponse {
             return ComputeResponse.super.isSuccessful() && secureSession != null;
         }
         return ComputeResponse.super.isSuccessful();
-    }
-
-    public void setExitCause(ReplicateStatusCause exitCause) {
-        this.exitCause = exitCause;
     }
 }
