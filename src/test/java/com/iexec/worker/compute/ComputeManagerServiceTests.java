@@ -211,7 +211,7 @@ class ComputeManagerServiceTests {
         assertThat(preComputeResponse.getSecureSession()).isNull();
         assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING));
+                .containsExactly(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
     }
     //endregion
 
@@ -319,7 +319,7 @@ class ComputeManagerServiceTests {
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND));
+        assertThat(postComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
     }
 
     @Test
@@ -332,7 +332,7 @@ class ComputeManagerServiceTests {
         when(resultService.computeResultDigest(computedFile)).thenReturn("");
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).isEqualTo(List.of(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED));
+        assertThat(postComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
     }
 
     @Test
@@ -362,7 +362,7 @@ class ComputeManagerServiceTests {
 
         postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).isEqualTo(List.of(statusCause));
+        assertThat(postComputeResponse.getExitCauses()).containsExactly(statusCause);
     }
 
     @Test

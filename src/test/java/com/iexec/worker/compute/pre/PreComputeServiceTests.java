@@ -238,7 +238,7 @@ class PreComputeServiceTests {
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCauses()).isEqualTo(List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
+        assertThat(response.getExitCauses()).containsExactly(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
         verifyNoInteractions(smsService);
     }
 
@@ -250,7 +250,7 @@ class PreComputeServiceTests {
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCauses()).isEqualTo(List.of(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION));
+        assertThat(response.getExitCauses()).containsExactly(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
         verifyNoInteractions(smsService);
     }
 
@@ -292,7 +292,7 @@ class PreComputeServiceTests {
 
         final PreComputeResponse preComputeResponse = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(preComputeResponse.isSuccessful()).isFalse();
-        assertThat(preComputeResponse.getExitCauses()).isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING));
+        assertThat(preComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING);
         verify(dockerService, never()).run(any());
     }
 
@@ -323,7 +323,7 @@ class PreComputeServiceTests {
         assertThat(preComputeResponse.isSuccessful())
                 .isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .isEqualTo(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
+                .containsExactly(exitCodeKeyToExpectedCauseValue.getValue());
         verify(dockerService).run(any());
     }
 
@@ -359,7 +359,7 @@ class PreComputeServiceTests {
         assertThat(preComputeResponse.isSuccessful())
                 .isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .isEqualTo(List.of(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT));
+                .containsExactly(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
     }
 
