@@ -19,23 +19,21 @@ package com.iexec.worker.compute.pre;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeResponse;
-import lombok.*;
+import lombok.Builder;
+import lombok.Value;
 
 import java.util.List;
 
-@Data
+@Value
 @Builder
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
 public class PreComputeResponse implements ComputeResponse {
 
-    @Setter
-    private List<ReplicateStatusCause> exitCauses;
-    private boolean isTeeTask;
-    private TeeSessionGenerationResponse secureSession;
-    private String stdout;
-    private String stderr;
+    @Builder.Default
+    List<ReplicateStatusCause> exitCauses = List.of();
+    boolean isTeeTask;
+    TeeSessionGenerationResponse secureSession;
+    String stdout;
+    String stderr;
 
 
     @Override

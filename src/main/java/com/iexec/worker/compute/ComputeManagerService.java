@@ -170,7 +170,7 @@ public class ComputeManagerService {
         if (taskDescription.isTeeTask()) {
             return preComputeService.runTeePreCompute(taskDescription, workerpoolAuth);
         }
-        return PreComputeResponse.builder().exitCauses(List.of()).build();
+        return PreComputeResponse.builder().build();
     }
 
     /**
@@ -238,12 +238,19 @@ public class ComputeManagerService {
         }
         final ComputedFile computedFile = resultService.readComputedFile(chainTaskId);
         if (computedFile == null) {
-            postComputeResponse.setExitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND));
-            return postComputeResponse;
+            return PostComputeResponse.builder()
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND))
+                    .stdout(postComputeResponse.getStdout())
+                    .stderr(postComputeResponse.getStderr())
+                    .build();
         }
         final String resultDigest = resultService.computeResultDigest(computedFile);
         if (resultDigest.isEmpty()) {
-            postComputeResponse.setExitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED));
+            return PostComputeResponse.builder()
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED))
+                    .stdout(postComputeResponse.getStdout())
+                    .stderr(postComputeResponse.getStderr())
+                    .build();
         }
         resultService.saveResultInfo(taskDescription, computedFile);
         return postComputeResponse;

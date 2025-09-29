@@ -136,7 +136,7 @@ public class PostComputeService {
                     .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED))
                     .build();
         }
-        return PostComputeResponse.builder().exitCauses(List.of()).build();
+        return PostComputeResponse.builder().build();
     }
 
     Optional<ReplicateStatusCause> checkResultFilesName(String taskId, String iexecOutPath) {
@@ -228,7 +228,6 @@ public class PostComputeService {
                     .build();
         }
         return PostComputeResponse.builder()
-                .exitCauses(List.of())
                 .stdout(dockerResponse.getStdout())
                 .stderr(dockerResponse.getStderr())
                 .build();

@@ -120,11 +120,10 @@ public class AppComputeService {
     }
 
     private List<ReplicateStatusCause> getExitCauseFromFinalStatus(DockerRunFinalStatus finalStatus) {
-        if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
-            return List.of(ReplicateStatusCause.APP_COMPUTE_TIMEOUT);
-        } else if (finalStatus == DockerRunFinalStatus.FAILED) {
-            return List.of(ReplicateStatusCause.APP_COMPUTE_FAILED);
-        }
-        return List.of();
+        return switch (finalStatus) {
+            case TIMEOUT -> List.of(ReplicateStatusCause.APP_COMPUTE_TIMEOUT);
+            case FAILED -> List.of(ReplicateStatusCause.APP_COMPUTE_FAILED);
+            default -> List.of();
+        };
     }
 }

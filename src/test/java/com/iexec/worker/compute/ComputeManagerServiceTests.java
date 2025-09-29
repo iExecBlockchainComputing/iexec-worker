@@ -221,7 +221,6 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .exitCauses(List.of())
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -267,7 +266,6 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .exitCauses(List.of())
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -317,7 +315,7 @@ class ComputeManagerServiceTests {
     void shouldNotBeSuccessfulWhenComputedFileNotFound() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
@@ -328,7 +326,7 @@ class ComputeManagerServiceTests {
     void shouldNotBeSuccessfulWhenResultDigestComputationFails() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
         ComputedFile computedFile = ComputedFile.builder().build();
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(resultService.computeResultDigest(computedFile)).thenReturn("");
@@ -341,7 +339,7 @@ class ComputeManagerServiceTests {
     void shouldRunStandardPostCompute() {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         when(postComputeService.runStandardPostCompute(taskDescription))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
         ComputedFile computedFile = mock(ComputedFile.class);
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(resultService.computeResultDigest(computedFile)).thenReturn(DIGEST);
@@ -372,7 +370,6 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
-                        .exitCauses(List.of())
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();

@@ -221,7 +221,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(taskDescription);
@@ -394,7 +394,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -474,7 +474,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -519,7 +519,7 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -591,11 +591,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().exitCauses(List.of()).stdout("stdout").stderr("stderr").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -629,11 +629,11 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().exitCauses(List.of()).stdout("stdout").stderr("stderr").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
         when(computeManagerService.runPostCompute(any(), any()))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
@@ -745,8 +745,7 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().exitCauses(List.of())
-                        .build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder()
                         .exitCauses(List.of(APP_COMPUTE_FAILED))
@@ -781,9 +780,9 @@ class TaskManagerServiceTests {
         when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
-                .thenReturn(PreComputeResponse.builder().exitCauses(List.of()).build());
+                .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
-                .thenReturn(AppComputeResponse.builder().exitCauses(List.of()).stdout("stdout").build());
+                .thenReturn(AppComputeResponse.builder().stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder()
                         .exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE))

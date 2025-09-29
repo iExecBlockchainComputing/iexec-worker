@@ -173,7 +173,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isTrue();
         assertThat(taskDescription.isBulkRequest()).isFalse();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -187,7 +187,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isFalse();
         assertThat(taskDescription.isBulkRequest()).isFalse();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -208,7 +208,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isTrue();
         assertThat(taskDescription.isBulkRequest()).isFalse();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verifyDockerRun();
     }
 
@@ -228,7 +228,7 @@ class PreComputeServiceTests {
         assertThat(taskDescription.containsInputFiles()).isFalse();
         assertThat(taskDescription.isBulkRequest()).isTrue();
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization))
-                .isEqualTo(PreComputeResponse.builder().exitCauses(List.of()).secureSession(secureSession).build());
+                .isEqualTo(PreComputeResponse.builder().secureSession(secureSession).build());
         verifyDockerRun();
     }
 
