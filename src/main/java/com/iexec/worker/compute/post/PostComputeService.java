@@ -111,7 +111,7 @@ public class PostComputeService {
         final Optional<ReplicateStatusCause> resultFilesNameError = checkResultFilesName(chainTaskId, taskIexecOutDir);
         if (resultFilesNameError.isPresent()) {
             return PostComputeResponse.builder()
-                    .exitCause(resultFilesNameError.get())
+                    .exitCauses(List.of(resultFilesNameError.get()))
                     .build();
         }
 
@@ -122,7 +122,7 @@ public class PostComputeService {
                 taskOutputDir);
         if (zipIexecOutPath.isEmpty()) {
             return PostComputeResponse.builder()
-                    .exitCause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED))
                     .build();
         }
         // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
@@ -133,7 +133,7 @@ public class PostComputeService {
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
             return PostComputeResponse.builder()
-                    .exitCause(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED)
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED))
                     .build();
         }
         return PostComputeResponse.builder().build();
@@ -177,7 +177,7 @@ public class PostComputeService {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
             return PostComputeResponse.builder()
-                    .exitCause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING))
                     .build();
         }
         TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
@@ -215,7 +215,7 @@ public class PostComputeService {
                             " [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             return PostComputeResponse.builder()
-                    .exitCause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_TIMEOUT))
                     .build();
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
@@ -224,7 +224,7 @@ public class PostComputeService {
             log.error("Failed to run tee post-compute [chainTaskId:{}, " +
                     "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
             return PostComputeResponse.builder()
-                    .exitCause(exitCause)
+                    .exitCauses(List.of(exitCause))
                     .build();
         }
         return PostComputeResponse.builder()

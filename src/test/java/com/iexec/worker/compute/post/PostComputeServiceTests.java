@@ -285,7 +285,7 @@ class PostComputeServiceTests {
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCause()).isEqualTo(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING);
+        assertThat(postComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING);
         verify(dockerService, never()).run(any());
     }
 
@@ -325,8 +325,8 @@ class PostComputeServiceTests {
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCause())
-                .isEqualTo(exitCodeKeyToExpectedCauseValue.getValue());
+        assertThat(postComputeResponse.getExitCauses())
+                .containsExactly(exitCodeKeyToExpectedCauseValue.getValue());
         verify(dockerService).run(any());
     }
 
@@ -368,8 +368,8 @@ class PostComputeServiceTests {
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCause())
-                .isEqualTo(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
+        assertThat(postComputeResponse.getExitCauses())
+                .containsExactly(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
     }
     //endregion

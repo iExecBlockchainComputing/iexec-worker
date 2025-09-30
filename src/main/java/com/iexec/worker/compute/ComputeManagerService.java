@@ -40,6 +40,7 @@ import java.io.File;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -229,7 +230,7 @@ public class ComputeManagerService {
             postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSession);
         } else {
             postComputeResponse = PostComputeResponse.builder()
-                    .exitCause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
                     .build();
         }
         if (!postComputeResponse.isSuccessful()) {
@@ -237,12 +238,19 @@ public class ComputeManagerService {
         }
         final ComputedFile computedFile = resultService.readComputedFile(chainTaskId);
         if (computedFile == null) {
-            postComputeResponse.setExitCause(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
-            return postComputeResponse;
+            return PostComputeResponse.builder()
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND))
+                    .stdout(postComputeResponse.getStdout())
+                    .stderr(postComputeResponse.getStderr())
+                    .build();
         }
         final String resultDigest = resultService.computeResultDigest(computedFile);
         if (resultDigest.isEmpty()) {
-            postComputeResponse.setExitCause(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
+            return PostComputeResponse.builder()
+                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED))
+                    .stdout(postComputeResponse.getStdout())
+                    .stderr(postComputeResponse.getStderr())
+                    .build();
         }
         resultService.saveResultInfo(taskDescription, computedFile);
         return postComputeResponse;
