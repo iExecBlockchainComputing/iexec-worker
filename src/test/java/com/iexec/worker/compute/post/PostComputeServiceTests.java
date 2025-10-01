@@ -43,13 +43,14 @@ import com.iexec.worker.tee.TeeServicesPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,13 +68,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @Slf4j
+@ExtendWith(MockitoExtension.class)
 class PostComputeServiceTests {
 
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private static final String DATASET_URI = "DATASET_URI";
     private static final String WORKER_NAME = "WORKER_NAME";
     private static final String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
-    private static final long TEE_POST_COMPUTE_HEAP = 1024;
     private static final String TEE_POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
     private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private static final long MAX_EXECUTION_TIME = 1000;
@@ -118,13 +119,6 @@ class PostComputeServiceTests {
 
     @BeforeEach
     void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
-        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
-
         output = jUnitTemporaryFolder.getAbsolutePath();
         iexecOut = output + IexecFileHelper.SLASH_IEXEC_OUT;
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
@@ -218,8 +212,11 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
         when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
@@ -227,8 +224,6 @@ class PostComputeServiceTests {
                 .thenReturn(env);
         String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
-        when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn(lasNetworkName);
         DockerRunResponse expectedDockerRunResponse = DockerRunResponse
@@ -276,9 +271,10 @@ class PostComputeServiceTests {
                 .datasetUri(DATASET_URI)
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
         when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
-        when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -298,8 +294,11 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
         when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
@@ -307,8 +306,6 @@ class PostComputeServiceTests {
                 .thenReturn(env);
         String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
-        when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
-        when(workerConfigService.getTaskIexecOutDir(CHAIN_TASK_ID)).thenReturn(iexecOut);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
@@ -318,8 +315,11 @@ class PostComputeServiceTests {
                         .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
-                .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
+        // Only stub computeExitCauseService for exitCode == 1
+        if (exitCodeKeyToExpectedCauseValue.getKey() == 1) {
+            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
+                    .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
+        }
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
@@ -346,15 +346,17 @@ class PostComputeServiceTests {
                 .maxExecutionTime(MAX_EXECUTION_TIME)
                 .build();
         List<String> env = Arrays.asList("var0", "var1");
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
         when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
-        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(TEE_POST_COMPUTE_HEAP);
         when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION))
                 .thenReturn(env);
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn("/iexec_out:/iexec_out");
-        when(workerConfigService.getTaskOutputDir(CHAIN_TASK_ID)).thenReturn(output);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
         DockerRunResponse expectedDockerRunResponse =
