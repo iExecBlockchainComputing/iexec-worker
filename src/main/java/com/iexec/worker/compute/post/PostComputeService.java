@@ -242,7 +242,7 @@ public class PostComputeService {
                     computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
             case 2 -> List.of(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED);
             case 3 -> List.of(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING);
-            default -> List.of();
+            default -> List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
         };
     }
 

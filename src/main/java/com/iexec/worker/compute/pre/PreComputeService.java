@@ -170,15 +170,14 @@ public class PreComputeService {
     private List<ReplicateStatusCause> getExitCauses(String chainTaskId, Integer exitCode) {
         if (exitCode == null) {
             return List.of(PRE_COMPUTE_IMAGE_MISSING);
-        } else {
-            return switch (exitCode) {
-                case 1 ->
-                        computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
-                case 2 -> List.of(ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED);
-                case 3 -> List.of(ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING);
-                default -> List.of();
-            };
         }
+        return switch (exitCode) {
+            case 1 -> computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
+                    chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            case 2 -> List.of(PRE_COMPUTE_EXIT_REPORTING_FAILED);
+            case 3 -> List.of(PRE_COMPUTE_TASK_ID_MISSING);
+            default -> List.of(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        };
     }
 
 
