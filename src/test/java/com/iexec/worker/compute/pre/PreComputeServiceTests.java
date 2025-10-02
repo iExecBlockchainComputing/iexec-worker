@@ -48,6 +48,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -449,6 +450,36 @@ class PreComputeServiceTests {
             assertThat(preComputeService.teeSessionGenerationErrorToReplicateStatusCause(error))
                     .isNotNull();
         }
+    }
+    // endregion
+
+    // region getExitCauses
+    @ParameterizedTest
+    @ValueSource(ints = {4, 5, 10, 42, 127, 255})
+    void shouldReturnUnknownIssueForUnmappedExitCodes(int exitCode) throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
+        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
+        when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
+        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
+        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE)).thenReturn(true);
+        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
+        when(workerConfigService.getDockerNetworkName()).thenReturn(network);
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        DockerRunResponse dockerResponse = DockerRunResponse.builder()
+                .finalStatus(DockerRunFinalStatus.FAILED)
+                .containerExitCode(exitCode)
+                .build();
+        when(dockerService.run(any())).thenReturn(dockerResponse);
+        PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+        assertThat(response.isSuccessful()).isFalse();
+        assertThat(response.getExitCauses())
+                .hasSize(1)
+                .containsExactly(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
     // endregion
 }

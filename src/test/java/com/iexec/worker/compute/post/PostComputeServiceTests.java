@@ -47,6 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -373,6 +374,41 @@ class PostComputeServiceTests {
         assertThat(postComputeResponse.getExitCauses())
                 .containsExactly(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
+    }
+
+    // region getExitCauses
+    @ParameterizedTest
+    @ValueSource(ints = {4, 5, 10, 42, 127, 255})
+    void shouldReturnUnknownIssueForUnmappedExitCodes(int exitCode) {
+        taskDescription = TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .datasetUri(DATASET_URI)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
+                .build();
+        List<String> env = Arrays.asList("var0", "var1");
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
+        when(postComputeProperties.getImage()).thenReturn(TEE_POST_COMPUTE_IMAGE);
+        when(postComputeProperties.getEntrypoint()).thenReturn(TEE_POST_COMPUTE_ENTRYPOINT);
+        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE)).thenReturn(true);
+        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION)).thenReturn(env);
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn("/iexec_out:/iexec_out");
+        when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+
+        DockerRunResponse dockerResponse = DockerRunResponse.builder()
+                .finalStatus(DockerRunFinalStatus.FAILED)
+                .containerExitCode(exitCode)
+                .build();
+        when(dockerService.run(any())).thenReturn(dockerResponse);
+        PostComputeResponse response = postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
+        assertThat(response.isSuccessful()).isFalse();
+        assertThat(response.getExitCauses())
+                .hasSize(1)
+                .containsExactly(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
     //endregion
 }
