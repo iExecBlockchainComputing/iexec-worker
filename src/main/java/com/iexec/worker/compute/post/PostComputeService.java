@@ -220,11 +220,11 @@ public class PostComputeService {
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
             int exitCode = dockerResponse.getContainerExitCode();
-            ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode);
+            final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
             log.error("Failed to run tee post-compute [chainTaskId:{}, " +
-                    "exitCode:{}, exitCause:{}]", chainTaskId, exitCode, exitCause);
+                    "exitCode:{}, exitCauses:{}]", chainTaskId, exitCode, exitCauses);
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(exitCause))
+                    .exitCauses(exitCauses)
                     .build();
         }
         return PostComputeResponse.builder()
@@ -233,25 +233,15 @@ public class PostComputeService {
                 .build();
     }
 
-    private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
-        ReplicateStatusCause cause = null;
-        if (exitCode != null && exitCode != 0) {
-            switch (exitCode) {
-                case 1:
-                    // Use first cause from bulk processing for now
-                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
-                    break;
-                case 2:
-                    cause = ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED;
-                    break;
-                case 3:
-                    cause = ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING;
-                    break;
-                default:
-                    break;
-            }
-        }
-        return cause;
+    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final int exitCode) {
+        return switch (exitCode) {
+            case 0 -> List.of();
+            case 1 ->
+                    computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            case 2 -> List.of(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED);
+            case 3 -> List.of(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING);
+            default -> List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        };
     }
 
     private String getTaskTeePostComputeContainerName(String chainTaskId) {

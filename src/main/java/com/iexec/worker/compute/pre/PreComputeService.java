@@ -156,10 +156,10 @@ public class PreComputeService {
             Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
-                ReplicateStatusCause exitCause = getExitCause(chainTaskId, exitCode); // TODO: Handle list of exit causes
+                final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
                 log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
-                        chainTaskId, exitCode, exitCause);
-                return List.of(exitCause);
+                        chainTaskId, exitCode, exitCauses);
+                return exitCauses;
             }
         } catch (TimeoutException e) {
             return List.of(PRE_COMPUTE_TIMEOUT);
@@ -167,27 +167,17 @@ public class PreComputeService {
         return List.of();
     }
 
-    private ReplicateStatusCause getExitCause(String chainTaskId, Integer exitCode) {
-        ReplicateStatusCause cause = null;
+    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final Integer exitCode) {
         if (exitCode == null) {
-            cause = PRE_COMPUTE_IMAGE_MISSING;
-        } else {
-            switch (exitCode) {
-                case 1:
-                    // Use first cause from bulk processing for now
-                    cause = computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).get(0);
-                    break;
-                case 2:
-                    cause = ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED;
-                    break;
-                case 3:
-                    cause = ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING;
-                    break;
-                default:
-                    break;
-            }
+            return List.of(PRE_COMPUTE_IMAGE_MISSING);
         }
-        return cause;
+        return switch (exitCode) {
+            case 1 -> computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
+                    chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            case 2 -> List.of(PRE_COMPUTE_EXIT_REPORTING_FAILED);
+            case 3 -> List.of(PRE_COMPUTE_TASK_ID_MISSING);
+            default -> List.of(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+        };
     }
 
 

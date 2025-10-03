@@ -43,12 +43,17 @@ import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.*;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.util.unit.DataSize;
 
 import java.time.Duration;
@@ -62,11 +67,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class PreComputeServiceTests {
 
     private static final String IEXEC_IN_BIND = "/path:/iexec_in";
     private static final String PRE_COMPUTE_IMAGE = "preComputeImage";
-    private static final long PRE_COMPUTE_HEAP = 1024;
     private static final String PRE_COMPUTE_ENTRYPOINT = "preComputeEntrypoint";
     private final String chainTaskId = "chainTaskId";
     private final String datasetUri = "datasetUri";
@@ -85,7 +90,10 @@ class PreComputeServiceTests {
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
     private static final TeeSessionGenerationResponse secureSession = mock(TeeSessionGenerationResponse.class);
-
+    private final TeeAppProperties preComputeProperties = TeeAppProperties.builder()
+            .image(PRE_COMPUTE_IMAGE)
+            .entrypoint(PRE_COMPUTE_ENTRYPOINT)
+            .build();
 
     @InjectMocks
     private PreComputeService preComputeService;
@@ -97,10 +105,6 @@ class PreComputeServiceTests {
     private TeeServicesManager teeServicesManager;
     @Mock
     private WorkerConfigurationService workerConfigService;
-    @Mock
-    TeeAppProperties preComputeProperties;
-    @Mock
-    TeeAppProperties postComputeProperties;
     @Mock
     private TeeServicesProperties properties;
     @Mock
@@ -119,35 +123,33 @@ class PreComputeServiceTests {
     @Mock
     private TeeService teeMockedService;
 
-    @BeforeEach
-    void beforeEach() {
-        MockitoAnnotations.openMocks(this);
-        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
-        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
-        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
-        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
-    }
 
     //region runTeePreCompute
     void prepareMockWhenPreComputeShouldRunForTask(final TaskDescription taskDescription) throws TeeSessionGenerationException {
+            prepareMocksForPreCompute(
+                    taskDescription,
+                    DockerRunResponse.builder()
+                            .containerExitCode(0)
+                            .finalStatus(DockerRunFinalStatus.SUCCESS)
+                            .executionDuration(Duration.ofSeconds(10))
+                            .build()
+            );
+    }
+
+    void prepareMocksForPreCompute(final TaskDescription taskDescription, DockerRunResponse dockerRunResponse) throws TeeSessionGenerationException {
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
+        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
-        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
-                .thenReturn(true);
+        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE)).thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
                 .thenReturn(List.of("env"));
         when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
-        when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
-                .containerExitCode(0)
-                .finalStatus(DockerRunFinalStatus.SUCCESS)
-                .executionDuration(Duration.ofSeconds(10))
-                .build());
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        when(dockerService.run(any())).thenReturn(dockerRunResponse);
     }
 
     void verifyDockerRun() {
@@ -256,6 +258,7 @@ class PreComputeServiceTests {
 
     @Test
     void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         final TeeEnclaveConfiguration enclaveConfiguration = TeeEnclaveConfiguration.builder()
                 .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
                 .heapSize(DataSize.ofGigabytes(8).toBytes() + 1)
@@ -271,6 +274,7 @@ class PreComputeServiceTests {
     @Test
     void shouldFailToRunTeePreComputeSinceCantCreateTeeSession() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(null);
 
         assertThat(preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization).isSuccessful())
@@ -282,11 +286,12 @@ class PreComputeServiceTests {
     @Test
     void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
+        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -300,28 +305,21 @@ class PreComputeServiceTests {
     @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
     void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(smsService.createTeeSession(workerpoolAuthorization))
-                .thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
-        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
-                .thenReturn(true);
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
-        when(workerConfigService.getDockerNetworkName()).thenReturn("network");
-        when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
+        DockerRunResponse dockerRunResponse = DockerRunResponse.builder()
                 .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
                 .finalStatus(DockerRunFinalStatus.FAILED)
-                .build());
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE))
-                .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
+                .build();
+        prepareMocksForPreCompute(taskDescription, dockerRunResponse);
+        // Only stub computeExitCauseService for exitCode == 1
+        if (exitCodeKeyToExpectedCauseValue.getKey() == 1) {
+            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE))
+                    .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
+        }
 
         PreComputeResponse preComputeResponse =
                 preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
 
-        assertThat(preComputeResponse.isSuccessful())
-                .isFalse();
+        assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
                 .containsExactly(exitCodeKeyToExpectedCauseValue.getValue());
         verify(dockerService).run(any());
@@ -339,25 +337,15 @@ class PreComputeServiceTests {
     @Test
     void shouldFailToRunTeePreComputeSinceTimeout() throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(smsService.createTeeSession(workerpoolAuthorization))
-                .thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(PRE_COMPUTE_HEAP);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
-        when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
-                .thenReturn(true);
-        when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
-        when(workerConfigService.getDockerNetworkName()).thenReturn("network");
-        when(dockerService.run(any())).thenReturn(DockerRunResponse.builder()
+        DockerRunResponse dockerRunResponse = DockerRunResponse.builder()
                 .finalStatus(DockerRunFinalStatus.TIMEOUT)
-                .build());
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+                .build();
+        prepareMocksForPreCompute(taskDescription, dockerRunResponse);
 
         PreComputeResponse preComputeResponse =
                 preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
 
-        assertThat(preComputeResponse.isSuccessful())
-                .isFalse();
+        assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
                 .containsExactly(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
         verify(dockerService).run(any());
@@ -370,6 +358,7 @@ class PreComputeServiceTests {
                 .dealParams(DealParams.builder().build())
                 .build();
 
+        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
 
         assertThat(taskDescription.containsDataset()).isFalse();
@@ -435,6 +424,25 @@ class PreComputeServiceTests {
             assertThat(preComputeService.teeSessionGenerationErrorToReplicateStatusCause(error))
                     .isNotNull();
         }
+    }
+    // endregion
+
+    // region getExitCauses
+    @ParameterizedTest
+    @ValueSource(ints = {4, 5, 10, 42, 127, 255})
+    void shouldReturnUnknownIssueForUnmappedExitCodes(int exitCode) throws TeeSessionGenerationException {
+        final TaskDescription taskDescription = taskDescriptionBuilder.build();
+        prepareMockWhenPreComputeShouldRunForTask(taskDescription);
+        final DockerRunResponse dockerResponse = DockerRunResponse.builder()
+                .finalStatus(DockerRunFinalStatus.FAILED)
+                .containerExitCode(exitCode)
+                .build();
+        when(dockerService.run(any())).thenReturn(dockerResponse);
+        final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+        assertThat(response.isSuccessful()).isFalse();
+        assertThat(response.getExitCauses())
+                .hasSize(1)
+                .containsExactly(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
     }
     // endregion
 }
