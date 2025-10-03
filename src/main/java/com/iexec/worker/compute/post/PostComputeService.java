@@ -220,7 +220,7 @@ public class PostComputeService {
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
             int exitCode = dockerResponse.getContainerExitCode();
-            List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
+            final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
             log.error("Failed to run tee post-compute [chainTaskId:{}, " +
                     "exitCode:{}, exitCauses:{}]", chainTaskId, exitCode, exitCauses);
             return PostComputeResponse.builder()
@@ -233,7 +233,7 @@ public class PostComputeService {
                 .build();
     }
 
-    private List<ReplicateStatusCause> getExitCauses(String chainTaskId, Integer exitCode) {
+    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final Integer exitCode) {
         if (exitCode == null || exitCode == 0) {
             return List.of();
         }

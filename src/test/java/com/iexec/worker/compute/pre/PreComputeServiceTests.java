@@ -90,7 +90,10 @@ class PreComputeServiceTests {
     private final WorkerpoolAuthorization workerpoolAuthorization =
             WorkerpoolAuthorization.builder().build();
     private static final TeeSessionGenerationResponse secureSession = mock(TeeSessionGenerationResponse.class);
-
+    private final TeeAppProperties preComputeProperties = TeeAppProperties.builder()
+            .image(PRE_COMPUTE_IMAGE)
+            .entrypoint(PRE_COMPUTE_ENTRYPOINT)
+            .build();
 
     @InjectMocks
     private PreComputeService preComputeService;
@@ -102,10 +105,6 @@ class PreComputeServiceTests {
     private TeeServicesManager teeServicesManager;
     @Mock
     private WorkerConfigurationService workerConfigService;
-    @Mock
-    TeeAppProperties preComputeProperties;
-    @Mock
-    TeeAppProperties postComputeProperties;
     @Mock
     private TeeServicesProperties properties;
     @Mock
@@ -133,8 +132,6 @@ class PreComputeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(teeMockedService.buildPreComputeDockerEnv(taskDescription, secureSession))
@@ -289,7 +286,6 @@ class PreComputeServiceTests {
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(false);
 
@@ -310,8 +306,6 @@ class PreComputeServiceTests {
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
@@ -356,8 +350,6 @@ class PreComputeServiceTests {
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization))
                 .thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE))
                 .thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
@@ -464,18 +456,16 @@ class PreComputeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
         when(smsService.createTeeSession(workerpoolAuthorization)).thenReturn(secureSession);
-        when(preComputeProperties.getImage()).thenReturn(PRE_COMPUTE_IMAGE);
-        when(preComputeProperties.getEntrypoint()).thenReturn(PRE_COMPUTE_ENTRYPOINT);
         when(dockerClientInstanceMock.isImagePresent(PRE_COMPUTE_IMAGE)).thenReturn(true);
         when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
         when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        DockerRunResponse dockerResponse = DockerRunResponse.builder()
+        final DockerRunResponse dockerResponse = DockerRunResponse.builder()
                 .finalStatus(DockerRunFinalStatus.FAILED)
                 .containerExitCode(exitCode)
                 .build();
         when(dockerService.run(any())).thenReturn(dockerResponse);
-        PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
+        final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
                 .hasSize(1)

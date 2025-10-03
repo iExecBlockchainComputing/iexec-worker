@@ -156,7 +156,7 @@ public class PreComputeService {
             Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 String chainTaskId = taskDescription.getChainTaskId();
-                List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
+                final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
                 log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
                         chainTaskId, exitCode, exitCauses);
                 return exitCauses;
@@ -167,7 +167,7 @@ public class PreComputeService {
         return List.of();
     }
 
-    private List<ReplicateStatusCause> getExitCauses(String chainTaskId, Integer exitCode) {
+    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final Integer exitCode) {
         if (exitCode == null) {
             return List.of(PRE_COMPUTE_IMAGE_MISSING);
         }
