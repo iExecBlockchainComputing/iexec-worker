@@ -233,11 +233,9 @@ public class PostComputeService {
                 .build();
     }
 
-    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final Integer exitCode) {
-        if (exitCode == null || exitCode == 0) {
-            return List.of();
-        }
+    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final int exitCode) {
         return switch (exitCode) {
+            case 0 -> List.of();
             case 1 ->
                     computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
             case 2 -> List.of(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED);
