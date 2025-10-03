@@ -125,29 +125,6 @@ class PostComputeServiceTests {
         computedJson = iexecOut + IexecFileHelper.SLASH_COMPUTED_JSON;
     }
 
-    void prepareMocksForTeePostCompute(DockerRunResponse dockerRunResponse) {
-        List<String> env = Arrays.asList("var0", "var1");
-        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
-        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
-        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
-        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE)).thenReturn(true);
-        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION)).thenReturn(env);
-        String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
-        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
-        when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
-        when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
-        when(dockerService.run(any())).thenReturn(dockerRunResponse);
-    }
-
-    List<Device> prepareMocksForTeePostComputeWithDevices(DockerRunResponse dockerRunResponse) {
-        prepareMocksForTeePostCompute(dockerRunResponse);
-        List<Device> devices = List.of(Device.parse("/dev/isgx"));
-        when(sgxService.getSgxDevices()).thenReturn(devices);
-        return devices;
-    }
-
     //region runStandardPostCompute
     private void logDirectoryTree(String path) {
         log.info("\n{}", FileHelper.printDirectoryTree(new File(path)));
@@ -227,6 +204,22 @@ class PostComputeServiceTests {
     // endregion
 
     //region runTeePostCompute
+    void prepareMocksForTeePostCompute(DockerRunResponse dockerRunResponse) {
+        List<String> env = Arrays.asList("var0", "var1");
+        when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
+        when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE)).thenReturn(true);
+        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION)).thenReturn(env);
+        String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
+        when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
+        when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
+        when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
+        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
+        when(dockerService.run(any())).thenReturn(dockerRunResponse);
+    }
+
     @Test
     void shouldRunTeePostComputeAndConnectToLasNetwork() {
         String lasNetworkName = "lasNetworkName";
@@ -240,7 +233,9 @@ class PostComputeServiceTests {
                 .finalStatus(DockerRunFinalStatus.SUCCESS)
                 .executionDuration(Duration.ofSeconds(10))
                 .build();
-        List<Device> devices = prepareMocksForTeePostComputeWithDevices(expectedDockerRunResponse);
+        prepareMocksForTeePostCompute(expectedDockerRunResponse);
+        List<Device> devices = List.of(Device.parse("/dev/isgx"));
+        when(sgxService.getSgxDevices()).thenReturn(devices);
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
