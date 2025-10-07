@@ -103,8 +103,8 @@ class ContributionServiceTests {
 
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(null);
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
+                .containsExactly(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
 
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
     }
@@ -118,8 +118,8 @@ class ContributionServiceTests {
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(CHAIN_UNREACHABLE);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
+                .containsExactly(CHAIN_UNREACHABLE);
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
@@ -135,8 +135,8 @@ class ContributionServiceTests {
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(0).build()));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(STAKE_TOO_LOW);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
+                .containsExactly(STAKE_TOO_LOW);
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -159,8 +159,8 @@ class ContributionServiceTests {
         when(iexecHubService.getChainAccount()).thenReturn(Optional.of(ChainAccount.builder().deposit(1000).build()));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(TASK_NOT_ACTIVE);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
+                .containsExactly(TASK_NOT_ACTIVE);
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -186,8 +186,8 @@ class ContributionServiceTests {
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(CONTRIBUTION_TIMEOUT);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
+                .containsExactly(CONTRIBUTION_TIMEOUT);
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -214,8 +214,8 @@ class ContributionServiceTests {
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID))
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(CONTRIBUTION_ALREADY_SET);
+        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
+                .containsExactly(CONTRIBUTION_ALREADY_SET);
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -276,8 +276,8 @@ class ContributionServiceTests {
 
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(badTrustTaskDescription);
 
-        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(TRUST_NOT_1);
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
+                .containsExactly(TRUST_NOT_1);
     }
 
     @Test
@@ -287,8 +287,8 @@ class ContributionServiceTests {
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
-        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(CHAIN_UNREACHABLE);
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
+                .containsExactly(CHAIN_UNREACHABLE);
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
@@ -307,8 +307,8 @@ class ContributionServiceTests {
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTaskWithContribution));
 
-        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId).orElse(null))
-                .isEqualTo(TASK_ALREADY_CONTRIBUTED);
+        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
+                .containsExactly(TASK_ALREADY_CONTRIBUTED);
     }
 
     @Test

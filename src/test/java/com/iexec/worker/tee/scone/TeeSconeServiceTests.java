@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
 import java.util.List;
-import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -113,7 +112,7 @@ class TeeSconeServiceTests {
         doReturn(null).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
         doReturn(true).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
 
-        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue).isEmpty();
@@ -128,12 +127,11 @@ class TeeSconeServiceTests {
     void shouldTeePrerequisiteNotMetForTaskSinceTeeNotEnabled() {
         doReturn(false).when(teeSconeService).isTeeEnabled();
 
-        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .isPresent()
-                .contains(TEE_NOT_SUPPORTED);
+                .containsExactly(TEE_NOT_SUPPORTED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(0)).getSmsClient(CHAIN_TASK_ID);
@@ -147,12 +145,11 @@ class TeeSconeServiceTests {
         doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
         doThrow(SmsClientCreationException.class).when(smsService).getSmsClient(CHAIN_TASK_ID);
 
-        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .isPresent()
-                .contains(UNKNOWN_SMS);
+                .containsExactly(UNKNOWN_SMS);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
@@ -167,12 +164,11 @@ class TeeSconeServiceTests {
         doReturn(smsClient).when(smsService).getSmsClient(CHAIN_TASK_ID);
         doThrow(SmsClientCreationException.class).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
 
-        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .isPresent()
-                .contains(GET_TEE_SERVICES_CONFIGURATION_FAILED);
+                .containsExactly(GET_TEE_SERVICES_CONFIGURATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
@@ -188,12 +184,11 @@ class TeeSconeServiceTests {
         doReturn(null).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
         doReturn(false).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
 
-        final Optional<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<ReplicateStatusCause> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .isPresent()
-                .contains(TEE_PREPARATION_FAILED);
+                .containsExactly(TEE_PREPARATION_FAILED);
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);

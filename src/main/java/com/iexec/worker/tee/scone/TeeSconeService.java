@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import org.springframework.stereotype.Service;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.TEE_PREPARATION_FAILED;
 
@@ -65,12 +64,12 @@ public class TeeSconeService extends TeeService {
     }
 
     @Override
-    public Optional<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
-        final Optional<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
-        if (teePrerequisiteIssue.isPresent()) {
+    public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
+        final List<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
+        if (!teePrerequisiteIssue.isEmpty()) {
             return teePrerequisiteIssue;
         }
-        return prepareTeeForTask(chainTaskId) ? Optional.empty() : Optional.of(TEE_PREPARATION_FAILED);
+        return prepareTeeForTask(chainTaskId) ? List.of() : List.of(TEE_PREPARATION_FAILED);
     }
 
     @Override
