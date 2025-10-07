@@ -16,6 +16,7 @@
 
 package com.iexec.worker.chain;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.security.Signature;
@@ -100,11 +101,10 @@ class ContributionServiceTests {
     @Test
     void getCannotContributeStatusCauseShouldReturnWorkerpoolAuthorizationNotFound() {
         final String chainTaskId = chainTask.getChainTaskId();
-
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId)).thenReturn(null);
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
+        List<ReplicateStatusCause> causes = contributionService.getCannotContributeStatusCause(chainTaskId);
+        assertThat(causes).containsExactly(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
 
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
     }
@@ -112,14 +112,13 @@ class ContributionServiceTests {
     @Test
     void getCannotContributeStatusShouldReturnChainUnreachable() {
         final String chainTaskId = "chainTaskId";
-
         when(workerpoolAuthorizationService.getWorkerpoolAuthorization(chainTaskId))
                 .thenReturn(getTeeWorkerpoolAuth());
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(taskDescription);
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
-        assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(CHAIN_UNREACHABLE);
+        List<ReplicateStatusCause> causes = contributionService.getCannotContributeStatusCause(chainTaskId);
+        assertThat(causes).containsExactly(CHAIN_UNREACHABLE);
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
@@ -270,14 +269,13 @@ class ContributionServiceTests {
     void getCannotContributeAndFinalizeStatusCauseShouldReturnTrustNotOne() {
         final String chainTaskId = chainTask.getChainTaskId();
         final TaskDescription badTrustTaskDescription = TaskDescription.builder()
-                .chainTaskId(chainTaskId)
-                .trust(BigInteger.TWO)
+                .trust(BigInteger.valueOf(2))
                 .build();
 
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(badTrustTaskDescription);
 
-        assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
-                .containsExactly(TRUST_NOT_1);
+        List<ReplicateStatusCause> causes = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
+        assertThat(causes).containsExactly(TRUST_NOT_1);
     }
 
     @Test

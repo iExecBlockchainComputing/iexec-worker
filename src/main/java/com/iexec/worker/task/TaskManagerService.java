@@ -142,7 +142,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.success();
         }
         return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
-                APP_DOWNLOAD_FAILED, List.of(APP_IMAGE_DOWNLOAD_FAILED));
+                APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
     }
 
     /*
@@ -195,7 +195,7 @@ public class TaskManagerService {
             }
         } catch (WorkflowException e) {
             return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
-                    DATA_DOWNLOAD_FAILED, List.of(e.getReplicateStatusCause()));
+                    DATA_DOWNLOAD_FAILED, e.getReplicateStatusCause());
         }
         return ReplicateActionResponse.success();
     }
@@ -204,14 +204,14 @@ public class TaskManagerService {
                                                                   String context,
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
-                                                                  List<ReplicateStatusCause> errorCauses) {
+                                                                  ReplicateStatusCause errorCause) {
         // log original errors
-        errorCauses.forEach(cause -> logError(cause, context, chainTaskId));
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCauses);
+        logError(errorCause, context, chainTaskId);
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, List.of(errorCause));
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
-            return ReplicateActionResponse.failure(errorCauses.get(0)); // TODO: Handle list of causes
+            return ReplicateActionResponse.failure(errorCause);
         }
         //Download failed hard, worker cannot contribute
         logError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, context, chainTaskId);

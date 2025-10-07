@@ -122,8 +122,9 @@ class ResultServiceTests {
         assertThat(isErrorWritten).isTrue();
         String errorFileAsString = FileHelper.readFile(tmp + "/"
                 + ResultService.ERROR_FILENAME);
-        assertThat(errorFileAsString).contains("[IEXEC] Error occurred while " +
-                "computing the task");
+        assertThat(errorFileAsString)
+                .contains("[IEXEC] Error occurred while computing the task")
+                .contains("INPUT_FILES_DOWNLOAD_FAILED");
         String computedFileAsString = FileHelper.readFile(tmp + "/"
                 + IexecFileHelper.COMPUTED_JSON);
         assertThat(computedFileAsString).isEqualTo("{" +
@@ -144,6 +145,34 @@ class ResultServiceTests {
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
                 List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
+
+        assertThat(isErrorWritten).isFalse();
+    }
+
+    @Test
+    void shouldWriteMultipleErrorsToIexecOut() {
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+
+        final boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
+                ReplicateStatus.DATA_DOWNLOAD_FAILED,
+                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED,
+                        ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED));
+
+        assertThat(isErrorWritten).isTrue();
+        final String errorFileAsString = FileHelper.readFile(tmp + "/"
+                + ResultService.ERROR_FILENAME);
+        assertThat(errorFileAsString)
+                .contains("[IEXEC] Error occurred while computing the task")
+                .contains("INPUT_FILES_DOWNLOAD_FAILED")
+                .contains("DATASET_FILE_DOWNLOAD_FAILED");
+    }
+
+    @Test
+    void shouldNotWriteErrorToIexecOutSinceEmptyCausesList() {
+        final boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
+                ReplicateStatus.DATA_DOWNLOAD_FAILED,
+                List.of());
 
         assertThat(isErrorWritten).isFalse();
     }
