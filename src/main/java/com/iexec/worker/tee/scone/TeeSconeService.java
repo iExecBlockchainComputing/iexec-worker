@@ -65,9 +65,9 @@ public class TeeSconeService extends TeeService {
 
     @Override
     public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
-        final List<ReplicateStatusCause> teePrerequisiteIssue = super.areTeePrerequisitesMetForTask(chainTaskId);
-        if (!teePrerequisiteIssue.isEmpty()) {
-            return teePrerequisiteIssue;
+        final List<ReplicateStatusCause> teePrerequisiteIssues = super.areTeePrerequisitesMetForTask(chainTaskId);
+        if (!teePrerequisiteIssues.isEmpty()) {
+            return teePrerequisiteIssues;
         }
         return prepareTeeForTask(chainTaskId) ? List.of() : List.of(TEE_PREPARATION_FAILED);
     }

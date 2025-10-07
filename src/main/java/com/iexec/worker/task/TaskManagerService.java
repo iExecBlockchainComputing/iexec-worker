@@ -96,16 +96,16 @@ public class TaskManagerService {
 
     ReplicateActionResponse start(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        List<ReplicateStatusCause> oErrorStatus =
+        List<ReplicateStatusCause> errorsStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "start";
-        if (!oErrorStatus.isEmpty()) {
-            return getFailureResponseAndPrintError(oErrorStatus, context, chainTaskId);
+        if (!errorsStatus.isEmpty()) {
+            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
         }
 
         // result encryption is not supported for standard tasks
         if (!taskDescription.isTeeTask() && taskDescription.getDealParams().isIexecResultEncryption()) {
-            return getFailureResponseAndPrintError(List.of(TASK_DESCRIPTION_INVALID),
+            return getFailureResponseAndPrintErrors(List.of(TASK_DESCRIPTION_INVALID),
                     context, chainTaskId);
         }
 
@@ -114,10 +114,10 @@ public class TaskManagerService {
             // then we won't be able to run the task.
             // So it should be aborted right now.
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
-            final List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
-            if (!teePrerequisitesIssue.isEmpty()) {
-                log.error("TEE prerequisites are not met [chainTaskId: {}, issues: {}]", chainTaskId, teePrerequisitesIssue);
-                return getFailureResponseAndPrintError(teePrerequisitesIssue, context, chainTaskId);
+            final List<ReplicateStatusCause> teePrerequisitesIssues = teeService.areTeePrerequisitesMetForTask(chainTaskId);
+            if (!teePrerequisitesIssues.isEmpty()) {
+                log.error("TEE prerequisites are not met [chainTaskId: {}, issues: {}]", chainTaskId, teePrerequisitesIssues);
+                return getFailureResponseAndPrintErrors(teePrerequisitesIssues, context, chainTaskId);
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
@@ -131,11 +131,11 @@ public class TaskManagerService {
 
     ReplicateActionResponse downloadApp(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        List<ReplicateStatusCause> oErrorStatus =
+        List<ReplicateStatusCause> errorsStatus =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download app";
-        if (!oErrorStatus.isEmpty()) {
-            return getFailureResponseAndPrintError(oErrorStatus, context, chainTaskId);
+        if (!errorsStatus.isEmpty()) {
+            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
         }
 
         if (computeManagerService.downloadApp(taskDescription)) {
@@ -177,7 +177,7 @@ public class TaskManagerService {
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download data";
         if (!errorStatus.isEmpty()) {
-            return getFailureResponseAndPrintError(errorStatus, context, chainTaskId);
+            return getFailureResponseAndPrintErrors(errorStatus, context, chainTaskId);
         }
         try {
             // download dataset for standard task
@@ -205,7 +205,7 @@ public class TaskManagerService {
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
                                                                   ReplicateStatusCause errorCause) {
-        // log original errors
+        // log original error
         logError(errorCause, context, chainTaskId);
         boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, List.of(errorCause));
         // try to run post-compute
@@ -220,21 +220,21 @@ public class TaskManagerService {
 
     ReplicateActionResponse compute(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        final List<ReplicateStatusCause> errorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        final List<ReplicateStatusCause> errorsStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
         final String context = "compute";
-        if (!errorStatus.isEmpty()) {
-            return getFailureResponseAndPrintError(errorStatus, context, chainTaskId);
+        if (!errorsStatus.isEmpty()) {
+            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
-            return getFailureResponseAndPrintError(List.of(APP_NOT_FOUND_LOCALLY),
+            return getFailureResponseAndPrintErrors(List.of(APP_NOT_FOUND_LOCALLY),
                     context, chainTaskId);
         }
 
         if (taskDescription.isTeeTask()) {
             TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             if (!teeService.prepareTeeForTask(chainTaskId)) {
-                return getFailureResponseAndPrintError(List.of(TEE_PREPARATION_FAILED),
+                return getFailureResponseAndPrintErrors(List.of(TEE_PREPARATION_FAILED),
                         context, chainTaskId);
             }
         }
@@ -246,7 +246,7 @@ public class TaskManagerService {
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
-            return getFailureResponseAndPrintError(
+            return getFailureResponseAndPrintErrors(
                     preResponse.getExitCauses(),
                     context,
                     chainTaskId
@@ -300,13 +300,13 @@ public class TaskManagerService {
      * @return The response of the 'contribute' or 'contributeAndFinalize' action
      */
     private ReplicateActionResponse contributeOrContributeAndFinalize(String chainTaskId, String context) {
-        List<ReplicateStatusCause> oErrorStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
-        if (!oErrorStatus.isEmpty()) {
-            return getFailureResponseAndPrintError(oErrorStatus, context, chainTaskId);
+        List<ReplicateStatusCause> errorsStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        if (!errorsStatus.isEmpty()) {
+            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {
-            return getFailureResponseAndPrintError(List.of(OUT_OF_GAS), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(List.of(OUT_OF_GAS), context, chainTaskId);
         }
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
@@ -330,9 +330,9 @@ public class TaskManagerService {
                 response = ReplicateActionResponse.success(chainReceipt);
             }
         } else if (context.equals(CONTRIBUTE_AND_FINALIZE)) {
-            oErrorStatus = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
-            if (!oErrorStatus.isEmpty()) {
-                return getFailureResponseAndPrintError(oErrorStatus, context, chainTaskId);
+            errorsStatus = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
+            if (!errorsStatus.isEmpty()) {
+                return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
@@ -365,7 +365,7 @@ public class TaskManagerService {
                                    TaskNotificationExtra extra) {
         String context = "reveal";
         if (extra == null || extra.getBlockNumber() == 0) {
-            return getFailureResponseAndPrintError(List.of(CONSENSUS_BLOCK_MISSING), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(List.of(CONSENSUS_BLOCK_MISSING), context, chainTaskId);
         }
         long consensusBlock = extra.getBlockNumber();
 
@@ -379,12 +379,12 @@ public class TaskManagerService {
         }
 
         if (!revealService.isConsensusBlockReached(chainTaskId, consensusBlock)) {
-            return getFailureResponseAndPrintError(List.of(BLOCK_NOT_REACHED), context, chainTaskId
+            return getFailureResponseAndPrintErrors(List.of(BLOCK_NOT_REACHED), context, chainTaskId
             );
         }
 
         if (!revealService.repeatCanReveal(chainTaskId, resultDigest)) {
-            return getFailureResponseAndPrintError(List.of(CANNOT_REVEAL), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(List.of(CANNOT_REVEAL), context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {
@@ -397,7 +397,7 @@ public class TaskManagerService {
                 revealService.reveal(chainTaskId, resultDigest);
         if (oChainReceipt.isEmpty() ||
                 !isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
-            return getFailureResponseAndPrintError(List.of(CHAIN_RECEIPT_NOT_VALID),
+            return getFailureResponseAndPrintErrors(List.of(CHAIN_RECEIPT_NOT_VALID),
                     context, chainTaskId
             );
         }
@@ -410,7 +410,7 @@ public class TaskManagerService {
         String resultLink = resultService.uploadResultAndGetLink(workerpoolAuthorization);
         String context = "upload result";
         if (resultLink.isEmpty()) {
-            return getFailureResponseAndPrintError(List.of(RESULT_LINK_MISSING),
+            return getFailureResponseAndPrintErrors(List.of(RESULT_LINK_MISSING),
                     context, chainTaskId
             );
         }
@@ -489,7 +489,7 @@ public class TaskManagerService {
         return true;
     }
 
-    private ReplicateActionResponse getFailureResponseAndPrintError(List<ReplicateStatusCause> causes, String context, String chainTaskId) {
+    private ReplicateActionResponse getFailureResponseAndPrintErrors(List<ReplicateStatusCause> causes, String context, String chainTaskId) {
         if (causes == null || causes.isEmpty()) {
             log.error("Failed to {} [chainTaskId:'{}', cause:'UNKNOWN']", context, chainTaskId);
             return ReplicateActionResponse.failure();
