@@ -114,10 +114,10 @@ public class TaskManagerService {
             // then we won't be able to run the task.
             // So it should be aborted right now.
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
-            final List<ReplicateStatusCause> teePrerequisitesIssues = teeService.areTeePrerequisitesMetForTask(chainTaskId);
-            if (!teePrerequisitesIssues.isEmpty()) {
-                log.error("TEE prerequisites are not met [chainTaskId: {}, issues: {}]", chainTaskId, teePrerequisitesIssues);
-                return getFailureResponseAndPrintError(teePrerequisitesIssues, context, chainTaskId);
+            final List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(chainTaskId);
+            if (!teePrerequisitesIssue.isEmpty()) {
+                log.error("TEE prerequisites are not met [chainTaskId: {}, issues: {}]", chainTaskId, teePrerequisitesIssue);
+                return getFailureResponseAndPrintError(teePrerequisitesIssue, context, chainTaskId);
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
@@ -142,7 +142,7 @@ public class TaskManagerService {
             return ReplicateActionResponse.success();
         }
         return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
-                APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
+                APP_DOWNLOAD_FAILED, List.of(APP_IMAGE_DOWNLOAD_FAILED));
     }
 
     /*
@@ -195,7 +195,7 @@ public class TaskManagerService {
             }
         } catch (WorkflowException e) {
             return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
-                    DATA_DOWNLOAD_FAILED, e.getReplicateStatusCause());
+                    DATA_DOWNLOAD_FAILED, List.of(e.getReplicateStatusCause()));
         }
         return ReplicateActionResponse.success();
     }
@@ -204,14 +204,14 @@ public class TaskManagerService {
                                                                   String context,
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
-                                                                  ReplicateStatusCause errorCause) {
-        // log original error
-        logError(errorCause, context, chainTaskId);
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCause);
+                                                                  List<ReplicateStatusCause> errorCauses) {
+        // log original errors
+        errorCauses.forEach(cause -> logError(cause, context, chainTaskId));
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCauses);
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
-            return ReplicateActionResponse.failure(errorCause);
+            return ReplicateActionResponse.failure(errorCauses.get(0)); // TODO: Handle list of causes
         }
         //Download failed hard, worker cannot contribute
         logError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, context, chainTaskId);

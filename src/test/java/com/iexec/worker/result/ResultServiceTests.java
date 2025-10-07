@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -53,7 +54,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-//@Slf4j
 @ExtendWith(MockitoExtension.class)
 class ResultServiceTests {
 
@@ -117,7 +117,7 @@ class ResultServiceTests {
 
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
 
         assertThat(isErrorWritten).isTrue();
         String errorFileAsString = FileHelper.readFile(tmp + "/"
@@ -143,7 +143,7 @@ class ResultServiceTests {
 
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
 
         assertThat(isErrorWritten).isFalse();
     }
