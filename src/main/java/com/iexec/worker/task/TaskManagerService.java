@@ -204,14 +204,14 @@ public class TaskManagerService {
                                                                   String context,
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
-                                                                  List<ReplicateStatusCause> errorCauses) {
+                                                                  List<ReplicateStatusCause> causes) {
         // log original errors
-        errorCauses.forEach(cause -> logError(cause, context, chainTaskId));
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCauses);
+        causes.forEach(cause -> logError(cause, context, chainTaskId));
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, causes);
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
-            return ReplicateActionResponse.failure(errorCauses.get(0));
+            return ReplicateActionResponse.failure(causes.get(0));
         }
         //Download failed hard, worker cannot contribute
         logError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, context, chainTaskId);
