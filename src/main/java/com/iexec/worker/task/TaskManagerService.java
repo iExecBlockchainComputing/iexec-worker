@@ -257,11 +257,11 @@ public class TaskManagerService {
                 computeManagerService.runCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!appResponse.isSuccessful()) {
-            final ReplicateStatusCause cause = appResponse.getExitCauses().get(0); //TODO: Handle list of causes
-            logError(cause, context, chainTaskId);
+            final List<ReplicateStatusCause> appErrorCauses = appResponse.getExitCauses();
+            appErrorCauses.forEach(cause -> logError(cause, context, chainTaskId));
             return ReplicateActionResponse.failureWithDetails(
                     ReplicateStatusDetails.builder()
-                            .cause(cause)
+                            .cause(appErrorCauses.get(0)) //TODO: Handle list of causes
                             .exitCode(appResponse.getExitCode())
                             .computeLogs(
                                     ComputeLogs.builder()
@@ -276,10 +276,9 @@ public class TaskManagerService {
                 computeManagerService.runPostCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!postResponse.isSuccessful()) {
-            ReplicateStatusCause cause = postResponse.getExitCauses().get(0); //TODO: Handle list of causes
-            logError(cause, context, chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(cause,
-                    postResponse.getStdout());
+            List<ReplicateStatusCause> postComputeErrorCauses = postResponse.getExitCauses();
+            postComputeErrorCauses.forEach(cause -> logError(cause, context, chainTaskId));
+            return ReplicateActionResponse.failureWithStdout(postComputeErrorCauses.get(0), postResponse.getStdout()); // TODO: Handle list of causes
         }
         return ReplicateActionResponse.successWithLogs(
                 ComputeLogs.builder()
