@@ -173,11 +173,11 @@ public class TaskManagerService {
             log.info("Dataset and input files will be downloaded by the pre-compute enclave [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.success();
         }
-        List<ReplicateStatusCause> errorStatus =
+        List<ReplicateStatusCause> causes =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download data";
-        if (!errorStatus.isEmpty()) {
-            return getFailureResponseAndPrintErrors(errorStatus, context, chainTaskId);
+        if (!causes.isEmpty()) {
+            return getFailureResponseAndPrintErrors(causes, context, chainTaskId);
         }
         try {
             // download dataset for standard task
@@ -203,11 +203,11 @@ public class TaskManagerService {
     private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
                                                                   String context,
                                                                   TaskDescription taskDescription,
-                                                                  ReplicateStatus errorStatus,
+                                                                  ReplicateStatus cause,
                                                                   List<ReplicateStatusCause> errorCauses) {
         // log original errors
-        errorCauses.forEach(cause -> logError(cause, context, chainTaskId));
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCauses);
+        errorCauses.forEach(error -> logError(error, context, chainTaskId));
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, cause, errorCauses);
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
