@@ -332,7 +332,7 @@ class ContributionServiceTests {
     void getCannotContributeAndFinalizeStatusCauseShouldReturnTrustNotOne() {
         final String chainTaskId = chainTask.getChainTaskId();
         final TaskDescription badTrustTaskDescription = TaskDescription.builder()
-                .trust(BigInteger.valueOf(2))
+                .trust(BigInteger.TWO)
                 .build();
 
         when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(badTrustTaskDescription);
