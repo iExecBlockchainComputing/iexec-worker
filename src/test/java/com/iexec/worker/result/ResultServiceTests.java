@@ -123,7 +123,7 @@ class ResultServiceTests {
         String errorFileAsString = FileHelper.readFile(tmp + "/"
                 + ResultService.ERROR_FILENAME);
         assertThat(errorFileAsString)
-                .contains("[IEXEC] Error occurred while computing the task")
+                .contains("[IEXEC] Errors occurred while computing the task")
                 .contains("INPUT_FILES_DOWNLOAD_FAILED");
         String computedFileAsString = FileHelper.readFile(tmp + "/"
                 + IexecFileHelper.COMPUTED_JSON);
@@ -163,7 +163,7 @@ class ResultServiceTests {
         final String errorFileAsString = FileHelper.readFile(tmp + "/"
                 + ResultService.ERROR_FILENAME);
         assertThat(errorFileAsString)
-                .contains("[IEXEC] Error occurred while computing the task")
+                .contains("[IEXEC] Errors occurred while computing the task")
                 .contains("INPUT_FILES_DOWNLOAD_FAILED")
                 .contains("DATASET_FILE_DOWNLOAD_FAILED");
     }

@@ -93,13 +93,13 @@ public class ResultService implements Purgeable {
     }
 
     public boolean writeErrorToIexecOut(final String chainTaskId, final ReplicateStatus errorStatus,
-                                        final List<ReplicateStatusCause> errorCauses) {
-        if (errorCauses == null || errorCauses.isEmpty()) {
+                                        final List<ReplicateStatusCause> causes) {
+        if (causes == null || causes.isEmpty()) {
             log.error("No error causes provided [chainTaskId:{}]", chainTaskId);
             return false;
         }
-        final String errorContent = String.format("[IEXEC] Error occurred while computing"
-                + " the task [error:%s, causes:%s]", errorStatus, errorCauses);
+        final String errorContent = String.format("[IEXEC] Errors occurred while computing the task [error:%s, causes:%s]",
+                errorStatus, causes);
         final ComputedFile computedFile = ComputedFile.builder()
                 .deterministicOutputPath(IexecFileHelper.SLASH_IEXEC_OUT +
                         File.separator + ERROR_FILENAME)

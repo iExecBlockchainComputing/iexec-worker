@@ -96,11 +96,11 @@ public class TaskManagerService {
 
     ReplicateActionResponse start(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        List<ReplicateStatusCause> errorsStatus =
+        List<ReplicateStatusCause> causes =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "start";
-        if (!errorsStatus.isEmpty()) {
-            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
+        if (!causes.isEmpty()) {
+            return getFailureResponseAndPrintErrors(causes, context, chainTaskId);
         }
 
         // result encryption is not supported for standard tasks
@@ -131,18 +131,18 @@ public class TaskManagerService {
 
     ReplicateActionResponse downloadApp(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        List<ReplicateStatusCause> errorsStatus =
+        List<ReplicateStatusCause> causes =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         String context = "download app";
-        if (!errorsStatus.isEmpty()) {
-            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
+        if (!causes.isEmpty()) {
+            return getFailureResponseAndPrintErrors(causes, context, chainTaskId);
         }
 
         if (computeManagerService.downloadApp(taskDescription)) {
             return ReplicateActionResponse.success();
         }
         return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
-                APP_DOWNLOAD_FAILED, APP_IMAGE_DOWNLOAD_FAILED);
+                APP_DOWNLOAD_FAILED, List.of(APP_IMAGE_DOWNLOAD_FAILED));
     }
 
     /*
@@ -195,7 +195,7 @@ public class TaskManagerService {
             }
         } catch (WorkflowException e) {
             return triggerPostComputeHookOnError(chainTaskId, context, taskDescription,
-                    DATA_DOWNLOAD_FAILED, e.getReplicateStatusCause());
+                    DATA_DOWNLOAD_FAILED, List.of(e.getReplicateStatusCause()));
         }
         return ReplicateActionResponse.success();
     }
@@ -204,14 +204,14 @@ public class TaskManagerService {
                                                                   String context,
                                                                   TaskDescription taskDescription,
                                                                   ReplicateStatus errorStatus,
-                                                                  ReplicateStatusCause errorCause) {
-        // log original error
-        logError(errorCause, context, chainTaskId);
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, List.of(errorCause));
+                                                                  List<ReplicateStatusCause> errorCauses) {
+        // log original errors
+        errorCauses.forEach(cause -> logError(cause, context, chainTaskId));
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCauses);
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
-            return ReplicateActionResponse.failure(errorCause);
+            return ReplicateActionResponse.failure(errorCauses.get(0));
         }
         //Download failed hard, worker cannot contribute
         logError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE, context, chainTaskId);
@@ -220,10 +220,10 @@ public class TaskManagerService {
 
     ReplicateActionResponse compute(TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        final List<ReplicateStatusCause> errorsStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
+        final List<ReplicateStatusCause> causes = contributionService.getCannotContributeStatusCause(chainTaskId);
         final String context = "compute";
-        if (!errorsStatus.isEmpty()) {
-            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
+        if (!causes.isEmpty()) {
+            return getFailureResponseAndPrintErrors(causes, context, chainTaskId);
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
@@ -276,9 +276,9 @@ public class TaskManagerService {
                 computeManagerService.runPostCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!postResponse.isSuccessful()) {
-            ReplicateStatusCause causes = postResponse.getExitCauses().get(0); //TODO: Handle list of causes
-            logError(causes, context, chainTaskId);
-            return ReplicateActionResponse.failureWithStdout(causes,
+            ReplicateStatusCause cause = postResponse.getExitCauses().get(0); //TODO: Handle list of causes
+            logError(cause, context, chainTaskId);
+            return ReplicateActionResponse.failureWithStdout(cause,
                     postResponse.getStdout());
         }
         return ReplicateActionResponse.successWithLogs(
@@ -300,9 +300,9 @@ public class TaskManagerService {
      * @return The response of the 'contribute' or 'contributeAndFinalize' action
      */
     private ReplicateActionResponse contributeOrContributeAndFinalize(String chainTaskId, String context) {
-        List<ReplicateStatusCause> errorsStatus = contributionService.getCannotContributeStatusCause(chainTaskId);
-        if (!errorsStatus.isEmpty()) {
-            return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
+        List<ReplicateStatusCause> causes = contributionService.getCannotContributeStatusCause(chainTaskId);
+        if (!causes.isEmpty()) {
+            return getFailureResponseAndPrintErrors(causes, context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {
@@ -330,9 +330,9 @@ public class TaskManagerService {
                 response = ReplicateActionResponse.success(chainReceipt);
             }
         } else if (context.equals(CONTRIBUTE_AND_FINALIZE)) {
-            errorsStatus = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
-            if (!errorsStatus.isEmpty()) {
-                return getFailureResponseAndPrintErrors(errorsStatus, context, chainTaskId);
+            causes = contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId);
+            if (!causes.isEmpty()) {
+                return getFailureResponseAndPrintErrors(causes, context, chainTaskId);
             }
 
             final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
