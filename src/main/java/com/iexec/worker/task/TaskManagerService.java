@@ -203,11 +203,11 @@ public class TaskManagerService {
     private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
                                                                   String context,
                                                                   TaskDescription taskDescription,
-                                                                  ReplicateStatus cause,
+                                                                  ReplicateStatus errorStatus,
                                                                   List<ReplicateStatusCause> errorCauses) {
         // log original errors
-        errorCauses.forEach(error -> logError(error, context, chainTaskId));
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, cause, errorCauses);
+        errorCauses.forEach(cause -> logError(cause, context, chainTaskId));
+        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errorCauses);
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
