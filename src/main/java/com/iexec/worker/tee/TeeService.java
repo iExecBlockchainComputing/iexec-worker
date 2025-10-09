@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
@@ -48,9 +47,9 @@ public abstract class TeeService {
         return sgxService.isSgxEnabled();
     }
 
-    public Optional<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
+    public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
         if (!isTeeEnabled()) {
-            return Optional.of(TEE_NOT_SUPPORTED);
+            return List.of(TEE_NOT_SUPPORTED);
         }
 
         try {
@@ -59,7 +58,7 @@ public abstract class TeeService {
             smsService.getSmsClient(chainTaskId);
         } catch (SmsClientCreationException e) {
             log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
-            return Optional.of(UNKNOWN_SMS);
+            return List.of(UNKNOWN_SMS);
         }
         try {
             // Try to load the `TeeServicesProperties` relative to the task.
@@ -67,13 +66,13 @@ public abstract class TeeService {
             teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         } catch (NullPointerException e) {
             log.error("TEE enclave configuration is null [chainTaskId: {}]", chainTaskId, e);
-            return Optional.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
+            return List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
-            return Optional.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
+            return List.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
         }
 
-        return Optional.empty();
+        return List.of();
     }
 
     /**

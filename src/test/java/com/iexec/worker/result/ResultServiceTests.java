@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -53,7 +54,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-//@Slf4j
 @ExtendWith(MockitoExtension.class)
 class ResultServiceTests {
 
@@ -117,13 +117,14 @@ class ResultServiceTests {
 
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
 
         assertThat(isErrorWritten).isTrue();
         String errorFileAsString = FileHelper.readFile(tmp + "/"
                 + ResultService.ERROR_FILENAME);
-        assertThat(errorFileAsString).contains("[IEXEC] Error occurred while " +
-                "computing the task");
+        assertThat(errorFileAsString)
+                .contains("[IEXEC] Errors occurred while computing the task")
+                .contains("INPUT_FILES_DOWNLOAD_FAILED");
         String computedFileAsString = FileHelper.readFile(tmp + "/"
                 + IexecFileHelper.COMPUTED_JSON);
         assertThat(computedFileAsString).isEqualTo("{" +
@@ -143,7 +144,35 @@ class ResultServiceTests {
 
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED);
+                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
+
+        assertThat(isErrorWritten).isFalse();
+    }
+
+    @Test
+    void shouldWriteMultipleErrorsToIexecOut() {
+        when(workerConfigurationService.getTaskIexecOutDir(CHAIN_TASK_ID))
+                .thenReturn(tmp);
+
+        final boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
+                ReplicateStatus.DATA_DOWNLOAD_FAILED,
+                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED,
+                        ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED));
+
+        assertThat(isErrorWritten).isTrue();
+        final String errorFileAsString = FileHelper.readFile(tmp + "/"
+                + ResultService.ERROR_FILENAME);
+        assertThat(errorFileAsString)
+                .contains("[IEXEC] Errors occurred while computing the task")
+                .contains("INPUT_FILES_DOWNLOAD_FAILED")
+                .contains("DATASET_FILE_DOWNLOAD_FAILED");
+    }
+
+    @Test
+    void shouldNotWriteErrorToIexecOutSinceEmptyCausesList() {
+        final boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
+                ReplicateStatus.DATA_DOWNLOAD_FAILED,
+                List.of());
 
         assertThat(isErrorWritten).isFalse();
     }

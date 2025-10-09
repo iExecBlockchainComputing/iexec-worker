@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.methods.response.Log;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
@@ -54,57 +56,63 @@ public class ContributionService {
         return iexecHubService.getTaskDescription(chainTaskId) != null;
     }
 
-    public Optional<ReplicateStatusCause> getCannotContributeStatusCause(final String chainTaskId) {
+    public List<ReplicateStatusCause> getCannotContributeStatusCause(final String chainTaskId) {
+        final List<ReplicateStatusCause> causes = new ArrayList<>();
+
         if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
-            return Optional.of(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
+            causes.add(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
         }
 
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
-            return Optional.of(CHAIN_UNREACHABLE);
+            causes.add(CHAIN_UNREACHABLE);
+            return causes;
         }
 
         // No staking in contributeAndFinalize
         if (taskDescription != null && !taskDescription.isEligibleToContributeAndFinalize()
                 && !hasEnoughStakeToContribute(chainTask)) {
-            return Optional.of(STAKE_TOO_LOW);
+            causes.add(STAKE_TOO_LOW);
         }
 
         if (chainTask.getStatus() != ChainTaskStatus.ACTIVE) {
-            return Optional.of(TASK_NOT_ACTIVE);
+            causes.add(TASK_NOT_ACTIVE);
         }
 
         if (chainTask.isContributionDeadlineReached()) {
-            return Optional.of(CONTRIBUTION_TIMEOUT);
+            causes.add(CONTRIBUTION_TIMEOUT);
         }
 
         if (chainTask.hasContributionFrom(workerWalletAddress)) {
-            return Optional.of(CONTRIBUTION_ALREADY_SET);
+            causes.add(CONTRIBUTION_ALREADY_SET);
         }
 
-        return Optional.empty();
+        return causes;
     }
 
-    public Optional<ReplicateStatusCause> getCannotContributeAndFinalizeStatusCause(final String chainTaskId) {
+    public List<ReplicateStatusCause> getCannotContributeAndFinalizeStatusCause(final String chainTaskId) {
+        final List<ReplicateStatusCause> causes = new ArrayList<>();
+
         // check TRUST is 1
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null || !BigInteger.ONE.equals(taskDescription.getTrust())) {
-            return Optional.of(TRUST_NOT_1);
+            causes.add(TRUST_NOT_1);
         }
 
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
-            return Optional.of(CHAIN_UNREACHABLE);
+            causes.add(CHAIN_UNREACHABLE);
+            return causes;
         }
 
         // check TASK_ALREADY_CONTRIBUTED
         if (chainTask.hasContributions()) {
-            return Optional.of(TASK_ALREADY_CONTRIBUTED);
+            causes.add(TASK_ALREADY_CONTRIBUTED);
         }
 
-        return Optional.empty();
+        return causes;
     }
 
     private boolean isWorkerpoolAuthorizationPresent(String chainTaskId) {
