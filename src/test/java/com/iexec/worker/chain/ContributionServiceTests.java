@@ -16,7 +16,6 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.security.Signature;
