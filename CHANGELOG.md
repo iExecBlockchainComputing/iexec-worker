@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.1.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.0.1...v9.1.0) (2025-10-09)
+
+
+### Features
+
+* add bulk exit cause list reporting for compute stages ([#653](https://github.com/iExecBlockchainComputing/iexec-worker/issues/653)) ([1f0bb7f](https://github.com/iExecBlockchainComputing/iexec-worker/commit/1f0bb7fb25010bb2d4db5f580edd153824ddce1b))
+* execute pre-compute container for a TEE task requesting a bulk processing ([#655](https://github.com/iExecBlockchainComputing/iexec-worker/issues/655)) ([1f3b0ff](https://github.com/iExecBlockchainComputing/iexec-worker/commit/1f3b0ff8cf358de80449142eccc930e3a4a3c41c))
+* manipulate list of `ReplicateStatusCause` in `TaskManagerService` ([#659](https://github.com/iExecBlockchainComputing/iexec-worker/issues/659)) ([8b37bca](https://github.com/iExecBlockchainComputing/iexec-worker/commit/8b37bcae748ab0bc972e1ad4d6ec27cce5f6a7a5))
+* propagate list of exit causes ([#657](https://github.com/iExecBlockchainComputing/iexec-worker/issues/657)) ([0a884fe](https://github.com/iExecBlockchainComputing/iexec-worker/commit/0a884fe45c097342bc77aa5bba835afd9c5446c4))
+* update exit cause handling to return a list of causes in PostCompute and PreCompute services ([#658](https://github.com/iExecBlockchainComputing/iexec-worker/issues/658)) ([38c0457](https://github.com/iExecBlockchainComputing/iexec-worker/commit/38c0457fb1f776f75f773ae1b4a7b38a5c16ce3d))
+
+
+### Bug Fixes
+
+* apply correct environment variables to dapp docker container based on task execution mode ([#656](https://github.com/iExecBlockchainComputing/iexec-worker/issues/656)) ([debade3](https://github.com/iExecBlockchainComputing/iexec-worker/commit/debade3019c3a7d9c269819e0fad7bffef641146))
+
 ## [9.0.1](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.0.0...v9.0.1) (2025-09-16)
 
 
