@@ -211,18 +211,17 @@ public class PostComputeService {
         }
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
-            log.error("Tee post-compute container timed out" +
-                            " [chainTaskId:{}, maxExecutionTime:{}]",
+            log.error("Tee post-compute container timed out [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             return PostComputeResponse.builder()
                     .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_TIMEOUT))
                     .build();
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
-            int exitCode = dockerResponse.getContainerExitCode();
+            final int exitCode = dockerResponse.getContainerExitCode();
             final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
-            log.error("Failed to run tee post-compute [chainTaskId:{}, " +
-                    "exitCode:{}, exitCauses:{}]", chainTaskId, exitCode, exitCauses);
+            log.error("Failed to run tee post-compute [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
+                    chainTaskId, exitCode, exitCauses);
             return PostComputeResponse.builder()
                     .exitCauses(exitCauses)
                     .build();

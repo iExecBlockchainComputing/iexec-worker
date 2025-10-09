@@ -117,8 +117,7 @@ public class PreComputeService {
                 .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGb())
                 .toBytes();
         if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
-            log.error("Enclave configuration should define a proper heap " +
-                            "size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
+            log.error("Enclave configuration should define a proper heap size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
             preComputeResponseBuilder.exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION));
             return preComputeResponseBuilder.build();
@@ -140,8 +139,8 @@ public class PreComputeService {
 
         // run TEE pre-compute container if needed
         if (taskDescription.requiresPreCompute()) {
-            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}]",
-                    chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles());
+            log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}, isBulkRequest:{}]",
+                    chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles(), taskDescription.isBulkRequest());
             final List<ReplicateStatusCause> exitCauses = downloadDatasetAndFiles(taskDescription, secureSession);
             preComputeResponseBuilder.exitCauses(exitCauses);
         }
@@ -150,12 +149,12 @@ public class PreComputeService {
     }
 
     private List<ReplicateStatusCause> downloadDatasetAndFiles(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse secureSession) {
+            final TaskDescription taskDescription,
+            final TeeSessionGenerationResponse secureSession) {
         try {
-            Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
+            final Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
-                String chainTaskId = taskDescription.getChainTaskId();
+                final String chainTaskId = taskDescription.getChainTaskId();
                 final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
                 log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
                         chainTaskId, exitCode, exitCauses);

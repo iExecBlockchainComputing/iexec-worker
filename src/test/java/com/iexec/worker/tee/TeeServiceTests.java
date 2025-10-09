@@ -16,12 +16,10 @@
 
 package com.iexec.worker.tee;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,9 +27,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
@@ -81,19 +78,16 @@ class TeeServiceTests {
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
 
-        List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
-
-        Assertions.assertTrue(teePrerequisitesIssue.isEmpty());
+        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .isEmpty();
     }
 
     @Test
     void shouldTeePrerequisitesNotBeMetSinceTeeNotEnabled() {
         when(teeService.isTeeEnabled()).thenReturn(false);
 
-        List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
-
-        Assertions.assertFalse(teePrerequisitesIssue.isEmpty());
-        Assertions.assertEquals(List.of(TEE_NOT_SUPPORTED), teePrerequisitesIssue);
+        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .containsExactly(TEE_NOT_SUPPORTED);
     }
 
     @Test
@@ -101,10 +95,8 @@ class TeeServiceTests {
         when(teeService.isTeeEnabled()).thenReturn(true);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
-        List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
-
-        Assertions.assertFalse(teePrerequisitesIssue.isEmpty());
-        Assertions.assertEquals(List.of(UNKNOWN_SMS), teePrerequisitesIssue);
+        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .containsExactly(UNKNOWN_SMS);
     }
 
     @Test
@@ -113,10 +105,8 @@ class TeeServiceTests {
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(NullPointerException.class);
 
-        List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
-
-        Assertions.assertFalse(teePrerequisitesIssue.isEmpty());
-        Assertions.assertEquals(List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION), teePrerequisitesIssue);
+        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .containsExactly(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
     }
 
     @Test
@@ -125,10 +115,8 @@ class TeeServiceTests {
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(RuntimeException.class);
 
-        List<ReplicateStatusCause> teePrerequisitesIssue = teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
-
-        Assertions.assertFalse(teePrerequisitesIssue.isEmpty());
-        Assertions.assertEquals(List.of(GET_TEE_SERVICES_CONFIGURATION_FAILED), teePrerequisitesIssue);
+        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .containsExactly(GET_TEE_SERVICES_CONFIGURATION_FAILED);
     }
     // endregion
 }

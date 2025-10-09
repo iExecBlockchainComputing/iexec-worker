@@ -115,11 +115,11 @@ public class AppComputeService {
     // We use the name "worker1-0xabc123" for app container to avoid
     // conflicts when running multiple workers on the same machine.
     // Exp: integration tests
-    private String getTaskContainerName(String chainTaskId) {
+    private String getTaskContainerName(final String chainTaskId) {
         return workerConfigService.getWorkerName() + "-" + chainTaskId;
     }
 
-    private List<ReplicateStatusCause> getExitCauseFromFinalStatus(DockerRunFinalStatus finalStatus) {
+    private List<ReplicateStatusCause> getExitCauseFromFinalStatus(final DockerRunFinalStatus finalStatus) {
         return switch (finalStatus) {
             case TIMEOUT -> List.of(ReplicateStatusCause.APP_COMPUTE_TIMEOUT);
             case FAILED -> List.of(ReplicateStatusCause.APP_COMPUTE_FAILED);

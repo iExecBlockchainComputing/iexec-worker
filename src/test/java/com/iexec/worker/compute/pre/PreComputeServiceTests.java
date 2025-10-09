@@ -126,14 +126,14 @@ class PreComputeServiceTests {
 
     //region runTeePreCompute
     void prepareMockWhenPreComputeShouldRunForTask(final TaskDescription taskDescription) throws TeeSessionGenerationException {
-            prepareMocksForPreCompute(
-                    taskDescription,
-                    DockerRunResponse.builder()
-                            .containerExitCode(0)
-                            .finalStatus(DockerRunFinalStatus.SUCCESS)
-                            .executionDuration(Duration.ofSeconds(10))
-                            .build()
-            );
+        prepareMocksForPreCompute(
+                taskDescription,
+                DockerRunResponse.builder()
+                        .containerExitCode(0)
+                        .finalStatus(DockerRunFinalStatus.SUCCESS)
+                        .executionDuration(Duration.ofSeconds(10))
+                        .build()
+        );
     }
 
     void prepareMocksForPreCompute(final TaskDescription taskDescription, DockerRunResponse dockerRunResponse) throws TeeSessionGenerationException {
