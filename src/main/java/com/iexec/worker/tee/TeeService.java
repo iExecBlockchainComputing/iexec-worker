@@ -47,7 +47,7 @@ public abstract class TeeService {
         return sgxService.isSgxEnabled();
     }
 
-    public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(String chainTaskId) {
+    public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(final String chainTaskId) {
         if (!isTeeEnabled()) {
             return List.of(TEE_NOT_SUPPORTED);
         }

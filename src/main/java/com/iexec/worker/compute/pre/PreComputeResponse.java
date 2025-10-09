@@ -35,7 +35,6 @@ public class PreComputeResponse implements ComputeResponse {
     String stdout;
     String stderr;
 
-
     @Override
     public boolean isSuccessful() {
         if (isTeeTask) {
