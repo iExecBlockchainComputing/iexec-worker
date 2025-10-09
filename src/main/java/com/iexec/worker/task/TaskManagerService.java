@@ -104,7 +104,8 @@ public class TaskManagerService {
 
         // result encryption is not supported for standard tasks
         if (!taskDescription.isTeeTask() && taskDescription.getDealParams().isIexecResultEncryption()) {
-            return getFailureResponseAndPrintErrors(List.of(TASK_DESCRIPTION_INVALID), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(TASK_DESCRIPTION_INVALID), context, chainTaskId);
         }
 
         if (taskDescription.isTeeTask()) {
@@ -223,13 +224,15 @@ public class TaskManagerService {
         }
 
         if (!computeManagerService.isAppDownloaded(taskDescription.getAppUri())) {
-            return getFailureResponseAndPrintErrors(List.of(APP_NOT_FOUND_LOCALLY), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(APP_NOT_FOUND_LOCALLY), context, chainTaskId);
         }
 
         if (taskDescription.isTeeTask()) {
             TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             if (!teeService.prepareTeeForTask(chainTaskId)) {
-                return getFailureResponseAndPrintErrors(List.of(TEE_PREPARATION_FAILED), context, chainTaskId);
+                return getFailureResponseAndPrintErrors(
+                        List.of(TEE_PREPARATION_FAILED), context, chainTaskId);
             }
         }
 
@@ -288,7 +291,8 @@ public class TaskManagerService {
         }
 
         if (!hasEnoughGas()) {
-            return getFailureResponseAndPrintErrors(List.of(OUT_OF_GAS), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(OUT_OF_GAS), context, chainTaskId);
         }
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
@@ -347,7 +351,8 @@ public class TaskManagerService {
                                    TaskNotificationExtra extra) {
         final String context = "reveal";
         if (extra == null || extra.getBlockNumber() == 0) {
-            return getFailureResponseAndPrintErrors(List.of(CONSENSUS_BLOCK_MISSING), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(CONSENSUS_BLOCK_MISSING), context, chainTaskId);
         }
         long consensusBlock = extra.getBlockNumber();
 
@@ -360,11 +365,13 @@ public class TaskManagerService {
         }
 
         if (!revealService.isConsensusBlockReached(chainTaskId, consensusBlock)) {
-            return getFailureResponseAndPrintErrors(List.of(BLOCK_NOT_REACHED), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(BLOCK_NOT_REACHED), context, chainTaskId);
         }
 
         if (!revealService.repeatCanReveal(chainTaskId, resultDigest)) {
-            return getFailureResponseAndPrintErrors(List.of(CANNOT_REVEAL), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(CANNOT_REVEAL), context, chainTaskId);
         }
 
         if (!hasEnoughGas()) {
@@ -377,7 +384,8 @@ public class TaskManagerService {
                 revealService.reveal(chainTaskId, resultDigest);
         if (oChainReceipt.isEmpty() ||
                 !isValidChainReceipt(chainTaskId, oChainReceipt.get())) {
-            return getFailureResponseAndPrintErrors(List.of(CHAIN_RECEIPT_NOT_VALID), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(CHAIN_RECEIPT_NOT_VALID), context, chainTaskId);
         }
 
         return ReplicateActionResponse.success(oChainReceipt.get());
@@ -388,7 +396,8 @@ public class TaskManagerService {
         String resultLink = resultService.uploadResultAndGetLink(workerpoolAuthorization);
         String context = "upload result";
         if (resultLink.isEmpty()) {
-            return getFailureResponseAndPrintErrors(List.of(RESULT_LINK_MISSING), context, chainTaskId);
+            return getFailureResponseAndPrintErrors(
+                    List.of(RESULT_LINK_MISSING), context, chainTaskId);
         }
 
         ComputedFile computedFile = resultService.getComputedFile(chainTaskId);
@@ -440,7 +449,7 @@ public class TaskManagerService {
             return true;
         }
 
-        String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]", workerWalletAddress);
+        final String noEnoughGas = String.format("Out of gas! please refill your wallet [walletAddress:%s]", workerWalletAddress);
         LoggingUtils.printHighlightedMessage(noEnoughGas);
         return false;
     }
