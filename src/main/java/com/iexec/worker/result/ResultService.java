@@ -101,8 +101,7 @@ public class ResultService implements Purgeable {
         final String errorContent = String.format("[IEXEC] Errors occurred while computing the task [error:%s, causes:%s]",
                 errorStatus, causes);
         final ComputedFile computedFile = ComputedFile.builder()
-                .deterministicOutputPath(
-                        IexecFileHelper.SLASH_IEXEC_OUT + File.separator + ERROR_FILENAME)
+                .deterministicOutputPath(IexecFileHelper.SLASH_IEXEC_OUT + File.separator + ERROR_FILENAME)
                 .build();
         final String computedFileJsonAsString;
         try {
