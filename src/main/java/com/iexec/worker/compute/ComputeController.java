@@ -17,11 +17,11 @@
 package com.iexec.worker.compute;
 
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.worker.api.ExitMessage;
 import com.iexec.worker.chain.WorkerpoolAuthorizationService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.workflow.WorkflowError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -50,15 +50,16 @@ public class ComputeController {
      * @deprecated Use {@link #sendExitCausesForGivenComputeStage(String, ComputeStage, String, List)}
      * for bulk exit cause reporting instead
      */
-    @Deprecated(forRemoval = true) // TODO: Add version when releasing next one
+    @Deprecated(forRemoval = true)
     @PostMapping("/compute/{stage}/{chainTaskId}/exit")
     public ResponseEntity<Void> sendExitCauseForGivenComputeStage(
             @RequestHeader("Authorization") String authorization,
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
-        List<ReplicateStatusCause> causes = exitMessage != null && exitMessage.cause() != null ? List.of(exitMessage.cause()) : List.of();
-        return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, causes);
+        List<WorkflowError> errors = exitMessage != null && exitMessage.cause() != null ?
+                List.of(WorkflowError.builder().cause(exitMessage.cause()).build()) : List.of();
+        return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, errors);
     }
 
     @PostMapping("/compute/{stage}/{chainTaskId}/exit-causes")
@@ -66,7 +67,7 @@ public class ComputeController {
             @RequestHeader("Authorization") String authorization,
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
-            @RequestBody List<ReplicateStatusCause> causes) {
+            @RequestBody List<WorkflowError> errors) {
         try {
             if (!workerpoolAuthorizationService.isSignedWithEnclaveChallenge(chainTaskId, authorization)) {
                 return ResponseEntity
@@ -79,13 +80,13 @@ public class ComputeController {
                     .build();
         }
 
-        if (causes == null || causes.isEmpty()) {
+        if (errors == null || errors.isEmpty()) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST.value())
                     .build();
         }
 
-        final boolean stored = computeStageExitService.setExitCausesForGivenComputeStage(chainTaskId, stage, causes);
+        final boolean stored = computeStageExitService.setExitCausesForGivenComputeStage(chainTaskId, stage, errors);
 
         if (!stored) {
             return ResponseEntity
@@ -96,7 +97,7 @@ public class ComputeController {
     }
 
     @PostMapping(path = {
-            "/iexec_out/{chainTaskId}/computed", //@Deprecated
+            "/iexec_out/{chainTaskId}/computed",
             "/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed"
     })
     public ResponseEntity<String> sendComputedFileForTee(@RequestHeader("Authorization") String authorization,

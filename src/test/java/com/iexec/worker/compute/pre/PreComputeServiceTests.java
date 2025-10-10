@@ -43,6 +43,7 @@ import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -240,7 +241,9 @@ class PreComputeServiceTests {
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCauses()).containsExactly(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
+        assertThat(response.getExitCauses())
+                .containsExactly(WorkflowError.builder()
+                        .cause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION).build());
         verifyNoInteractions(smsService);
     }
 
@@ -252,7 +255,9 @@ class PreComputeServiceTests {
 
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCauses()).containsExactly(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION);
+        assertThat(response.getExitCauses())
+                .containsExactly(WorkflowError.builder()
+                        .cause(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION).build());
         verifyNoInteractions(smsService);
     }
 
@@ -297,13 +302,15 @@ class PreComputeServiceTests {
 
         final PreComputeResponse preComputeResponse = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(preComputeResponse.isSuccessful()).isFalse();
-        assertThat(preComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING);
+        assertThat(preComputeResponse.getExitCauses())
+                .containsExactly(WorkflowError.builder()
+                        .cause(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING).build());
         verify(dockerService, never()).run(any());
     }
 
     @ParameterizedTest
     @MethodSource("shouldFailToRunTeePreComputeSinceDockerRunFailedArgs")
-    void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
+    void shouldFailToRunTeePreComputeSinceDockerRunFailed(Map.Entry<Integer, WorkflowError> exitCodeKeyToExpectedCauseValue) throws TeeSessionGenerationException {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
         DockerRunResponse dockerRunResponse = DockerRunResponse.builder()
                 .containerExitCode(exitCodeKeyToExpectedCauseValue.getKey())
@@ -312,7 +319,7 @@ class PreComputeServiceTests {
         prepareMocksForPreCompute(taskDescription, dockerRunResponse);
         // Only stub computeExitCauseService for exitCode == 1
         if (exitCodeKeyToExpectedCauseValue.getKey() == 1) {
-            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE))
+            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, WorkflowError.builder().cause(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).build()))
                     .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
         }
 
@@ -326,11 +333,11 @@ class PreComputeServiceTests {
     }
 
 
-    private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldFailToRunTeePreComputeSinceDockerRunFailedArgs() {
+    private static Stream<Map.Entry<Integer, WorkflowError>> shouldFailToRunTeePreComputeSinceDockerRunFailedArgs() {
         return Map.of(
-                1, ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING,
-                2, ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED,
-                3, ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING
+                1, WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING).build(),
+                2, WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED).build(),
+                3, WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING).build()
         ).entrySet().stream();
     }
 
@@ -347,7 +354,8 @@ class PreComputeServiceTests {
 
         assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .containsExactly(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT);
+                .containsExactly(WorkflowError.builder()
+                        .cause(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT).build());
         verify(dockerService).run(any());
     }
 
@@ -441,8 +449,8 @@ class PreComputeServiceTests {
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
-                .hasSize(1)
-                .containsExactly(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+                .containsExactly(WorkflowError.builder()
+                        .cause(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
     }
     // endregion
 }

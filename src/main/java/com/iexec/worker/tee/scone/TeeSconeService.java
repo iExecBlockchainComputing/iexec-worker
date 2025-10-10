@@ -16,7 +16,6 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -26,6 +25,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.utils.LoggingUtils;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -64,12 +64,14 @@ public class TeeSconeService extends TeeService {
     }
 
     @Override
-    public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(final String chainTaskId) {
-        final List<ReplicateStatusCause> teePrerequisiteIssues = super.areTeePrerequisitesMetForTask(chainTaskId);
+    public List<WorkflowError> areTeePrerequisitesMetForTask(final String chainTaskId) {
+        final List<WorkflowError> teePrerequisiteIssues = super.areTeePrerequisitesMetForTask(chainTaskId);
         if (!teePrerequisiteIssues.isEmpty()) {
             return teePrerequisiteIssues;
         }
-        return prepareTeeForTask(chainTaskId) ? List.of() : List.of(TEE_PREPARATION_FAILED);
+        return prepareTeeForTask(chainTaskId) ?
+                List.of() : List.of(WorkflowError.builder()
+                                .cause(TEE_PREPARATION_FAILED).build());
     }
 
     @Override

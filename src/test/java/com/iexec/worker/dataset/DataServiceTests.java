@@ -20,7 +20,7 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.utils.FileHashUtils;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.utils.WorkflowException;
+import com.iexec.worker.workflow.WorkflowException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

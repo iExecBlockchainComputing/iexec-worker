@@ -16,9 +16,9 @@
 
 package com.iexec.worker.compute.pre;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeResponse;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.Builder;
 import lombok.Value;
 
@@ -29,7 +29,7 @@ import java.util.List;
 public class PreComputeResponse implements ComputeResponse {
 
     @Builder.Default
-    List<ReplicateStatusCause> exitCauses = List.of();
+    List<WorkflowError> exitCauses = List.of();
     boolean isTeeTask;
     TeeSessionGenerationResponse secureSession;
     String stdout;

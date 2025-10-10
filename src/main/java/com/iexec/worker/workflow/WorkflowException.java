@@ -14,22 +14,23 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.compute.app;
+package com.iexec.worker.workflow;
 
-import com.iexec.worker.compute.ComputeResponse;
-import com.iexec.worker.workflow.WorkflowError;
-import lombok.Builder;
-import lombok.Value;
+import com.iexec.common.replicate.ReplicateStatusCause;
+import lombok.Getter;
 
-import java.util.List;
+@Getter
+public class WorkflowException extends Exception {
 
-@Value
-@Builder
-public class AppComputeResponse implements ComputeResponse {
+    private final ReplicateStatusCause replicateStatusCause;
 
-    @Builder.Default
-    List<WorkflowError> exitCauses = List.of();
-    String stdout;
-    String stderr;
-    int exitCode;
+    public WorkflowException(ReplicateStatusCause cause) {
+        this(cause, cause.name());
+    }
+
+    public WorkflowException(ReplicateStatusCause cause, String message) {
+        super(message);
+        this.replicateStatusCause = cause;
+    }
+
 }

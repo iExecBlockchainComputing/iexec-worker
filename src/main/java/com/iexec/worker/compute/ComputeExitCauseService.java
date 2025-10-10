@@ -16,7 +16,7 @@
 
 package com.iexec.worker.compute;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +28,7 @@ import java.util.List;
 @Service
 public class ComputeExitCauseService {
 
-    private final HashMap<String, List<ReplicateStatusCause>> exitCauseMap = new HashMap<>();
+    private final HashMap<String, List<WorkflowError>> exitCauseMap = new HashMap<>();
 
     /**
      * Report failure exit causes from pre-compute or post-compute enclave.
@@ -36,12 +36,12 @@ public class ComputeExitCauseService {
      *
      * @param computeStage pre-compute or post-compute-stage label
      * @param chainTaskId  task ID
-     * @param causes       list of root causes of the failure
+     * @param errors       list of workflow errors describing the failure
      * @return true if exit causes are reported, false if already reported
      */
     boolean setExitCausesForGivenComputeStage(final String chainTaskId,
                                               final ComputeStage computeStage,
-                                              final List<ReplicateStatusCause> causes) {
+                                              final List<WorkflowError> errors) {
         final String key = buildKey(computeStage, chainTaskId);
 
         if (exitCauseMap.containsKey(key)) {
@@ -50,9 +50,9 @@ public class ComputeExitCauseService {
             return false;
         }
 
-        exitCauseMap.put(key, List.copyOf(causes));
+        exitCauseMap.put(key, List.copyOf(errors));
         log.info("Added exit causes [chainTaskId:{}, computeStage:{}, causeCount:{}]",
-                chainTaskId, computeStage, causes.size());
+                chainTaskId, computeStage, errors.size());
         return true;
     }
 
@@ -60,25 +60,25 @@ public class ComputeExitCauseService {
      * Get exit causes for a specific compute stage and prune them.
      * Returns default unknown issue cause when no specific causes are set.
      *
-     * @param computeStage  compute stage
-     * @param chainTaskId   task ID
-     * @param fallbackCause default cause to return if no specific causes are found
-     * @return list of exit causes, or default unknown issue if not found
+     * @param computeStage   compute stage
+     * @param chainTaskId    task ID
+     * @param fallbackError  default error to return if no specific causes are found
+     * @return list of workflow errors, or default unknown issue if not found
      */
-    public List<ReplicateStatusCause> getExitCausesAndPruneForGivenComputeStage(
+    public List<WorkflowError> getExitCausesAndPruneForGivenComputeStage(
             final String chainTaskId,
             final ComputeStage computeStage,
-            final ReplicateStatusCause fallbackCause) {
+            final WorkflowError fallbackError) {
         final String key = buildKey(computeStage, chainTaskId);
-        final List<ReplicateStatusCause> causes = exitCauseMap.remove(key);
-        if (causes != null) {
+        final List<WorkflowError> errors = exitCauseMap.remove(key);
+        if (errors != null) {
             log.info("Retrieved and pruned exit causes [chainTaskId:{} computeStage:{}, causeCount:{}]",
-                    chainTaskId, computeStage, causes.size());
-            return causes;
+                    chainTaskId, computeStage, errors.size());
+            return errors;
         } else {
             log.info("No exit causes found, returning fallback cause [chainTaskId:{}, computeStage:{}]",
                     chainTaskId, computeStage);
-            return List.of(fallbackCause);
+            return List.of(fallbackError);
         }
     }
 

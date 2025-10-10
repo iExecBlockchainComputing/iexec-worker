@@ -16,12 +16,12 @@
 
 package com.iexec.worker.chain;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.commons.poco.utils.HashUtils;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.methods.response.Log;
@@ -56,60 +56,69 @@ public class ContributionService {
         return iexecHubService.getTaskDescription(chainTaskId) != null;
     }
 
-    public List<ReplicateStatusCause> getCannotContributeStatusCause(final String chainTaskId) {
-        final List<ReplicateStatusCause> causes = new ArrayList<>();
+    public List<WorkflowError> getCannotContributeStatusCause(final String chainTaskId) {
+        final List<WorkflowError> causes = new ArrayList<>();
 
         if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
-            causes.add(WORKERPOOL_AUTHORIZATION_NOT_FOUND);
+            causes.add(WorkflowError.builder()
+                    .cause(WORKERPOOL_AUTHORIZATION_NOT_FOUND).build());
         }
 
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
-            causes.add(CHAIN_UNREACHABLE);
+            causes.add(WorkflowError.builder()
+                    .cause(CHAIN_UNREACHABLE).build());
             return causes;
         }
 
         // No staking in contributeAndFinalize
         if (taskDescription != null && !taskDescription.isEligibleToContributeAndFinalize()
                 && !hasEnoughStakeToContribute(chainTask)) {
-            causes.add(STAKE_TOO_LOW);
+            causes.add(WorkflowError.builder()
+                    .cause(STAKE_TOO_LOW).build());
         }
 
         if (chainTask.getStatus() != ChainTaskStatus.ACTIVE) {
-            causes.add(TASK_NOT_ACTIVE);
+            causes.add(WorkflowError.builder()
+                    .cause(TASK_NOT_ACTIVE).build());
         }
 
         if (chainTask.isContributionDeadlineReached()) {
-            causes.add(CONTRIBUTION_TIMEOUT);
+            causes.add(WorkflowError.builder()
+                    .cause(CONTRIBUTION_TIMEOUT).build());
         }
 
         if (chainTask.hasContributionFrom(workerWalletAddress)) {
-            causes.add(CONTRIBUTION_ALREADY_SET);
+            causes.add(WorkflowError.builder()
+                    .cause(CONTRIBUTION_ALREADY_SET).build());
         }
 
         return causes;
     }
 
-    public List<ReplicateStatusCause> getCannotContributeAndFinalizeStatusCause(final String chainTaskId) {
-        final List<ReplicateStatusCause> causes = new ArrayList<>();
+    public List<WorkflowError> getCannotContributeAndFinalizeStatusCause(final String chainTaskId) {
+        final List<WorkflowError> causes = new ArrayList<>();
 
         // check TRUST is 1
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null || !BigInteger.ONE.equals(taskDescription.getTrust())) {
-            causes.add(TRUST_NOT_1);
+            causes.add(WorkflowError.builder()
+                    .cause(TRUST_NOT_1).build());
         }
 
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
-            causes.add(CHAIN_UNREACHABLE);
+            causes.add(WorkflowError.builder()
+                    .cause(CHAIN_UNREACHABLE).build());
             return causes;
         }
 
         // check TASK_ALREADY_CONTRIBUTED
         if (chainTask.hasContributions()) {
-            causes.add(TASK_ALREADY_CONTRIBUTED);
+            causes.add(WorkflowError.builder()
+                    .cause(TASK_ALREADY_CONTRIBUTED).build());
         }
 
         return causes;

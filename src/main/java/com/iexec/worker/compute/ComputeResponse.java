@@ -16,13 +16,13 @@
 
 package com.iexec.worker.compute;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
+import com.iexec.worker.workflow.WorkflowError;
 
 import java.util.List;
 
 public interface ComputeResponse {
 
-    List<ReplicateStatusCause> getExitCauses();
+    List<WorkflowError> getExitCauses();
 
     String getStdout();
 

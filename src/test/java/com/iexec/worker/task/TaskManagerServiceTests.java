@@ -42,7 +42,8 @@ import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import com.iexec.worker.utils.WorkflowException;
+import com.iexec.worker.workflow.WorkflowError;
+import com.iexec.worker.workflow.WorkflowException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -114,7 +115,7 @@ class TaskManagerServiceTests {
                 .dealParams(dealParams);
     }
 
-    final List<ReplicateStatusCause> emptyCauses = new ArrayList<>();
+    final List<WorkflowError> emptyCauses = new ArrayList<>();
 
     //region start
     @Test
@@ -131,7 +132,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotStartSinceCannotContributeStatusIsPresent() {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(List.of(CONTRIBUTION_TIMEOUT));
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(CONTRIBUTION_TIMEOUT).build()));
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(getTaskDescriptionBuilder(false).build());
@@ -175,7 +177,9 @@ class TaskManagerServiceTests {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(List.of(TEE_NOT_SUPPORTED));
+        when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(TEE_NOT_SUPPORTED).build()));
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.start(getTaskDescriptionBuilder(true).build());
@@ -204,7 +208,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotDownloadAppSinceCannotContributionStatusIsPresent() {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(List.of(CONTRIBUTION_TIMEOUT));
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(CONTRIBUTION_TIMEOUT).build()));
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(getTaskDescriptionBuilder(false).build());
@@ -262,7 +267,9 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)).build());
+                .thenReturn(PostComputeResponse.builder()
+                        .exitCauses(List.of(WorkflowError.builder()
+                                .cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build())).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadApp(taskDescription);
@@ -282,7 +289,8 @@ class TaskManagerServiceTests {
     void shouldNotDownloadDataSinceCannotContributeStatusIsPresent() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false).build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(List.of(CONTRIBUTION_TIMEOUT));
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(CONTRIBUTION_TIMEOUT).build()));
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -438,7 +446,9 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)).build());
+                .thenReturn(PostComputeResponse.builder()
+                        .exitCauses(List.of(WorkflowError.builder()
+                                .cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build())).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -569,7 +579,9 @@ class TaskManagerServiceTests {
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
         when(computeManagerService.runPostCompute(taskDescription, null))
-                .thenReturn(PostComputeResponse.builder().exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)).build());
+                .thenReturn(PostComputeResponse.builder()
+                        .exitCauses(List.of(WorkflowError.builder()
+                                .cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build())).build());
 
         ReplicateActionResponse actionResponse =
                 taskManagerService.downloadData(taskDescription);
@@ -659,7 +671,8 @@ class TaskManagerServiceTests {
                     "CONTRIBUTION_ALREADY_SET", "WORKERPOOL_AUTHORIZATION_NOT_FOUND"})
     void shouldNotComputeSinceCannotContributeStatusIsPresent(ReplicateStatusCause replicateStatusCause) {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(List.of(replicateStatusCause));
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(replicateStatusCause).build()));
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(getTaskDescriptionBuilder(false).build());
@@ -702,7 +715,8 @@ class TaskManagerServiceTests {
                 .thenReturn(workerpoolAuthorization);
         when(computeManagerService.runPreCompute(any(), any()))
                 .thenReturn(PreComputeResponse.builder()
-                        .exitCauses(List.of(PRE_COMPUTE_DATASET_URL_MISSING))
+                        .exitCauses(List.of(WorkflowError.builder()
+                                .cause(PRE_COMPUTE_DATASET_URL_MISSING).build()))
                         .build());
 
         ReplicateActionResponse replicateActionResponse =
@@ -751,7 +765,8 @@ class TaskManagerServiceTests {
                 .thenReturn(PreComputeResponse.builder().build());
         when(computeManagerService.runCompute(any(), any()))
                 .thenReturn(AppComputeResponse.builder()
-                        .exitCauses(List.of(APP_COMPUTE_FAILED))
+                        .exitCauses(List.of(WorkflowError.builder()
+                                .cause(APP_COMPUTE_FAILED).build()))
                         .exitCode(5)
                         .stdout("stdout")
                         .build());
@@ -788,7 +803,8 @@ class TaskManagerServiceTests {
                 .thenReturn(AppComputeResponse.builder().stdout("stdout").build());
         when(computeManagerService.runPostCompute(any(), any()))
                 .thenReturn(PostComputeResponse.builder()
-                        .exitCauses(List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
+                        .exitCauses(List.of(WorkflowError.builder()
+                                .cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build()))
                         .build());
 
 
@@ -831,7 +847,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotContributeSinceCannotContributeStatusIsPresent() {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(List.of(CONTRIBUTION_TIMEOUT));
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(CONTRIBUTION_TIMEOUT).build()));
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.contribute(CHAIN_TASK_ID);
@@ -1154,7 +1171,8 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotContributeAndFinalizeSinceCannotContributeStatusIsPresent() {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
-                .thenReturn(List.of(CONTRIBUTION_TIMEOUT));
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(CONTRIBUTION_TIMEOUT).build()));
         ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
         assertThat(replicateActionResponse)
                 .isNotNull()
@@ -1209,7 +1227,9 @@ class TaskManagerServiceTests {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(contributionService.getContribution(computedFile)).thenReturn(contribution);
-        when(contributionService.getCannotContributeAndFinalizeStatusCause(CHAIN_TASK_ID)).thenReturn(List.of(TRUST_NOT_1));
+        when(contributionService.getCannotContributeAndFinalizeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(TRUST_NOT_1).build()));
         ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
         assertThat(replicateActionResponse)
                 .isNotNull()
@@ -1227,7 +1247,9 @@ class TaskManagerServiceTests {
         when(iexecHubService.hasEnoughGas()).thenReturn(true);
         when(resultService.getComputedFile(CHAIN_TASK_ID)).thenReturn(computedFile);
         when(contributionService.getContribution(computedFile)).thenReturn(contribution);
-        when(contributionService.getCannotContributeAndFinalizeStatusCause(CHAIN_TASK_ID)).thenReturn(List.of(TASK_ALREADY_CONTRIBUTED));
+        when(contributionService.getCannotContributeAndFinalizeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(List.of(WorkflowError.builder()
+                        .cause(TASK_ALREADY_CONTRIBUTED).build()));
         ReplicateActionResponse replicateActionResponse = taskManagerService.contributeAndFinalize(CHAIN_TASK_ID);
         assertThat(replicateActionResponse)
                 .isNotNull()
