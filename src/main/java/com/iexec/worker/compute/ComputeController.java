@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import static org.springframework.http.ResponseEntity.ok;
 
@@ -57,8 +58,10 @@ public class ComputeController {
             @PathVariable ComputeStage stage,
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
-        List<WorkflowError> errors = exitMessage != null && exitMessage.cause() != null ?
-                List.of(new WorkflowError(exitMessage.cause())) : List.of();
+        final List<WorkflowError> errors = Optional.ofNullable(exitMessage)
+                .map(ExitMessage::cause)
+                .map(WorkflowError::new)
+                .stream().toList();
         return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, errors);
     }
 
@@ -97,7 +100,7 @@ public class ComputeController {
     }
 
     @PostMapping(path = {
-            "/iexec_out/{chainTaskId}/computed",
+            "/iexec_out/{chainTaskId}/computed", //@Deprecated
             "/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed"
     })
     public ResponseEntity<String> sendComputedFileForTee(@RequestHeader("Authorization") String authorization,
