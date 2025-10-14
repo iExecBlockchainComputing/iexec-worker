@@ -53,10 +53,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
-import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
-import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME;
-
-
 @Slf4j
 @Service
 public class PostComputeService {
@@ -156,11 +152,11 @@ public class PostComputeService {
             });
         } catch (IOException e) {
             log.error("Can't check result files [chainTaskId:{}]", taskId);
-            return Optional.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            return Optional.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
         }
 
         if (failed.get()) {
-            return Optional.of(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
+            return Optional.of(ReplicateStatusCause.POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
         }
         return Optional.empty();
     }
@@ -238,10 +234,10 @@ public class PostComputeService {
             case 0 -> List.of();
             case 1 ->
                     computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
-                            chainTaskId, ComputeStage.POST, new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+                            chainTaskId, ComputeStage.POST, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
             case 2 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED));
             case 3 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING));
-            default -> List.of(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+            default -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
         };
     }
 
