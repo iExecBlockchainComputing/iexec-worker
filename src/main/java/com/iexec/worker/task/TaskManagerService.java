@@ -197,14 +197,14 @@ public class TaskManagerService {
         return ReplicateActionResponse.success();
     }
 
-    private ReplicateActionResponse triggerPostComputeHookOnError(String chainTaskId,
-                                                                  String context,
-                                                                  TaskDescription taskDescription,
-                                                                  ReplicateStatus errorStatus,
-                                                                  List<WorkflowError> errors) {
+    private ReplicateActionResponse triggerPostComputeHookOnError(final String chainTaskId,
+                                                                  final String context,
+                                                                  final TaskDescription taskDescription,
+                                                                  final ReplicateStatus errorStatus,
+                                                                  final List<WorkflowError> errors) {
         // log original errors
         errors.forEach(error -> logError(error.cause(), context, chainTaskId));
-        boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errors);
+        final boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errors);
         // try to run post-compute
         if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
@@ -224,8 +224,8 @@ public class TaskManagerService {
     ReplicateActionResponse compute(final TaskDescription taskDescription) {
         requireNonNull(taskDescription, "task description must not be null");
         final String chainTaskId = taskDescription.getChainTaskId();
-        String context = "compute";
-        List<WorkflowError> errors =
+        final String context = "compute";
+        final List<WorkflowError> errors =
                 contributionService.getCannotContributeStatusCause(chainTaskId);
         if (!errors.isEmpty()) {
             return getFailureResponseAndPrintErrors(errors, context, chainTaskId);
@@ -236,16 +236,16 @@ public class TaskManagerService {
         }
 
         if (taskDescription.isTeeTask()) {
-            TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
+            final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             if (!teeService.prepareTeeForTask(chainTaskId)) {
                 return getFailureResponseAndPrintErrors(List.of(new WorkflowError(TEE_PREPARATION_FAILED)), context, chainTaskId);
             }
         }
 
-        WorkerpoolAuthorization workerpoolAuthorization =
+        final WorkerpoolAuthorization workerpoolAuthorization =
                 contributionService.getWorkerpoolAuthorization(chainTaskId);
 
-        PreComputeResponse preResponse =
+        final PreComputeResponse preResponse =
                 computeManagerService.runPreCompute(taskDescription,
                         workerpoolAuthorization);
         if (!preResponse.isSuccessful()) {
@@ -256,7 +256,7 @@ public class TaskManagerService {
             );
         }
 
-        AppComputeResponse appResponse =
+        final AppComputeResponse appResponse =
                 computeManagerService.runCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!appResponse.isSuccessful()) {
@@ -275,11 +275,11 @@ public class TaskManagerService {
                             .build());
         }
 
-        PostComputeResponse postResponse =
+        final PostComputeResponse postResponse =
                 computeManagerService.runPostCompute(taskDescription,
                         preResponse.getSecureSession());
         if (!postResponse.isSuccessful()) {
-            List<WorkflowError> postComputeErrors = postResponse.getExitCauses();
+            final List<WorkflowError> postComputeErrors = postResponse.getExitCauses();
             postComputeErrors.forEach(error -> logError(error.cause(), context, chainTaskId));
             return ReplicateActionResponse.failureWithStdout(postComputeErrors.get(0).cause(), postResponse.getStdout()); // TODO: Handle list of causes
         }
