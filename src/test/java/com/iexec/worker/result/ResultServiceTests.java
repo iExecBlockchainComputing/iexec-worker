@@ -32,6 +32,7 @@ import com.iexec.resultproxy.api.ResultProxyClient;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -117,7 +118,7 @@ class ResultServiceTests {
 
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
+                List.of(new WorkflowError(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED)));
 
         assertThat(isErrorWritten).isTrue();
         String errorFileAsString = FileHelper.readFile(tmp + "/"
@@ -144,7 +145,7 @@ class ResultServiceTests {
 
         boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED));
+                List.of(new WorkflowError(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED)));
 
         assertThat(isErrorWritten).isFalse();
     }
@@ -156,8 +157,8 @@ class ResultServiceTests {
 
         final boolean isErrorWritten = resultService.writeErrorToIexecOut(CHAIN_TASK_ID,
                 ReplicateStatus.DATA_DOWNLOAD_FAILED,
-                List.of(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED,
-                        ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED));
+                List.of(new WorkflowError(ReplicateStatusCause.INPUT_FILES_DOWNLOAD_FAILED),
+                        new WorkflowError(ReplicateStatusCause.DATASET_FILE_DOWNLOAD_FAILED)));
 
         assertThat(isErrorWritten).isTrue();
         final String errorFileAsString = FileHelper.readFile(tmp + "/"

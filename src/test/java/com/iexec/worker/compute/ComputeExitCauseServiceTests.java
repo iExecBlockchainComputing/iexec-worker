@@ -32,16 +32,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ComputeExitCauseServiceTests {
 
     public static final String CHAIN_TASK_ID = "chainTaskId";
-    private static final WorkflowError DEFAULT_PRE_ERROR = WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).build();
-    private static final WorkflowError DEFAULT_POST_ERROR = WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build();
-    private static final List<WorkflowError> SINGLE_PRE_ERRORS = List.of(WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING).build());
+    private static final WorkflowError DEFAULT_PRE_ERROR = new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    private static final WorkflowError DEFAULT_POST_ERROR = new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    private static final List<WorkflowError> SINGLE_PRE_ERRORS = List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING));
     private static final List<WorkflowError> MULTIPLE_PRE_ERRORS = List.of(
-            WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING).build(),
-            WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM).build());
-    private static final List<WorkflowError> SINGLE_POST_ERRORS = List.of(WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND).build());
+            new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING),
+            new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM));
+    private static final List<WorkflowError> SINGLE_POST_ERRORS = List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND));
     private static final List<WorkflowError> MULTIPLE_POST_ERRORS = List.of(
-            WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND).build(),
-            WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT).build());
+            new WorkflowError(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND),
+            new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT));
 
     private ComputeExitCauseService computeExitCauseService;
 
@@ -111,8 +111,8 @@ class ComputeExitCauseServiceTests {
     void shouldReturnFalseWhenReportingTwiceWithDifferentCauses(final ComputeStage stage, final List<WorkflowError> errors) {
         computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors);
         List<WorkflowError> differentCauses = stage == ComputeStage.PRE
-                ? List.of(WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM).build())
-                : List.of(WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT).build());
+                ? List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM))
+                : List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT));
         assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, differentCauses)).isFalse();
     }
 

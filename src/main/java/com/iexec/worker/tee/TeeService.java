@@ -49,8 +49,7 @@ public abstract class TeeService {
 
     public List<WorkflowError> areTeePrerequisitesMetForTask(final String chainTaskId) {
         if (!isTeeEnabled()) {
-            return List.of(WorkflowError.builder()
-                    .cause(TEE_NOT_SUPPORTED).build());
+            return List.of(new WorkflowError(TEE_NOT_SUPPORTED));
         }
 
         try {
@@ -59,8 +58,7 @@ public abstract class TeeService {
             smsService.getSmsClient(chainTaskId);
         } catch (SmsClientCreationException e) {
             log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
-            return List.of(WorkflowError.builder()
-                    .cause(UNKNOWN_SMS).build());
+            return List.of(new WorkflowError(UNKNOWN_SMS));
         }
         try {
             // Try to load the `TeeServicesProperties` relative to the task.
@@ -68,12 +66,10 @@ public abstract class TeeService {
             teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         } catch (NullPointerException e) {
             log.error("TEE enclave configuration is null [chainTaskId: {}]", chainTaskId, e);
-            return List.of(WorkflowError.builder()
-                    .cause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION).build());
+            return List.of(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
-            return List.of(WorkflowError.builder()
-                    .cause(GET_TEE_SERVICES_CONFIGURATION_FAILED).build());
+            return List.of(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
         }
 
         return List.of();

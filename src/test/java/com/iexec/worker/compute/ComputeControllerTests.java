@@ -46,13 +46,13 @@ import static org.mockito.Mockito.when;
 public class ComputeControllerTests {
 
     public static final String CHAIN_TASK_ID = "0xtask";
-    public static final WorkflowError ERROR = WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED).build();
-    public static final WorkflowError UNKNOWN_PRE_ERROR = WorkflowError.builder().cause(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).build();
-    public static final WorkflowError UNKNOWN_POST_ERROR = WorkflowError.builder().cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build();
+    public static final WorkflowError ERROR = new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED);
+    public static final WorkflowError UNKNOWN_PRE_ERROR = new WorkflowError(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    public static final WorkflowError UNKNOWN_POST_ERROR = new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     private static final String AUTH_HEADER = "Bearer validToken";
     private static final List<WorkflowError> MULTIPLE_ERRORS = List.of(
-            WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING).build(),
-            WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM).build()
+            new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING),
+            new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM)
     );
     private final ComputedFile computedFile = new ComputedFile(
             "/path",
@@ -100,11 +100,11 @@ public class ComputeControllerTests {
 
     @ParameterizedTest
     @MethodSource("simpleAndListExitCauses")
-    void shouldReturnOkWhenSendingExitCause(final ComputeStage stage, final List<WorkflowError> causes) {
+    void shouldReturnOkWhenSendingExitCause(final ComputeStage stage, final List<WorkflowError> errors) {
         when(workerpoolAuthorizationService.isSignedWithEnclaveChallenge(CHAIN_TASK_ID, AUTH_HEADER))
                 .thenReturn(true);
 
-        final ResponseEntity<Void> response = getResponse(stage, causes);
+        final ResponseEntity<Void> response = getResponse(stage, errors);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(HttpStatus.OK.value()).isEqualTo(response.getStatusCode().value());
     }

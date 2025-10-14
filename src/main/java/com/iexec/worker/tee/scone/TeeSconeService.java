@@ -70,8 +70,7 @@ public class TeeSconeService extends TeeService {
             return teePrerequisiteIssues;
         }
         return prepareTeeForTask(chainTaskId) ?
-                List.of() : List.of(WorkflowError.builder()
-                                .cause(TEE_PREPARATION_FAILED).build());
+                List.of() : List.of(new WorkflowError(TEE_PREPARATION_FAILED));
     }
 
     @Override

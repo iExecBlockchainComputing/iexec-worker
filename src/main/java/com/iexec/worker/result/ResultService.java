@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.common.replicate.ReplicateStatus;
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.result.ResultModel;
 import com.iexec.common.utils.FileHelper;
@@ -34,6 +33,7 @@ import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.worker.chain.IexecHubService;
 import com.iexec.worker.config.PublicConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
+import com.iexec.worker.workflow.WorkflowError;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -93,7 +93,7 @@ public class ResultService implements Purgeable {
     }
 
     public boolean writeErrorToIexecOut(final String chainTaskId, final ReplicateStatus errorStatus,
-                                        final List<ReplicateStatusCause> causes) {
+                                        final List<WorkflowError> causes) {
         if (causes == null || causes.isEmpty()) {
             log.error("No error causes provided [chainTaskId:{}]", chainTaskId);
             return false;

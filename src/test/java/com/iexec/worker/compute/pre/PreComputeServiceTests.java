@@ -242,8 +242,7 @@ class PreComputeServiceTests {
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION).build());
+                .containsExactly(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
         verifyNoInteractions(smsService);
     }
 
@@ -256,8 +255,7 @@ class PreComputeServiceTests {
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION).build());
+                .containsExactly(new WorkflowError(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION));
         verifyNoInteractions(smsService);
     }
 
@@ -303,8 +301,7 @@ class PreComputeServiceTests {
         final PreComputeResponse preComputeResponse = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING).build());
+                .containsExactly(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING));
         verify(dockerService, never()).run(any());
     }
 
@@ -319,7 +316,7 @@ class PreComputeServiceTests {
         prepareMocksForPreCompute(taskDescription, dockerRunResponse);
         // Only stub computeExitCauseService for exitCode == 1
         if (exitCodeKeyToExpectedCauseValue.getKey() == 1) {
-            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, WorkflowError.builder().cause(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).build()))
+            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.PRE, new WorkflowError(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE)))
                     .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
         }
 
@@ -335,9 +332,9 @@ class PreComputeServiceTests {
 
     private static Stream<Map.Entry<Integer, WorkflowError>> shouldFailToRunTeePreComputeSinceDockerRunFailedArgs() {
         return Map.of(
-                1, WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING).build(),
-                2, WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED).build(),
-                3, WorkflowError.builder().cause(ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING).build()
+                1, new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING),
+                2, new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED),
+                3, new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING)
         ).entrySet().stream();
     }
 
@@ -354,8 +351,7 @@ class PreComputeServiceTests {
 
         assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT).build());
+                .containsExactly(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT));
         verify(dockerService).run(any());
     }
 
@@ -449,8 +445,7 @@ class PreComputeServiceTests {
         final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription, workerpoolAuthorization);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
+                .containsExactly(new WorkflowError(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
     // endregion
 }

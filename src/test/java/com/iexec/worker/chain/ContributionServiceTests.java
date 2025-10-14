@@ -112,8 +112,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(WORKERPOOL_AUTHORIZATION_NOT_FOUND).build());
+                .containsExactly(new WorkflowError(WORKERPOOL_AUTHORIZATION_NOT_FOUND));
 
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
     }
@@ -127,8 +126,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(CHAIN_UNREACHABLE).build());
+                .containsExactly(new WorkflowError(CHAIN_UNREACHABLE));
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
@@ -145,8 +143,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(STAKE_TOO_LOW).build());
+                .containsExactly(new WorkflowError(STAKE_TOO_LOW));
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -172,8 +169,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(TASK_NOT_ACTIVE).build());
+                .containsExactly(new WorkflowError(TASK_NOT_ACTIVE));
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -200,8 +196,7 @@ class ContributionServiceTests {
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(CONTRIBUTION_TIMEOUT).build());
+                .containsExactly(new WorkflowError(CONTRIBUTION_TIMEOUT));
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -229,8 +224,7 @@ class ContributionServiceTests {
                 .thenReturn(Optional.of(ChainDeal.builder().workerStake(BigInteger.valueOf(5)).build()));
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(CONTRIBUTION_ALREADY_SET).build());
+                .containsExactly(new WorkflowError(CONTRIBUTION_ALREADY_SET));
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -301,10 +295,10 @@ class ContributionServiceTests {
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
                 .containsExactly(
-                        WorkflowError.builder().cause(STAKE_TOO_LOW).build(),
-                        WorkflowError.builder().cause(TASK_NOT_ACTIVE).build(),
-                        WorkflowError.builder().cause(CONTRIBUTION_TIMEOUT).build(),
-                        WorkflowError.builder().cause(CONTRIBUTION_ALREADY_SET).build());
+                        new WorkflowError(STAKE_TOO_LOW),
+                        new WorkflowError(TASK_NOT_ACTIVE),
+                        new WorkflowError(CONTRIBUTION_TIMEOUT),
+                        new WorkflowError(CONTRIBUTION_ALREADY_SET));
 
         verify(iexecHubService).getChainTask(chainTaskId);
         verify(iexecHubService).getChainAccount();
@@ -321,8 +315,8 @@ class ContributionServiceTests {
 
         assertThat(contributionService.getCannotContributeStatusCause(chainTaskId))
                 .containsExactly(
-                        WorkflowError.builder().cause(WORKERPOOL_AUTHORIZATION_NOT_FOUND).build(),
-                        WorkflowError.builder().cause(CHAIN_UNREACHABLE).build());
+                        new WorkflowError(WORKERPOOL_AUTHORIZATION_NOT_FOUND),
+                        new WorkflowError(CHAIN_UNREACHABLE));
 
         verify(workerpoolAuthorizationService).getWorkerpoolAuthorization(chainTaskId);
         verify(iexecHubService).getChainTask(chainTaskId);
@@ -341,8 +335,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTask));
 
         assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(TRUST_NOT_1).build());
+                .containsExactly(new WorkflowError(TRUST_NOT_1));
     }
 
     @Test
@@ -353,8 +346,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.empty());
 
         assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(CHAIN_UNREACHABLE).build());
+                .containsExactly(new WorkflowError(CHAIN_UNREACHABLE));
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
@@ -374,8 +366,7 @@ class ContributionServiceTests {
         when(iexecHubService.getChainTask(chainTaskId)).thenReturn(Optional.of(chainTaskWithContribution));
 
         assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
-                .containsExactly(WorkflowError.builder()
-                        .cause(TASK_ALREADY_CONTRIBUTED).build());
+                .containsExactly(new WorkflowError(TASK_ALREADY_CONTRIBUTED));
     }
 
     @Test
@@ -400,8 +391,8 @@ class ContributionServiceTests {
 
         assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
                 .containsExactly(
-                        WorkflowError.builder().cause(TRUST_NOT_1).build(),
-                        WorkflowError.builder().cause(CHAIN_UNREACHABLE).build());
+                        new WorkflowError(TRUST_NOT_1),
+                        new WorkflowError(CHAIN_UNREACHABLE));
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }
@@ -425,8 +416,8 @@ class ContributionServiceTests {
 
         assertThat(contributionService.getCannotContributeAndFinalizeStatusCause(chainTaskId))
                 .containsExactly(
-                        WorkflowError.builder().cause(TRUST_NOT_1).build(),
-                        WorkflowError.builder().cause(TASK_ALREADY_CONTRIBUTED).build());
+                        new WorkflowError(TRUST_NOT_1),
+                        new WorkflowError(TASK_ALREADY_CONTRIBUTED));
 
         verify(iexecHubService).getChainTask(chainTaskId);
     }

@@ -285,8 +285,7 @@ class PostComputeServiceTests {
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING).build());
+                .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING));
         verify(dockerService, never()).run(any());
     }
 
@@ -306,7 +305,7 @@ class PostComputeServiceTests {
         prepareMocksForTeePostCompute(expectedDockerRunResponse);
         // Only stub computeExitCauseService for exitCode == 1
         if (exitCodeKeyToExpectedCauseValue.getKey() == 1) {
-            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST,WorkflowError.builder().cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build()))
+            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)))
                     .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
         }
 
@@ -321,9 +320,9 @@ class PostComputeServiceTests {
 
     private static Stream<Map.Entry<Integer, WorkflowError>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
         return Map.of(
-                1, WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND).build(),
-                2, WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED).build(),
-                3, WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING).build()
+                1, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND),
+                2, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED),
+                3, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING)
         ).entrySet().stream();
     }
 
@@ -345,8 +344,7 @@ class PostComputeServiceTests {
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCauses())
-                .containsExactly(WorkflowError.builder()
-                        .cause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT).build());
+                .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT));
         verify(dockerService).run(any());
     }
 
@@ -367,9 +365,7 @@ class PostComputeServiceTests {
         final PostComputeResponse response = postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
-                .hasSize(1)
-                .containsExactly(WorkflowError.builder()
-                        .cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
+                .containsExactly(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
     //endregion
 }

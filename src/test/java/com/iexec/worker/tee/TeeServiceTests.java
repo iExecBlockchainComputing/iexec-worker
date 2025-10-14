@@ -88,8 +88,7 @@ class TeeServiceTests {
         when(teeService.isTeeEnabled()).thenReturn(false);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(WorkflowError.builder()
-                        .cause(TEE_NOT_SUPPORTED).build());
+                .containsExactly(new WorkflowError(TEE_NOT_SUPPORTED));
     }
 
     @Test
@@ -98,8 +97,7 @@ class TeeServiceTests {
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(WorkflowError.builder()
-                        .cause(UNKNOWN_SMS).build());
+                .containsExactly(new WorkflowError(UNKNOWN_SMS));
     }
 
     @Test
@@ -109,8 +107,7 @@ class TeeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(NullPointerException.class);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(WorkflowError.builder()
-                        .cause(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION).build());
+                .containsExactly(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
     }
 
     @Test
@@ -120,8 +117,7 @@ class TeeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(RuntimeException.class);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(WorkflowError.builder()
-                        .cause(GET_TEE_SERVICES_CONFIGURATION_FAILED).build());
+                .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
     }
     // endregion
 }

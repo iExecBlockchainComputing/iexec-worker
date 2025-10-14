@@ -57,71 +57,62 @@ public class ContributionService {
     }
 
     public List<WorkflowError> getCannotContributeStatusCause(final String chainTaskId) {
-        final List<WorkflowError> causes = new ArrayList<>();
+        final List<WorkflowError> errors = new ArrayList<>();
 
         if (!isWorkerpoolAuthorizationPresent(chainTaskId)) {
-            causes.add(WorkflowError.builder()
-                    .cause(WORKERPOOL_AUTHORIZATION_NOT_FOUND).build());
+            errors.add(new WorkflowError(WORKERPOOL_AUTHORIZATION_NOT_FOUND));
         }
 
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
-            causes.add(WorkflowError.builder()
-                    .cause(CHAIN_UNREACHABLE).build());
-            return causes;
+            errors.add(new WorkflowError(CHAIN_UNREACHABLE));
+            return errors;
         }
 
         // No staking in contributeAndFinalize
         if (taskDescription != null && !taskDescription.isEligibleToContributeAndFinalize()
                 && !hasEnoughStakeToContribute(chainTask)) {
-            causes.add(WorkflowError.builder()
-                    .cause(STAKE_TOO_LOW).build());
+            errors.add(new WorkflowError(STAKE_TOO_LOW));
         }
 
         if (chainTask.getStatus() != ChainTaskStatus.ACTIVE) {
-            causes.add(WorkflowError.builder()
-                    .cause(TASK_NOT_ACTIVE).build());
+            errors.add(new WorkflowError(TASK_NOT_ACTIVE));
         }
 
         if (chainTask.isContributionDeadlineReached()) {
-            causes.add(WorkflowError.builder()
-                    .cause(CONTRIBUTION_TIMEOUT).build());
+            errors.add(new WorkflowError(CONTRIBUTION_TIMEOUT));
         }
 
         if (chainTask.hasContributionFrom(workerWalletAddress)) {
-            causes.add(WorkflowError.builder()
-                    .cause(CONTRIBUTION_ALREADY_SET).build());
+            errors.add(new WorkflowError(CONTRIBUTION_ALREADY_SET));
         }
 
-        return causes;
+        return errors;
     }
 
     public List<WorkflowError> getCannotContributeAndFinalizeStatusCause(final String chainTaskId) {
-        final List<WorkflowError> causes = new ArrayList<>();
+        final List<WorkflowError> errors = new ArrayList<>();
 
         // check TRUST is 1
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
         if (taskDescription == null || !BigInteger.ONE.equals(taskDescription.getTrust())) {
-            causes.add(WorkflowError.builder()
-                    .cause(TRUST_NOT_1).build());
+            errors.add(new WorkflowError(TRUST_NOT_1));
         }
 
         final ChainTask chainTask = iexecHubService.getChainTask(chainTaskId).orElse(null);
         if (chainTask == null) {
-            causes.add(WorkflowError.builder()
-                    .cause(CHAIN_UNREACHABLE).build());
-            return causes;
+            errors.add(new WorkflowError(CHAIN_UNREACHABLE));
+            return errors;
         }
 
         // check TASK_ALREADY_CONTRIBUTED
         if (chainTask.hasContributions()) {
-            causes.add(WorkflowError.builder()
-                    .cause(TASK_ALREADY_CONTRIBUTED).build());
+            errors.add(new WorkflowError(TASK_ALREADY_CONTRIBUTED));
         }
 
-        return causes;
+        return errors;
     }
 
     private boolean isWorkerpoolAuthorizationPresent(String chainTaskId) {

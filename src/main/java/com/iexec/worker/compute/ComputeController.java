@@ -58,7 +58,7 @@ public class ComputeController {
             @PathVariable String chainTaskId,
             @RequestBody ExitMessage exitMessage) {
         List<WorkflowError> errors = exitMessage != null && exitMessage.cause() != null ?
-                List.of(WorkflowError.builder().cause(exitMessage.cause()).build()) : List.of();
+                List.of(new WorkflowError(exitMessage.cause())) : List.of();
         return sendExitCausesForGivenComputeStage(authorization, stage, chainTaskId, errors);
     }
 

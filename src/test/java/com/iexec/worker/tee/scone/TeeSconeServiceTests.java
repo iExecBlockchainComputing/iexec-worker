@@ -131,8 +131,7 @@ class TeeSconeServiceTests {
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(WorkflowError.builder()
-                        .cause(TEE_NOT_SUPPORTED).build());
+                .containsExactly(new WorkflowError(TEE_NOT_SUPPORTED));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(0)).getSmsClient(CHAIN_TASK_ID);
@@ -150,8 +149,7 @@ class TeeSconeServiceTests {
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(WorkflowError.builder()
-                        .cause(UNKNOWN_SMS).build());
+                .containsExactly(new WorkflowError(UNKNOWN_SMS));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
@@ -170,8 +168,7 @@ class TeeSconeServiceTests {
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(WorkflowError.builder()
-                        .cause(GET_TEE_SERVICES_CONFIGURATION_FAILED).build());
+                .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
@@ -191,8 +188,7 @@ class TeeSconeServiceTests {
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(WorkflowError.builder()
-                        .cause(TEE_PREPARATION_FAILED).build());
+                .containsExactly(new WorkflowError(TEE_PREPARATION_FAILED));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);

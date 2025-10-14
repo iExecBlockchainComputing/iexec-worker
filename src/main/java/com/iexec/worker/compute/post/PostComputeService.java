@@ -112,8 +112,7 @@ public class PostComputeService {
         final Optional<ReplicateStatusCause> resultFilesNameError = checkResultFilesName(chainTaskId, taskIexecOutDir);
         if (resultFilesNameError.isPresent()) {
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(WorkflowError.builder()
-                            .cause(resultFilesNameError.get()).build()))
+                    .exitCauses(List.of(new WorkflowError(resultFilesNameError.get())))
                     .build();
         }
 
@@ -124,8 +123,7 @@ public class PostComputeService {
                 taskOutputDir);
         if (zipIexecOutPath.isEmpty()) {
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(WorkflowError.builder()
-                            .cause(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED).build()))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)))
                     .build();
         }
         // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
@@ -136,8 +134,7 @@ public class PostComputeService {
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(WorkflowError.builder()
-                            .cause(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED).build()))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED)))
                     .build();
         }
         return PostComputeResponse.builder().build();
@@ -181,8 +178,7 @@ public class PostComputeService {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(WorkflowError.builder()
-                            .cause(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING).build()))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)))
                     .build();
         }
         TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
@@ -219,8 +215,7 @@ public class PostComputeService {
             log.error("Tee post-compute container timed out [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(WorkflowError.builder()
-                            .cause(ReplicateStatusCause.POST_COMPUTE_TIMEOUT).build()))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)))
                     .build();
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
@@ -243,10 +238,10 @@ public class PostComputeService {
             case 0 -> List.of();
             case 1 ->
                     computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
-                            chainTaskId, ComputeStage.POST, WorkflowError.builder().cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
-            case 2 -> List.of(WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED).build());
-            case 3 -> List.of(WorkflowError.builder().cause(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING).build());
-            default -> List.of(WorkflowError.builder().cause(POST_COMPUTE_FAILED_UNKNOWN_ISSUE).build());
+                            chainTaskId, ComputeStage.POST, new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+            case 2 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED));
+            case 3 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING));
+            default -> List.of(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
         };
     }
 

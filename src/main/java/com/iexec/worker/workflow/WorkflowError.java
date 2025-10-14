@@ -17,13 +17,11 @@
 package com.iexec.worker.workflow;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import lombok.Builder;
-import lombok.Value;
 
-@Value
-@Builder
-public class WorkflowError {
-    ReplicateStatusCause cause;
-    @Builder.Default
-    String message = "";
+public record WorkflowError(ReplicateStatusCause cause, String message) {
+
+    public WorkflowError(ReplicateStatusCause cause) {
+        this(cause, "");
+    }
+
 }

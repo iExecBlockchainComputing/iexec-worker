@@ -122,8 +122,8 @@ public class AppComputeService {
 
     private List<WorkflowError> getExitCauseFromFinalStatus(final DockerRunFinalStatus finalStatus) {
         return switch (finalStatus) {
-            case TIMEOUT -> List.of(WorkflowError.builder().cause(ReplicateStatusCause.APP_COMPUTE_TIMEOUT).build());
-            case FAILED -> List.of(WorkflowError.builder().cause(ReplicateStatusCause.APP_COMPUTE_FAILED).build());
+            case TIMEOUT -> List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_TIMEOUT));
+            case FAILED -> List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_FAILED));
             default -> List.of();
         };
     }
