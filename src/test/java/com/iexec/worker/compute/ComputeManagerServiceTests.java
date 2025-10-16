@@ -35,6 +35,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -202,7 +203,7 @@ class ComputeManagerServiceTests {
         when(preComputeService.runTeePreCompute(taskDescription,
                 workerpoolAuthorization)).thenReturn(PreComputeResponse.builder()
                 .secureSession(null)
-                .exitCauses(List.of(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING))
+                .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING)))
                 .build());
 
         PreComputeResponse preComputeResponse =
@@ -211,7 +212,7 @@ class ComputeManagerServiceTests {
         assertThat(preComputeResponse.getSecureSession()).isNull();
         assertThat(preComputeResponse.isSuccessful()).isFalse();
         assertThat(preComputeResponse.getExitCauses())
-                .containsExactly(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING);
+                .containsExactly(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING));
     }
     //endregion
 
@@ -245,7 +246,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .exitCauses(List.of(ReplicateStatusCause.APP_COMPUTE_FAILED))
+                        .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_FAILED)))
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -292,7 +293,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         AppComputeResponse expectedDockerRunResponse =
                 AppComputeResponse.builder()
-                        .exitCauses(List.of(ReplicateStatusCause.APP_COMPUTE_FAILED))
+                        .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_FAILED)))
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();
@@ -319,7 +320,8 @@ class ComputeManagerServiceTests {
         when(resultService.readComputedFile(CHAIN_TASK_ID)).thenReturn(null);
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND);
+        assertThat(postComputeResponse.getExitCauses())
+                .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND));
     }
 
     @Test
@@ -332,7 +334,8 @@ class ComputeManagerServiceTests {
         when(resultService.computeResultDigest(computedFile)).thenReturn("");
         PostComputeResponse postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED);
+        assertThat(postComputeResponse.getExitCauses())
+                .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED));
     }
 
     @Test
@@ -357,12 +360,15 @@ class ComputeManagerServiceTests {
     @EnumSource(value = ReplicateStatusCause.class, names = "POST_COMPUTE_.*", mode = EnumSource.Mode.MATCH_ALL)
     void shouldRunStandardPostComputeWithFailureResponse(ReplicateStatusCause statusCause) {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
-        PostComputeResponse postComputeResponse = PostComputeResponse.builder().exitCauses(List.of(statusCause)).build();
+        PostComputeResponse postComputeResponse = PostComputeResponse.builder()
+                .exitCauses(List.of(new WorkflowError(statusCause)))
+                .build();
         when(postComputeService.runStandardPostCompute(taskDescription)).thenReturn(postComputeResponse);
 
         postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).containsExactly(statusCause);
+        assertThat(postComputeResponse.getExitCauses())
+                .containsExactly(new WorkflowError(statusCause));
     }
 
     @Test
@@ -399,7 +405,7 @@ class ComputeManagerServiceTests {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(true).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
-                        .exitCauses(List.of(ReplicateStatusCause.APP_COMPUTE_FAILED))
+                        .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_FAILED)))
                         .stdout(dockerLogs.getStdout())
                         .stderr(dockerLogs.getStderr())
                         .build();

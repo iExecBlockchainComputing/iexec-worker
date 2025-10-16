@@ -23,7 +23,7 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.utils.MultiAddressHelper;
 import com.iexec.worker.config.WorkerConfigurationService;
-import com.iexec.worker.utils.WorkflowException;
+import com.iexec.worker.workflow.WorkflowException;
 import jakarta.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;

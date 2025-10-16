@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 IEXEC BLOCKCHAIN TECH
+ * Copyright 2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,14 @@
  * limitations under the License.
  */
 
-package com.iexec.worker.utils;
+package com.iexec.worker.workflow;
 
 import com.iexec.common.replicate.ReplicateStatusCause;
-import lombok.Getter;
 
-@Getter
-public class WorkflowException extends Exception {
+public record WorkflowError(ReplicateStatusCause cause, String message) {
 
-    private final ReplicateStatusCause replicateStatusCause;
-
-    public WorkflowException(ReplicateStatusCause cause) {
-        this(cause, cause.name());
-    }
-
-    public WorkflowException(ReplicateStatusCause cause, String message) {
-        super(message);
-        this.replicateStatusCause = cause;
+    public WorkflowError(ReplicateStatusCause cause) {
+        this(cause, "");
     }
 
 }

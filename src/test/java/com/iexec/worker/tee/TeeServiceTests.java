@@ -20,6 +20,7 @@ import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -87,7 +88,7 @@ class TeeServiceTests {
         when(teeService.isTeeEnabled()).thenReturn(false);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(TEE_NOT_SUPPORTED);
+                .containsExactly(new WorkflowError(TEE_NOT_SUPPORTED));
     }
 
     @Test
@@ -96,7 +97,7 @@ class TeeServiceTests {
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(UNKNOWN_SMS);
+                .containsExactly(new WorkflowError(UNKNOWN_SMS));
     }
 
     @Test
@@ -106,7 +107,7 @@ class TeeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(NullPointerException.class);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
+                .containsExactly(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
     }
 
     @Test
@@ -116,7 +117,7 @@ class TeeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(RuntimeException.class);
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(GET_TEE_SERVICES_CONFIGURATION_FAILED);
+                .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
     }
     // endregion
 }

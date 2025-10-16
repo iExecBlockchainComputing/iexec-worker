@@ -16,8 +16,8 @@
 
 package com.iexec.worker.compute.post;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.worker.compute.ComputeResponse;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.Builder;
 import lombok.Value;
 
@@ -28,7 +28,7 @@ import java.util.List;
 public class PostComputeResponse implements ComputeResponse {
 
     @Builder.Default
-    List<ReplicateStatusCause> exitCauses = List.of();
+    List<WorkflowError> exitCauses = List.of();
     String stdout;
     String stderr;
 }

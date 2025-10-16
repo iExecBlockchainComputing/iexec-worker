@@ -16,12 +16,12 @@
 
 package com.iexec.worker.tee;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
@@ -47,9 +47,9 @@ public abstract class TeeService {
         return sgxService.isSgxEnabled();
     }
 
-    public List<ReplicateStatusCause> areTeePrerequisitesMetForTask(final String chainTaskId) {
+    public List<WorkflowError> areTeePrerequisitesMetForTask(final String chainTaskId) {
         if (!isTeeEnabled()) {
-            return List.of(TEE_NOT_SUPPORTED);
+            return List.of(new WorkflowError(TEE_NOT_SUPPORTED));
         }
 
         try {
@@ -58,7 +58,7 @@ public abstract class TeeService {
             smsService.getSmsClient(chainTaskId);
         } catch (SmsClientCreationException e) {
             log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
-            return List.of(UNKNOWN_SMS);
+            return List.of(new WorkflowError(UNKNOWN_SMS));
         }
         try {
             // Try to load the `TeeServicesProperties` relative to the task.
@@ -66,10 +66,10 @@ public abstract class TeeService {
             teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         } catch (NullPointerException e) {
             log.error("TEE enclave configuration is null [chainTaskId: {}]", chainTaskId, e);
-            return List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION);
+            return List.of(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
         } catch (RuntimeException e) {
             log.error("Couldn't get TeeServicesProperties [chainTaskId: {}]", chainTaskId, e);
-            return List.of(GET_TEE_SERVICES_CONFIGURATION_FAILED);
+            return List.of(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
         }
 
         return List.of();

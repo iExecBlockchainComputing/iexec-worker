@@ -39,6 +39,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
@@ -48,7 +49,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
 
 @Slf4j
@@ -103,14 +103,14 @@ public class PreComputeService {
         if (enclaveConfig == null) {
             log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
             return preComputeResponseBuilder
-                    .exitCauses(List.of(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION)))
                     .build();
         }
         if (!enclaveConfig.getValidator().isValid()) {
             log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
                     chainTaskId, enclaveConfig.getValidator().validate().toString());
             return preComputeResponseBuilder
-                    .exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION)))
                     .build();
         }
         long teeComputeMaxHeapSize = DataSize
@@ -119,7 +119,7 @@ public class PreComputeService {
         if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
             log.error("Enclave configuration should define a proper heap size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
                     chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
-            preComputeResponseBuilder.exitCauses(List.of(PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION));
+            preComputeResponseBuilder.exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION)));
             return preComputeResponseBuilder.build();
         }
         // create secure session
@@ -133,7 +133,7 @@ public class PreComputeService {
         } catch (TeeSessionGenerationException e) {
             log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
             return preComputeResponseBuilder
-                    .exitCauses(List.of(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError())))
+                    .exitCauses(List.of(new WorkflowError(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError()))))
                     .build();
         }
 
@@ -141,41 +141,41 @@ public class PreComputeService {
         if (taskDescription.requiresPreCompute()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}, isBulkRequest:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles(), taskDescription.isBulkRequest());
-            final List<ReplicateStatusCause> exitCauses = downloadDatasetAndFiles(taskDescription, secureSession);
+            final List<WorkflowError> exitCauses = downloadDatasetAndFiles(taskDescription, secureSession);
             preComputeResponseBuilder.exitCauses(exitCauses);
         }
 
         return preComputeResponseBuilder.build();
     }
 
-    private List<ReplicateStatusCause> downloadDatasetAndFiles(
+    private List<WorkflowError> downloadDatasetAndFiles(
             final TaskDescription taskDescription,
             final TeeSessionGenerationResponse secureSession) {
         try {
             final Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
             if (exitCode == null || exitCode != 0) {
                 final String chainTaskId = taskDescription.getChainTaskId();
-                final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
+                final List<WorkflowError> exitCauses = getExitCauses(chainTaskId, exitCode);
                 log.error("Failed to prepare TEE input data [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
                         chainTaskId, exitCode, exitCauses);
                 return exitCauses;
             }
         } catch (TimeoutException e) {
-            return List.of(PRE_COMPUTE_TIMEOUT);
+            return List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_TIMEOUT));
         }
         return List.of();
     }
 
-    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final Integer exitCode) {
+    private List<WorkflowError> getExitCauses(final String chainTaskId, final Integer exitCode) {
         if (exitCode == null) {
-            return List.of(PRE_COMPUTE_IMAGE_MISSING);
+            return List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_IMAGE_MISSING));
         }
         return switch (exitCode) {
             case 1 -> computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
-                    chainTaskId, ComputeStage.PRE, PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
-            case 2 -> List.of(PRE_COMPUTE_EXIT_REPORTING_FAILED);
-            case 3 -> List.of(PRE_COMPUTE_TASK_ID_MISSING);
-            default -> List.of(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+                    chainTaskId, ComputeStage.PRE, new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
+            case 2 -> List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_EXIT_REPORTING_FAILED));
+            case 3 -> List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_TASK_ID_MISSING));
+            default -> List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE));
         };
     }
 

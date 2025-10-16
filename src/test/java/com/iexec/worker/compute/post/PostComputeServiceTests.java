@@ -40,6 +40,7 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -283,13 +284,14 @@ class PostComputeServiceTests {
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
-        assertThat(postComputeResponse.getExitCauses()).containsExactly(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING);
+        assertThat(postComputeResponse.getExitCauses())
+                .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING));
         verify(dockerService, never()).run(any());
     }
 
     @ParameterizedTest
     @MethodSource("shouldRunTeePostComputeWithFailDockerResponseArgs")
-    void shouldRunTeePostComputeWithFailDockerResponse(Map.Entry<Integer, ReplicateStatusCause> exitCodeKeyToExpectedCauseValue) {
+    void shouldRunTeePostComputeWithFailDockerResponse(Map.Entry<Integer, WorkflowError> exitCodeKeyToExpectedCauseValue) {
         taskDescription = TaskDescription.builder()
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(DATASET_URI)
@@ -303,7 +305,7 @@ class PostComputeServiceTests {
         prepareMocksForTeePostCompute(expectedDockerRunResponse);
         // Only stub computeExitCauseService for exitCode == 1
         if (exitCodeKeyToExpectedCauseValue.getKey() == 1) {
-            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
+            when(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.POST, new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)))
                     .thenReturn(List.of(exitCodeKeyToExpectedCauseValue.getValue()));
         }
 
@@ -316,11 +318,11 @@ class PostComputeServiceTests {
         verify(dockerService).run(any());
     }
 
-    private static Stream<Map.Entry<Integer, ReplicateStatusCause>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
+    private static Stream<Map.Entry<Integer, WorkflowError>> shouldRunTeePostComputeWithFailDockerResponseArgs() {
         return Map.of(
-                1, ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND,
-                2, ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED,
-                3, ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING
+                1, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND),
+                2, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED),
+                3, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING)
         ).entrySet().stream();
     }
 
@@ -342,7 +344,7 @@ class PostComputeServiceTests {
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCauses())
-                .containsExactly(ReplicateStatusCause.POST_COMPUTE_TIMEOUT);
+                .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT));
         verify(dockerService).run(any());
     }
 
@@ -363,8 +365,7 @@ class PostComputeServiceTests {
         final PostComputeResponse response = postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
-                .hasSize(1)
-                .containsExactly(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+                .containsExactly(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
     }
     //endregion
 }

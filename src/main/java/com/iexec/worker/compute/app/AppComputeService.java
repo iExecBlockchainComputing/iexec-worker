@@ -32,6 +32,7 @@ import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
+import com.iexec.worker.workflow.WorkflowError;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -119,10 +120,10 @@ public class AppComputeService {
         return workerConfigService.getWorkerName() + "-" + chainTaskId;
     }
 
-    private List<ReplicateStatusCause> getExitCauseFromFinalStatus(final DockerRunFinalStatus finalStatus) {
+    private List<WorkflowError> getExitCauseFromFinalStatus(final DockerRunFinalStatus finalStatus) {
         return switch (finalStatus) {
-            case TIMEOUT -> List.of(ReplicateStatusCause.APP_COMPUTE_TIMEOUT);
-            case FAILED -> List.of(ReplicateStatusCause.APP_COMPUTE_FAILED);
+            case TIMEOUT -> List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_TIMEOUT));
+            case FAILED -> List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_FAILED));
             default -> List.of();
         };
     }

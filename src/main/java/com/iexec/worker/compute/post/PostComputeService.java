@@ -38,6 +38,7 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -51,10 +52,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
-
-import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
-import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME;
-
 
 @Slf4j
 @Service
@@ -111,7 +108,7 @@ public class PostComputeService {
         final Optional<ReplicateStatusCause> resultFilesNameError = checkResultFilesName(chainTaskId, taskIexecOutDir);
         if (resultFilesNameError.isPresent()) {
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(resultFilesNameError.get()))
+                    .exitCauses(List.of(new WorkflowError(resultFilesNameError.get())))
                     .build();
         }
 
@@ -122,7 +119,7 @@ public class PostComputeService {
                 taskOutputDir);
         if (zipIexecOutPath.isEmpty()) {
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_OUT_FOLDER_ZIP_FAILED)))
                     .build();
         }
         // copy /output/iexec_out/computed.json to /output/computed.json as in FlowService#sendComputedFileToHost
@@ -133,7 +130,7 @@ public class PostComputeService {
         if (!isCopied) {
             log.error("Failed to copy computed.json file to /output [chainTaskId:{}]", chainTaskId);
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_SEND_COMPUTED_FILE_FAILED)))
                     .build();
         }
         return PostComputeResponse.builder().build();
@@ -155,11 +152,11 @@ public class PostComputeService {
             });
         } catch (IOException e) {
             log.error("Can't check result files [chainTaskId:{}]", taskId);
-            return Optional.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            return Optional.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
         }
 
         if (failed.get()) {
-            return Optional.of(POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
+            return Optional.of(ReplicateStatusCause.POST_COMPUTE_TOO_LONG_RESULT_FILE_NAME);
         }
         return Optional.empty();
     }
@@ -177,7 +174,7 @@ public class PostComputeService {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)))
                     .build();
         }
         TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
@@ -214,12 +211,12 @@ public class PostComputeService {
             log.error("Tee post-compute container timed out [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_TIMEOUT))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT)))
                     .build();
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
             final int exitCode = dockerResponse.getContainerExitCode();
-            final List<ReplicateStatusCause> exitCauses = getExitCauses(chainTaskId, exitCode);
+            final List<WorkflowError> exitCauses = getExitCauses(chainTaskId, exitCode);
             log.error("Failed to run tee post-compute [chainTaskId:{}, exitCode:{}, exitCauses:{}]",
                     chainTaskId, exitCode, exitCauses);
             return PostComputeResponse.builder()
@@ -232,14 +229,14 @@ public class PostComputeService {
                 .build();
     }
 
-    private List<ReplicateStatusCause> getExitCauses(final String chainTaskId, final int exitCode) {
+    private List<WorkflowError> getExitCauses(final String chainTaskId, final int exitCode) {
         return switch (exitCode) {
             case 0 -> List.of();
-            case 1 ->
-                    computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(chainTaskId, ComputeStage.POST, POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
-            case 2 -> List.of(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED);
-            case 3 -> List.of(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING);
-            default -> List.of(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+            case 1 -> computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
+                    chainTaskId, ComputeStage.POST, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+            case 2 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED));
+            case 3 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING));
+            default -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
         };
     }
 

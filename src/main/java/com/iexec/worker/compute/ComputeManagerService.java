@@ -33,6 +33,7 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerRegistryConfiguration;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.result.ResultService;
+import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -230,7 +231,7 @@ public class ComputeManagerService {
             postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSession);
         } else {
             postComputeResponse = PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)))
                     .build();
         }
         if (!postComputeResponse.isSuccessful()) {
@@ -239,7 +240,7 @@ public class ComputeManagerService {
         final ComputedFile computedFile = resultService.readComputedFile(chainTaskId);
         if (computedFile == null) {
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_COMPUTED_FILE_NOT_FOUND)))
                     .stdout(postComputeResponse.getStdout())
                     .stderr(postComputeResponse.getStderr())
                     .build();
@@ -247,7 +248,7 @@ public class ComputeManagerService {
         final String resultDigest = resultService.computeResultDigest(computedFile);
         if (resultDigest.isEmpty()) {
             return PostComputeResponse.builder()
-                    .exitCauses(List.of(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED))
+                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_RESULT_DIGEST_COMPUTATION_FAILED)))
                     .stdout(postComputeResponse.getStdout())
                     .stderr(postComputeResponse.getStderr())
                     .build();

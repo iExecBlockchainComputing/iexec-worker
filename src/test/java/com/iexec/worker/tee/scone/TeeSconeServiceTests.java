@@ -16,7 +16,6 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.poco.chain.IexecHubAbstractService;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
@@ -28,6 +27,7 @@ import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -112,7 +112,7 @@ class TeeSconeServiceTests {
         doReturn(null).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
         doReturn(true).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
 
-        final List<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<WorkflowError> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue).isEmpty();
@@ -127,11 +127,11 @@ class TeeSconeServiceTests {
     void shouldTeePrerequisiteNotMetForTaskSinceTeeNotEnabled() {
         doReturn(false).when(teeSconeService).isTeeEnabled();
 
-        final List<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<WorkflowError> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(TEE_NOT_SUPPORTED);
+                .containsExactly(new WorkflowError(TEE_NOT_SUPPORTED));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(0)).getSmsClient(CHAIN_TASK_ID);
@@ -145,11 +145,11 @@ class TeeSconeServiceTests {
         doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
         doThrow(SmsClientCreationException.class).when(smsService).getSmsClient(CHAIN_TASK_ID);
 
-        final List<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<WorkflowError> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(UNKNOWN_SMS);
+                .containsExactly(new WorkflowError(UNKNOWN_SMS));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
@@ -164,11 +164,11 @@ class TeeSconeServiceTests {
         doReturn(smsClient).when(smsService).getSmsClient(CHAIN_TASK_ID);
         doThrow(SmsClientCreationException.class).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
 
-        final List<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<WorkflowError> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(GET_TEE_SERVICES_CONFIGURATION_FAILED);
+                .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
@@ -184,11 +184,11 @@ class TeeSconeServiceTests {
         doReturn(null).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
         doReturn(false).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
 
-        final List<ReplicateStatusCause> teePrerequisitesIssue =
+        final List<WorkflowError> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(TEE_PREPARATION_FAILED);
+                .containsExactly(new WorkflowError(TEE_PREPARATION_FAILED));
 
         verify(teeSconeService, times(1)).isTeeEnabled();
         verify(smsService, times(1)).getSmsClient(CHAIN_TASK_ID);
