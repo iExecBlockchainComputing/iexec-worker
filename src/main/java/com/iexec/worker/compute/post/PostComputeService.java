@@ -233,7 +233,7 @@ public class PostComputeService {
         return switch (exitCode) {
             case 0 -> List.of();
             case 1 -> computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(
-                            chainTaskId, ComputeStage.POST, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
+                    chainTaskId, ComputeStage.POST, new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
             case 2 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_EXIT_REPORTING_FAILED));
             case 3 -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TASK_ID_MISSING));
             default -> List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
