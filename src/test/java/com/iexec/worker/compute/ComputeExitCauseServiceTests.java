@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ComputeExitCauseServiceTests {
 
-    public static final String CHAIN_TASK_ID = "chainTaskId";
+    private static final String CHAIN_TASK_ID = "chainTaskId";
     private static final WorkflowError DEFAULT_PRE_ERROR = new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
     private static final WorkflowError DEFAULT_POST_ERROR = new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     private static final List<WorkflowError> SINGLE_PRE_ERRORS = List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING));
@@ -78,46 +78,30 @@ class ComputeExitCauseServiceTests {
     void shouldReturnDefaultCauseAfterPruning(final ComputeStage stage, final List<WorkflowError> errors, final WorkflowError defaultError) {
         computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors);
         computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultError);
-        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultError)).isEqualTo(List.of(defaultError));
+        assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultError)).containsExactly(defaultError);
     }
     //endregion
 
     //region Report Once Behavior
-    static Stream<Arguments> validExitCauseProvider() {
-        return Stream.of(
-                Arguments.of(ComputeStage.PRE, SINGLE_PRE_ERRORS, DEFAULT_PRE_ERROR),
-                Arguments.of(ComputeStage.PRE, MULTIPLE_PRE_ERRORS, DEFAULT_PRE_ERROR),
-                Arguments.of(ComputeStage.POST, SINGLE_POST_ERRORS, DEFAULT_POST_ERROR),
-                Arguments.of(ComputeStage.POST, MULTIPLE_POST_ERRORS, DEFAULT_POST_ERROR)
-        );
-    }
-
     @ParameterizedTest
-    @MethodSource("validExitCauseProvider")
-    void shouldReturnTrueWhenReportingForFirstTime(final ComputeStage stage, final List<WorkflowError> errors) {
-        assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors))
-                .isTrue();
-    }
-
-    @ParameterizedTest
-    @MethodSource("validExitCauseProvider")
+    @MethodSource("computeStageAndCausesArguments")
     void shouldReturnFalseWhenReportingTwiceWithSameCauses(final ComputeStage stage, final List<WorkflowError> errors) {
         computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors);
         assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors)).isFalse();
     }
 
     @ParameterizedTest
-    @MethodSource("validExitCauseProvider")
+    @MethodSource("computeStageAndCausesArguments")
     void shouldReturnFalseWhenReportingTwiceWithDifferentCauses(final ComputeStage stage, final List<WorkflowError> errors) {
         computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors);
-        List<WorkflowError> differentCauses = stage == ComputeStage.PRE
+        final List<WorkflowError> differentCauses = stage == ComputeStage.PRE
                 ? List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_DATASET_CHECKSUM))
                 : List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_TIMEOUT));
         assertThat(computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, differentCauses)).isFalse();
     }
 
     @ParameterizedTest
-    @MethodSource("validExitCauseProvider")
+    @MethodSource("computeStageAndCausesArguments")
     void shouldReturnOriginalCausesAfterSuccessfulReport(final ComputeStage stage, final List<WorkflowError> errors, final WorkflowError defaultError) {
         computeExitCauseService.setExitCausesForGivenComputeStage(CHAIN_TASK_ID, stage, errors);
         assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, stage, defaultError)).isEqualTo(errors);
@@ -132,7 +116,7 @@ class ComputeExitCauseServiceTests {
     @Test
     void shouldReturnDefaultCauseWhenNoCausesWereSet() {
         assertThat(computeExitCauseService.getExitCausesAndPruneForGivenComputeStage(CHAIN_TASK_ID, ComputeStage.PRE, DEFAULT_PRE_ERROR))
-                .isEqualTo(List.of(DEFAULT_PRE_ERROR));
+                .containsExactly(DEFAULT_PRE_ERROR);
     }
     //endregion
 }

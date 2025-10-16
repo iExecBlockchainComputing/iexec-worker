@@ -361,7 +361,8 @@ class ComputeManagerServiceTests {
     void shouldRunStandardPostComputeWithFailureResponse(ReplicateStatusCause statusCause) {
         final TaskDescription taskDescription = createTaskDescriptionBuilder(false).build();
         PostComputeResponse postComputeResponse = PostComputeResponse.builder()
-                                                    .exitCauses(List.of(new WorkflowError(statusCause))).build();
+                .exitCauses(List.of(new WorkflowError(statusCause)))
+                .build();
         when(postComputeService.runStandardPostCompute(taskDescription)).thenReturn(postComputeResponse);
 
         postComputeResponse = computeManagerService.runPostCompute(taskDescription, null);

@@ -60,9 +60,9 @@ public class ComputeExitCauseService {
      * Get exit causes for a specific compute stage and prune them.
      * Returns default unknown issue cause when no specific causes are set.
      *
-     * @param computeStage   compute stage
-     * @param chainTaskId    task ID
-     * @param fallbackError  default error to return if no specific causes are found
+     * @param computeStage  compute stage
+     * @param chainTaskId   task ID
+     * @param fallbackError default error to return if no specific causes are found
      * @return list of workflow errors, or default unknown issue if not found
      */
     public List<WorkflowError> getExitCausesAndPruneForGivenComputeStage(

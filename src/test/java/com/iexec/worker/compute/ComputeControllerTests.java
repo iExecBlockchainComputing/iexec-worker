@@ -37,18 +37,16 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
-import static com.iexec.common.replicate.ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE;
-import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class ComputeControllerTests {
+class ComputeControllerTests {
 
-    public static final String CHAIN_TASK_ID = "0xtask";
-    public static final WorkflowError ERROR = new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED);
-    public static final WorkflowError UNKNOWN_PRE_ERROR = new WorkflowError(PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
-    public static final WorkflowError UNKNOWN_POST_ERROR = new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    private static final String CHAIN_TASK_ID = "0xtask";
+    private static final WorkflowError ERROR = new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INPUT_FILE_DOWNLOAD_FAILED);
+    private static final WorkflowError UNKNOWN_PRE_ERROR = new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE);
+    private static final WorkflowError UNKNOWN_POST_ERROR = new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
     private static final String AUTH_HEADER = "Bearer validToken";
     private static final List<WorkflowError> MULTIPLE_ERRORS = List.of(
             new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING),
