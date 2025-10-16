@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.2.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.1.0...v9.2.0) (2025-10-16)
+
+
+### Features
+
+* migrate from `ReplicateStatusCause` to `WorkflowError` ([#662](https://github.com/iExecBlockchainComputing/iexec-worker/issues/662)) ([cbde5d2](https://github.com/iExecBlockchainComputing/iexec-worker/commit/cbde5d2c739939ad79a26af487aa4f9a1b0ca0c8))
+
 ## [9.1.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.0.1...v9.1.0) (2025-10-09)
 
 
