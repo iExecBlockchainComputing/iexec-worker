@@ -40,6 +40,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.workflow.WorkflowError;
@@ -121,8 +122,8 @@ class TaskManagerServiceTests {
     @ParameterizedTest
     @EnumSource(value = TeeSessionGenerationError.class)
     void shouldAllTeeSessionGenerationErrorHaveMatch(final TeeSessionGenerationError error) {
-            assertThat(taskManagerService.teeSessionGenerationErrorToReplicateStatusCause(error))
-                    .isNotNull();
+        assertThat(taskManagerService.teeSessionGenerationErrorToReplicateStatusCause(error))
+                .isNotNull();
     }
 
     @ParameterizedTest
@@ -200,6 +201,23 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
+    }
+
+    @Test
+    void shouldNotStartSinceTeeSessionCreationFailed() throws TeeSessionGenerationException {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(emptyCauses);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .thenReturn(emptyCauses);
+        doThrow(new TeeSessionGenerationException(TeeSessionGenerationError.UNKNOWN_ISSUE))
+                .when(teeMockedService).createTeeSession(any());
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(getTaskDescriptionBuilder(true).build());
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_SESSION_GENERATION_UNKNOWN_ISSUE);
     }
     //endregion
 

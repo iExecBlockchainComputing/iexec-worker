@@ -29,8 +29,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collection;
@@ -44,7 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
-@ExtendWith(OutputCaptureExtension.class)
 class TeeGramineServiceTests {
     private static final String SESSION_ID = "0x123_session_id";
     private static final String SPS_URL = "http://spsUrl";
@@ -162,7 +159,7 @@ class TeeGramineServiceTests {
     }
 
     @Test
-    void shouldRemoveAllTeeSessionsFromCache(final CapturedOutput output) {
+    void shouldRemoveAllTeeSessionsFromCache() {
         final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
         prefillTeeSessionsCache(teeSessions);
         teeGramineService.purgeAllTasksData();

@@ -29,7 +29,6 @@ import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.commons.poco.utils.BytesUtils;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -48,7 +47,8 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AppComputeServiceTests {
@@ -57,7 +57,6 @@ class AppComputeServiceTests {
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private static final String APP_URI = "APP_URI";
     private static final String WORKER_NAME = "WORKER_NAME";
-    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private static final long MAX_EXECUTION_TIME = 1000;
     private static final String INPUT = "INPUT";
     private static final String IEXEC_OUT = "IEXEC_OUT";
