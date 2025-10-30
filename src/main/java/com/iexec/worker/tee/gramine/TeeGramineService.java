@@ -52,20 +52,17 @@ public class TeeGramineService extends TeeService implements Purgeable {
 
     @Override
     public List<String> buildPreComputeDockerEnv(final TaskDescription taskDescription) {
-        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
-        return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
+        return getDockerEnv(getTeeSession(taskDescription.getChainTaskId()));
     }
 
     @Override
     public List<String> buildComputeDockerEnv(final TaskDescription taskDescription) {
-        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
-        return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
+        return getDockerEnv(getTeeSession(taskDescription.getChainTaskId()));
     }
 
     @Override
     public List<String> buildPostComputeDockerEnv(final TaskDescription taskDescription) {
-        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
-        return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
+        return getDockerEnv(getTeeSession(taskDescription.getChainTaskId()));
     }
 
     @Override
@@ -75,10 +72,10 @@ public class TeeGramineService extends TeeService implements Purgeable {
         return bindings;
     }
 
-    private List<String> getDockerEnv(String sessionId, String spsUrl) {
+    private List<String> getDockerEnv(final TeeSessionGenerationResponse session) {
         return List.of(
-                SPS_URL_ENV_VAR + "=" + spsUrl,
-                SPS_SESSION_ENV_VAR + "=" + sessionId);
+                SPS_URL_ENV_VAR + "=" + session.getSecretProvisioningUrl(),
+                SPS_SESSION_ENV_VAR + "=" + session.getSessionId());
     }
 
     @Override
