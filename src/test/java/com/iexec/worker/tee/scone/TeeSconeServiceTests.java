@@ -33,16 +33,20 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@ExtendWith(OutputCaptureExtension.class)
 class TeeSconeServiceTests {
 
     private static final String SESSION_ID = "sessionId";
@@ -235,4 +239,42 @@ class TeeSconeServiceTests {
                         "SCONE_VERSION=" + 1));
     }
     // endregion
+
+    // region TEE sessions cache
+    private void prefillTeeSessionsCache(final Map<String, TeeSessionGenerationResponse> teeSessions) {
+        teeSessions.put("taskId1", new TeeSessionGenerationResponse("sessionId1", "sessionUrl1"));
+        teeSessions.put("taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2"));
+        ReflectionTestUtils.setField(teeSconeService, "teeSessions", teeSessions);
+    }
+
+    @Test
+    void shouldNotModifyCacheWhenNoSessionInCache() {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeSconeService.purgeTask("taskId3");
+        assertThat(teeSessions)
+                .usingRecursiveComparison()
+                .isEqualTo(Map.of(
+                        "taskId1", new TeeSessionGenerationResponse("sessionId1", "sessionUrl1"),
+                        "taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2")));
+    }
+
+    @Test
+    void shouldRemoveTeeSessionFromCache() {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeSconeService.purgeTask("taskId1");
+        assertThat(teeSessions)
+                .usingRecursiveComparison()
+                .isEqualTo(Map.of("taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2")));
+    }
+
+    @Test
+    void shouldRemoveAllTeeSessionsFromCache(final CapturedOutput output) {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeSconeService.purgeAllTasksData();
+        assertThat(teeSessions).isEmpty();
+    }
+    // end region
 }

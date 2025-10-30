@@ -29,17 +29,22 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@ExtendWith(OutputCaptureExtension.class)
 class TeeGramineServiceTests {
     private static final String SESSION_ID = "0x123_session_id";
     private static final String SPS_URL = "http://spsUrl";
@@ -124,6 +129,44 @@ class TeeGramineServiceTests {
 
         assertEquals(1, bindings.size());
         assertTrue(bindings.contains("/var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket"));
+    }
+    // endregion
+
+    // region TEE sessions cache
+    private void prefillTeeSessionsCache(final Map<String, TeeSessionGenerationResponse> teeSessions) {
+        teeSessions.put("taskId1", new TeeSessionGenerationResponse("sessionId1", "sessionUrl1"));
+        teeSessions.put("taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2"));
+        ReflectionTestUtils.setField(teeGramineService, "teeSessions", teeSessions);
+    }
+
+    @Test
+    void shouldNotModifyCacheWhenNoSessionInCache() {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeGramineService.purgeTask("taskId3");
+        assertThat(teeSessions)
+                .usingRecursiveComparison()
+                .isEqualTo(Map.of(
+                        "taskId1", new TeeSessionGenerationResponse("sessionId1", "sessionUrl1"),
+                        "taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2")));
+    }
+
+    @Test
+    void shouldRemoveTeeSessionFromCache() {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeGramineService.purgeTask("taskId1");
+        assertThat(teeSessions)
+                .usingRecursiveComparison()
+                .isEqualTo(Map.of("taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2")));
+    }
+
+    @Test
+    void shouldRemoveAllTeeSessionsFromCache(final CapturedOutput output) {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeGramineService.purgeAllTasksData();
+        assertThat(teeSessions).isEmpty();
     }
     // endregion
 }
