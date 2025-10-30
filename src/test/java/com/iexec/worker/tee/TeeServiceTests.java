@@ -16,10 +16,13 @@
 
 package com.iexec.worker.tee;
 
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.SmsClientCreationException;
+import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +30,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +45,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TeeServiceTests {
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
+    private final WorkerpoolAuthorization wpAuthorization = WorkerpoolAuthorization.builder()
+            .chainTaskId(CHAIN_TASK_ID)
+            .build();
 
     @Mock
     SgxService sgxService;
@@ -118,6 +128,42 @@ class TeeServiceTests {
 
         assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
                 .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
+    }
+    // endregion
+
+    // region purge
+    @Test
+    void shouldAddTeeSessionGenerationResponseToCache() throws TeeSessionGenerationException {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        ReflectionTestUtils.setField(teeService, "teeSessions", teeSessions);
+        final TeeSessionGenerationResponse teeSession = new TeeSessionGenerationResponse("sessionId", "sessionUrl");
+        when(smsService.createTeeSession(wpAuthorization)).thenReturn(teeSession);
+        teeService.createTeeSession(wpAuthorization);
+        assertThat(teeSessions).containsEntry(CHAIN_TASK_ID, teeSession);
+    }
+
+    private void prefillTeeSessionsCache(final Map<String, TeeSessionGenerationResponse> teeSessions) {
+        teeSessions.put("taskId1", new TeeSessionGenerationResponse("sessionId1", "sessionUrl1"));
+        teeSessions.put("taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2"));
+        ReflectionTestUtils.setField(teeService, "teeSessions", teeSessions);
+    }
+
+    @Test
+    void shouldRemoveTeeSessionFromCache() {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeService.purgeTask("taskId1");
+        assertThat(teeSessions)
+                .usingRecursiveComparison()
+                .isEqualTo(Map.of("taskId2", new TeeSessionGenerationResponse("sessionId2", "sessionUrl2")));
+    }
+
+    @Test
+    void shouldRemoveAllTeeSessionsFromCache() {
+        final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+        prefillTeeSessionsCache(teeSessions);
+        teeService.purgeAllTasksData();
+        assertThat(teeSessions).isEmpty();
     }
     // endregion
 }

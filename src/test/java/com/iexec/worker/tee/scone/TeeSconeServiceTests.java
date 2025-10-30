@@ -16,7 +16,6 @@
 
 package com.iexec.worker.tee.scone;
 
-import com.iexec.commons.poco.chain.IexecHubAbstractService;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.SmsClient;
@@ -28,22 +27,24 @@ import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.workflow.WorkflowError;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class TeeSconeServiceTests {
 
-    private static final String REGISTRY_NAME = "registryName";
     private static final String SESSION_ID = "sessionId";
     private static final String CAS_URL = "casUrl";
     private static final String LAS_URL = "lasUrl";
@@ -55,8 +56,6 @@ class TeeSconeServiceTests {
             .chainTaskId(CHAIN_TASK_ID)
             .appEnclaveConfiguration(TeeEnclaveConfiguration.builder().heapSize(1024).build())
             .build();
-    public static final String REGISTRY_USERNAME = "registryUsername";
-    public static final String REGISTRY_PASSWORD = "registryPassword";
     public static final long HEAP_SIZE = 1024L;
 
     @InjectMocks
@@ -68,8 +67,6 @@ class TeeSconeServiceTests {
     private SgxService sgxService;
     @Mock
     private SmsService smsService;
-    @Mock
-    private IexecHubAbstractService iexecHubService;
     @Mock
     private TeeAppProperties preComputeProperties;
     @Mock
@@ -83,31 +80,10 @@ class TeeSconeServiceTests {
     @Mock
     private SmsClient smsClient;
 
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-        final SconeConfiguration.SconeRegistry registry = new SconeConfiguration.SconeRegistry(
-                REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD);
-        when(sconeConfig.getRegistry()).thenReturn(registry);
-
-        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
-        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
-        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
-        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID))
-                .thenReturn(properties);
-
-        final LasService lasService = mock(LasService.class);
-        when(lasService.getUrl()).thenReturn(LAS_URL);
-        when(lasService.getSconeConfig()).thenReturn(sconeConfig);
-        when(lasServicesManager.getLas(CHAIN_TASK_ID)).thenReturn(lasService);
-    }
-
     // region areTeePrerequisitesMetForTask
     @Test
     void shouldTeePrerequisiteMetForTask() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
         doReturn(smsClient).when(smsService).getSmsClient(CHAIN_TASK_ID);
         doReturn(null).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
         doReturn(true).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
@@ -142,7 +118,6 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteNotMetForTaskSinceSmsClientCantBeLoaded() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
         doThrow(SmsClientCreationException.class).when(smsService).getSmsClient(CHAIN_TASK_ID);
 
         final List<WorkflowError> teePrerequisitesIssue =
@@ -160,7 +135,6 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteNotMetForTaskSinceTeeWorkflowConfigurationCantBeLoaded() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
         doReturn(smsClient).when(smsService).getSmsClient(CHAIN_TASK_ID);
         doThrow(SmsClientCreationException.class).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
 
@@ -179,7 +153,6 @@ class TeeSconeServiceTests {
     @Test
     void shouldTeePrerequisiteNotMetForTaskSinceCantPrepareTee() {
         doReturn(true).when(teeSconeService).isTeeEnabled();
-        doReturn(TASK_DESCRIPTION).when(iexecHubService).getTaskDescription(CHAIN_TASK_ID);
         doReturn(smsClient).when(smsService).getSmsClient(CHAIN_TASK_ID);
         doReturn(null).when(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
         doReturn(false).when(teeSconeService).prepareTeeForTask(CHAIN_TASK_ID);
@@ -197,13 +170,25 @@ class TeeSconeServiceTests {
     }
     // endregion
 
-    // region buildPreComputeDockerEnv
+    // region getDockerEnv (pre, app, post)
+    private void mockLas() {
+        final LasService lasService = mock(LasService.class);
+        when(lasService.getUrl()).thenReturn(LAS_URL);
+        when(lasService.getSconeConfig()).thenReturn(sconeConfig);
+        when(lasServicesManager.getLas(CHAIN_TASK_ID)).thenReturn(lasService);
+    }
+
     @Test
     void shouldBuildPreComputeDockerEnv() {
+        ReflectionTestUtils.setField(teeSconeService, "teeSessions", Map.of(CHAIN_TASK_ID, SESSION));
+        mockLas();
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
+        when(preComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
 
-        assertThat(teeSconeService.buildPreComputeDockerEnv(TASK_DESCRIPTION, SESSION))
+        assertThat(teeSconeService.buildPreComputeDockerEnv(TASK_DESCRIPTION))
                 .isEqualTo(List.of(
                         "SCONE_CAS_ADDR=" + CAS_URL,
                         "SCONE_LAS_ADDR=" + LAS_URL,
@@ -212,15 +197,15 @@ class TeeSconeServiceTests {
                         "SCONE_LOG=" + LOG_LEVEL,
                         "SCONE_VERSION=" + 1));
     }
-    // endregion
 
-    // region buildComputeDockerEnv
     @Test
     void shouldBuildComputeDockerEnv() {
+        ReflectionTestUtils.setField(teeSconeService, "teeSessions", Map.of(CHAIN_TASK_ID, SESSION));
+        mockLas();
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
 
-        assertThat(teeSconeService.buildComputeDockerEnv(TASK_DESCRIPTION, SESSION))
+        assertThat(teeSconeService.buildComputeDockerEnv(TASK_DESCRIPTION))
                 .isEqualTo(List.of(
                         "SCONE_CAS_ADDR=" + CAS_URL,
                         "SCONE_LAS_ADDR=" + LAS_URL,
@@ -229,15 +214,18 @@ class TeeSconeServiceTests {
                         "SCONE_LOG=" + LOG_LEVEL,
                         "SCONE_VERSION=" + 1));
     }
-    // endregion
 
-    // region buildPostComputeDockerEnv
     @Test
     void shouldBuildPostComputeDockerEnv() {
+        ReflectionTestUtils.setField(teeSconeService, "teeSessions", Map.of(CHAIN_TASK_ID, SESSION));
+        mockLas();
         when(sconeConfig.getLogLevel()).thenReturn(LOG_LEVEL);
         when(sconeConfig.isShowVersion()).thenReturn(SHOW_VERSION);
+        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
+        when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
+        when(postComputeProperties.getHeapSizeInBytes()).thenReturn(HEAP_SIZE);
 
-        assertThat(teeSconeService.buildPostComputeDockerEnv(TASK_DESCRIPTION, SESSION))
+        assertThat(teeSconeService.buildPostComputeDockerEnv(TASK_DESCRIPTION))
                 .isEqualTo(List.of(
                         "SCONE_CAS_ADDR=" + CAS_URL,
                         "SCONE_LAS_ADDR=" + LAS_URL,

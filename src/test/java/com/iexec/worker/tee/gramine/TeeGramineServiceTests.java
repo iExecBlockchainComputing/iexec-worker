@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +21,25 @@ import com.iexec.sms.api.SmsClientProvider;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+@ExtendWith(MockitoExtension.class)
 class TeeGramineServiceTests {
     private static final String SESSION_ID = "0x123_session_id";
     private static final String SPS_URL = "http://spsUrl";
@@ -54,11 +58,6 @@ class TeeGramineServiceTests {
     @InjectMocks
     TeeGramineService teeGramineService;
 
-    @BeforeEach
-    void init() {
-        MockitoAnnotations.openMocks(this);
-    }
-
     // region prepareTeeForTask
     @ParameterizedTest
     @NullSource
@@ -72,11 +71,11 @@ class TeeGramineServiceTests {
 
     // region buildPreComputeDockerEnv
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = {"", "0x123", "chainTaskId"})
     void shouldBuildPreComputeDockerEnv(String chainTaskId) {
+        ReflectionTestUtils.setField(teeGramineService, "teeSessions", Map.of(chainTaskId, TEE_SESSION_GENERATION_RESPONSE));
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(chainTaskId).build();
-        final List<String> env = teeGramineService.buildPreComputeDockerEnv(taskDescription, TEE_SESSION_GENERATION_RESPONSE);
+        final List<String> env = teeGramineService.buildPreComputeDockerEnv(taskDescription);
 
         assertEquals(2, env.size());
         assertTrue(env.containsAll(List.of(
@@ -88,11 +87,11 @@ class TeeGramineServiceTests {
 
     // region buildComputeDockerEnv
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = {"", "0x123", "chainTaskId"})
     void shouldBuildComputeDockerEnv(String chainTaskId) {
+        ReflectionTestUtils.setField(teeGramineService, "teeSessions", Map.of(chainTaskId, TEE_SESSION_GENERATION_RESPONSE));
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(chainTaskId).build();
-        final List<String> env = teeGramineService.buildComputeDockerEnv(taskDescription, TEE_SESSION_GENERATION_RESPONSE);
+        final List<String> env = teeGramineService.buildComputeDockerEnv(taskDescription);
 
         assertEquals(2, env.size());
         assertTrue(env.containsAll(List.of(
@@ -104,11 +103,11 @@ class TeeGramineServiceTests {
 
     // region buildPostComputeDockerEnv
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = {"", "0x123", "chainTaskId"})
     void shouldBuildPostComputeDockerEnv(String chainTaskId) {
+        ReflectionTestUtils.setField(teeGramineService, "teeSessions", Map.of(chainTaskId, TEE_SESSION_GENERATION_RESPONSE));
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(chainTaskId).build();
-        final List<String> env = teeGramineService.buildPostComputeDockerEnv(taskDescription, TEE_SESSION_GENERATION_RESPONSE);
+        final List<String> env = teeGramineService.buildPostComputeDockerEnv(taskDescription);
 
         assertEquals(2, env.size());
         assertTrue(env.containsAll(List.of(

@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -26,6 +27,7 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.utils.LoggingUtils;
 import com.iexec.worker.workflow.WorkflowError;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -37,7 +39,7 @@ import static com.iexec.common.replicate.ReplicateStatusCause.TEE_PREPARATION_FA
 
 @Slf4j
 @Service
-public class TeeSconeService extends TeeService {
+public class TeeSconeService extends TeeService implements Purgeable {
 
     private static final String SCONE_CAS_ADDR = "SCONE_CAS_ADDR";
     private static final String SCONE_LAS_ADDR = "SCONE_LAS_ADDR";
@@ -79,34 +81,31 @@ public class TeeSconeService extends TeeService {
     }
 
     @Override
-    public List<String> buildPreComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
-        String sconeConfigId = session.getSessionId() + "/pre-compute";
-        String chainTaskId = taskDescription.getChainTaskId();
-        TeeServicesProperties properties =
+    public List<String> buildPreComputeDockerEnv(final TaskDescription taskDescription) {
+        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
+        final String sconeConfigId = session.getSessionId() + "/pre-compute";
+        final String chainTaskId = taskDescription.getChainTaskId();
+        final TeeServicesProperties properties =
                 teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         return getDockerEnv(chainTaskId, sconeConfigId, properties.getPreComputeProperties().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
 
     @Override
-    public List<String> buildComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
-        String sconeConfigId = session.getSessionId() + "/app";
-        String chainTaskId = taskDescription.getChainTaskId();
-        TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
-        long heapSize = enclaveConfig != null ? enclaveConfig.getHeapSize() : 0;
+    public List<String> buildComputeDockerEnv(final TaskDescription taskDescription) {
+        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
+        final String sconeConfigId = session.getSessionId() + "/app";
+        final String chainTaskId = taskDescription.getChainTaskId();
+        final TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
+        final long heapSize = enclaveConfig != null ? enclaveConfig.getHeapSize() : 0;
         return getDockerEnv(chainTaskId, sconeConfigId, heapSize, session.getSecretProvisioningUrl());
     }
 
     @Override
-    public List<String> buildPostComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
-        String sconeConfigId = session.getSessionId() + "/post-compute";
-        String chainTaskId = taskDescription.getChainTaskId();
-        TeeServicesProperties properties =
+    public List<String> buildPostComputeDockerEnv(final TaskDescription taskDescription) {
+        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
+        final String sconeConfigId = session.getSessionId() + "/post-compute";
+        final String chainTaskId = taskDescription.getChainTaskId();
+        final TeeServicesProperties properties =
                 teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
         return getDockerEnv(chainTaskId, sconeConfigId, properties.getPostComputeProperties().getHeapSizeInBytes(), session.getSecretProvisioningUrl());
     }
@@ -132,4 +131,18 @@ public class TeeSconeService extends TeeService {
                 SCONE_LOG + "=" + sconeConfig.getLogLevel(),
                 SCONE_VERSION + "=" + sconeVersion);
     }
+
+    @Override
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
+        return super.purgeTask(chainTaskId);
+    }
+
+    @Override
+    @PreDestroy
+    public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
+        super.purgeAllTasksData();
+    }
+
 }

@@ -161,8 +161,7 @@ public class PostComputeService {
         return Optional.empty();
     }
 
-    public PostComputeResponse runTeePostCompute(TaskDescription taskDescription,
-                                                 TeeSessionGenerationResponse secureSession) {
+    public PostComputeResponse runTeePostCompute(final TaskDescription taskDescription) {
         String chainTaskId = taskDescription.getChainTaskId();
 
         TeeServicesProperties properties =
@@ -179,7 +178,7 @@ public class PostComputeService {
         }
         TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
         List<String> env = teeService
-                .buildPostComputeDockerEnv(taskDescription, secureSession);
+                .buildPostComputeDockerEnv(taskDescription);
         List<Bind> binds = Stream.of(
                         Collections.singletonList(dockerService.getIexecOutBind(chainTaskId)),
                         teeService.getAdditionalBindings())

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,23 +27,21 @@ public class TeeServicesManager {
     private final TeeSconeService teeSconeService;
     private final TeeGramineService teeGramineService;
 
-    public TeeServicesManager(TeeSconeService teeSconeService, TeeGramineService teeGramineService) {
+    public TeeServicesManager(final TeeSconeService teeSconeService,
+                              final TeeGramineService teeGramineService) {
         this.teeSconeService = teeSconeService;
         this.teeGramineService = teeGramineService;
     }
 
-    public TeeService getTeeService(TeeFramework teeFramework) {
+    public TeeService getTeeService(final TeeFramework teeFramework) {
         if (teeFramework == null) {
             throw new IllegalArgumentException("TEE framework can't be null.");
         }
 
-        switch (teeFramework) {
-            case SCONE:
-                return teeSconeService;
-            case GRAMINE:
-                return teeGramineService;
-            default:
-                throw new IllegalArgumentException("No TEE service defined for this TEE framework.");
-        }
+        return switch (teeFramework) {
+            case SCONE -> teeSconeService;
+            case GRAMINE -> teeGramineService;
+            default -> throw new IllegalArgumentException("No TEE service defined for this TEE framework.");
+        };
     }
 }

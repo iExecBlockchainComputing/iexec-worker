@@ -16,16 +16,21 @@
 
 package com.iexec.worker.tee;
 
+import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.SmsClientCreationException;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
@@ -35,9 +40,11 @@ public abstract class TeeService {
     private final SmsService smsService;
     protected final TeeServicesPropertiesService teeServicesPropertiesService;
 
-    protected TeeService(SgxService sgxService,
-                         SmsService smsService,
-                         TeeServicesPropertiesService teeServicesPropertiesService) {
+    private final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
+
+    protected TeeService(final SgxService sgxService,
+                         final SmsService smsService,
+                         final TeeServicesPropertiesService teeServicesPropertiesService) {
         this.sgxService = sgxService;
         this.smsService = smsService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
@@ -75,6 +82,22 @@ public abstract class TeeService {
         return List.of();
     }
 
+    public void createTeeSession(final WorkerpoolAuthorization workerpoolAuthorization) throws TeeSessionGenerationException {
+        if (teeSessions.containsKey(workerpoolAuthorization.getChainTaskId())) {
+            log.warn("TEE session already exists for task [chainTaskId:{}]", workerpoolAuthorization.getChainTaskId());
+            return;
+        }
+        final TeeSessionGenerationResponse secureSession = smsService.createTeeSession(workerpoolAuthorization);
+        if (secureSession == null) {
+            throw new TeeSessionGenerationException(TeeSessionGenerationError.UNKNOWN_ISSUE);
+        }
+        teeSessions.put(workerpoolAuthorization.getChainTaskId(), secureSession);
+    }
+
+    public TeeSessionGenerationResponse getTeeSession(final String chainTaskId) {
+        return teeSessions.get(chainTaskId);
+    }
+
     /**
      * Start any required service(s) to use TEE with selected technology for given task.
      *
@@ -83,17 +106,33 @@ public abstract class TeeService {
      */
     public abstract boolean prepareTeeForTask(String chainTaskId);
 
-    public abstract List<String> buildPreComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session);
+    public abstract List<String> buildPreComputeDockerEnv(TaskDescription taskDescription);
 
-    public abstract List<String> buildComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session);
+    public abstract List<String> buildComputeDockerEnv(TaskDescription taskDescription);
 
-    public abstract List<String> buildPostComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session);
+    public abstract List<String> buildPostComputeDockerEnv(TaskDescription taskDescription);
 
     public abstract Collection<String> getAdditionalBindings();
+
+    // region Purge
+
+    /**
+     * Purge description of given task.
+     *
+     * @param chainTaskId ID of the task to purge.
+     * @return {@literal true} if no TEE session remains in cache after purge, {@literal false} otherwise.
+     */
+    protected boolean purgeTask(final String chainTaskId) {
+        teeSessions.remove(chainTaskId);
+        return !teeSessions.containsKey(chainTaskId);
+    }
+
+    /**
+     * Purge all cached task descriptions.
+     */
+    protected void purgeAllTasksData() {
+        teeSessions.clear();
+    }
+
+    // endregion
 }

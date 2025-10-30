@@ -16,20 +16,24 @@
 
 package com.iexec.worker.tee.gramine;
 
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+@Slf4j
 @Service
-public class TeeGramineService extends TeeService {
+public class TeeGramineService extends TeeService implements Purgeable {
     private static final String SPS_URL_ENV_VAR = "sps";
     private static final String SPS_SESSION_ENV_VAR = "session";
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
@@ -47,23 +51,20 @@ public class TeeGramineService extends TeeService {
     }
 
     @Override
-    public List<String> buildPreComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
+    public List<String> buildPreComputeDockerEnv(final TaskDescription taskDescription) {
+        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
         return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
     }
 
     @Override
-    public List<String> buildComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
+    public List<String> buildComputeDockerEnv(final TaskDescription taskDescription) {
+        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
         return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
     }
 
     @Override
-    public List<String> buildPostComputeDockerEnv(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse session) {
+    public List<String> buildPostComputeDockerEnv(final TaskDescription taskDescription) {
+        final TeeSessionGenerationResponse session = getTeeSession(taskDescription.getChainTaskId());
         return getDockerEnv(session.getSessionId(), session.getSecretProvisioningUrl());
     }
 
@@ -78,5 +79,18 @@ public class TeeGramineService extends TeeService {
         return List.of(
                 SPS_URL_ENV_VAR + "=" + spsUrl,
                 SPS_SESSION_ENV_VAR + "=" + sessionId);
+    }
+
+    @Override
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
+        return super.purgeTask(chainTaskId);
+    }
+
+    @Override
+    @PreDestroy
+    public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
+        super.purgeAllTasksData();
     }
 }
