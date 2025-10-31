@@ -26,8 +26,10 @@ import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.poco.chain.DealParams;
+import com.iexec.commons.poco.order.OrderTag;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
+import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
@@ -66,17 +68,19 @@ class AppComputeServiceTests {
             .iexecInputFiles(List.of("file0", "file1"))
             .build();
 
-    private final TaskDescription.TaskDescriptionBuilder taskDescriptionBuilder = TaskDescription.builder()
-            .chainDealId(CHAIN_DEAL_ID)
-            .chainTaskId(CHAIN_TASK_ID)
-            .botIndex(0)
-            .botSize(1)
-            .botFirstIndex(0)
-            .appUri(APP_URI)
-            .datasetAddress(BytesUtils.EMPTY_ADDRESS)
-            .maxExecutionTime(MAX_EXECUTION_TIME)
-            .dealParams(dealParams)
-            .isTeeTask(true);
+    TaskDescription.TaskDescriptionBuilder getTaskDescriptionBuilder(final OrderTag tag) {
+        return TaskDescription.builder()
+                .chainDealId(CHAIN_DEAL_ID)
+                .chainTaskId(CHAIN_TASK_ID)
+                .botIndex(0)
+                .botSize(1)
+                .botFirstIndex(0)
+                .appUri(APP_URI)
+                .datasetAddress(BytesUtils.EMPTY_ADDRESS)
+                .maxExecutionTime(MAX_EXECUTION_TIME)
+                .dealParams(dealParams)
+                .teeFramework(TeeUtils.getTeeFramework(tag.getValue()));
+    }
 
     @InjectMocks
     private AppComputeService appComputeService;
@@ -96,9 +100,7 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunCompute() {
-        final TaskDescription taskDescription = taskDescriptionBuilder
-                .isTeeTask(false)
-                .build();
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(OrderTag.STANDARD).build();
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn(inputBind);
         String iexecOutBind = IEXEC_OUT + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
@@ -137,9 +139,8 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunComputeWithTeeAndConnectAppToLas() {
-        final TaskDescription taskDescription = taskDescriptionBuilder
-                .appEnclaveConfiguration(
-                        TeeEnclaveConfiguration.builder().heapSize(HEAP_SIZE).build())
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(OrderTag.TEE_SCONE)
+                .appEnclaveConfiguration(TeeEnclaveConfiguration.builder().heapSize(HEAP_SIZE).build())
                 .build();
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.buildComputeDockerEnv(taskDescription))
@@ -190,9 +191,7 @@ class AppComputeServiceTests {
 
     @Test
     void shouldRunComputeWithFailDockerResponse() {
-        final TaskDescription taskDescription = taskDescriptionBuilder
-                .isTeeTask(false)
-                .build();
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(OrderTag.STANDARD).build();
         when(dockerService.getInputBind(CHAIN_TASK_ID)).thenReturn("/iexec_in:/iexec_in");
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn("/iexec_out:/iexec_out");
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);

@@ -169,15 +169,13 @@ public class ContributionService {
         String enclaveChallenge = workerpoolAuthorization.getEnclaveChallenge();
         String enclaveSignature = computedFile.getEnclaveSignature();
 
-        boolean isTeeTask = iexecHubService.isTeeTask(chainTaskId);
-        if (isTeeTask) {
-            if (!enclaveAuthorizationService.isVerifiedEnclaveSignature(chainTaskId,
-                    resultHash, resultSeal, enclaveSignature, enclaveChallenge)) {
+        if (iexecHubService.getTaskDescription(chainTaskId).requiresSgx()) {
+            if (!enclaveAuthorizationService.isVerifiedEnclaveSignature(
+                    chainTaskId, resultHash, resultSeal, enclaveSignature, enclaveChallenge)) {
                 log.error("Cannot get contribution with invalid enclave " +
                                 "signature [chainTaskId:{}, resultHash:{}, " +
-                                "resultSeal:{}, enclaveSignature:{}, " +
-                                "enclaveChallenge:{}]", chainTaskId, resultHash,
-                        resultSeal, enclaveSignature, enclaveChallenge);
+                                "resultSeal:{}, enclaveSignature:{}, enclaveChallenge:{}]",
+                        chainTaskId, resultHash, resultSeal, enclaveSignature, enclaveChallenge);
                 return null;
             }
         } else {

@@ -160,10 +160,10 @@ public class ComputeManagerService {
      * @see PreComputeService#runTeePreCompute(TaskDescription)
      */
     public PreComputeResponse runPreCompute(final TaskDescription taskDescription) {
-        log.info("Running pre-compute [chainTaskId:{}, isTee:{}]",
-                taskDescription.getChainTaskId(), taskDescription.isTeeTask());
+        log.info("Running pre-compute [chainTaskId:{}, requiresSgx:{}]",
+                taskDescription.getChainTaskId(), taskDescription.requiresSgx());
 
-        if (taskDescription.isTeeTask()) {
+        if (taskDescription.requiresSgx()) {
             return preComputeService.runTeePreCompute(taskDescription);
         }
         return PreComputeResponse.builder().build();
@@ -178,8 +178,8 @@ public class ComputeManagerService {
      */
     public AppComputeResponse runCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Running compute [chainTaskId:{}, isTee:{}]",
-                chainTaskId, taskDescription.isTeeTask());
+        log.info("Running compute [chainTaskId:{}, requiresSgx:{}]",
+                chainTaskId, taskDescription.requiresSgx());
 
         final AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
@@ -211,11 +211,11 @@ public class ComputeManagerService {
      */
     public PostComputeResponse runPostCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
-                chainTaskId, taskDescription.isTeeTask());
+        log.info("Running post-compute [chainTaskId:{}, requiresSgx:{}]",
+                chainTaskId, taskDescription.requiresSgx());
 
         final PostComputeResponse postComputeResponse;
-        if (!taskDescription.isTeeTask()) {
+        if (!taskDescription.requiresSgx()) {
             postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
         } else {
             postComputeResponse = postComputeService.runTeePostCompute(taskDescription);

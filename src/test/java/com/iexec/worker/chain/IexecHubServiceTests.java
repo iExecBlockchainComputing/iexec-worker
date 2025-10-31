@@ -37,7 +37,6 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.exceptions.TransactionException;
-import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.utils.Numeric;
 
@@ -69,8 +68,6 @@ class IexecHubServiceTests {
     @Mock
     private PollingTransactionReceiptProcessor txReceiptProcessor;
     @Mock
-    private RawTransactionManager txManager;
-    @Mock
     private Web3jService web3jService;
     @Mock
     private Web3j web3jClient;
@@ -85,7 +82,6 @@ class IexecHubServiceTests {
         when(web3jService.getWeb3j()).thenReturn(web3jClient);
         iexecHubService = spy(new IexecHubService(signerService, web3jService, configServerConfigurationService));
         ReflectionTestUtils.setField(iexecHubService, "txReceiptProcessor", txReceiptProcessor);
-        ReflectionTestUtils.setField(iexecHubService, "txManager", txManager);
     }
 
     private TransactionReceipt createReceiptWithoutLogs(List<Log> web3Logs) {
@@ -174,7 +170,7 @@ class IexecHubServiceTests {
         web3Log.setTopics(List.of(LogTopic.TASK_FINALIZE_EVENT, CHAIN_TASK_ID));
         final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
         when(signerService.estimateGas(any(), any())).thenReturn(BigInteger.valueOf(100_000L));
-        when(txManager.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
+        when(web3jService.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
         mockTransaction(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
@@ -196,7 +192,7 @@ class IexecHubServiceTests {
         web3Log.setTopics(List.of(LogTopic.TASK_FINALIZE_EVENT, CHAIN_TASK_ID));
         final TransactionReceipt transactionReceipt = createReceiptWithoutLogs(List.of(web3Log));
         when(signerService.estimateGas(any(), any())).thenReturn(BigInteger.valueOf(100_000L));
-        when(txManager.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
+        when(web3jService.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
         mockTransaction(transactionReceipt);
         doReturn(true).when(iexecHubService).isSuccessTx(any(), any(), any());
 
@@ -221,7 +217,7 @@ class IexecHubServiceTests {
                 .workerPoolSignature("workerPoolSignature")
                 .build();
         when(signerService.estimateGas(any(), any())).thenReturn(BigInteger.valueOf(100_000L));
-        when(txManager.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
+        when(web3jService.sendCall(any(), any(), any())).thenReturn(CALLBACK_GAS_IN_HEX);
         doThrow(IOException.class).when(signerService).signAndSendTransaction(any(), any(), any(), any(), any());
         final Optional<ChainReceipt> chainReceipt = iexecHubService.contributeAndFinalize(contribution, "resultLink", "");
         assertThat(chainReceipt).isEmpty();
