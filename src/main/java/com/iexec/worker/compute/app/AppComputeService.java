@@ -69,7 +69,7 @@ public class AppComputeService {
 
         final SgxDriverMode sgxDriverMode;
         final List<String> env;
-        if (taskDescription.isTeeTask()) {
+        if (taskDescription.requiresSgx()) {
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             env = teeService.buildComputeDockerEnv(taskDescription);
             binds.addAll(teeService.getAdditionalBindings().stream().map(Bind::parse).toList());
@@ -83,7 +83,7 @@ public class AppComputeService {
                 .withBinds(binds)
                 .withDevices(sgxService.getSgxDevices());
         // Enclave should be able to connect to the LAS
-        if (taskDescription.isTeeTask()) {
+        if (taskDescription.requiresSgx()) {
             hostConfig.withNetworkMode(workerConfigService.getDockerNetworkName());
         }
         final DockerRunRequest runRequest = DockerRunRequest.builder()

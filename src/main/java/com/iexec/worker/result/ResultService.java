@@ -143,8 +143,6 @@ public class ResultService implements Purgeable {
 
         return ResultModel.builder()
                 .chainTaskId(chainTaskId)
-                .image(resultInfo.getImage())
-                .cmd(resultInfo.getCmd())
                 .zip(zipResultAsBytes)
                 .deterministHash(resultInfo.getDeterministHash())
                 .build();
@@ -193,7 +191,7 @@ public class ResultService implements Purgeable {
         }
 
         // Cloud computing - tee
-        if (task.isTeeTask()) {
+        if (task.requiresSgx()) {
             log.info("Web2 storage, already uploaded (with tee) [chainTaskId:{}]", chainTaskId);
             return getWeb2ResultLink(task);
         }
@@ -351,7 +349,7 @@ public class ResultService implements Purgeable {
             return false;
         }
         final ChainDeal chainDeal = iexecHubService.getChainDeal(chainTask.getDealid()).orElse(null);
-        if (chainDeal == null || !TeeUtils.isTeeTag(chainDeal.getTag())) {
+        if (chainDeal == null || TeeUtils.getTeeFramework(chainDeal.getTag()) == null) {
             log.error("Cannot write computed file if task is not of TEE type [chainTaskId:{}, computedFile:{}]",
                     chainTaskId, computedFile);
             return false;

@@ -26,6 +26,7 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.poco.chain.*;
 import com.iexec.commons.poco.security.Signature;
 import com.iexec.commons.poco.task.TaskDescription;
+import com.iexec.commons.poco.tee.TeeFramework;
 import com.iexec.commons.poco.tee.TeeUtils;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.resultproxy.api.ResultProxyClient;
@@ -37,6 +38,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -180,6 +183,14 @@ class ResultServiceTests {
     // endregion
 
     // region uploadResultAndGetLink
+    private TaskDescription createTaskDescription(final TeeFramework teeFramework, final DealParams dealParams) {
+        return TaskDescription.builder()
+                .chainTaskId(CHAIN_TASK_ID)
+                .teeFramework(teeFramework)
+                .dealParams(dealParams)
+                .build();
+    }
+
     @Test
     void shouldNotGetResultLinkWhenNoTask() {
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(null);
@@ -194,20 +205,17 @@ class ResultServiceTests {
         assertThat(resultLink).isEqualTo(resultService.buildResultLink("ethereum", CALLBACK));
     }
 
-    @Test
-    void shouldGetTeeWeb2ResultLinkSinceIpfs() {
+    @ParameterizedTest
+    @EnumSource(value = TeeFramework.class, names = {"SCONE", "GRAMINE"})
+    void shouldGetTeeWeb2ResultLinkSinceIpfs(final TeeFramework teeFramework) {
         final String storage = IPFS_RESULT_STORAGE_PROVIDER;
         final String ipfsHash = "QmcipfsHash";
         final DealParams dealParams = DealParams.builder()
                 .iexecResultStorageProvider(storage)
                 .iexecResultStorageProxy(CUSTOM_RESULT_PROXY_URL)
                 .build();
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder()
-                        .chainTaskId(CHAIN_TASK_ID)
-                        .isTeeTask(true)
-                        .dealParams(dealParams)
-                        .build());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(createTaskDescription(teeFramework, dealParams));
         when(resultProxyClient.getIpfsHashForTask(CHAIN_TASK_ID)).thenReturn(ipfsHash);
         when(publicConfigurationService.createResultProxyClientFromURL(CUSTOM_RESULT_PROXY_URL))
                 .thenReturn(resultProxyClient);
@@ -219,30 +227,32 @@ class ResultServiceTests {
         verify(resultProxyClient).getIpfsHashForTask(CHAIN_TASK_ID);
     }
 
-    @Test
-    void shouldGetTeeWeb2ResultLinkSinceDropbox() {
+    @ParameterizedTest
+    @EnumSource(value = TeeFramework.class, names = {"SCONE", "GRAMINE"})
+    void shouldGetTeeWeb2ResultLinkSinceDropbox(final TeeFramework teeFramework) {
         final String storage = DROPBOX_RESULT_STORAGE_PROVIDER;
         final DealParams dealParams = DealParams.builder()
                 .iexecResultStorageProvider(storage)
                 .build();
 
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).dealParams(dealParams).build());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(createTaskDescription(teeFramework, dealParams));
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
         assertThat(resultLink).isEqualTo(resultService.buildResultLink(storage, "/results/" + CHAIN_TASK_ID));
     }
 
-    @Test
-    void shouldNotGetTeeWeb2ResultLinkSinceBadStorage() {
+    @ParameterizedTest
+    @EnumSource(value = TeeFramework.class)
+    void shouldNotGetTeeWeb2ResultLinkSinceBadStorage(final TeeFramework teeFramework) {
         final String storage = "some-unsupported-third-party-storage";
         final DealParams dealParams = DealParams.builder()
                 .iexecResultStorageProvider(storage)
                 .build();
 
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).isTeeTask(true).dealParams(dealParams).build());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(createTaskDescription(teeFramework, dealParams));
 
         final String resultLink = resultService.uploadResultAndGetLink(WORKERPOOL_AUTHORIZATION);
 
@@ -258,8 +268,8 @@ class ResultServiceTests {
 
         when(iexecHubService.getChainTask(CHAIN_TASK_ID)).thenReturn(Optional.of(CHAIN_TASK));
         when(iexecHubService.getChainDeal(CHAIN_DEAL_ID)).thenReturn(Optional.of(CHAIN_DEAL));
-        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(
-                TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).dealParams(dealParams).build());
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID))
+                .thenReturn(createTaskDescription(null, dealParams));
         when(signerService.signMessageHash(anyString())).thenReturn(new Signature(AUTHORIZATION));
 
         ResultProxyClient mockClient = mock(ResultProxyClient.class);
