@@ -26,7 +26,6 @@ import java.util.List;
 @Value
 @Builder
 public class AppComputeResponse implements ComputeResponse {
-
     @Builder.Default
     List<WorkflowError> exitCauses = List.of();
     String stdout;

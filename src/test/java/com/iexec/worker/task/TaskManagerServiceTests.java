@@ -27,7 +27,7 @@ import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotificationExtra;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.chain.Contribution;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
@@ -40,6 +40,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.workflow.WorkflowError;
@@ -117,6 +118,22 @@ class TaskManagerServiceTests {
 
     final List<WorkflowError> emptyCauses = new ArrayList<>();
 
+    // region teeSessionGenerationErrorToReplicateStatusCause
+    @ParameterizedTest
+    @EnumSource(value = TeeSessionGenerationError.class)
+    void shouldAllTeeSessionGenerationErrorHaveMatch(final TeeSessionGenerationError error) {
+        assertThat(taskManagerService.teeSessionGenerationErrorToReplicateStatusCause(error))
+                .isNotNull();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ReplicateStatusCause.class, names = "TEE_SESSION_GENERATION_.*", mode = EnumSource.Mode.MATCH_ALL)
+    void shouldReplicateStatusCauseExist(final ReplicateStatusCause cause) {
+        final String expectedError = cause.name().replaceFirst("^TEE_SESSION_GENERATION_", "");
+        assertThat(com.iexec.common.tee.TeeSessionGenerationError.values()).contains(com.iexec.common.tee.TeeSessionGenerationError.valueOf(expectedError));
+    }
+    // endregion
+
     //region start
     @Test
     void shouldStartStandardTask() {
@@ -185,6 +202,23 @@ class TaskManagerServiceTests {
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
     }
+
+    @Test
+    void shouldNotStartSinceTeeSessionCreationFailed() throws TeeSessionGenerationException {
+        when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
+                .thenReturn(emptyCauses);
+        when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
+        when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
+                .thenReturn(emptyCauses);
+        doThrow(new TeeSessionGenerationException(TeeSessionGenerationError.UNKNOWN_ISSUE))
+                .when(teeMockedService).createTeeSession(any());
+
+        ReplicateActionResponse actionResponse =
+                taskManagerService.start(getTaskDescriptionBuilder(true).build());
+
+        assertThat(actionResponse.isSuccess()).isFalse();
+        assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_SESSION_GENERATION_UNKNOWN_ISSUE);
+    }
     //endregion
 
     //region downloadApp
@@ -225,7 +259,7 @@ class TaskManagerServiceTests {
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -251,7 +285,7 @@ class TaskManagerServiceTests {
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(POST_COMPUTE_FAILED_UNKNOWN_ISSUE);
-        verify(computeManagerService, never()).runPostCompute(any(TaskDescription.class), any(TeeSessionGenerationResponse.class));
+        verify(computeManagerService, never()).runPostCompute(any(TaskDescription.class));
     }
 
     @Test
@@ -263,7 +297,7 @@ class TaskManagerServiceTests {
                 .thenReturn(false);
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE))).build());
 
@@ -399,7 +433,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -440,7 +474,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_DOWNLOAD_FAILED));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE))).build());
 
@@ -480,7 +514,7 @@ class TaskManagerServiceTests {
                 .thenThrow(new WorkflowException(DATASET_FILE_BAD_CHECKSUM));
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -525,7 +559,7 @@ class TaskManagerServiceTests {
                 taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse actionResponse =
@@ -572,7 +606,7 @@ class TaskManagerServiceTests {
                 taskDescription.getDealParams().getIexecInputFiles());
         when(resultService.writeErrorToIexecOut(anyString(), any(), any()))
                 .thenReturn(true);
-        when(computeManagerService.runPostCompute(taskDescription, null))
+        when(computeManagerService.runPostCompute(taskDescription))
                 .thenReturn(PostComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE))).build());
 
@@ -589,26 +623,22 @@ class TaskManagerServiceTests {
     @Test
     void shouldComputeStandardTask() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(false).build();
-        WorkerpoolAuthorization workerpoolAuthorization =
-                WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
-        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
-                .thenReturn(workerpoolAuthorization);
-        when(computeManagerService.runPreCompute(any(), any()))
+        when(computeManagerService.runPreCompute(any()))
                 .thenReturn(PreComputeResponse.builder().build());
-        when(computeManagerService.runCompute(any(), any()))
+        when(computeManagerService.runCompute(any()))
                 .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
-        when(computeManagerService.runPostCompute(any(), any()))
+        when(computeManagerService.runPostCompute(any()))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
 
-        verify(computeManagerService).runPostCompute(any(), any());
+        verify(computeManagerService).runPostCompute(any());
         verifyNoInteractions(iexecHubService, teeServicesManager);
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -624,8 +654,6 @@ class TaskManagerServiceTests {
     @Test
     void shouldComputeTeeTask() {
         final TaskDescription taskDescription = getTaskDescriptionBuilder(true).build();
-        WorkerpoolAuthorization workerpoolAuthorization =
-                WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
@@ -634,19 +662,17 @@ class TaskManagerServiceTests {
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.prepareTeeForTask(CHAIN_TASK_ID))
                 .thenReturn(true);
-        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
-                .thenReturn(workerpoolAuthorization);
-        when(computeManagerService.runPreCompute(any(), any()))
+        when(computeManagerService.runPreCompute(any()))
                 .thenReturn(PreComputeResponse.builder().build());
-        when(computeManagerService.runCompute(any(), any()))
+        when(computeManagerService.runCompute(any()))
                 .thenReturn(AppComputeResponse.builder().stdout("stdout").stderr("stderr").build());
-        when(computeManagerService.runPostCompute(any(), any()))
+        when(computeManagerService.runPostCompute(any()))
                 .thenReturn(PostComputeResponse.builder().build());
 
         ReplicateActionResponse replicateActionResponse =
                 taskManagerService.compute(taskDescription);
 
-        verify(computeManagerService).runPostCompute(any(), any());
+        verify(computeManagerService).runPostCompute(any());
         verifyNoInteractions(iexecHubService);
         Assertions.assertThat(replicateActionResponse)
                 .isNotNull()
@@ -696,16 +722,12 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotComputeSinceFailedPreCompute() {
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
-        WorkerpoolAuthorization workerpoolAuthorization =
-                WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
-        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
-                .thenReturn(workerpoolAuthorization);
-        when(computeManagerService.runPreCompute(any(), any()))
+        when(computeManagerService.runPreCompute(any()))
                 .thenReturn(PreComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(PRE_COMPUTE_DATASET_URL_MISSING)))
                         .build());
@@ -743,18 +765,14 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotComputeSinceFailedAppCompute() {
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
-        WorkerpoolAuthorization workerpoolAuthorization =
-                WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
-        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
-                .thenReturn(workerpoolAuthorization);
-        when(computeManagerService.runPreCompute(any(), any()))
+        when(computeManagerService.runPreCompute(any()))
                 .thenReturn(PreComputeResponse.builder().build());
-        when(computeManagerService.runCompute(any(), any()))
+        when(computeManagerService.runCompute(any()))
                 .thenReturn(AppComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(APP_COMPUTE_FAILED)))
                         .exitCode(5)
@@ -778,20 +796,16 @@ class TaskManagerServiceTests {
     @Test
     void shouldNotComputeSinceFailedPostCompute() {
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(CHAIN_TASK_ID).build();
-        WorkerpoolAuthorization workerpoolAuthorization =
-                WorkerpoolAuthorization.builder().build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(computeManagerService.isAppDownloaded(taskDescription.getAppUri()))
                 .thenReturn(true);
-        when(contributionService.getWorkerpoolAuthorization(CHAIN_TASK_ID))
-                .thenReturn(workerpoolAuthorization);
-        when(computeManagerService.runPreCompute(any(), any()))
+        when(computeManagerService.runPreCompute(any()))
                 .thenReturn(PreComputeResponse.builder().build());
-        when(computeManagerService.runCompute(any(), any()))
+        when(computeManagerService.runCompute(any()))
                 .thenReturn(AppComputeResponse.builder().stdout("stdout").build());
-        when(computeManagerService.runPostCompute(any(), any()))
+        when(computeManagerService.runPostCompute(any()))
                 .thenReturn(PostComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE)))
                         .build());

@@ -19,10 +19,8 @@ package com.iexec.worker.compute;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.result.ComputedFile;
 import com.iexec.common.utils.FileHelper;
-import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.dapp.DappType;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.app.AppComputeResponse;
 import com.iexec.worker.compute.app.AppComputeService;
 import com.iexec.worker.compute.post.PostComputeResponse;
@@ -91,8 +89,7 @@ public class ComputeManagerService {
         if (taskDescription == null || taskDescription.getAppType() == null) {
             return false;
         }
-        boolean isDockerType =
-                taskDescription.getAppType().equals(DappType.DOCKER);
+        final boolean isDockerType = taskDescription.getAppType() == DappType.DOCKER;
         if (!isDockerType || taskDescription.getAppUri() == null) {
             return false;
         }
@@ -153,23 +150,21 @@ public class ComputeManagerService {
      * Execute pre-compute stage for standard and TEE tasks.
      * <ul>
      * <li>Standard tasks: Nothing is executed, an empty result is returned
-     * <li>TEE tasks: Call {@link PreComputeService#runTeePreCompute(TaskDescription, WorkerpoolAuthorization)}
+     * <li>TEE tasks: Call {@link PreComputeService#runTeePreCompute(TaskDescription)}
      * </ul>
      * TEE tasks: download pre-compute and post-compute images,
      * create SCONE secure session, and run pre-compute container.
      *
      * @param taskDescription Description of the task
-     * @param workerpoolAuth  Authorization to contribute delivered by the scheduler for the given task
      * @return {@code PreComputeResponse} instance
-     * @see PreComputeService#runTeePreCompute(TaskDescription, WorkerpoolAuthorization)
+     * @see PreComputeService#runTeePreCompute(TaskDescription)
      */
-    public PreComputeResponse runPreCompute(final TaskDescription taskDescription,
-                                            final WorkerpoolAuthorization workerpoolAuth) {
+    public PreComputeResponse runPreCompute(final TaskDescription taskDescription) {
         log.info("Running pre-compute [chainTaskId:{}, isTee:{}]",
                 taskDescription.getChainTaskId(), taskDescription.isTeeTask());
 
         if (taskDescription.isTeeTask()) {
-            return preComputeService.runTeePreCompute(taskDescription, workerpoolAuth);
+            return preComputeService.runTeePreCompute(taskDescription);
         }
         return PreComputeResponse.builder().build();
     }
@@ -178,18 +173,15 @@ public class ComputeManagerService {
      * Execute application stage for standard and TEE tasks.
      *
      * @param taskDescription Description of the task
-     * @param secureSession   Session ID and session storage URL for TEE tasks
      * @return {@code AppComputeResponse} instance
-     * @see AppComputeService#runCompute(TaskDescription, TeeSessionGenerationResponse)
+     * @see AppComputeService#runCompute(TaskDescription)
      */
-    public AppComputeResponse runCompute(final TaskDescription taskDescription,
-                                         final TeeSessionGenerationResponse secureSession) {
+    public AppComputeResponse runCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
 
-        final AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription, secureSession);
+        final AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
         if (appComputeResponse.isSuccessful()) {
             writeLogs(chainTaskId, STDOUT_FILENAME, appComputeResponse.getStdout());
@@ -213,13 +205,11 @@ public class ComputeManagerService {
      * This method calls methods from {@code PostComputeService} depending on the Task type.
      *
      * @param taskDescription Description of the task
-     * @param secureSession   Session ID and session storage URL for TEE tasks
      * @return {@code PostComputeResponse} instance
      * @see PostComputeService#runStandardPostCompute(TaskDescription)
-     * @see PostComputeService#runTeePostCompute(TaskDescription, TeeSessionGenerationResponse)
+     * @see PostComputeService#runTeePostCompute(TaskDescription)
      */
-    public PostComputeResponse runPostCompute(final TaskDescription taskDescription,
-                                              final TeeSessionGenerationResponse secureSession) {
+    public PostComputeResponse runPostCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
         log.info("Running post-compute [chainTaskId:{}, isTee:{}]",
                 chainTaskId, taskDescription.isTeeTask());
@@ -227,12 +217,8 @@ public class ComputeManagerService {
         final PostComputeResponse postComputeResponse;
         if (!taskDescription.isTeeTask()) {
             postComputeResponse = postComputeService.runStandardPostCompute(taskDescription);
-        } else if (secureSession != null) {
-            postComputeResponse = postComputeService.runTeePostCompute(taskDescription, secureSession);
         } else {
-            postComputeResponse = PostComputeResponse.builder()
-                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_FAILED_UNKNOWN_ISSUE)))
-                    .build();
+            postComputeResponse = postComputeService.runTeePostCompute(taskDescription);
         }
         if (!postComputeResponse.isSuccessful()) {
             return postComputeResponse;

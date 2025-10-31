@@ -25,7 +25,6 @@ import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -61,8 +60,7 @@ public class AppComputeService {
         this.appComputeDurationsService = appComputeDurationsService;
     }
 
-    public AppComputeResponse runCompute(final TaskDescription taskDescription,
-                                         final TeeSessionGenerationResponse secureSession) {
+    public AppComputeResponse runCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
 
         final List<Bind> binds = new ArrayList<>();
@@ -73,7 +71,7 @@ public class AppComputeService {
         final List<String> env;
         if (taskDescription.isTeeTask()) {
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
-            env = teeService.buildComputeDockerEnv(taskDescription, secureSession);
+            env = teeService.buildComputeDockerEnv(taskDescription);
             binds.addAll(teeService.getAdditionalBindings().stream().map(Bind::parse).toList());
             sgxDriverMode = sgxService.getSgxDriverMode();
         } else {

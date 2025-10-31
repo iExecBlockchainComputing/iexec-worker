@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2022-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,8 @@
 package com.iexec.worker.tee;
 
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
 import java.util.List;
@@ -39,17 +37,17 @@ class TeeServiceMock extends TeeService {
     }
 
     @Override
-    public List<String> buildPreComputeDockerEnv(TaskDescription taskDescription, @NotNull TeeSessionGenerationResponse session) {
+    public List<String> buildPreComputeDockerEnv(TaskDescription taskDescription) {
         return null;
     }
 
     @Override
-    public List<String> buildComputeDockerEnv(TaskDescription taskDescription, @NotNull TeeSessionGenerationResponse session) {
+    public List<String> buildComputeDockerEnv(TaskDescription taskDescription) {
         return null;
     }
 
     @Override
-    public List<String> buildPostComputeDockerEnv(TaskDescription taskDescription, @NotNull TeeSessionGenerationResponse session) {
+    public List<String> buildPostComputeDockerEnv(TaskDescription taskDescription) {
         return null;
     }
 

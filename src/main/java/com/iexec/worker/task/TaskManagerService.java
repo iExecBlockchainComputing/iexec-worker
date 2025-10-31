@@ -26,6 +26,7 @@ import com.iexec.commons.poco.chain.ChainReceipt;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.core.notification.TaskNotificationExtra;
+import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.worker.chain.Contribution;
 import com.iexec.worker.chain.ContributionService;
 import com.iexec.worker.chain.IexecHubService;
@@ -38,6 +39,7 @@ import com.iexec.worker.dataset.DataService;
 import com.iexec.worker.replicate.ReplicateActionResponse;
 import com.iexec.worker.result.ResultService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.utils.LoggingUtils;
@@ -124,9 +126,33 @@ public class TaskManagerService {
             final String resultProxyUrl = taskDescription.getDealParams().getIexecResultStorageProxy();
             final String token = resultService.getIexecUploadToken(workerpoolAuthorization, resultProxyUrl);
             smsService.pushToken(workerpoolAuthorization, token);
+
+            try {
+                teeService.createTeeSession(workerpoolAuthorization);
+            } catch (TeeSessionGenerationException e) {
+                log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
+                final List<WorkflowError> issues = List.of(
+                        new WorkflowError(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError())));
+                return getFailureResponseAndPrintErrors(issues, context, chainTaskId);
+            }
         }
 
         return ReplicateActionResponse.success();
+    }
+
+    /**
+     * {@link TeeSessionGenerationError} and {@link ReplicateStatusCause} are dynamically bound
+     * such as {@code TeeSessionGenerationError.MEMBER_X == ReplicateStatusCause.TEE_SESSION_GENERATION_MEMBER_X}.
+     *
+     * @return {@literal null} if no member of {@link ReplicateStatusCause} matches,
+     * the matching member otherwise.
+     */
+    ReplicateStatusCause teeSessionGenerationErrorToReplicateStatusCause(TeeSessionGenerationError error) {
+        try {
+            return ReplicateStatusCause.valueOf("TEE_SESSION_GENERATION_" + error.name());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     ReplicateActionResponse downloadApp(final TaskDescription taskDescription) {
@@ -207,7 +233,7 @@ public class TaskManagerService {
         errors.forEach(error -> logError(error.cause(), context, chainTaskId));
         final boolean isOk = resultService.writeErrorToIexecOut(chainTaskId, errorStatus, errors);
         // try to run post-compute
-        if (isOk && computeManagerService.runPostCompute(taskDescription, null).isSuccessful()) {
+        if (isOk && computeManagerService.runPostCompute(taskDescription).isSuccessful()) {
             //Graceful error, worker will be prompt to contribute
             return ReplicateActionResponse.failure(errors.get(0).cause());
         }
@@ -237,14 +263,12 @@ public class TaskManagerService {
             }
         }
 
-        final WorkerpoolAuthorization workerpoolAuthorization = contributionService.getWorkerpoolAuthorization(chainTaskId);
-
-        final PreComputeResponse preResponse = computeManagerService.runPreCompute(taskDescription, workerpoolAuthorization);
+        final PreComputeResponse preResponse = computeManagerService.runPreCompute(taskDescription);
         if (!preResponse.isSuccessful()) {
             return getFailureResponseAndPrintErrors(preResponse.getExitCauses(), context, chainTaskId);
         }
 
-        final AppComputeResponse appResponse = computeManagerService.runCompute(taskDescription, preResponse.getSecureSession());
+        final AppComputeResponse appResponse = computeManagerService.runCompute(taskDescription);
         if (!appResponse.isSuccessful()) {
             final List<WorkflowError> appErrors = appResponse.getExitCauses();
             appErrors.forEach(error -> logError(error.cause(), context, chainTaskId));
@@ -261,7 +285,7 @@ public class TaskManagerService {
                             .build());
         }
 
-        final PostComputeResponse postResponse = computeManagerService.runPostCompute(taskDescription, preResponse.getSecureSession());
+        final PostComputeResponse postResponse = computeManagerService.runPostCompute(taskDescription);
         if (!postResponse.isSuccessful()) {
             final List<WorkflowError> postComputeErrors = postResponse.getExitCauses();
             postComputeErrors.forEach(error -> logError(error.cause(), context, chainTaskId));

@@ -29,7 +29,6 @@ import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.commons.poco.utils.BytesUtils;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
@@ -48,7 +47,8 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AppComputeServiceTests {
@@ -57,7 +57,6 @@ class AppComputeServiceTests {
     private static final String CHAIN_TASK_ID = "CHAIN_TASK_ID";
     private static final String APP_URI = "APP_URI";
     private static final String WORKER_NAME = "WORKER_NAME";
-    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private static final long MAX_EXECUTION_TIME = 1000;
     private static final String INPUT = "INPUT";
     private static final String IEXEC_OUT = "IEXEC_OUT";
@@ -111,8 +110,7 @@ class AppComputeServiceTests {
                 .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        final AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription, SECURE_SESSION);
+        final AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService).run(any());
@@ -144,7 +142,7 @@ class AppComputeServiceTests {
                         TeeEnclaveConfiguration.builder().heapSize(HEAP_SIZE).build())
                 .build();
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
-        when(teeMockedService.buildComputeDockerEnv(taskDescription, SECURE_SESSION))
+        when(teeMockedService.buildComputeDockerEnv(taskDescription))
                 .thenReturn(List.of("var0", "var1"));
         final List<String> env = List.of("var0", "var1");
         String inputBind = INPUT + ":" + IexecFileHelper.SLASH_IEXEC_IN;
@@ -164,8 +162,7 @@ class AppComputeServiceTests {
         List<Device> devices = List.of(Device.parse("/dev/isgx"));
         when(sgxService.getSgxDevices()).thenReturn(devices);
 
-        AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription, SECURE_SESSION);
+        AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService).run(any());
@@ -203,9 +200,7 @@ class AppComputeServiceTests {
                 DockerRunResponse.builder().finalStatus(DockerRunFinalStatus.FAILED).build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
 
-        AppComputeResponse appComputeResponse =
-                appComputeService.runCompute(taskDescription,
-                        SECURE_SESSION);
+        AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
         Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
         verify(dockerService).run(any());

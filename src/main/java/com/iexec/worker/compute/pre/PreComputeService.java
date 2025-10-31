@@ -22,11 +22,8 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
-import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
-import com.iexec.sms.api.TeeSessionGenerationError;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
@@ -35,8 +32,6 @@ import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
 import com.iexec.worker.sgx.SgxService;
-import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.workflow.WorkflowError;
@@ -49,13 +44,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static com.iexec.sms.api.TeeSessionGenerationError.UNKNOWN_ISSUE;
-
 @Slf4j
 @Service
 public class PreComputeService {
 
-    private final SmsService smsService;
     private final DockerService dockerService;
     private final TeeServicesManager teeServicesManager;
     private final WorkerConfigurationService workerConfigService;
@@ -65,7 +57,6 @@ public class PreComputeService {
     private final ComputeDurationsService preComputeDurationsService;
 
     public PreComputeService(
-            SmsService smsService,
             DockerService dockerService,
             TeeServicesManager teeServicesManager,
             WorkerConfigurationService workerConfigService,
@@ -73,7 +64,6 @@ public class PreComputeService {
             ComputeExitCauseService computeExitCauseService,
             TeeServicesPropertiesService teeServicesPropertiesService,
             ComputeDurationsService preComputeDurationsService) {
-        this.smsService = smsService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.workerConfigService = workerConfigService;
@@ -90,13 +80,11 @@ public class PreComputeService {
      * is started to handle them.
      *
      * @param taskDescription Task description read on-chain
-     * @param workerpoolAuth  Workerpool authorization provided by scheduler
      * @return PreComputeResponse
      */
-    public PreComputeResponse runTeePreCompute(TaskDescription taskDescription, WorkerpoolAuthorization workerpoolAuth) {
+    public PreComputeResponse runTeePreCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
-        final PreComputeResponse.PreComputeResponseBuilder preComputeResponseBuilder = PreComputeResponse.builder()
-                .isTeeTask(taskDescription.isTeeTask());
+        final PreComputeResponse.PreComputeResponseBuilder preComputeResponseBuilder = PreComputeResponse.builder();
 
         // verify enclave configuration for compute stage
         final TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
@@ -122,37 +110,21 @@ public class PreComputeService {
             preComputeResponseBuilder.exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION)));
             return preComputeResponseBuilder.build();
         }
-        // create secure session
-        final TeeSessionGenerationResponse secureSession;
-        try {
-            secureSession = smsService.createTeeSession(workerpoolAuth);
-            if (secureSession == null) {
-                throw new TeeSessionGenerationException(UNKNOWN_ISSUE);
-            }
-            preComputeResponseBuilder.secureSession(secureSession);
-        } catch (TeeSessionGenerationException e) {
-            log.error("Failed to create TEE secure session [chainTaskId:{}]", chainTaskId, e);
-            return preComputeResponseBuilder
-                    .exitCauses(List.of(new WorkflowError(teeSessionGenerationErrorToReplicateStatusCause(e.getTeeSessionGenerationError()))))
-                    .build();
-        }
 
         // run TEE pre-compute container if needed
         if (taskDescription.requiresPreCompute()) {
             log.info("Task contains TEE input data [chainTaskId:{}, containsDataset:{}, containsInputFiles:{}, isBulkRequest:{}]",
                     chainTaskId, taskDescription.containsDataset(), taskDescription.containsInputFiles(), taskDescription.isBulkRequest());
-            final List<WorkflowError> exitCauses = downloadDatasetAndFiles(taskDescription, secureSession);
+            final List<WorkflowError> exitCauses = downloadDatasetAndFiles(taskDescription);
             preComputeResponseBuilder.exitCauses(exitCauses);
         }
 
         return preComputeResponseBuilder.build();
     }
 
-    private List<WorkflowError> downloadDatasetAndFiles(
-            final TaskDescription taskDescription,
-            final TeeSessionGenerationResponse secureSession) {
+    private List<WorkflowError> downloadDatasetAndFiles(final TaskDescription taskDescription) {
         try {
-            final Integer exitCode = prepareTeeInputData(taskDescription, secureSession);
+            final Integer exitCode = prepareTeeInputData(taskDescription);
             if (exitCode == null || exitCode != 0) {
                 final String chainTaskId = taskDescription.getChainTaskId();
                 final List<WorkflowError> exitCauses = getExitCauses(chainTaskId, exitCode);
@@ -179,22 +151,6 @@ public class PreComputeService {
         };
     }
 
-
-    /**
-     * {@link TeeSessionGenerationError} and {@link ReplicateStatusCause} are dynamically bound
-     * such as {@code TeeSessionGenerationError.MEMBER_X == ReplicateStatusCause.TEE_SESSION_GENERATION_MEMBER_X}.
-     *
-     * @return {@literal null} if no member of {@link ReplicateStatusCause} matches,
-     * the matching member otherwise.
-     */
-    ReplicateStatusCause teeSessionGenerationErrorToReplicateStatusCause(TeeSessionGenerationError error) {
-        try {
-            return ReplicateStatusCause.valueOf("TEE_SESSION_GENERATION_" + error.name());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     /**
      * Run tee-worker-pre-compute docker image. The pre-compute enclave downloads
      * the dataset and decrypts it for the compute stage. It also downloads input
@@ -202,10 +158,7 @@ public class PreComputeService {
      *
      * @return pre-compute exit code
      */
-    private Integer prepareTeeInputData(
-            TaskDescription taskDescription,
-            TeeSessionGenerationResponse secureSession)
-            throws TimeoutException {
+    private Integer prepareTeeInputData(final TaskDescription taskDescription) throws TimeoutException {
         String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
@@ -221,7 +174,7 @@ public class PreComputeService {
         }
         // run container
         List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeFramework())
-                .buildPreComputeDockerEnv(taskDescription, secureSession);
+                .buildPreComputeDockerEnv(taskDescription);
         List<Bind> binds = Collections.singletonList(Bind.parse(dockerService.getInputBind(chainTaskId)));
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(binds)
@@ -244,15 +197,14 @@ public class PreComputeService {
         }
         final DockerRunFinalStatus finalStatus = dockerResponse.getFinalStatus();
         if (finalStatus == DockerRunFinalStatus.TIMEOUT) {
-            log.error("Tee pre-compute container timed out" +
-                            " [chainTaskId:{}, maxExecutionTime:{}]",
+            log.error("Tee pre-compute container timed out [chainTaskId:{}, maxExecutionTime:{}]",
                     chainTaskId, taskDescription.getMaxExecutionTime());
             throw new TimeoutException("Tee pre-compute container timed out");
         }
         if (finalStatus == DockerRunFinalStatus.FAILED) {
             int exitCode = dockerResponse.getContainerExitCode();
-            log.error("Tee pre-compute container failed [chainTaskId:{}, " +
-                    "exitCode:{}]", chainTaskId, exitCode);
+            log.error("Tee pre-compute container failed [chainTaskId:{}, exitCode:{}]",
+                    chainTaskId, exitCode);
             return dockerResponse.getContainerExitCode();
         }
         log.info("Prepared tee input data successfully [chainTaskId:{}]", chainTaskId);

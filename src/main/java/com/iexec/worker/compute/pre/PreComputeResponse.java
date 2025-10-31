@@ -16,7 +16,6 @@
 
 package com.iexec.worker.compute.pre;
 
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.worker.compute.ComputeResponse;
 import com.iexec.worker.workflow.WorkflowError;
 import lombok.Builder;
@@ -27,19 +26,8 @@ import java.util.List;
 @Value
 @Builder
 public class PreComputeResponse implements ComputeResponse {
-
     @Builder.Default
     List<WorkflowError> exitCauses = List.of();
-    boolean isTeeTask;
-    TeeSessionGenerationResponse secureSession;
     String stdout;
     String stderr;
-
-    @Override
-    public boolean isSuccessful() {
-        if (isTeeTask) {
-            return ComputeResponse.super.isSuccessful() && secureSession != null;
-        }
-        return ComputeResponse.super.isSuccessful();
-    }
 }

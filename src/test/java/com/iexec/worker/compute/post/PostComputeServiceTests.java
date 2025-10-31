@@ -28,7 +28,6 @@ import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
@@ -78,7 +77,6 @@ class PostComputeServiceTests {
     private static final String WORKER_NAME = "WORKER_NAME";
     private static final String TEE_POST_COMPUTE_IMAGE = "TEE_POST_COMPUTE_IMAGE";
     private static final String TEE_POST_COMPUTE_ENTRYPOINT = "postComputeEntrypoint";
-    private static final TeeSessionGenerationResponse SECURE_SESSION = mock(TeeSessionGenerationResponse.class);
     private static final long MAX_EXECUTION_TIME = 1000;
 
     private final TeeAppProperties postComputeProperties = TeeAppProperties.builder()
@@ -212,7 +210,7 @@ class PostComputeServiceTests {
         when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(properties);
         when(properties.getPostComputeProperties()).thenReturn(postComputeProperties);
         when(dockerClientInstanceMock.isImagePresent(TEE_POST_COMPUTE_IMAGE)).thenReturn(true);
-        when(teeMockedService.buildPostComputeDockerEnv(taskDescription, SECURE_SESSION)).thenReturn(env);
+        when(teeMockedService.buildPostComputeDockerEnv(taskDescription)).thenReturn(env);
         String iexecOutBind = iexecOut + ":" + IexecFileHelper.SLASH_IEXEC_OUT;
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
@@ -239,7 +237,7 @@ class PostComputeServiceTests {
         when(sgxService.getSgxDevices()).thenReturn(devices);
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
+                postComputeService.runTeePostCompute(taskDescription);
 
         assertThat(postComputeResponse.isSuccessful()).isTrue();
         verify(dockerService, times(1)).run(any());
@@ -282,7 +280,7 @@ class PostComputeServiceTests {
                 .thenReturn(false);
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
+                postComputeService.runTeePostCompute(taskDescription);
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCauses())
                 .containsExactly(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING));
@@ -310,7 +308,7 @@ class PostComputeServiceTests {
         }
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
+                postComputeService.runTeePostCompute(taskDescription);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCauses())
@@ -340,7 +338,7 @@ class PostComputeServiceTests {
         prepareMocksForTeePostCompute(expectedDockerRunResponse);
 
         PostComputeResponse postComputeResponse =
-                postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
+                postComputeService.runTeePostCompute(taskDescription);
 
         assertThat(postComputeResponse.isSuccessful()).isFalse();
         assertThat(postComputeResponse.getExitCauses())
@@ -362,7 +360,7 @@ class PostComputeServiceTests {
                 .containerExitCode(exitCode)
                 .build();
         prepareMocksForTeePostCompute(dockerResponse);
-        final PostComputeResponse response = postComputeService.runTeePostCompute(taskDescription, SECURE_SESSION);
+        final PostComputeResponse response = postComputeService.runTeePostCompute(taskDescription);
         assertThat(response.isSuccessful()).isFalse();
         assertThat(response.getExitCauses())
                 .containsExactly(new WorkflowError(POST_COMPUTE_FAILED_UNKNOWN_ISSUE));
