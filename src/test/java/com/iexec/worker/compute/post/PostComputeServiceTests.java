@@ -25,7 +25,6 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
-import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.config.TeeAppProperties;
@@ -35,7 +34,6 @@ import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
@@ -106,8 +104,6 @@ class PostComputeServiceTests {
     private TeeServicesProperties properties;
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
-    @Mock
-    private SgxService sgxService;
     @Mock
     private ComputeExitCauseService computeExitCauseService;
     @Mock
@@ -215,7 +211,6 @@ class PostComputeServiceTests {
         when(dockerService.getIexecOutBind(CHAIN_TASK_ID)).thenReturn(iexecOutBind);
         when(workerConfigService.getWorkerName()).thenReturn(WORKER_NAME);
         when(workerConfigService.getDockerNetworkName()).thenReturn("lasNetworkName");
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
         when(dockerService.run(any())).thenReturn(dockerRunResponse);
     }
 
@@ -234,7 +229,7 @@ class PostComputeServiceTests {
                 .build();
         prepareMocksForTeePostCompute(expectedDockerRunResponse);
         List<Device> devices = List.of(Device.parse("/dev/isgx"));
-        when(sgxService.getSgxDevices()).thenReturn(devices);
+        when(teeMockedService.getDevices()).thenReturn(devices);
 
         PostComputeResponse postComputeResponse =
                 postComputeService.runTeePostCompute(taskDescription);
@@ -261,7 +256,6 @@ class PostComputeServiceTests {
                         .entrypoint(TEE_POST_COMPUTE_ENTRYPOINT)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .sgxDriverMode(SgxDriverMode.LEGACY)
                         .build()
         );
     }

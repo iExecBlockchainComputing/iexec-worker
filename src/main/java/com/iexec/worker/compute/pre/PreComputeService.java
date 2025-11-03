@@ -31,7 +31,7 @@ import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
-import com.iexec.worker.sgx.SgxService;
+import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.workflow.WorkflowError;
@@ -40,7 +40,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
@@ -51,23 +50,19 @@ public class PreComputeService {
     private final DockerService dockerService;
     private final TeeServicesManager teeServicesManager;
     private final WorkerConfigurationService workerConfigService;
-    private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
     private final TeeServicesPropertiesService teeServicesPropertiesService;
     private final ComputeDurationsService preComputeDurationsService;
 
-    public PreComputeService(
-            DockerService dockerService,
-            TeeServicesManager teeServicesManager,
-            WorkerConfigurationService workerConfigService,
-            SgxService sgxService,
-            ComputeExitCauseService computeExitCauseService,
-            TeeServicesPropertiesService teeServicesPropertiesService,
-            ComputeDurationsService preComputeDurationsService) {
+    public PreComputeService(final DockerService dockerService,
+                             final TeeServicesManager teeServicesManager,
+                             final WorkerConfigurationService workerConfigService,
+                             final ComputeExitCauseService computeExitCauseService,
+                             final TeeServicesPropertiesService teeServicesPropertiesService,
+                             final ComputeDurationsService preComputeDurationsService) {
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
         this.workerConfigService = workerConfigService;
-        this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
         this.preComputeDurationsService = preComputeDurationsService;
@@ -159,28 +154,27 @@ public class PreComputeService {
      * @return pre-compute exit code
      */
     private Integer prepareTeeInputData(final TaskDescription taskDescription) throws TimeoutException {
-        String chainTaskId = taskDescription.getChainTaskId();
+        final String chainTaskId = taskDescription.getChainTaskId();
         log.info("Preparing tee input data [chainTaskId:{}]", chainTaskId);
 
-        TeeServicesProperties properties =
-                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
+        final TeeServicesProperties properties = teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
 
         // check that docker image is present
         final TeeAppProperties preComputeProperties = properties.getPreComputeProperties();
-        String preComputeImage = preComputeProperties.getImage();
+        final String preComputeImage = preComputeProperties.getImage();
         if (!dockerService.getClient().isImagePresent(preComputeImage)) {
             log.error("Tee pre-compute image not found locally [chainTaskId:{}]", chainTaskId);
             return null;
         }
         // run container
-        List<String> env = teeServicesManager.getTeeService(taskDescription.getTeeFramework())
-                .buildPreComputeDockerEnv(taskDescription);
-        List<Bind> binds = Collections.singletonList(Bind.parse(dockerService.getInputBind(chainTaskId)));
-        HostConfig hostConfig = HostConfig.newHostConfig()
+        final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
+        final List<String> env = teeService.buildPreComputeDockerEnv(taskDescription);
+        final List<Bind> binds = List.of(Bind.parse(dockerService.getInputBind(chainTaskId)));
+        final HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(binds)
-                .withDevices(sgxService.getSgxDevices())
+                .withDevices(teeService.getDevices())
                 .withNetworkMode(workerConfigService.getDockerNetworkName());
-        DockerRunRequest request = DockerRunRequest.builder()
+        final DockerRunRequest request = DockerRunRequest.builder()
                 .hostConfig(hostConfig)
                 .chainTaskId(chainTaskId)
                 .containerName(getTeePreComputeContainerName(chainTaskId))
@@ -188,9 +182,8 @@ public class PreComputeService {
                 .entrypoint(preComputeProperties.getEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
-                .sgxDriverMode(sgxService.getSgxDriverMode())
                 .build();
-        DockerRunResponse dockerResponse = dockerService.run(request);
+        final DockerRunResponse dockerResponse = dockerService.run(request);
         final Duration executionDuration = dockerResponse.getExecutionDuration();
         if (executionDuration != null) {
             preComputeDurationsService.addDurationForTask(chainTaskId, executionDuration.toMillis());
