@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.github.dockerjava.api.model.Device;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
@@ -48,14 +49,15 @@ public class TeeSconeService extends TeeService implements Purgeable {
     private static final String SCONE_LOG = "SCONE_LOG";
     private static final String SCONE_VERSION = "SCONE_VERSION";
 
+    private final SgxService sgxService;
     private final LasServicesManager lasServicesManager;
 
-    public TeeSconeService(
-            SgxService sgxService,
-            SmsService smsService,
-            TeeServicesPropertiesService teeServicesPropertiesService,
-            LasServicesManager lasServicesManager) {
-        super(sgxService, smsService, teeServicesPropertiesService);
+    public TeeSconeService(final SgxService sgxService,
+                           final SmsService smsService,
+                           final TeeServicesPropertiesService teeServicesPropertiesService,
+                           final LasServicesManager lasServicesManager) {
+        super(smsService, teeServicesPropertiesService);
+        this.sgxService = sgxService;
         this.lasServicesManager = lasServicesManager;
 
         if (isTeeEnabled()) {
@@ -63,6 +65,11 @@ public class TeeSconeService extends TeeService implements Purgeable {
         } else {
             LoggingUtils.printHighlightedMessage("Worker will not run TEE tasks");
         }
+    }
+
+    @Override
+    public boolean isTeeEnabled() {
+        return sgxService.isSgxEnabled();
     }
 
     @Override
@@ -76,7 +83,7 @@ public class TeeSconeService extends TeeService implements Purgeable {
     }
 
     @Override
-    public boolean prepareTeeForTask(String chainTaskId) {
+    public boolean prepareTeeForTask(final String chainTaskId) {
         return lasServicesManager.startLasService(chainTaskId);
     }
 
@@ -113,6 +120,11 @@ public class TeeSconeService extends TeeService implements Purgeable {
     @Override
     public Collection<String> getAdditionalBindings() {
         return Collections.emptySet();
+    }
+
+    @Override
+    public List<Device> getDevices() {
+        return sgxService.getSgxDevices();
     }
 
     private List<String> getDockerEnv(String chainTaskId,

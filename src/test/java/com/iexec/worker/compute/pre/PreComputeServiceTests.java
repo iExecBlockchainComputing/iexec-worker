@@ -20,7 +20,6 @@ import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
-import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -34,7 +33,6 @@ import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
@@ -99,8 +97,6 @@ class PreComputeServiceTests {
     @Mock
     private DockerClientInstance dockerClientInstanceMock;
     @Mock
-    private SgxService sgxService;
-    @Mock
     private ComputeExitCauseService computeExitCauseService;
     @Mock
     private TeeServicesPropertiesService teeServicesPropertiesService;
@@ -136,7 +132,6 @@ class PreComputeServiceTests {
                 .thenReturn(List.of("env"));
         when(dockerService.getInputBind(chainTaskId)).thenReturn(IEXEC_IN_BIND);
         when(workerConfigService.getDockerNetworkName()).thenReturn(network);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
         when(dockerService.run(any())).thenReturn(dockerRunResponse);
     }
 
@@ -145,7 +140,6 @@ class PreComputeServiceTests {
         DockerRunRequest capturedRequest = captor.getValue();
         assertThat(capturedRequest.getImageUri()).isEqualTo(PRE_COMPUTE_IMAGE);
         assertThat(capturedRequest.getEntrypoint()).isEqualTo(PRE_COMPUTE_ENTRYPOINT);
-        assertThat(capturedRequest.getSgxDriverMode()).isEqualTo(SgxDriverMode.LEGACY);
         assertThat(capturedRequest.getHostConfig().getNetworkMode()).isEqualTo(network);
         assertThat(capturedRequest.getHostConfig().getBinds()[0]).hasToString(IEXEC_IN_BIND + ":rw");
     }

@@ -37,9 +37,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TeeGramineServiceTests {
@@ -60,13 +59,26 @@ class TeeGramineServiceTests {
     @InjectMocks
     TeeGramineService teeGramineService;
 
+    // region isTeeEnabled
+    @Test
+    void shouldTeeBeEnabled() {
+        when(sgxService.isSgxEnabled()).thenReturn(true);
+        assertThat(teeGramineService.isTeeEnabled()).isTrue();
+    }
+
+    @Test
+    void shouldTeeNotBeEnabled() {
+        when(sgxService.isSgxEnabled()).thenReturn(false);
+        assertThat(teeGramineService.isTeeEnabled()).isFalse();
+    }
+    // endregion
+
     // region prepareTeeForTask
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", "0x123", "chainTaskId"})
     void shouldPrepareTeeForTask(String chainTaskId) {
-        assertTrue(teeGramineService.prepareTeeForTask(chainTaskId));
-
+        assertThat(teeGramineService.prepareTeeForTask(chainTaskId)).isTrue();
         verifyNoInteractions(sgxService, smsClientProvider, teeServicesPropertiesService);
     }
     // endregion
@@ -78,12 +90,7 @@ class TeeGramineServiceTests {
         ReflectionTestUtils.setField(teeGramineService, "teeSessions", Map.of(chainTaskId, TEE_SESSION_GENERATION_RESPONSE));
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(chainTaskId).build();
         final List<String> env = teeGramineService.buildPreComputeDockerEnv(taskDescription);
-
-        assertEquals(2, env.size());
-        assertTrue(env.containsAll(List.of(
-                "sps=http://spsUrl",
-                "session=0x123_session_id"
-        )));
+        assertThat(env).containsExactly("sps=http://spsUrl", "session=0x123_session_id");
     }
     // endregion
 
@@ -94,12 +101,7 @@ class TeeGramineServiceTests {
         ReflectionTestUtils.setField(teeGramineService, "teeSessions", Map.of(chainTaskId, TEE_SESSION_GENERATION_RESPONSE));
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(chainTaskId).build();
         final List<String> env = teeGramineService.buildComputeDockerEnv(taskDescription);
-
-        assertEquals(2, env.size());
-        assertTrue(env.containsAll(List.of(
-                "sps=http://spsUrl",
-                "session=0x123_session_id"
-        )));
+        assertThat(env).containsExactly("sps=http://spsUrl", "session=0x123_session_id");
     }
     // endregion
 
@@ -110,12 +112,7 @@ class TeeGramineServiceTests {
         ReflectionTestUtils.setField(teeGramineService, "teeSessions", Map.of(chainTaskId, TEE_SESSION_GENERATION_RESPONSE));
         final TaskDescription taskDescription = TaskDescription.builder().chainTaskId(chainTaskId).build();
         final List<String> env = teeGramineService.buildPostComputeDockerEnv(taskDescription);
-
-        assertEquals(2, env.size());
-        assertTrue(env.containsAll(List.of(
-                "sps=http://spsUrl",
-                "session=0x123_session_id"
-        )));
+        assertThat(env).containsExactly("sps=http://spsUrl", "session=0x123_session_id");
     }
     // endregion
 
@@ -123,9 +120,7 @@ class TeeGramineServiceTests {
     @Test
     void shouldGetAdditionalBindings() {
         final Collection<String> bindings = teeGramineService.getAdditionalBindings();
-
-        assertEquals(1, bindings.size());
-        assertTrue(bindings.contains("/var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket"));
+        assertThat(bindings).containsExactly("/var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket");
     }
     // endregion
 

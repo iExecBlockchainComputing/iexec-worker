@@ -24,7 +24,6 @@ import com.iexec.common.utils.IexecFileHelper;
 import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
-import com.iexec.commons.containers.SgxDriverMode;
 import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.order.OrderTag;
 import com.iexec.commons.poco.task.TaskDescription;
@@ -34,10 +33,8 @@ import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -48,6 +45,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Duration;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -91,8 +89,6 @@ class AppComputeServiceTests {
     @Mock
     private TeeServicesManager teeServicesManager;
     @Mock
-    private SgxService sgxService;
-    @Mock
     private ComputeDurationsService appComputeDurationsService;
 
     @Mock
@@ -114,7 +110,7 @@ class AppComputeServiceTests {
 
         final AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
+        assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
@@ -122,9 +118,8 @@ class AppComputeServiceTests {
         DockerRunRequest dockerRunRequest =
                 argumentCaptor.getAllValues().get(0);
         HostConfig hostConfig = HostConfig.newHostConfig()
-                .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind))
-                .withDevices(List.of());
-        Assertions.assertThat(dockerRunRequest).isEqualTo(
+                .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind));
+        assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
                         .hostConfig(hostConfig)
                         .chainTaskId(CHAIN_TASK_ID)
@@ -132,7 +127,6 @@ class AppComputeServiceTests {
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(IexecEnvUtils.getComputeStageEnvList(taskDescription))
-                        .sgxDriverMode(SgxDriverMode.NONE)
                         .build()
         );
     }
@@ -159,13 +153,12 @@ class AppComputeServiceTests {
                 .executionDuration(Duration.ofSeconds(10))
                 .build();
         when(dockerService.run(any())).thenReturn(expectedDockerRunResponse);
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.LEGACY);
         List<Device> devices = List.of(Device.parse("/dev/isgx"));
-        when(sgxService.getSgxDevices()).thenReturn(devices);
+        when(teeMockedService.getDevices()).thenReturn(devices);
 
         AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isTrue();
+        assertThat(appComputeResponse.isSuccessful()).isTrue();
         verify(dockerService).run(any());
         ArgumentCaptor<DockerRunRequest> argumentCaptor =
                 ArgumentCaptor.forClass(DockerRunRequest.class);
@@ -176,7 +169,7 @@ class AppComputeServiceTests {
                 .withBinds(Bind.parse(inputBind), Bind.parse(iexecOutBind))
                 .withDevices(devices)
                 .withNetworkMode(lasNetworkName);
-        Assertions.assertThat(dockerRunRequest).isEqualTo(
+        assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
                         .hostConfig(hostConfig)
                         .chainTaskId(CHAIN_TASK_ID)
@@ -184,7 +177,6 @@ class AppComputeServiceTests {
                         .imageUri(APP_URI)
                         .maxExecutionTime(MAX_EXECUTION_TIME)
                         .env(env)
-                        .sgxDriverMode(SgxDriverMode.LEGACY)
                         .build()
         );
     }
@@ -201,7 +193,7 @@ class AppComputeServiceTests {
 
         AppComputeResponse appComputeResponse = appComputeService.runCompute(taskDescription);
 
-        Assertions.assertThat(appComputeResponse.isSuccessful()).isFalse();
+        assertThat(appComputeResponse.isSuccessful()).isFalse();
         verify(dockerService).run(any());
     }
 

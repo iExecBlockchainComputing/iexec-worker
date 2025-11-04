@@ -60,16 +60,13 @@ public class LasService {
             return true;
         }
 
-        HostConfig hostConfig = HostConfig.newHostConfig()
+        final HostConfig hostConfig = HostConfig.newHostConfig()
                 .withDevices(sgxService.getSgxDevices())
                 .withNetworkMode(workerConfigService.getDockerNetworkName());
-        DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
+        final DockerRunRequest dockerRunRequest = DockerRunRequest.builder()
                 .hostConfig(hostConfig)
                 .containerName(containerName)
                 .imageUri(imageUri)
-                // pre-compute, application & post-compute enclaves will be
-                // able to talk to the LAS via this network
-                .sgxDriverMode(sgxService.getSgxDriverMode())
                 .maxExecutionTime(0)
                 .build();
         if (!imageUri.contains(sconeConfig.getRegistry().getName())) {
@@ -77,7 +74,7 @@ public class LasService {
                     imageUri, sconeConfig.getRegistry().getName());
             return false;
         }
-        DockerClientInstance client;
+        final DockerClientInstance client;
         try {
             client = dockerService.getClient(
                     sconeConfig.getRegistry().getName(),

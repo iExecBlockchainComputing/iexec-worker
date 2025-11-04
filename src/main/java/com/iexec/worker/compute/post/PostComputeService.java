@@ -26,7 +26,6 @@ import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.sms.api.TeeSessionGenerationResponse;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
@@ -34,7 +33,6 @@ import com.iexec.worker.compute.ComputeStage;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.metric.ComputeDurationsService;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
@@ -47,7 +45,6 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -61,23 +58,19 @@ public class PostComputeService {
     private final WorkerConfigurationService workerConfigService;
     private final DockerService dockerService;
     private final TeeServicesManager teeServicesManager;
-    private final SgxService sgxService;
     private final ComputeExitCauseService computeExitCauseService;
     private final TeeServicesPropertiesService teeServicesPropertiesService;
     private final ComputeDurationsService postComputeDurationsService;
 
-    public PostComputeService(
-            WorkerConfigurationService workerConfigService,
-            DockerService dockerService,
-            TeeServicesManager teeServicesManager,
-            SgxService sgxService,
-            ComputeExitCauseService computeExitCauseService,
-            TeeServicesPropertiesService teeServicesPropertiesService,
-            ComputeDurationsService postComputeDurationsService) {
+    public PostComputeService(final WorkerConfigurationService workerConfigService,
+                              final DockerService dockerService,
+                              final TeeServicesManager teeServicesManager,
+                              final ComputeExitCauseService computeExitCauseService,
+                              final TeeServicesPropertiesService teeServicesPropertiesService,
+                              final ComputeDurationsService postComputeDurationsService) {
         this.workerConfigService = workerConfigService;
         this.dockerService = dockerService;
         this.teeServicesManager = teeServicesManager;
-        this.sgxService = sgxService;
         this.computeExitCauseService = computeExitCauseService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
         this.postComputeDurationsService = postComputeDurationsService;
@@ -162,13 +155,12 @@ public class PostComputeService {
     }
 
     public PostComputeResponse runTeePostCompute(final TaskDescription taskDescription) {
-        String chainTaskId = taskDescription.getChainTaskId();
+        final String chainTaskId = taskDescription.getChainTaskId();
 
-        TeeServicesProperties properties =
-                teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
+        final TeeServicesProperties properties = teeServicesPropertiesService.getTeeServicesProperties(chainTaskId);
 
         final TeeAppProperties postComputeProperties = properties.getPostComputeProperties();
-        String postComputeImage = postComputeProperties.getImage();
+        final String postComputeImage = postComputeProperties.getImage();
         if (!dockerService.getClient().isImagePresent(postComputeImage)) {
             log.error("Tee post-compute image not found locally [chainTaskId:{}]",
                     chainTaskId);
@@ -176,21 +168,20 @@ public class PostComputeService {
                     .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.POST_COMPUTE_IMAGE_MISSING)))
                     .build();
         }
-        TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
-        List<String> env = teeService
-                .buildPostComputeDockerEnv(taskDescription);
-        List<Bind> binds = Stream.of(
-                        Collections.singletonList(dockerService.getIexecOutBind(chainTaskId)),
+        final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
+        final List<String> env = teeService.buildPostComputeDockerEnv(taskDescription);
+        final List<Bind> binds = Stream.of(
+                        List.of(dockerService.getIexecOutBind(chainTaskId)),
                         teeService.getAdditionalBindings())
                 .flatMap(Collection::stream)
                 .map(Bind::parse)
                 .toList();
 
-        HostConfig hostConfig = HostConfig.newHostConfig()
+        final HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(binds)
-                .withDevices(sgxService.getSgxDevices())
+                .withDevices(teeService.getDevices())
                 .withNetworkMode(workerConfigService.getDockerNetworkName());
-        DockerRunRequest request = DockerRunRequest.builder()
+        final DockerRunRequest request = DockerRunRequest.builder()
                 .hostConfig(hostConfig)
                 .chainTaskId(chainTaskId)
                 .containerName(getTaskTeePostComputeContainerName(chainTaskId))
@@ -198,9 +189,8 @@ public class PostComputeService {
                 .entrypoint(postComputeProperties.getEntrypoint())
                 .maxExecutionTime(taskDescription.getMaxExecutionTime())
                 .env(env)
-                .sgxDriverMode(sgxService.getSgxDriverMode())
                 .build();
-        DockerRunResponse dockerResponse = dockerService.run(request);
+        final DockerRunResponse dockerResponse = dockerService.run(request);
         final Duration executionDuration = dockerResponse.getExecutionDuration();
         if (executionDuration != null) {
             postComputeDurationsService.addDurationForTask(chainTaskId, executionDuration.toMillis());

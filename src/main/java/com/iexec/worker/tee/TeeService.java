@@ -16,12 +16,12 @@
 
 package com.iexec.worker.tee;
 
+import com.github.dockerjava.api.model.Device;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.workflow.WorkflowError;
@@ -36,22 +36,15 @@ import static com.iexec.common.replicate.ReplicateStatusCause.*;
 
 @Slf4j
 public abstract class TeeService {
-    private final SgxService sgxService;
     private final SmsService smsService;
     protected final TeeServicesPropertiesService teeServicesPropertiesService;
 
     private final Map<String, TeeSessionGenerationResponse> teeSessions = new ConcurrentHashMap<>();
 
-    protected TeeService(final SgxService sgxService,
-                         final SmsService smsService,
+    protected TeeService(final SmsService smsService,
                          final TeeServicesPropertiesService teeServicesPropertiesService) {
-        this.sgxService = sgxService;
         this.smsService = smsService;
         this.teeServicesPropertiesService = teeServicesPropertiesService;
-    }
-
-    public boolean isTeeEnabled() {
-        return sgxService.isSgxEnabled();
     }
 
     public List<WorkflowError> areTeePrerequisitesMetForTask(final String chainTaskId) {
@@ -98,6 +91,8 @@ public abstract class TeeService {
         return teeSessions.get(chainTaskId);
     }
 
+    public abstract boolean isTeeEnabled();
+
     /**
      * Start any required service(s) to use TEE with selected technology for given task.
      *
@@ -113,6 +108,8 @@ public abstract class TeeService {
     public abstract List<String> buildPostComputeDockerEnv(TaskDescription taskDescription);
 
     public abstract Collection<String> getAdditionalBindings();
+
+    public abstract List<Device> getDevices();
 
     // region Purge
 

@@ -16,8 +16,8 @@
 
 package com.iexec.worker.tee;
 
+import com.github.dockerjava.api.model.Device;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 
 import java.util.Collection;
@@ -25,10 +25,14 @@ import java.util.List;
 
 class TeeServiceMock extends TeeService {
 
-    protected TeeServiceMock(SgxService sgxService,
-                             SmsService smsService,
+    protected TeeServiceMock(SmsService smsService,
                              TeeServicesPropertiesService teeServicesPropertiesService) {
-        super(sgxService, smsService, teeServicesPropertiesService);
+        super(smsService, teeServicesPropertiesService);
+    }
+
+    @Override
+    public boolean isTeeEnabled() {
+        return true;
     }
 
     @Override
@@ -53,6 +57,11 @@ class TeeServiceMock extends TeeService {
 
     @Override
     public Collection<String> getAdditionalBindings() {
-        return null;
+        return List.of();
+    }
+
+    @Override
+    public List<Device> getDevices() {
+        return List.of();
     }
 }

@@ -17,19 +17,14 @@
 package com.iexec.worker.tee;
 
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
-import com.iexec.sms.api.SmsClient;
-import com.iexec.sms.api.SmsClientCreationException;
 import com.iexec.sms.api.TeeSessionGenerationError;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
-import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
-import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -38,12 +33,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @ExtendWith(OutputCaptureExtension.class)
@@ -54,86 +47,10 @@ class TeeServiceTests {
             .build();
 
     @Mock
-    SgxService sgxService;
-    @Mock
     SmsService smsService;
-    @Mock
-    SmsClient smsClient;
-    @Mock
-    TeeServicesPropertiesService teeServicesPropertiesService;
 
-    @Spy
     @InjectMocks
     TeeServiceMock teeService;
-
-    // region isTeeEnabled
-    @Test
-    void shouldTeeBeEnabled() {
-        when(sgxService.isSgxEnabled()).thenReturn(true);
-
-        assertTrue(teeService.isTeeEnabled());
-
-        verify(sgxService).isSgxEnabled();
-    }
-
-    @Test
-    void shouldTeeNotBeEnabled() {
-        when(sgxService.isSgxEnabled()).thenReturn(false);
-
-        assertFalse(teeService.isTeeEnabled());
-
-        verify(sgxService).isSgxEnabled();
-    }
-    // endregion
-
-    // region areTeePrerequisitesMetForTask
-    @Test
-    void shouldTeePrerequisitesBeMet() {
-        when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
-
-        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .isEmpty();
-    }
-
-    @Test
-    void shouldTeePrerequisitesNotBeMetSinceTeeNotEnabled() {
-        when(teeService.isTeeEnabled()).thenReturn(false);
-
-        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(new WorkflowError(TEE_NOT_SUPPORTED));
-    }
-
-    @Test
-    void shouldTeePrerequisitesNotBeMetSinceSmsClientCantBeLoaded() {
-        when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenThrow(SmsClientCreationException.class);
-
-        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(new WorkflowError(UNKNOWN_SMS));
-    }
-
-    @Test
-    void shouldTeePrerequisitesNotBeMetSinceTeeEnclaveConfigurationIsNull() {
-        when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(NullPointerException.class);
-
-        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
-    }
-
-    @Test
-    void shouldTeePrerequisitesNotBeMetSinceTeeWorkflowConfigurationCantBeLoaded() {
-        when(teeService.isTeeEnabled()).thenReturn(true);
-        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenThrow(RuntimeException.class);
-
-        assertThat(teeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
-                .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
-    }
-    // endregion
 
     // region TEE sessions cache
     @Test

@@ -26,7 +26,6 @@ import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sgx.SgxService;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -80,7 +80,6 @@ class LasServiceTests {
     }
 
     private void createLasServiceStubs() {
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NATIVE);
         when(sconeConfiguration.getRegistry())
                 .thenReturn(new SconeConfiguration.SconeRegistry(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD));
         when(dockerService.getClient(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD))
@@ -100,12 +99,11 @@ class LasServiceTests {
         assertTrue(lasService.start());
         verify(dockerService).run(dockerRunRequestArgumentCaptor.capture());
         DockerRunRequest dockerRunRequest = dockerRunRequestArgumentCaptor.getValue();
-        Assertions.assertThat(dockerRunRequest).isEqualTo(
+        assertThat(dockerRunRequest).isEqualTo(
                 DockerRunRequest.builder()
                         .hostConfig(HostConfig.newHostConfig().withDevices(devices))
                         .containerName(CONTAINER_NAME)
                         .imageUri(IMAGE_URI)
-                        .sgxDriverMode(SgxDriverMode.NATIVE)
                         .maxExecutionTime(0)
                         .build()
         );
@@ -128,7 +126,6 @@ class LasServiceTests {
 
     @Test
     void shouldNotStartLasServiceSinceUnknownRegistry() {
-        when(sgxService.getSgxDriverMode()).thenReturn(SgxDriverMode.NATIVE);
         when(sconeConfiguration.getRegistry())
                 .thenReturn(new SconeConfiguration.SconeRegistry(REGISTRY_NAME, REGISTRY_USERNAME, REGISTRY_PASSWORD));
 

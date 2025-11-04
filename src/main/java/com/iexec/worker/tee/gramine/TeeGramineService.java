@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.gramine;
 
+import com.github.dockerjava.api.model.Device;
 import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationResponse;
@@ -38,10 +39,18 @@ public class TeeGramineService extends TeeService implements Purgeable {
     private static final String SPS_SESSION_ENV_VAR = "session";
     private static final String AESMD_SOCKET = "/var/run/aesmd/aesm.socket";
 
-    public TeeGramineService(SgxService sgxService,
-                             SmsService smsService,
-                             TeeServicesPropertiesService teeServicesPropertiesService) {
-        super(sgxService, smsService, teeServicesPropertiesService);
+    private final SgxService sgxService;
+
+    public TeeGramineService(final SgxService sgxService,
+                             final SmsService smsService,
+                             final TeeServicesPropertiesService teeServicesPropertiesService) {
+        super(smsService, teeServicesPropertiesService);
+        this.sgxService = sgxService;
+    }
+
+    @Override
+    public boolean isTeeEnabled() {
+        return sgxService.isSgxEnabled();
     }
 
     @Override
@@ -70,6 +79,11 @@ public class TeeGramineService extends TeeService implements Purgeable {
         final List<String> bindings = new ArrayList<>();
         bindings.add(AESMD_SOCKET + ":" + AESMD_SOCKET);
         return bindings;
+    }
+
+    @Override
+    public List<Device> getDevices() {
+        return sgxService.getSgxDevices();
     }
 
     private List<String> getDockerEnv(final TeeSessionGenerationResponse session) {
