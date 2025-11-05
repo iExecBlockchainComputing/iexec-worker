@@ -23,7 +23,6 @@ import com.iexec.commons.containers.DockerRunFinalStatus;
 import com.iexec.commons.containers.DockerRunRequest;
 import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.sms.api.config.TeeServicesProperties;
 import com.iexec.worker.compute.ComputeExitCauseService;
@@ -37,7 +36,6 @@ import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.util.unit.DataSize;
 
 import java.time.Duration;
 import java.util.List;
@@ -80,31 +78,6 @@ public class PreComputeService {
     public PreComputeResponse runTeePreCompute(final TaskDescription taskDescription) {
         final String chainTaskId = taskDescription.getChainTaskId();
         final PreComputeResponse.PreComputeResponseBuilder preComputeResponseBuilder = PreComputeResponse.builder();
-
-        // verify enclave configuration for compute stage
-        final TeeEnclaveConfiguration enclaveConfig = taskDescription.getAppEnclaveConfiguration();
-        if (enclaveConfig == null) {
-            log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
-            return preComputeResponseBuilder
-                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION)))
-                    .build();
-        }
-        if (!enclaveConfig.getValidator().isValid()) {
-            log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
-                    chainTaskId, enclaveConfig.getValidator().validate().toString());
-            return preComputeResponseBuilder
-                    .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION)))
-                    .build();
-        }
-        long teeComputeMaxHeapSize = DataSize
-                .ofGigabytes(workerConfigService.getTeeComputeMaxHeapSizeGb())
-                .toBytes();
-        if (enclaveConfig.getHeapSize() > teeComputeMaxHeapSize) {
-            log.error("Enclave configuration should define a proper heap size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
-                    chainTaskId, enclaveConfig.getHeapSize(), teeComputeMaxHeapSize);
-            preComputeResponseBuilder.exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION)));
-            return preComputeResponseBuilder.build();
-        }
 
         // run TEE pre-compute container if needed
         if (taskDescription.requiresPreCompute()) {

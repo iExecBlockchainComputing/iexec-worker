@@ -18,21 +18,26 @@ package com.iexec.worker.tee;
 
 import com.iexec.common.lifecycle.purge.ExpiringTaskMapFactory;
 import com.iexec.common.lifecycle.purge.Purgeable;
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.containers.client.DockerClientInstance;
-import com.iexec.commons.poco.chain.IexecHubAbstractService;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.commons.poco.tee.TeeFramework;
 import com.iexec.sms.api.SmsClient;
 import com.iexec.sms.api.config.TeeServicesProperties;
+import com.iexec.worker.chain.IexecHubService;
+import com.iexec.worker.config.WorkerConfigurationService;
 import com.iexec.worker.docker.DockerService;
 import com.iexec.worker.sms.SmsService;
+import com.iexec.worker.workflow.WorkflowError;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Manages the {@link TeeServicesProperties}, providing an easy way to get properties for a task
@@ -43,24 +48,47 @@ import java.util.Objects;
 public class TeeServicesPropertiesService implements Purgeable {
     private final SmsService smsService;
     private final DockerService dockerService;
-    private final IexecHubAbstractService iexecHubService;
+    private final IexecHubService iexecHubService;
+    private final WorkerConfigurationService workerConfigurationService;
 
     private final Map<String, TeeServicesProperties> propertiesForTask = ExpiringTaskMapFactory.getExpiringTaskMap();
 
-    public TeeServicesPropertiesService(SmsService smsService,
-                                        DockerService dockerService,
-                                        IexecHubAbstractService iexecHubService) {
+    public TeeServicesPropertiesService(final SmsService smsService,
+                                        final DockerService dockerService,
+                                        final IexecHubService iexecHubService,
+                                        final WorkerConfigurationService workerConfigurationService) {
         this.smsService = smsService;
         this.dockerService = dockerService;
         this.iexecHubService = iexecHubService;
+        this.workerConfigurationService = workerConfigurationService;
     }
 
     public TeeServicesProperties getTeeServicesProperties(final String chainTaskId) {
-        return propertiesForTask.computeIfAbsent(chainTaskId, this::retrieveTeeServicesProperties);
+        return propertiesForTask.get(chainTaskId);
     }
 
-    <T extends TeeServicesProperties> T retrieveTeeServicesProperties(final String chainTaskId) {
+    public List<WorkflowError> retrieveTeeServicesProperties(final String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+
+        // FIXME better errors
+        final TeeEnclaveConfiguration teeEnclaveConfiguration = taskDescription.getAppEnclaveConfiguration();
+        if (teeEnclaveConfiguration == null) {
+            log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
+            return List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
+        }
+        if (!teeEnclaveConfiguration.getValidator().isValid()) {
+            log.error("Invalid enclave configuration [chainTaskId:{}, violations:{}]",
+                    chainTaskId, teeEnclaveConfiguration.getValidator().validate().toString());
+            return List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION));
+        }
+        long teeComputeMaxHeapSize = DataSize
+                .ofGigabytes(workerConfigurationService.getTeeComputeMaxHeapSizeGb())
+                .toBytes();
+        if (teeEnclaveConfiguration.getHeapSize() > teeComputeMaxHeapSize) {
+            log.error("Enclave configuration should define a proper heap size [chainTaskId:{}, heapSize:{}, maxHeapSize:{}]",
+                    chainTaskId, teeEnclaveConfiguration.getHeapSize(), teeComputeMaxHeapSize);
+            return List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_INVALID_ENCLAVE_HEAP_CONFIGURATION));
+        }
 
         // SMS client should already have been created once before.
         // If it couldn't be created, then the task would have been aborted.
@@ -69,40 +97,38 @@ public class TeeServicesPropertiesService implements Purgeable {
         final TeeFramework teeFramework = taskDescription.getTeeFramework();
         final TeeFramework smsTeeFramework = smsClient.getTeeFramework();
         if (smsTeeFramework != teeFramework) {
-            throw new TeeServicesPropertiesCreationException(
-                    "SMS is configured for another TEE framework" +
-                            " [chainTaskId:" + chainTaskId +
-                            ", requiredFramework:" + teeFramework +
-                            ", actualFramework:" + smsTeeFramework + "]");
+            return List.of(new WorkflowError(ReplicateStatusCause.GET_TEE_SERVICES_CONFIGURATION_FAILED,
+                    String.format("SMS is configured for another TEE framework [chainTaskId:%s, requiredFramework:%s, actualFramework:%s]",
+                            chainTaskId, teeFramework, smsTeeFramework)));
         }
 
-        final TeeEnclaveConfiguration teeEnclaveConfiguration = taskDescription.getAppEnclaveConfiguration();
-        Objects.requireNonNull(teeEnclaveConfiguration, "Missing TEE enclave configuration [chainTaskId:" + chainTaskId + "]");
-        
-        final T properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, teeEnclaveConfiguration.getVersion());
+        final TeeServicesProperties properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, teeEnclaveConfiguration.getVersion());
         log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
-            throw new TeeServicesPropertiesCreationException(
-                    "Missing TEE services properties [chainTaskId:" + chainTaskId + "]");
+            return List.of(new WorkflowError(ReplicateStatusCause.GET_TEE_SERVICES_CONFIGURATION_FAILED,
+                    String.format("Missing TEE services properties [chainTaskId:%s]", chainTaskId)));
         }
 
         final String preComputeImage = properties.getPreComputeProperties().getImage();
         final String postComputeImage = properties.getPostComputeProperties().getImage();
+        final List<WorkflowError> errors = new ArrayList<>();
 
-        checkImageIsPresentOrDownload(preComputeImage, chainTaskId, "preComputeImage");
-        checkImageIsPresentOrDownload(postComputeImage, chainTaskId, "postComputeImage");
+        errors.addAll(checkImageIsPresentOrDownload(preComputeImage, chainTaskId, "preComputeImage"));
+        errors.addAll(checkImageIsPresentOrDownload(postComputeImage, chainTaskId, "postComputeImage"));
 
-        return properties;
+        if (errors.isEmpty()) {
+            propertiesForTask.put(chainTaskId, properties);
+        }
+        return List.copyOf(errors);
     }
 
-    private void checkImageIsPresentOrDownload(final String image, final String chainTaskId, final String imageType) {
+    private List<WorkflowError> checkImageIsPresentOrDownload(final String image, final String chainTaskId, final String imageType) {
         final DockerClientInstance client = dockerService.getClient(image);
-        if (!client.isImagePresent(image)
-                && !client.pullImage(image)) {
-            throw new TeeServicesPropertiesCreationException(
-                    "Failed to download image " +
-                            "[chainTaskId:" + chainTaskId + ", " + imageType + ":" + image + "]");
+        if (!client.isImagePresent(image) && !client.pullImage(image)) {
+            return List.of(new WorkflowError(ReplicateStatusCause.GET_TEE_SERVICES_CONFIGURATION_FAILED,
+                    String.format("Failed to download image [chainTaskId:%s, %s:%s]", chainTaskId, imageType, image)));
         }
+        return List.of();
     }
 
     /**
