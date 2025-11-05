@@ -16,6 +16,7 @@
 
 package com.iexec.worker.tee.scone;
 
+import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.sms.api.SmsClient;
@@ -25,11 +26,12 @@ import com.iexec.sms.api.config.SconeServicesProperties;
 import com.iexec.sms.api.config.TeeAppProperties;
 import com.iexec.worker.sgx.SgxService;
 import com.iexec.worker.sms.SmsService;
-import com.iexec.worker.tee.TeeServicesPropertiesCreationException;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -99,7 +101,7 @@ class TeeSconeServiceTests {
     void shouldTeePrerequisiteMetForTask() {
         when(sgxService.isSgxEnabled()).thenReturn(true);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
+        when(teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(List.of());
         when(lasServicesManager.startLasService(CHAIN_TASK_ID)).thenReturn(true);
 
         final List<WorkflowError> teePrerequisitesIssue =
@@ -109,7 +111,7 @@ class TeeSconeServiceTests {
 
         verify(sgxService, times(2)).isSgxEnabled();
         verify(smsService).getSmsClient(CHAIN_TASK_ID);
-        verify(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
+        verify(teeServicesPropertiesService).retrieveTeeServicesProperties(CHAIN_TASK_ID);
         verify(lasServicesManager).startLasService(CHAIN_TASK_ID);
     }
 
@@ -143,39 +145,23 @@ class TeeSconeServiceTests {
         verifyNoInteractions(teeServicesPropertiesService, lasServicesManager);
     }
 
-    @Test
-    void shouldTeePrerequisiteNotMetForTaskSinceTeeWorkflowConfigurationCantBeLoaded() {
+    @ParameterizedTest
+    @EnumSource(value = ReplicateStatusCause.class, names = {"PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION", "GET_TEE_SERVICES_CONFIGURATION_FAILED"})
+    void shouldTeePrerequisiteNotMetForTaskSinceTeeWorkflowConfigurationCantBeLoaded(final ReplicateStatusCause cause) {
         when(sgxService.isSgxEnabled()).thenReturn(true);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID))
-                .thenThrow(TeeServicesPropertiesCreationException.class);
+        when(teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID))
+                .thenReturn(List.of(new WorkflowError(cause)));
 
         final List<WorkflowError> teePrerequisitesIssue =
                 teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
 
         assertThat(teePrerequisitesIssue)
-                .containsExactly(new WorkflowError(GET_TEE_SERVICES_CONFIGURATION_FAILED));
+                .containsExactly(new WorkflowError(cause));
 
         verify(sgxService, times(2)).isSgxEnabled();
         verify(smsService).getSmsClient(CHAIN_TASK_ID);
-        verify(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
-        verifyNoInteractions(lasServicesManager);
-    }
-
-    @Test
-    void shouldTeePrerequisitesNotBeMetSinceTeeEnclaveConfigurationIsNull() {
-        when(sgxService.isSgxEnabled()).thenReturn(true);
-        when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID))
-                .thenThrow(NullPointerException.class);
-
-        final List<WorkflowError> teePrerequisitesIssue =
-                teeSconeService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID);
-        assertThat(teePrerequisitesIssue)
-                .containsExactly(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
-        verify(sgxService, times(2)).isSgxEnabled();
-        verify(smsService).getSmsClient(CHAIN_TASK_ID);
-        verify(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
+        verify(teeServicesPropertiesService).retrieveTeeServicesProperties(CHAIN_TASK_ID);
         verifyNoInteractions(lasServicesManager);
     }
 
@@ -183,7 +169,7 @@ class TeeSconeServiceTests {
     void shouldTeePrerequisiteNotMetForTaskSinceCantPrepareTee() {
         when(sgxService.isSgxEnabled()).thenReturn(true);
         when(smsService.getSmsClient(CHAIN_TASK_ID)).thenReturn(smsClient);
-        when(teeServicesPropertiesService.getTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(null);
+        when(teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID)).thenReturn(List.of());
         when(lasServicesManager.startLasService(CHAIN_TASK_ID)).thenReturn(false);
 
         final List<WorkflowError> teePrerequisitesIssue =
@@ -194,7 +180,7 @@ class TeeSconeServiceTests {
 
         verify(sgxService, times(2)).isSgxEnabled();
         verify(smsService).getSmsClient(CHAIN_TASK_ID);
-        verify(teeServicesPropertiesService).getTeeServicesProperties(CHAIN_TASK_ID);
+        verify(teeServicesPropertiesService).retrieveTeeServicesProperties(CHAIN_TASK_ID);
         verify(lasServicesManager).startLasService(CHAIN_TASK_ID);
     }
     // endregion

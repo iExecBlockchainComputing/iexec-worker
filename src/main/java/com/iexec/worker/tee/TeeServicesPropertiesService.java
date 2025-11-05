@@ -70,7 +70,7 @@ public class TeeServicesPropertiesService implements Purgeable {
     public List<WorkflowError> retrieveTeeServicesProperties(final String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
 
-        // FIXME better errors
+        // TODO errors could be renamed for APP enclave checks
         final TeeEnclaveConfiguration teeEnclaveConfiguration = taskDescription.getAppEnclaveConfiguration();
         if (teeEnclaveConfiguration == null) {
             log.error("No enclave configuration found for task [chainTaskId:{}]", chainTaskId);
@@ -103,11 +103,11 @@ public class TeeServicesPropertiesService implements Purgeable {
         }
 
         final TeeServicesProperties properties = smsClient.getTeeServicesPropertiesVersion(teeFramework, teeEnclaveConfiguration.getVersion());
-        log.info("Received TEE services properties [properties:{}]", properties);
         if (properties == null) {
             return List.of(new WorkflowError(ReplicateStatusCause.GET_TEE_SERVICES_CONFIGURATION_FAILED,
                     String.format("Missing TEE services properties [chainTaskId:%s]", chainTaskId)));
         }
+        log.info("TEE services properties received [chainTaskId:{}]", chainTaskId);
 
         final String preComputeImage = properties.getPreComputeProperties().getImage();
         final String postComputeImage = properties.getPostComputeProperties().getImage();
@@ -118,6 +118,8 @@ public class TeeServicesPropertiesService implements Purgeable {
 
         if (errors.isEmpty()) {
             propertiesForTask.put(chainTaskId, properties);
+            log.info("TEE services properties storage in cache [chainTaskId:{}, contains-key:{}]",
+                    chainTaskId, propertiesForTask.containsKey(chainTaskId));
         }
         return List.copyOf(errors);
     }
@@ -140,8 +142,9 @@ public class TeeServicesPropertiesService implements Purgeable {
      */
     @Override
     public boolean purgeTask(final String chainTaskId) {
-        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
         propertiesForTask.remove(chainTaskId);
+        log.info("TEE services properties removal from cache [chainTaskId:{}, contains-key:{}]",
+                chainTaskId, propertiesForTask.containsKey(chainTaskId));
         return !propertiesForTask.containsKey(chainTaskId);
     }
 
