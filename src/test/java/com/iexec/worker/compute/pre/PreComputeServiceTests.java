@@ -23,7 +23,6 @@ import com.iexec.commons.containers.DockerRunResponse;
 import com.iexec.commons.containers.client.DockerClientInstance;
 import com.iexec.commons.poco.chain.DealParams;
 import com.iexec.commons.poco.task.TaskDescription;
-import com.iexec.commons.poco.tee.TeeEnclaveConfiguration;
 import com.iexec.commons.poco.tee.TeeFramework;
 import com.iexec.commons.poco.utils.BytesUtils;
 import com.iexec.sms.api.config.TeeAppProperties;
@@ -47,14 +46,13 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.util.unit.DataSize;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static com.iexec.common.replicate.ReplicateStatusCause.*;
+import static com.iexec.common.replicate.ReplicateStatusCause.PRE_COMPUTE_FAILED_UNKNOWN_ISSUE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -73,12 +71,7 @@ class PreComputeServiceTests {
             .datasetAddress("datasetAddress")
             .datasetUri(datasetUri)
             .datasetChecksum("datasetChecksum")
-            .teeFramework(TeeFramework.SCONE)
-            .appEnclaveConfiguration(TeeEnclaveConfiguration.builder()
-                    .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
-                    .heapSize(1024)
-                    .entrypoint("python /app/app.py")
-                    .build());
+            .teeFramework(TeeFramework.SCONE);
     private final TeeAppProperties preComputeProperties = TeeAppProperties.builder()
             .image(PRE_COMPUTE_IMAGE)
             .entrypoint(PRE_COMPUTE_ENTRYPOINT)
@@ -122,7 +115,6 @@ class PreComputeServiceTests {
     }
 
     void prepareMocksForPreCompute(final TaskDescription taskDescription, DockerRunResponse dockerRunResponse) {
-        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
@@ -217,45 +209,8 @@ class PreComputeServiceTests {
     }
 
     @Test
-    void shouldFailToRunTeePreComputeSinceMissingEnclaveConfiguration() {
-        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(null).build();
-
-        final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription);
-        assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCauses())
-                .containsExactly(new WorkflowError(PRE_COMPUTE_MISSING_ENCLAVE_CONFIGURATION));
-    }
-
-    @Test
-    void shouldFailToRunTeePreComputeSinceInvalidEnclaveConfiguration() {
-        final TeeEnclaveConfiguration enclaveConfig = TeeEnclaveConfiguration.builder().build();
-        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfig).build();
-        assertThat(enclaveConfig.getValidator().isValid()).isFalse();
-
-        final PreComputeResponse response = preComputeService.runTeePreCompute(taskDescription);
-        assertThat(response.isSuccessful()).isFalse();
-        assertThat(response.getExitCauses())
-                .containsExactly(new WorkflowError(PRE_COMPUTE_INVALID_ENCLAVE_CONFIGURATION));
-    }
-
-    @Test
-    void shouldFailToRunTeePreComputeSinceTooHighComputeHeapSize() {
-        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
-        final TeeEnclaveConfiguration enclaveConfiguration = TeeEnclaveConfiguration.builder()
-                .fingerprint("01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
-                .heapSize(DataSize.ofGigabytes(8).toBytes() + 1)
-                .entrypoint("python /app/app.py")
-                .build();
-        final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(enclaveConfiguration).build();
-
-        assertThat(preComputeService.runTeePreCompute(taskDescription).isSuccessful())
-                .isFalse();
-    }
-
-    @Test
     void shouldNotRunTeePreComputeSinceDockerImageNotFoundLocally() {
         final TaskDescription taskDescription = taskDescriptionBuilder.build();
-        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
         when(dockerService.getClient()).thenReturn(dockerClientInstanceMock);
         when(teeServicesPropertiesService.getTeeServicesProperties(chainTaskId)).thenReturn(properties);
         when(properties.getPreComputeProperties()).thenReturn(preComputeProperties);
@@ -325,8 +280,6 @@ class PreComputeServiceTests {
                 .datasetAddress(BytesUtils.EMPTY_ADDRESS)
                 .dealParams(DealParams.builder().build())
                 .build();
-
-        when(workerConfigService.getTeeComputeMaxHeapSizeGb()).thenReturn(8);
 
         assertThat(taskDescription.containsDataset()).isFalse();
         assertThat(taskDescription.containsInputFiles()).isFalse();
