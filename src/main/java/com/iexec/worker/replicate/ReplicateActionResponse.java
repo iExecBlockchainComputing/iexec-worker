@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package com.iexec.worker.replicate;
 
-import com.iexec.common.replicate.ComputeLogs;
 import com.iexec.common.replicate.ReplicateStatusCause;
 import com.iexec.common.replicate.ReplicateStatusDetails;
 import com.iexec.commons.poco.chain.ChainReceipt;
@@ -30,7 +29,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReplicateActionResponse {
-
     private boolean isSuccess;
     private ReplicateStatusDetails details;
 
@@ -38,25 +36,20 @@ public class ReplicateActionResponse {
         return new ReplicateActionResponse(true, null);
     }
 
-    public static ReplicateActionResponse success(ChainReceipt chainReceipt) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .chainReceipt(chainReceipt)
-                .build();
-        return new ReplicateActionResponse(true, details);
+    public static ReplicateActionResponse success(final ChainReceipt chainReceipt) {
+        return new ReplicateActionResponse(
+                true, ReplicateStatusDetails.builder().chainReceipt(chainReceipt).build());
     }
 
-    public static ReplicateActionResponse success(String resultLink, String callbackData) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
+    public static ReplicateActionResponse success(final String resultLink, final String callbackData) {
+        final ReplicateStatusDetails details = ReplicateStatusDetails.builder()
                 .resultLink(resultLink)
                 .chainCallbackData(callbackData)
                 .build();
         return new ReplicateActionResponse(true, details);
     }
 
-    public static ReplicateActionResponse successWithLogs(ComputeLogs computeLogs) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .computeLogs(computeLogs)
-                .build();
+    public static ReplicateActionResponse successWithDetails(final ReplicateStatusDetails details) {
         return new ReplicateActionResponse(true, details);
     }
 
@@ -64,29 +57,8 @@ public class ReplicateActionResponse {
         return new ReplicateActionResponse(false, null);
     }
 
-    public static ReplicateActionResponse failure(ReplicateStatusCause cause) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .cause(cause)
-                .build();
-        return new ReplicateActionResponse(false, details);
-    }
-
-    public static ReplicateActionResponse failureWithStdout(String stdout) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .computeLogs(ComputeLogs.builder().stdout(stdout).build())
-                .build();
-        return new ReplicateActionResponse(false, details);
-    }
-
-    public static ReplicateActionResponse failureWithStdout(ReplicateStatusCause cause, String stdout) {
-        ReplicateStatusDetails details = ReplicateStatusDetails.builder()
-                .cause(cause)
-                .computeLogs(ComputeLogs.builder().stdout(stdout).build())
-                .build();
-        return new ReplicateActionResponse(false, details);
-    }
-
-    public static ReplicateActionResponse failureWithDetails(ReplicateStatusDetails details) {
-        return new ReplicateActionResponse(false, details);
+    public static ReplicateActionResponse failure(final ReplicateStatusCause cause) {
+        return new ReplicateActionResponse(
+                false, ReplicateStatusDetails.builder().cause(cause).build());
     }
 }
