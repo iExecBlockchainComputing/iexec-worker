@@ -48,6 +48,7 @@ import com.iexec.worker.workflow.WorkflowException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -264,39 +265,25 @@ public class TaskManagerService {
         }
 
         final PreComputeResponse preResponse = computeManagerService.runPreCompute(taskDescription);
-        if (!preResponse.isSuccessful()) {
-            return getFailureResponseAndPrintErrors(preResponse.getExitCauses(), context, chainTaskId);
-        }
+        final List<WorkflowError> cumulatedErrors = new ArrayList<>(preResponse.getExitCauses());
 
         final AppComputeResponse appResponse = computeManagerService.runCompute(taskDescription);
-        if (!appResponse.isSuccessful()) {
-            final List<WorkflowError> appErrors = appResponse.getExitCauses();
-            appErrors.forEach(error -> logError(error.cause(), context, chainTaskId));
-            return ReplicateActionResponse.failureWithDetails(
-                    ReplicateStatusDetails.builder()
-                            .cause(appErrors.get(0).cause()) //TODO: Handle list of causes
-                            .exitCode(appResponse.getExitCode())
-                            .computeLogs(
-                                    ComputeLogs.builder()
-                                            .stdout(appResponse.getStdout())
-                                            .stderr(appResponse.getStderr())
-                                            .build()
-                            )
-                            .build());
-        }
+        cumulatedErrors.addAll(appResponse.getExitCauses());
 
         final PostComputeResponse postResponse = computeManagerService.runPostCompute(taskDescription);
-        if (!postResponse.isSuccessful()) {
-            final List<WorkflowError> postComputeErrors = postResponse.getExitCauses();
-            postComputeErrors.forEach(error -> logError(error.cause(), context, chainTaskId));
-            return ReplicateActionResponse.failureWithStdout(postComputeErrors.get(0).cause(), postResponse.getStdout()); // TODO: Handle list of causes
-        }
-        return ReplicateActionResponse.successWithLogs(
-                ComputeLogs.builder()
-                        .stdout(appResponse.getStdout())
-                        .stderr(appResponse.getStderr())
-                        .build()
-        );
+        cumulatedErrors.addAll(postResponse.getExitCauses());
+        final ComputeLogs computeLogs = ComputeLogs.builder()
+                .stdout(appResponse.getStdout())
+                .stderr(appResponse.getStderr())
+                .build();
+        final ReplicateStatusDetails details = ReplicateStatusDetails.builder()
+                .exitCode(appResponse.getExitCode())
+                .computeLogs(computeLogs)
+                .build();
+
+        // Always return success to avoid returning COMPUTE_FAILED as this would stop the task execution
+        cumulatedErrors.forEach(error -> logError(error.cause(), context, chainTaskId));
+        return ReplicateActionResponse.successWithDetails(details);
     }
 
     /**
