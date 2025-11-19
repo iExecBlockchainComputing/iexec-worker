@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.2.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.1.0...v9.2.0) (2025-11-14)
+
+
+### Features
+
+* check app enclave configuration in preflight checks ([#667](https://github.com/iExecBlockchainComputing/iexec-worker/issues/667)) ([7c11687](https://github.com/iExecBlockchainComputing/iexec-worker/commit/7c11687f5bf7b19c2bb4e0534f6e7baafb7e1a7b))
+* maximize chances to go from compute to result contribution ([#668](https://github.com/iExecBlockchainComputing/iexec-worker/issues/668)) ([030f21c](https://github.com/iExecBlockchainComputing/iexec-worker/commit/030f21c8d2d6954082dd37904e2882c528c46623))
+* migrate from `ReplicateStatusCause` to `WorkflowError` ([#662](https://github.com/iExecBlockchainComputing/iexec-worker/issues/662)) ([cbde5d2](https://github.com/iExecBlockchainComputing/iexec-worker/commit/cbde5d2c739939ad79a26af487aa4f9a1b0ca0c8))
+* replace deprecated isTeeTask usages with requiresSgx ([#665](https://github.com/iExecBlockchainComputing/iexec-worker/issues/665)) ([3a28542](https://github.com/iExecBlockchainComputing/iexec-worker/commit/3a285424c45b48509624e6b5b1f83f6ed8407fcd))
+* retrieve and cache TEE sessions metadata during task preflight checks ([#664](https://github.com/iExecBlockchainComputing/iexec-worker/issues/664)) ([05aa321](https://github.com/iExecBlockchainComputing/iexec-worker/commit/05aa321af4dab9ef6fd861fa235ff0cc3c5d867c))
+
 ## [9.1.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.0.1...v9.1.0) (2025-10-09)
 
 
