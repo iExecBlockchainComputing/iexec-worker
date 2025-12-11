@@ -19,16 +19,20 @@ package com.iexec.worker.tee;
 import com.iexec.commons.poco.tee.TeeFramework;
 import com.iexec.worker.tee.gramine.TeeGramineService;
 import com.iexec.worker.tee.scone.TeeSconeService;
+import com.iexec.worker.tee.tdx.TeeTdxService;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TeeServicesManager {
 
+    private final TeeTdxService teeTdxService;
     private final TeeSconeService teeSconeService;
     private final TeeGramineService teeGramineService;
 
-    public TeeServicesManager(final TeeSconeService teeSconeService,
+    public TeeServicesManager(final TeeTdxService teeTdxService,
+                              final TeeSconeService teeSconeService,
                               final TeeGramineService teeGramineService) {
+        this.teeTdxService = teeTdxService;
         this.teeSconeService = teeSconeService;
         this.teeGramineService = teeGramineService;
     }
@@ -39,9 +43,9 @@ public class TeeServicesManager {
         }
 
         return switch (teeFramework) {
+            case TDX -> teeTdxService;
             case SCONE -> teeSconeService;
             case GRAMINE -> teeGramineService;
-            default -> throw new IllegalArgumentException("No TEE service defined for this TEE framework.");
         };
     }
 }

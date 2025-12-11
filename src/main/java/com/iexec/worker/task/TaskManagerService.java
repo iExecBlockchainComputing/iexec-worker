@@ -107,12 +107,12 @@ public class TaskManagerService {
         }
 
         // result encryption is not supported for standard tasks
-        if (!taskDescription.requiresSgx() && taskDescription.getDealParams().isIexecResultEncryption()) {
+        if (!taskDescription.requiresSgx() && !taskDescription.requiresTdx() && taskDescription.getDealParams().isIexecResultEncryption()) {
             return getFailureResponseAndPrintErrors(
                     List.of(new WorkflowError(TASK_DESCRIPTION_INVALID)), context, chainTaskId);
         }
 
-        if (taskDescription.requiresSgx()) {
+        if (taskDescription.requiresSgx() || taskDescription.requiresTdx()) {
             // If any TEE prerequisite is not met,
             // then we won't be able to run the task.
             // So it should be aborted right now.
@@ -195,7 +195,7 @@ public class TaskManagerService {
         requireNonNull(taskDescription, "task description must not be null");
         final String chainTaskId = taskDescription.getChainTaskId();
         // Return early if TEE task
-        if (taskDescription.requiresSgx()) {
+        if (taskDescription.requiresSgx() || taskDescription.requiresTdx()) {
             log.info("Dataset and input files will be downloaded by the pre-compute enclave [chainTaskId:{}]", chainTaskId);
             return ReplicateActionResponse.success();
         }
@@ -256,7 +256,7 @@ public class TaskManagerService {
                     List.of(new WorkflowError(APP_NOT_FOUND_LOCALLY)), context, chainTaskId);
         }
 
-        if (taskDescription.requiresSgx()) {
+        if (taskDescription.requiresSgx() || taskDescription.requiresTdx()) {
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             if (!teeService.prepareTeeForTask(chainTaskId)) {
                 return getFailureResponseAndPrintErrors(

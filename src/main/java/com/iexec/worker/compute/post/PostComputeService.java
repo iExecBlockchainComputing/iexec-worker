@@ -181,6 +181,10 @@ public class PostComputeService {
                 .withBinds(binds)
                 .withDevices(teeService.getDevices())
                 .withNetworkMode(workerConfigService.getDockerNetworkName());
+        // TDX specific config to access worker DNS from post-compute
+        if (taskDescription.requiresTdx()) {
+            hostConfig.withExtraHosts("worker:host-gateway");
+        }
         final DockerRunRequest request = DockerRunRequest.builder()
                 .hostConfig(hostConfig)
                 .chainTaskId(chainTaskId)

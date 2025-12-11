@@ -63,7 +63,7 @@ public class AppComputeService {
 
         final List<String> env;
         final HostConfig hostConfig;
-        if (taskDescription.requiresSgx()) {
+        if (taskDescription.requiresSgx() || taskDescription.requiresTdx()) {
             final TeeService teeService = teeServicesManager.getTeeService(taskDescription.getTeeFramework());
             env = teeService.buildComputeDockerEnv(taskDescription);
             binds.addAll(teeService.getAdditionalBindings().stream().map(Bind::parse).toList());

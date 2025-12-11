@@ -37,6 +37,8 @@ import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -131,9 +133,10 @@ class AppComputeServiceTests {
         );
     }
 
-    @Test
-    void shouldRunComputeWithTeeAndConnectAppToLas() {
-        final TaskDescription taskDescription = getTaskDescriptionBuilder(OrderTag.TEE_SCONE)
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldRunComputeWithTeeAndConnectAppToLas(final OrderTag orderTag) {
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(orderTag)
                 .appEnclaveConfiguration(TeeEnclaveConfiguration.builder().heapSize(HEAP_SIZE).build())
                 .build();
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);

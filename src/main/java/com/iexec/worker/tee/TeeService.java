@@ -56,7 +56,7 @@ public abstract class TeeService {
             // If it can't be loaded, then we won't be able to run the task.
             smsService.getSmsClient(chainTaskId);
         } catch (SmsClientCreationException e) {
-            log.error("Couldn't get SmsClient [chainTaskId: {}]", chainTaskId, e);
+            log.error("Couldn't get SmsClient [chainTaskId:{}]", chainTaskId, e);
             return List.of(new WorkflowError(ReplicateStatusCause.UNKNOWN_SMS));
         }
 

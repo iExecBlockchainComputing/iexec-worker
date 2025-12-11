@@ -191,7 +191,7 @@ public class ResultService implements Purgeable {
         }
 
         // Cloud computing - tee
-        if (task.requiresSgx()) {
+        if (task.requiresSgx() || task.requiresTdx()) {
             log.info("Web2 storage, already uploaded (with tee) [chainTaskId:{}]", chainTaskId);
             return getWeb2ResultLink(task);
         }

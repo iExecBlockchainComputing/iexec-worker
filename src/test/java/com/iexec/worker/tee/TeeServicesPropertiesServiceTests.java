@@ -130,6 +130,14 @@ class TeeServicesPropertiesServiceTests {
     }
 
     @Test
+    void shouldNotRetrieveTeeServicesConfigurationForTdx() {
+        final TaskDescription taskDescription = taskDescriptionBuilder.teeFramework(TeeFramework.TDX).build();
+        when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
+        assertThat(teeServicesPropertiesService.retrieveTeeServicesProperties(CHAIN_TASK_ID)).isEmpty();
+        verifyNoInteractions(smsService, smsClient, dockerService, dockerClient);
+    }
+
+    @Test
     void shouldNotRetrieveTeeServicesConfigurationWhenTeeEnclaveConfigurationIsNull() {
         final TaskDescription taskDescription = taskDescriptionBuilder.appEnclaveConfiguration(null).build();
         when(iexecHubService.getTaskDescription(CHAIN_TASK_ID)).thenReturn(taskDescription);
