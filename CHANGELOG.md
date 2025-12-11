@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.2.1](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.2.0...v9.2.1) (2025-12-11)
+
+
+### Bug Fixes
+
+* properly deprecate an unused REST route ([#670](https://github.com/iExecBlockchainComputing/iexec-worker/issues/670)) ([e87ad05](https://github.com/iExecBlockchainComputing/iexec-worker/commit/e87ad05859257b32b3bc4d203bb6ba0b5b9ccd59))
+
 ## [9.2.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.1.0...v9.2.0) (2025-11-14)
 
 
