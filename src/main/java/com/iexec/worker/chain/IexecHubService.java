@@ -242,10 +242,6 @@ public class IexecHubService extends IexecHubAbstractService implements Purgeabl
         return getChainAccount(signerService.getAddress());
     }
 
-    public boolean hasEnoughGas() {
-        return web3jService.hasEnoughGas(signerService.getAddress());
-    }
-
     public long getLatestBlockNumber() {
         return web3jService.getLatestBlockNumber();
     }
