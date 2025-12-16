@@ -99,10 +99,18 @@ public class ComputeController {
         return ok().build();
     }
 
-    @PostMapping(path = {
-            "/iexec_out/{chainTaskId}/computed", //@Deprecated
-            "/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed"
-    })
+    /**
+     * @deprecated Use /compute/post/{chainTaskId}/computed instead
+     */
+    @Deprecated(forRemoval = true)
+    @PostMapping("/iexec_out/{chainTaskId}/computed")
+    public ResponseEntity<String> deprecatedSendComputedFileForTee(@RequestHeader("Authorization") String authorization,
+                                                                   @PathVariable("chainTaskId") String chainTaskId,
+                                                                   @RequestBody ComputedFile computedFile) {
+        return sendComputedFileForTee(authorization, chainTaskId, computedFile);
+    }
+
+    @PostMapping("/compute/" + ComputeStage.POST_VALUE + "/{chainTaskId}/computed")
     public ResponseEntity<String> sendComputedFileForTee(@RequestHeader("Authorization") String authorization,
                                                          @PathVariable String chainTaskId,
                                                          @RequestBody ComputedFile computedFile) {
