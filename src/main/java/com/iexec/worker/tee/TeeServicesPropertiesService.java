@@ -67,8 +67,26 @@ public class TeeServicesPropertiesService implements Purgeable {
         return propertiesForTask.get(chainTaskId);
     }
 
+    public List<WorkflowError> putTeeServicesPropertiesForTask(final String chainTaskId, final TeeServicesProperties properties) {
+        final List<WorkflowError> errors = new ArrayList<>();
+
+        final String preComputeImage = properties.getPreComputeProperties().getImage();
+        final String postComputeImage = properties.getPostComputeProperties().getImage();
+        errors.addAll(checkImageIsPresentOrDownload(preComputeImage, chainTaskId, "preComputeImage"));
+        errors.addAll(checkImageIsPresentOrDownload(postComputeImage, chainTaskId, "postComputeImage"));
+
+        propertiesForTask.put(chainTaskId, properties);
+        log.info("TEE services properties storage in cache [chainTaskId:{}, contains-key:{}]",
+                chainTaskId, propertiesForTask.containsKey(chainTaskId));
+
+        return List.copyOf(errors);
+    }
+
     public List<WorkflowError> retrieveTeeServicesProperties(final String chainTaskId) {
         final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription.requiresTdx()) {
+            return List.of();
+        }
 
         // TODO errors could be renamed for APP enclave checks
         final TeeEnclaveConfiguration teeEnclaveConfiguration = taskDescription.getAppEnclaveConfiguration();
@@ -109,19 +127,7 @@ public class TeeServicesPropertiesService implements Purgeable {
         }
         log.info("TEE services properties received [chainTaskId:{}]", chainTaskId);
 
-        final String preComputeImage = properties.getPreComputeProperties().getImage();
-        final String postComputeImage = properties.getPostComputeProperties().getImage();
-        final List<WorkflowError> errors = new ArrayList<>();
-
-        errors.addAll(checkImageIsPresentOrDownload(preComputeImage, chainTaskId, "preComputeImage"));
-        errors.addAll(checkImageIsPresentOrDownload(postComputeImage, chainTaskId, "postComputeImage"));
-
-        if (errors.isEmpty()) {
-            propertiesForTask.put(chainTaskId, properties);
-            log.info("TEE services properties storage in cache [chainTaskId:{}, contains-key:{}]",
-                    chainTaskId, propertiesForTask.containsKey(chainTaskId));
-        }
-        return List.copyOf(errors);
+        return putTeeServicesPropertiesForTask(chainTaskId, properties);
     }
 
     private List<WorkflowError> checkImageIsPresentOrDownload(final String image, final String chainTaskId, final String imageType) {

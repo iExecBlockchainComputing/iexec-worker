@@ -35,6 +35,7 @@ import com.iexec.worker.tee.TeeServicesManager;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
 import com.iexec.worker.workflow.WorkflowError;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -147,6 +148,10 @@ public class PreComputeService {
                 .withBinds(binds)
                 .withDevices(teeService.getDevices())
                 .withNetworkMode(workerConfigService.getDockerNetworkName());
+        // TDX specific config to access worker DNS from pre-compute
+        if (taskDescription.requiresTdx() && !StringUtils.isBlank(workerConfigService.getDockerExtraHosts())) {
+            hostConfig.withExtraHosts(workerConfigService.getDockerExtraHosts());
+        }
         final DockerRunRequest request = DockerRunRequest.builder()
                 .hostConfig(hostConfig)
                 .chainTaskId(chainTaskId)

@@ -41,6 +41,7 @@ public class WorkerConfigurationService {
     private Integer overrideAvailableCpuCount;
 
     @Value("${worker.gpu-enabled}")
+    @Getter
     private boolean isGpuEnabled;
 
     @Value("${worker.gas-price-multiplier}")
@@ -67,16 +68,16 @@ public class WorkerConfigurationService {
     @Getter
     private String dockerNetworkName;
 
+    @Value("${worker.docker-extra-hosts:}")
+    @Getter
+    private String dockerExtraHosts;
+
     @PostConstruct
     private void postConstruct() {
         if (overrideAvailableCpuCount != null && overrideAvailableCpuCount <= 0) {
             throw new IllegalArgumentException(
                     "Override available CPU count must not be less or equal to 0");
         }
-    }
-
-    public boolean isGpuEnabled() {
-        return isGpuEnabled;
     }
 
     public String getWorkerBaseDir() {

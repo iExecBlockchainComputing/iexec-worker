@@ -170,42 +170,43 @@ class TaskManagerServiceTests {
                 .build();
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
-        ReplicateActionResponse actionResponse = taskManagerService.start(taskDescription);
+        final ReplicateActionResponse actionResponse = taskManagerService.start(taskDescription);
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TASK_DESCRIPTION_INVALID);
     }
 
-    @Test
-    void shouldStartTeeTask() {
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldStartTeeTask(final OrderTag orderTag) {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID)).thenReturn(emptyCauses);
 
-        ReplicateActionResponse actionResponse =
-                taskManagerService.start(getTaskDescriptionBuilder(OrderTag.TEE_SCONE).build());
+        final ReplicateActionResponse actionResponse = taskManagerService.start(getTaskDescriptionBuilder(orderTag).build());
 
         assertThat(actionResponse.isSuccess()).isTrue();
         verifyNoInteractions(iexecHubService);
     }
 
-    @Test
-    void shouldNotStartSinceTeePrerequisitesAreNotMet() {
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldNotStartSinceTeePrerequisitesAreNotMet(final OrderTag orderTag) {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
         when(teeMockedService.areTeePrerequisitesMetForTask(CHAIN_TASK_ID))
                 .thenReturn(List.of(new WorkflowError(TEE_NOT_SUPPORTED)));
 
-        ReplicateActionResponse actionResponse =
-                taskManagerService.start(getTaskDescriptionBuilder(OrderTag.TEE_SCONE).build());
+        final ReplicateActionResponse actionResponse = taskManagerService.start(getTaskDescriptionBuilder(orderTag).build());
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_NOT_SUPPORTED);
     }
 
-    @Test
-    void shouldNotStartSinceTeeSessionCreationFailed() throws TeeSessionGenerationException {
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldNotStartSinceTeeSessionCreationFailed(final OrderTag orderTag) throws TeeSessionGenerationException {
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);
         when(teeServicesManager.getTeeService(any())).thenReturn(teeMockedService);
@@ -214,8 +215,7 @@ class TaskManagerServiceTests {
         doThrow(new TeeSessionGenerationException(TeeSessionGenerationError.UNKNOWN_ISSUE))
                 .when(teeMockedService).createTeeSession(any());
 
-        ReplicateActionResponse actionResponse =
-                taskManagerService.start(getTaskDescriptionBuilder(OrderTag.TEE_SCONE).build());
+        final ReplicateActionResponse actionResponse = taskManagerService.start(getTaskDescriptionBuilder(orderTag).build());
 
         assertThat(actionResponse.isSuccess()).isFalse();
         assertThat(actionResponse.getDetails().getCause()).isEqualTo(TEE_SESSION_GENERATION_UNKNOWN_ISSUE);
@@ -413,11 +413,11 @@ class TaskManagerServiceTests {
 
     // with dataset + with input files + TEE task
 
-    @Test
-    void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess() {
-        final TaskDescription taskDescription = getTaskDescriptionBuilder(OrderTag.TEE_SCONE).build();
-        final ReplicateActionResponse actionResponse =
-                taskManagerService.downloadData(taskDescription);
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldNotDownloadDataWithDatasetUriForTeeTaskAndReturnSuccess(final OrderTag orderTag) {
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(orderTag).build();
+        final ReplicateActionResponse actionResponse = taskManagerService.downloadData(taskDescription);
         assertThat(actionResponse.isSuccess()).isTrue();
         verifyNoInteractions(dataService);
     }
@@ -652,9 +652,10 @@ class TaskManagerServiceTests {
         verifyNoInteractions(teeServicesManager, resultService);
     }
 
-    @Test
-    void shouldComputeTeeTask() {
-        final TaskDescription taskDescription = getTaskDescriptionBuilder(OrderTag.TEE_SCONE).build();
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldComputeTeeTask(final OrderTag orderTag) {
+        final TaskDescription taskDescription = getTaskDescriptionBuilder(orderTag).build();
 
         when(contributionService.getCannotContributeStatusCause(CHAIN_TASK_ID))
                 .thenReturn(emptyCauses);

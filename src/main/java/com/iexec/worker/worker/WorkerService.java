@@ -89,15 +89,16 @@ public class WorkerService {
             log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfigService.getHttpProxyHost(), workerConfigService.getHttpProxyPort());
         }
 
-        WorkerModel model = WorkerModel.builder()
+        final WorkerModel model = WorkerModel.builder()
                 .name(workerConfigService.getWorkerName())
                 .walletAddress(workerWalletAddress)
                 .os(workerConfigService.getOS())
                 .cpu(workerConfigService.getCPU())
                 .cpuNb(workerConfigService.getCpuCount())
                 .memorySize(workerConfigService.getMemorySize())
-                .teeEnabled(teeSconeService.isTeeEnabled())
                 .gpuEnabled(workerConfigService.isGpuEnabled())
+                .teeEnabled(teeSconeService.isTeeEnabled())
+                .tdxEnabled(true)
                 .build();
 
         customCoreFeignClient.registerWorker(model);
