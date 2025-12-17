@@ -18,6 +18,7 @@ package com.iexec.worker.tee.tdx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.model.Device;
+import com.iexec.common.lifecycle.purge.Purgeable;
 import com.iexec.commons.poco.chain.WorkerpoolAuthorization;
 import com.iexec.commons.poco.task.TaskDescription;
 import com.iexec.sms.api.TeeSessionGenerationError;
@@ -29,6 +30,7 @@ import com.iexec.worker.sms.SmsService;
 import com.iexec.worker.sms.TeeSessionGenerationException;
 import com.iexec.worker.tee.TeeService;
 import com.iexec.worker.tee.TeeServicesPropertiesService;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -48,12 +50,12 @@ import java.util.stream.Stream;
 
 @Slf4j
 @Service
-public class TeeTdxService extends TeeService {
+public class TeeTdxService extends TeeService implements Purgeable {
     private final String secretProviderAgent;
     private final WorkerConfigurationService workerConfigurationService;
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final Map<String, TdxSession> sessions = new ConcurrentHashMap<>();
+    private final Map<String, TdxSession> tdxSessions = new ConcurrentHashMap<>();
 
     public TeeTdxService(final SmsService smsService,
                          final TeeServicesPropertiesService teeServicesPropertiesService,
@@ -94,9 +96,9 @@ public class TeeTdxService extends TeeService {
             }
             final File sessionFile = new File(filePath);
             final TdxSession taskSession = mapper.readValue(sessionFile, TdxSession.class);
-            sessions.put(chainTaskId, taskSession);
+            tdxSessions.put(chainTaskId, taskSession);
             final TdxServicesProperties properties = new TdxServicesProperties(
-                    "",
+                    "", // no meaning as the SMS is started with a single configuration for now
                     TeeAppProperties.builder().image(getService(chainTaskId, "pre-compute").findFirst().map(TdxSession.Service::image_name).orElse("")).build(),
                     TeeAppProperties.builder().image(getService(chainTaskId, "post-compute").findFirst().map(TdxSession.Service::image_name).orElse("")).build());
             teeServicesPropertiesService.putTeeServicesPropertiesForTask(chainTaskId, properties);
@@ -148,7 +150,22 @@ public class TeeTdxService extends TeeService {
     }
 
     private Stream<TdxSession.Service> getService(final String chainTaskId, final String serviceName) {
-        return sessions.get(chainTaskId).services().stream()
+        return tdxSessions.get(chainTaskId).services().stream()
                 .filter(service -> Objects.equals(serviceName, service.name()));
+    }
+
+    @Override
+    public boolean purgeTask(final String chainTaskId) {
+        log.debug("purgeTask [chainTaskId:{}]", chainTaskId);
+        tdxSessions.remove(chainTaskId);
+        return super.purgeTask(chainTaskId) && !tdxSessions.containsKey(chainTaskId);
+    }
+
+    @Override
+    @PreDestroy
+    public void purgeAllTasksData() {
+        log.info("Method purgeAllTasksData() called to perform task data cleanup.");
+        tdxSessions.clear();
+        super.purgeAllTasksData();
     }
 }
