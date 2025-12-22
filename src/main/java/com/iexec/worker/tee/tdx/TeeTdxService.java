@@ -88,12 +88,12 @@ public class TeeTdxService extends TeeService implements Purgeable {
                     .directory(Path.of(workerConfigurationService.getTaskBaseDir(chainTaskId)).toFile())
                     .start();
             final int status = process.waitFor();
-            log.info("process ended [status:{}, provisioning:{}, file-path:{}]",
+            log.info("secret_provider_agent process ended [status:{}, provisioning:{}, file-path:{}]",
                     status, provisioningUrl, filePath);
             try (final BufferedReader output = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = output.readLine()) != null) {
-                    log.info("line {}", line);
+                    log.info("secret_provider_agent {}", line);
                 }
             }
             final File sessionFile = new File(filePath);
@@ -105,11 +105,12 @@ public class TeeTdxService extends TeeService implements Purgeable {
                     TeeAppProperties.builder().image(getService(chainTaskId, "post-compute").findFirst().map(TdxSession.Service::image_name).orElse("")).build());
             teeServicesPropertiesService.putTeeServicesPropertiesForTask(chainTaskId, properties);
         } catch (IOException e) {
-            log.warn("process did not execute", e);
+            log.warn("I/O error when creating TEE session for task [chainTaskId:{}]", chainTaskId, e);
             throw new TeeSessionGenerationException(TeeSessionGenerationError.SECURE_SESSION_STORAGE_CALL_FAILED);
         } catch (InterruptedException e) {
-            log.error("thread has been interrupted", e);
+            log.error("thread has been interrupted [chainTaskId:{}]", chainTaskId, e);
             Thread.currentThread().interrupt();
+            throw new TeeSessionGenerationException(TeeSessionGenerationError.SECURE_SESSION_STORAGE_CALL_FAILED);
         }
     }
 
