@@ -174,10 +174,11 @@ class ComputeManagerServiceTests {
         assertThat(preComputeResponse.isSuccessful()).isTrue();
     }
 
-    @Test
-    void shouldRunTeePreCompute() {
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldRunTeePreCompute(final OrderTag orderTag) {
         final PreComputeResponse mockResponse = mock(PreComputeResponse.class);
-        final TaskDescription taskDescription = createTaskDescriptionBuilder(OrderTag.TEE_SCONE).build();
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(orderTag).build();
         when(preComputeService.runTeePreCompute(taskDescription)).thenReturn(mockResponse);
 
         PreComputeResponse preComputeResponse =
@@ -187,9 +188,10 @@ class ComputeManagerServiceTests {
                 .runTeePreCompute(taskDescription);
     }
 
-    @Test
-    void shouldRunTeePreComputeWithFailureResponse() {
-        final TaskDescription taskDescription = createTaskDescriptionBuilder(OrderTag.TEE_SCONE).build();
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldRunTeePreComputeWithFailureResponse(final OrderTag orderTag) {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(orderTag).build();
         when(preComputeService.runTeePreCompute(taskDescription)).thenReturn(PreComputeResponse.builder()
                 .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.PRE_COMPUTE_DATASET_URL_MISSING)))
                 .build());
@@ -352,9 +354,10 @@ class ComputeManagerServiceTests {
                 .containsExactly(new WorkflowError(statusCause));
     }
 
-    @Test
-    void shouldRunTeePostCompute() {
-        final TaskDescription taskDescription = createTaskDescriptionBuilder(OrderTag.TEE_SCONE).build();
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldRunTeePostCompute(final OrderTag orderTag) {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(orderTag).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
                         .stdout(dockerLogs.getStdout())
@@ -377,9 +380,10 @@ class ComputeManagerServiceTests {
         verify(resultService).saveResultInfo(any(), any());
     }
 
-    @Test
-    void shouldRunTeePostComputeWithFailureResponse() {
-        final TaskDescription taskDescription = createTaskDescriptionBuilder(OrderTag.TEE_SCONE).build();
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void shouldRunTeePostComputeWithFailureResponse(final OrderTag orderTag) {
+        final TaskDescription taskDescription = createTaskDescriptionBuilder(orderTag).build();
         PostComputeResponse expectedDockerRunResponse =
                 PostComputeResponse.builder()
                         .exitCauses(List.of(new WorkflowError(ReplicateStatusCause.APP_COMPUTE_FAILED)))

@@ -29,6 +29,8 @@ import com.iexec.worker.workflow.WorkflowError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.web3j.crypto.Credentials;
@@ -452,8 +454,9 @@ class ContributionServiceTests {
         );
     }
 
-    @Test
-    void getContributionWithTee() {
+    @ParameterizedTest
+    @EnumSource(value = OrderTag.class, names = {"TEE_SCONE", "TEE_TDX"})
+    void getContributionWithTee(final OrderTag orderTag) {
         final String chainTaskId = "0x0000000000000000000000000000000000000000000000000000000000000002";
         final String resultDigest = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
@@ -465,7 +468,7 @@ class ContributionServiceTests {
         when(enclaveAuthorizationService.
                 isVerifiedEnclaveSignature(anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(true);
-        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(getTaskDescription(OrderTag.TEE_SCONE));
+        when(iexecHubService.getTaskDescription(chainTaskId)).thenReturn(getTaskDescription(orderTag));
 
         final ComputedFile computedFile = ComputedFile.builder()
                 .taskId(chainTaskId)

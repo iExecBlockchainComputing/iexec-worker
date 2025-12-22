@@ -51,6 +51,8 @@ management:
 tee:
   sgx:
     driver-mode: ${IEXEC_WORKER_SGX_DRIVER_MODE:NONE}
+  tdx:
+    secret-provider-agent: /usr/local/bin/secret_provider_agent
 
 metrics:
   window-size: ${IEXEC_WORKER_METRICS_WINDOW_SIZE:1000}

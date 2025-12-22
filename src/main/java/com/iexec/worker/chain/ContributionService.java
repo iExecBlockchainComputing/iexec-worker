@@ -169,7 +169,8 @@ public class ContributionService {
         String enclaveChallenge = workerpoolAuthorization.getEnclaveChallenge();
         String enclaveSignature = computedFile.getEnclaveSignature();
 
-        if (iexecHubService.getTaskDescription(chainTaskId).requiresSgx()) {
+        final TaskDescription taskDescription = iexecHubService.getTaskDescription(chainTaskId);
+        if (taskDescription.requiresSgx() || taskDescription.requiresTdx()) {
             if (!enclaveAuthorizationService.isVerifiedEnclaveSignature(
                     chainTaskId, resultHash, resultSeal, enclaveSignature, enclaveChallenge)) {
                 log.error("Cannot get contribution with invalid enclave " +
