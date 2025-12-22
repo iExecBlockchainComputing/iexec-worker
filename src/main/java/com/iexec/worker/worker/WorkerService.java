@@ -89,6 +89,7 @@ public class WorkerService {
             log.info("Running with proxy [proxyHost:{}, proxyPort:{}]", workerConfigService.getHttpProxyHost(), workerConfigService.getHttpProxyPort());
         }
 
+        // FIXME add service to check TDX compatibility, use SgxService instead of TeeSconeService
         final WorkerModel model = WorkerModel.builder()
                 .name(workerConfigService.getWorkerName())
                 .walletAddress(workerWalletAddress)

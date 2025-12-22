@@ -68,6 +68,7 @@ public class TeeTdxService extends TeeService implements Purgeable {
 
     @Override
     public boolean isTeeEnabled() {
+        // FIXME add service to check TDX compatibility
         return true;
     }
 
@@ -89,10 +90,11 @@ public class TeeTdxService extends TeeService implements Purgeable {
             final int status = process.waitFor();
             log.info("process ended [status:{}, provisioning:{}, file-path:{}]",
                     status, provisioningUrl, filePath);
-            final BufferedReader output = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = output.readLine()) != null) {
-                log.info("line {}", line);
+            try (final BufferedReader output = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = output.readLine()) != null) {
+                    log.info("line {}", line);
+                }
             }
             final File sessionFile = new File(filePath);
             final TdxSession taskSession = mapper.readValue(sessionFile, TdxSession.class);
@@ -150,7 +152,11 @@ public class TeeTdxService extends TeeService implements Purgeable {
     }
 
     private Stream<TdxSession.Service> getService(final String chainTaskId, final String serviceName) {
-        return tdxSessions.get(chainTaskId).services().stream()
+        final TdxSession session = tdxSessions.get(chainTaskId);
+        if (session == null) {
+            return Stream.empty();
+        }
+        return session.services().stream()
                 .filter(service -> Objects.equals(serviceName, service.name()));
     }
 
