@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.3.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.2.0...v9.3.0) (2025-12-22)
+
+
+### Features
+
+* enable TDX tasks support ([#673](https://github.com/iExecBlockchainComputing/iexec-worker/issues/673)) ([579a7db](https://github.com/iExecBlockchainComputing/iexec-worker/commit/579a7db9cc8817d2b9198b694084e186ed86f003))
+
+
+### Bug Fixes
+
+* call new hasEnoughGas method to fall back on cached value on communication failure ([#672](https://github.com/iExecBlockchainComputing/iexec-worker/issues/672)) ([e6614a6](https://github.com/iExecBlockchainComputing/iexec-worker/commit/e6614a6274e9b955dc7cec709830ff83612f5dd9))
+* properly deprecate an unused REST route ([#670](https://github.com/iExecBlockchainComputing/iexec-worker/issues/670)) ([e87ad05](https://github.com/iExecBlockchainComputing/iexec-worker/commit/e87ad05859257b32b3bc4d203bb6ba0b5b9ccd59))
+
 ## [9.2.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.1.0...v9.2.0) (2025-11-14)
 
 
