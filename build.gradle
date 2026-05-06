@@ -1,8 +1,8 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '8.14.4'
-    id 'org.springframework.boot' version '3.3.8'
-    id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.springframework.boot' version '3.5.8'
+    id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
     id 'org.sonarqube' version '6.3.1.5724'
     id 'maven-publish'
@@ -12,7 +12,7 @@ group = 'com.iexec.worker'
 
 ext {
     gitTag = 'git tag --points-at HEAD'.execute().text.trim()
-    springCloudVersion = '2023.0.5'
+    springCloudVersion = '2025.0.2'
     commonsMathsVersion = '3.6.1'
     testContainersVersion = '1.20.4'
 }
