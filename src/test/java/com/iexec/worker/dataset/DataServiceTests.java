@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2026 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,8 +72,7 @@ class DataServiceTests {
                 .chainTaskId(CHAIN_TASK_ID)
                 .datasetUri(HTTP_URI)
                 .datasetChecksum(CHECKSUM)
-                .datasetAddress(DATASET_ADDRESS)
-                .isTeeTask(false);
+                .datasetAddress(DATASET_ADDRESS);
     }
 
     @BeforeEach
