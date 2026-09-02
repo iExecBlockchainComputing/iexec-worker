@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 IEXEC BLOCKCHAIN TECH
+ * Copyright 2023-2026 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,20 @@ import com.iexec.worker.config.ConfigServerConfigurationService;
 import com.iexec.worker.config.WorkerConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class Web3jServiceTests {
+    private static final String RPC_DEFAULT_URL = "https://sepolia-rollup.arbitrum.io/rpc";
+    private static final String RPC_OVERRIDE_URL = "https://sepolia-rollup-override.arbitrum.io/rpc";
+
     @Mock
     private ConfigServerConfigurationService configServerConfigurationService;
     @Mock
@@ -36,24 +41,29 @@ class Web3jServiceTests {
 
     @BeforeEach
     void init() {
-        MockitoAnnotations.openMocks(this);
-        when(configServerConfigurationService.getChainId()).thenReturn(134);
+        when(configServerConfigurationService.getChainId()).thenReturn(421614);
         when(configServerConfigurationService.getBlockTime()).thenReturn(Duration.ofSeconds(5));
-        when(configServerConfigurationService.isSidechain()).thenReturn(true);
-        when(configServerConfigurationService.getChainNodeUrl()).thenReturn("https://bellecour.iex.ec");
-        when(workerConfigurationService.getGasPriceMultiplier()).thenReturn(1.0f);
+        when(configServerConfigurationService.isSidechain()).thenReturn(false);
+        when(workerConfigurationService.getGasPriceMultiplier()).thenReturn(1.1f);
         when(workerConfigurationService.getGasPriceCap()).thenReturn(22_000_000_000L);
     }
 
     @Test
     void shouldCreateInstanceWithDefaultNodeAddress() {
         when(workerConfigurationService.getOverrideBlockchainNodeAddress()).thenReturn("");
-        assertThat(new Web3jService(configServerConfigurationService, workerConfigurationService)).isNotNull();
+        when(configServerConfigurationService.getChainNodeUrl()).thenReturn(RPC_DEFAULT_URL);
+        final Web3jService web3jService = new Web3jService(configServerConfigurationService, workerConfigurationService);
+        assertThat(web3jService).isNotNull()
+                .extracting("chainNodeAddress")
+                .isEqualTo(RPC_DEFAULT_URL);
     }
 
     @Test
     void shouldCreateInstanceWithOverridenNodeAddress() {
-        when(workerConfigurationService.getOverrideBlockchainNodeAddress()).thenReturn("http://localhost:8545");
-        assertThat(new Web3jService(configServerConfigurationService, workerConfigurationService)).isNotNull();
+        when(workerConfigurationService.getOverrideBlockchainNodeAddress()).thenReturn(RPC_OVERRIDE_URL);
+        final Web3jService web3jService = new Web3jService(configServerConfigurationService, workerConfigurationService);
+        assertThat(web3jService).isNotNull()
+                .extracting("chainNodeAddress")
+                .isEqualTo(RPC_OVERRIDE_URL);
     }
 }

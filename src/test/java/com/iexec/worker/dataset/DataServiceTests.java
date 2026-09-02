@@ -50,7 +50,7 @@ class DataServiceTests {
     private static final String DATASET_RESOURCE_NAME = "iExec-RLC-RLC-icon.png";
     private static final String HTTP_URI = "https://icons.iconarchive.com/icons/cjdowner/cryptocurrency-flat/512/" + DATASET_RESOURCE_NAME;
     private static final String IPFS_URI = "/ipfs/QmUbh7ugQ9WVprTVYjzrCS4d9cCy73zUz4MMchsrqzzu1w";
-    private static final String IEXEC_IPFS_DOWNLOAD = "Try to download dataset from https://ipfs-gateway.v8-bellecour.iex.ec";
+    private static final String IEXEC_IPFS_DOWNLOAD = "Try to download dataset from https://ipfs.iex.ec";
     private static final String IO_IPFS_DOWNLOAD = "Try to download dataset from https://gateway.ipfs.io";
     private static final String PINATA_IPFS_DOWNLOAD = "Try to download dataset from https://gateway.pinata.cloud";
     private static final String CHECKSUM = "0x4d8401fd4484f07c202c0a2b9ce6907eabd69efae0cec3956f1a56a6b19a9daa";
