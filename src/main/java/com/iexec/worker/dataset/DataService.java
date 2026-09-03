@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2025 IEXEC BLOCKCHAIN TECH
+ * Copyright 2020-2026 IEXEC BLOCKCHAIN TECH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,12 @@ import java.util.List;
 @Service
 public class DataService {
 
+    static final List<String> IPFS_GATEWAYS = List.of(
+            "https://ipfs.iex.ec",
+            "https://gateway.ipfs.io",
+            "https://gateway.pinata.cloud"
+    );
+
     private final WorkerConfigurationService workerConfigurationService;
 
     public DataService(WorkerConfigurationService workerConfigurationService) {
@@ -58,7 +64,7 @@ public class DataService {
         final String parentDirectoryPath = workerConfigurationService.getTaskInputDir(chainTaskId);
         String datasetLocalFilePath = "";
         if (MultiAddressHelper.isMultiAddress(uri)) {
-            for (final String ipfsGateway : MultiAddressHelper.IPFS_GATEWAYS) {
+            for (final String ipfsGateway : IPFS_GATEWAYS) {
                 log.debug("Try to download dataset from {}", ipfsGateway);
                 datasetLocalFilePath =
                         downloadFile(chainTaskId, ipfsGateway + uri, parentDirectoryPath, filename);
