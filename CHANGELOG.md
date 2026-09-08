@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.4.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.3.0...v9.4.0) (2026-09-08)
+
+
+### Features
+
+* extract Spring Boot Jar layers to optimize OCI image build ([#682](https://github.com/iExecBlockchainComputing/iexec-worker/issues/682)) ([688a3cb](https://github.com/iExecBlockchainComputing/iexec-worker/commit/688a3cb4b939d437a2b783f54c6677de7b14ee34))
+* upgrade to Java 21 ([#677](https://github.com/iExecBlockchainComputing/iexec-worker/issues/677)) ([8650e02](https://github.com/iExecBlockchainComputing/iexec-worker/commit/8650e0219767f8f9dc673da493e4503fc3a336bf))
+* upgrade to Spring Boot 3.5.8 ([#675](https://github.com/iExecBlockchainComputing/iexec-worker/issues/675)) ([97da5da](https://github.com/iExecBlockchainComputing/iexec-worker/commit/97da5dad335ab9ea8411cb806e40a055844c532b))
+
+
+### Bug Fixes
+
+* remove bellecour references ([#681](https://github.com/iExecBlockchainComputing/iexec-worker/issues/681)) ([f69933d](https://github.com/iExecBlockchainComputing/iexec-worker/commit/f69933dead74ae7389a2c0cc0c45ef406d947a88))
+
 ## [9.3.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.2.0...v9.3.0) (2025-12-22)
 
 
