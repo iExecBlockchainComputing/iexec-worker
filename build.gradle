@@ -14,7 +14,6 @@ ext {
     gitTag = 'git tag --points-at HEAD'.execute().text.trim()
     springCloudVersion = '2025.0.2'
     commonsMathsVersion = '3.6.1'
-    testContainersVersion = '1.20.4'
 }
 
 if (gitTag.isEmpty()) {
@@ -24,13 +23,6 @@ if (gitTag.isEmpty()) {
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url = "https://docker-regis-adm.iex.ec/repository/maven-public/"
-        credentials {
-            username = nexusUser
-            password = nexusPassword
-        }
-    }
     maven {
         url = "https://jitpack.io"
     }
@@ -44,12 +36,12 @@ dependencyManagement {
 
 dependencies {
     // iexec
-    implementation "com.iexec.commons:iexec-commons-poco:$iexecCommonsPocoVersion"
-    implementation "com.iexec.common:iexec-common:$iexecCommonVersion"
-    implementation "com.iexec.commons:iexec-commons-containers:$iexecCommonsContainersVersion"
-    implementation "com.iexec.result-proxy:iexec-result-proxy-library:$iexecResultVersion"
-    implementation "com.iexec.sms:iexec-sms-library:$iexecSmsVersion"
-    implementation "com.iexec.core:iexec-core-library:$iexecCoreVersion"
+    implementation "com.github.iexecblockchaincomputing:iexec-commons-poco:$iexecCommonsPocoVersion"
+    implementation "com.github.iexecblockchaincomputing:iexec-common:$iexecCommonVersion"
+    implementation "com.github.iexecblockchaincomputing:iexec-commons-containers:$iexecCommonsContainersVersion"
+    implementation "com.github.iexecblockchaincomputing.iexec-result-proxy:iexec-result-proxy-library:$iexecResultVersion"
+    implementation "com.github.iexecblockchaincomputing.iexec-sms:iexec-sms-library:$iexecSmsVersion"
+    implementation "com.github.iexecblockchaincomputing.iexec-core:iexec-core-library:$iexecCoreVersion"
 
     // spring
     implementation "org.springframework.boot:spring-boot-starter"
@@ -116,7 +108,7 @@ testing {
                 implementation "org.springframework.boot:spring-boot-starter-test"
 
                 // testcontainers
-                implementation "org.testcontainers:junit-jupiter:$testContainersVersion"
+                implementation 'org.testcontainers:junit-jupiter'
             }
         }
     }
@@ -149,10 +141,10 @@ publishing {
     repositories {
         maven {
             credentials {
-                username = nexusUser
-                password = nexusPassword
+                username = mvnRepositoryUsername
+                password = mvnRepositoryPassword
             }
-            url = project.hasProperty('nexusUrl') ? nexusUrl : ''
+            url = project.hasProperty('mvnRepositoryUrl') ? mvnRepositoryUrl : ''
         }
     }
 }
