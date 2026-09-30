@@ -1,23 +1,18 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '8.14.4'
-    id 'org.springframework.boot' version '3.5.8'
+    id 'org.springframework.boot' version '3.5.16'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
     id 'org.sonarqube' version '6.3.1.5724'
     id 'maven-publish'
 }
 
-group = 'com.iexec.worker'
+group = 'com.github.iExecBlockchainComputing'
 
 ext {
-    gitTag = 'git tag --points-at HEAD'.execute().text.trim()
     springCloudVersion = '2025.0.2'
     commonsMathsVersion = '3.6.1'
-}
-
-if (gitTag.isEmpty()) {
-    version += '-NEXT-SNAPSHOT'
 }
 
 repositories {
@@ -36,12 +31,12 @@ dependencyManagement {
 
 dependencies {
     // iexec
-    implementation "com.github.iexecblockchaincomputing:iexec-commons-poco:$iexecCommonsPocoVersion"
-    implementation "com.github.iexecblockchaincomputing:iexec-common:$iexecCommonVersion"
-    implementation "com.github.iexecblockchaincomputing:iexec-commons-containers:$iexecCommonsContainersVersion"
-    implementation "com.github.iexecblockchaincomputing.iexec-result-proxy:iexec-result-proxy-library:$iexecResultVersion"
-    implementation "com.github.iexecblockchaincomputing.iexec-sms:iexec-sms-library:$iexecSmsVersion"
-    implementation "com.github.iexecblockchaincomputing.iexec-core:iexec-core-library:$iexecCoreVersion"
+    implementation "com.github.iExecBlockchainComputing:iexec-commons-poco:$iexecCommonsPocoVersion"
+    implementation "com.github.iExecBlockchainComputing:iexec-common:$iexecCommonVersion"
+    implementation "com.github.iExecBlockchainComputing:iexec-commons-containers:$iexecCommonsContainersVersion"
+    implementation "com.github.iExecBlockchainComputing.iexec-result-proxy:iexec-result-proxy-library:$iexecResultVersion"
+    implementation "com.github.iExecBlockchainComputing.iexec-sms:iexec-sms-library:$iexecSmsVersion"
+    implementation "com.github.iExecBlockchainComputing.iexec-core:iexec-core-library:$iexecCoreVersion"
 
     // spring
     implementation "org.springframework.boot:spring-boot-starter"
