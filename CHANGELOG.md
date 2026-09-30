@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.4.1](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.4.0...v9.4.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* jitpack iExec dependencies group syntax and Github Actions migration ([#685](https://github.com/iExecBlockchainComputing/iexec-worker/issues/685)) ([9ad1527](https://github.com/iExecBlockchainComputing/iexec-worker/commit/9ad152721e3579932a10f96db892f30c1b991650))
+
 ## [9.4.0](https://github.com/iExecBlockchainComputing/iexec-worker/compare/v9.3.0...v9.4.0) (2026-09-18)
 
 
